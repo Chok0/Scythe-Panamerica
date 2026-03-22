@@ -45,6 +45,7 @@ export default function App(){
   const[log,setLog]=useState([]);
   const[botRunning,setBotRunning]=useState(false);
   const[showStars,setShowStars]=useState(false);
+  const[showLog,setShowLog]=useState(true);
   const logRef=useRef(null);
 
   const me=players[0];const myFaction=me?FACTIONS[me.faction]:null;const myMat=me?MATS.find(m=>m.id===me.matId):null;
@@ -1897,11 +1898,18 @@ export default function App(){
             </div>
           )}
 
-          {/* Log */}
-          <div ref={logRef} style={{maxHeight:100,overflow:"auto",padding:"6px 16px",fontSize:12}}>
-            {log.slice(-10).map((msg,i)=><div key={i} className="log-line">{msg}</div>)}
-          </div>
         </div>
+      </div>
+
+      {/* ═══ FLOATING LOG BOX — bottom-right ═══ */}
+      <div style={{position:"fixed",bottom:12,right:12,zIndex:20,width:280,maxHeight:showLog?260:36,transition:"max-height 0.25s ease",display:"flex",flexDirection:"column",borderRadius:8,overflow:"hidden",background:"rgba(14,12,8,0.92)",border:"1px solid var(--border)",backdropFilter:"blur(8px)",boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
+        <button onClick={()=>setShowLog(s=>!s)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:"rgba(201,168,76,0.06)",border:"none",borderBottom:showLog?"1px solid var(--border)":"none",color:"var(--gold)",fontSize:12,fontWeight:700,fontFamily:"'Bitter',serif",cursor:"pointer",flexShrink:0}}>
+          <span>📜 Journal</span>
+          <span style={{fontSize:10,color:"var(--text-dim)",transform:showLog?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
+        </button>
+        {showLog&&<div ref={logRef} style={{flex:1,overflow:"auto",padding:"6px 10px",fontSize:11}}>
+          {log.slice(-20).map((msg,i)=><div key={i} className="log-line">{msg}</div>)}
+        </div>}
       </div>
     </div>
   );
