@@ -45,6 +45,8 @@ export default function App(){
   const[showStars,setShowStars]=useState(false);
   const logRef=useRef(null);
 
+  const me=players[0];const myFaction=me?FACTIONS[me.faction]:null;const myMat=me?MATS.find(m=>m.id===me.matId):null;
+
   useEffect(()=>{if(logRef.current)logRef.current.scrollTop=logRef.current.scrollHeight;},[log]);
   const addLog=useCallback((msg)=>setLog(prev=>[...prev,msg]),[]);
   const addLogs=useCallback((msgs)=>setLog(prev=>[...prev,...msgs]),[]);
@@ -376,8 +378,6 @@ export default function App(){
     addLog(`🏛 Commerce Impérial : -1 ${resType} → ${reward==="coins"?"+2💰":"+1🃏"}`);
   },[me,addLog]);
 
-  const me=players[0];const myFaction=me?FACTIONS[me.faction]:null;const myMat=me?MATS.find(m=>m.id===me.matId):null;
-  
   const validMoves=useMemo(()=>{
     if(!moveSource||!me)return new Set();
     let moves=getValidMoves(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails);
