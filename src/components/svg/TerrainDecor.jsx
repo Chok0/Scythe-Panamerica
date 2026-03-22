@@ -1,93 +1,96 @@
 import React from 'react';
 import { seededRand } from '../../logic/hexMath.js';
 
+// DA Doc: Cartographic military patterns — fine strokes, no illustrations
 export const TerrainDecor = React.memo(({ hex }) => {
   const rng = seededRand(hex.id * 137 + hex.rx);
   const cx = hex.rx, cy = hex.ry;
 
+  // Forest: small filled circles (woodland convention)
   if (hex.t === "foret") {
-    const trees = [];
-    for (let i = 0; i < 4; i++) {
-      const tx = cx - 20 + rng() * 40, ty = cy - 18 + rng() * 28, sz = 5 + rng() * 6;
-      trees.push(<g key={i} opacity={0.3 + rng() * 0.2}>
-        <polygon points={`${tx},${ty - sz} ${tx - sz * 0.5},${ty + sz * 0.3} ${tx + sz * 0.5},${ty + sz * 0.3}`} fill="#1a4a1a" />
-        <polygon points={`${tx},${ty - sz * 0.6} ${tx - sz * 0.4},${ty + sz * 0.1} ${tx + sz * 0.4},${ty + sz * 0.1}`} fill="#2a5a2a" />
-        <line x1={tx} y1={ty + sz * 0.3} x2={tx} y2={ty + sz * 0.5} stroke="#3a2a1a" strokeWidth="1" />
-      </g>);
+    const dots = [];
+    for (let i = 0; i < 5; i++) {
+      const dx = cx - 18 + rng() * 36, dy = cy - 14 + rng() * 28;
+      dots.push(<circle key={i} cx={dx} cy={dy} r={2 + rng() * 1.5} fill="#1A3A1A" opacity={0.3 + rng() * 0.15} />);
     }
-    return <g style={{ pointerEvents: "none" }}>{trees}</g>;
+    return <g style={{ pointerEvents: "none" }}>{dots}</g>;
   }
+  // Mountain / Sierra: inverted V hatchures (topographic relief)
   if (hex.t === "montagne" || hex.t === "sierra") {
     const isS = hex.t === "sierra";
-    const peaks = [];
-    for (let i = 0; i < (isS ? 2 : 3); i++) {
-      const px = cx - 18 + rng() * 36, py = cy - 6 + rng() * 14, sz = 10 + rng() * 10;
-      const c1 = isS ? "#8a7050" : "#6a7580", c2 = isS ? "#a08060" : "#8a95a0";
-      peaks.push(<g key={i} opacity={0.35}>
-        <polygon points={`${px},${py - sz} ${px - sz * 0.7},${py + sz * 0.3} ${px + sz * 0.7},${py + sz * 0.3}`} fill={c1} />
-        <polygon points={`${px},${py - sz} ${px - sz * 0.15},${py - sz * 0.3} ${px + sz * 0.3},${py - sz * 0.2}`} fill={c2} />
-      </g>);
-    }
-    return <g style={{ pointerEvents: "none" }}>{peaks}</g>;
-  }
-  if (hex.t === "village") {
-    const houses = [];
+    const color = isS ? "#4A3C28" : "#3A3A3A";
+    const lines = [];
     for (let i = 0; i < 3; i++) {
-      const hx = cx - 16 + rng() * 32, hy = cy - 10 + rng() * 16, sz = 4 + rng() * 3;
-      houses.push(<g key={i} opacity={0.3}>
-        <rect x={hx - sz} y={hy} width={sz * 2} height={sz * 1.3} fill="#7a3a1a" rx="0.5" />
-        <polygon points={`${hx - sz - 1},${hy} ${hx},${hy - sz} ${hx + sz + 1},${hy}`} fill="#5a2a10" />
-        <rect x={hx - 1} y={hy + sz * 0.4} width={2} height={sz * 0.9} fill="#c4a040" opacity="0.5" />
-      </g>);
+      const px = cx - 16 + rng() * 32, py = cy - 8 + rng() * 16, sz = 6 + rng() * 5;
+      lines.push(<path key={i} d={`M${px - sz * 0.6},${py + sz * 0.3}L${px},${py - sz * 0.4}L${px + sz * 0.6},${py + sz * 0.3}`}
+        fill="none" stroke={color} strokeWidth="0.6" opacity={0.35} />);
     }
-    return <g style={{ pointerEvents: "none" }}>{houses}</g>;
+    return <g style={{ pointerEvents: "none" }}>{lines}</g>;
   }
+  // Village: small rectangles (built-up area convention)
+  if (hex.t === "village") {
+    const rects = [];
+    for (let i = 0; i < 3; i++) {
+      const rx = cx - 14 + rng() * 28, ry = cy - 8 + rng() * 16;
+      rects.push(<rect key={i} x={rx} y={ry} width={3 + rng() * 2} height={4 + rng() * 2} fill="#5A3A2A" opacity={0.25} rx="0.3" />);
+    }
+    return <g style={{ pointerEvents: "none" }}>{rects}</g>;
+  }
+  // Lake: wavy horizontal lines (hydrographic convention)
   if (hex.t === "lac") {
-    return (<g style={{ pointerEvents: "none" }} opacity={0.15}>
-      <circle cx={cx - 8 + rng() * 16} cy={cy - 4 + rng() * 8} r="8" fill="none" stroke="#80b8e0" strokeWidth="0.6"><animate attributeName="r" values="4;14;4" dur={`${3 + rng() * 2}s`} repeatCount="indefinite" /><animate attributeName="opacity" values="0.4;0;0.4" dur={`${3 + rng() * 2}s`} repeatCount="indefinite" /></circle>
-      <circle cx={cx + 5 + rng() * 10} cy={cy + 3 + rng() * 6} r="6" fill="none" stroke="#80b8e0" strokeWidth="0.5"><animate attributeName="r" values="3;11;3" dur={`${4 + rng() * 2}s`} begin="1.5s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.3;0;0.3" dur={`${4 + rng() * 2}s`} begin="1.5s" repeatCount="indefinite" /></circle>
-    </g>);
-  }
-  if (hex.t === "marecage") {
-    return (<g style={{ pointerEvents: "none" }} opacity={0.25}>
-      <ellipse cx={cx - 10} cy={cy - 4} rx="5" ry="3.5" fill="#3a6a3a" opacity="0.5" />
-      <ellipse cx={cx + 12} cy={cy + 6} rx="4" ry="3" fill="#2a5a2a" opacity="0.4" />
-      <circle cx={cx + 2} cy={cy + 2} r="6" fill="none" stroke="#5a9a6a" strokeWidth="0.4"><animate attributeName="r" values="3;10;3" dur="5s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.3;0;0.3" dur="5s" repeatCount="indefinite" /></circle>
-    </g>);
-  }
-  if (hex.t === "desert") {
     return (<g style={{ pointerEvents: "none" }} opacity={0.2}>
-      <path d={`M${cx - 22} ${cy + 6}Q${cx - 10} ${cy - 4} ${cx} ${cy + 4}Q${cx + 12} ${cy + 10} ${cx + 22} ${cy + 2}`} fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="1.5" />
-      <line x1={cx + rng() * 10} y1={cy + 2} x2={cx + rng() * 10} y2={cy - 10} stroke="#5a8040" strokeWidth="1.5" strokeLinecap="round" />
-      <line x1={cx + rng() * 10 - 3} y1={cy - 5} x2={cx + rng() * 10} y2={cy - 7} stroke="#5a8040" strokeWidth="1" strokeLinecap="round" />
+      {[0, 1, 2].map(i => <path key={i} d={`M${cx - 18} ${cy - 8 + i * 8}Q${cx - 6} ${cy - 12 + i * 8} ${cx} ${cy - 8 + i * 8}Q${cx + 6} ${cy - 4 + i * 8} ${cx + 18} ${cy - 8 + i * 8}`}
+        fill="none" stroke="#2A5A7A" strokeWidth="0.5" />)}
     </g>);
   }
+  // Swamp: wavy lines + dots (marshland convention)
+  if (hex.t === "marecage") {
+    return (<g style={{ pointerEvents: "none" }} opacity={0.2}>
+      <path d={`M${cx - 16} ${cy - 2}Q${cx - 6} ${cy - 6} ${cx} ${cy - 2}Q${cx + 6} ${cy + 2} ${cx + 16} ${cy - 2}`} fill="none" stroke="#3A6A3A" strokeWidth="0.5" />
+      <path d={`M${cx - 14} ${cy + 6}Q${cx - 4} ${cy + 2} ${cx + 2} ${cy + 6}Q${cx + 8} ${cy + 10} ${cx + 14} ${cy + 6}`} fill="none" stroke="#3A6A3A" strokeWidth="0.5" />
+      <circle cx={cx - 6} cy={cy + 2} r="1" fill="#3A6A3A" /><circle cx={cx + 8} cy={cy - 4} r="1" fill="#3A6A3A" />
+    </g>);
+  }
+  // Desert: scattered dots (sandy terrain convention)
+  if (hex.t === "desert") {
+    const dots = [];
+    for (let i = 0; i < 8; i++) {
+      dots.push(<circle key={i} cx={cx - 18 + rng() * 36} cy={cy - 14 + rng() * 28} r={0.6} fill="#6B4B25" opacity={0.3} />);
+    }
+    return <g style={{ pointerEvents: "none" }}>{dots}</g>;
+  }
+  // Fields (champs): tight horizontal lines (cultivated land)
   if (hex.t === "champs") {
     return (<g style={{ pointerEvents: "none" }} opacity={0.15}>
-      {[0, 1, 2, 3].map(i => <line key={i} x1={cx - 20} y1={cy - 10 + i * 8} x2={cx + 20} y2={cy - 10 + i * 8} stroke="#8a7020" strokeWidth="0.8" strokeDasharray="3 5" />)}
+      {[0, 1, 2, 3, 4].map(i => <line key={i} x1={cx - 18} y1={cy - 12 + i * 6} x2={cx + 18} y2={cy - 12 + i * 6} stroke="#6A5A20" strokeWidth="0.5" />)}
     </g>);
   }
+  // Plains: wider horizontal lines (flat terrain)
   if (hex.t === "plaine") {
-    return (<g style={{ pointerEvents: "none" }} opacity={0.15}>
-      {[0, 1, 2].map(i => { const gx = cx - 14 + rng() * 28, gy = cy - 6 + rng() * 14; return (
-        <g key={i}><line x1={gx} y1={gy} x2={gx - 2} y2={gy - 5} stroke="#4a7a30" strokeWidth="0.8" strokeLinecap="round" /><line x1={gx} y1={gy} x2={gx + 2} y2={gy - 6} stroke="#5a8a3a" strokeWidth="0.7" strokeLinecap="round" /><line x1={gx} y1={gy} x2={gx} y2={gy - 7} stroke="#4a7a30" strokeWidth="0.8" strokeLinecap="round" /></g>
-      ); })}
-    </g>);
-  }
-  if (hex.t === "toundra") {
     return (<g style={{ pointerEvents: "none" }} opacity={0.12}>
-      <ellipse cx={cx - 8} cy={cy + 3} rx="10" ry="4" fill="#8aa0b0" />
-      <ellipse cx={cx + 10} cy={cy - 6} rx="7" ry="3" fill="#9ab0c0" />
+      {[0, 1, 2].map(i => <line key={i} x1={cx - 18} y1={cy - 8 + i * 10} x2={cx + 18} y2={cy - 8 + i * 10} stroke="#5A4B2A" strokeWidth="0.4" />)}
     </g>);
   }
+  // Tundra: crossed hatching (difficult terrain convention)
+  if (hex.t === "toundra") {
+    return (<g style={{ pointerEvents: "none" }} opacity={0.1}>
+      <line x1={cx - 16} y1={cy - 16} x2={cx + 16} y2={cy + 16} stroke="#3A4A5A" strokeWidth="0.4" />
+      <line x1={cx + 16} y1={cy - 16} x2={cx - 16} y2={cy + 16} stroke="#3A4A5A" strokeWidth="0.4" />
+      <line x1={cx - 8} y1={cy - 18} x2={cx + 24} y2={cy + 14} stroke="#3A4A5A" strokeWidth="0.4" />
+      <line x1={cx + 8} y1={cy - 18} x2={cx - 24} y2={cy + 14} stroke="#3A4A5A" strokeWidth="0.4" />
+    </g>);
+  }
+  // Factory (Rouge River): central gear + radial hatching, slow rotation
   if (hex.t === "factory") {
     return (<g style={{ pointerEvents: "none" }}>
-      <g transform={`translate(${cx},${cy})`} opacity={0.15}>
-        <circle r="12" fill="none" stroke="#c4a747" strokeWidth="1.5" strokeDasharray="4 3"><animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="20s" repeatCount="indefinite" /></circle>
-        <circle r="6" fill="none" stroke="#c4a747" strokeWidth="1"><animateTransform attributeName="transform" type="rotate" from="360" to="0" dur="12s" repeatCount="indefinite" /></circle>
+      <g transform={`translate(${cx},${cy})`} opacity={0.2}>
+        <circle r="10" fill="none" stroke="#8A2A2A" strokeWidth="1" strokeDasharray="3 2">
+          <animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="30s" repeatCount="indefinite" />
+        </circle>
+        <circle r="4" fill="none" stroke="#8A2A2A" strokeWidth="0.8">
+          <animateTransform attributeName="transform" type="rotate" from="360" to="0" dur="18s" repeatCount="indefinite" />
+        </circle>
       </g>
-      <circle cx={cx - 8} cy={cy - 20} r="4" fill="#4a4038" opacity="0.15"><animate attributeName="cy" values={`${cy - 16};${cy - 38}`} dur="4s" repeatCount="indefinite" /><animate attributeName="r" values="3;8" dur="4s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.2;0" dur="4s" repeatCount="indefinite" /></circle>
-      <circle cx={cx + 6} cy={cy - 18} r="3" fill="#4a4038" opacity="0.12"><animate attributeName="cy" values={`${cy - 14};${cy - 35}`} dur="5s" begin="1.5s" repeatCount="indefinite" /><animate attributeName="r" values="2;7" dur="5s" begin="1.5s" repeatCount="indefinite" /><animate attributeName="opacity" values="0.15;0" dur="5s" begin="1.5s" repeatCount="indefinite" /></circle>
     </g>);
   }
   return null;

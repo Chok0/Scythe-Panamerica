@@ -2,7 +2,7 @@ import { hMap } from './hexes.js';
 
 export const FACTIONS = {
   confederation: {
-    name: "Confédération", color: "#888888", hero: "J. Cole", companion: "Dixie",
+    name: "Confédération", color: "#808080", hero: "J. Cole", companion: "Dixie",
     power: 4, cards: 1, workerHex: [36, 32], riverwalk: ["plaine", "village"], rwName: "Gué",
     ability: "Servitude",
     fObj: {
@@ -11,7 +11,7 @@ export const FACTIONS = {
     },
   },
   frente: {
-    name: "Frente Libre", color: "#D07030", hero: "E. Rojas", companion: "Trueno",
+    name: "Frente Libre", color: "#A05020", hero: "E. Rojas", companion: "Trueno",
     power: 2, cards: 3, workerHex: [41, 45], riverwalk: ["sierra", "desert"], rwName: "Sentier",
     ability: "Tierra Minada",
     fObj: {
@@ -38,7 +38,7 @@ export const FACTIONS = {
     },
   },
   acadiane: {
-    name: "Acadiane", color: "#33AA33", hero: "M. Thibodeau", companion: "Brume",
+    name: "Acadiane", color: "#228B22", hero: "M. Thibodeau", companion: "Brume",
     power: 1, cards: 3, workerHex: [2, 6], riverwalk: ["foret", "village"], rwName: "Portage",
     ability: "Comptoir",
     fObj: {
@@ -47,7 +47,7 @@ export const FACTIONS = {
     },
   },
   bayou: {
-    name: "Bayou", color: "#9B3DB5", hero: "Cap. Zeke", companion: "Croc",
+    name: "Bayou", color: "#7B2D8B", hero: "Cap. Zeke", companion: "Croc",
     power: 2, cards: 3, workerHex: [35, 28], riverwalk: ["desert", "village"], rwName: "Mangrove",
     ability: "Chimère",
     fObj: {
