@@ -38,6 +38,7 @@ export default function App(){
   const[encounterTokens,setEncounterTokens]=useState(new Set(ENCOUNTER_HEXES));
   const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
   const[moveSource,setMoveSource]=useState(null);
+  const[preActionSnapshot,setPreActionSnapshot]=useState(null); // snapshot of player[0] before action, for undo
   const[hovHex,setHovHex]=useState(null);
   const[clickRipple,setClickRipple]=useState(null); // {hexId, key} for ripple animation
   const[log,setLog]=useState([]);
@@ -206,7 +207,7 @@ export default function App(){
   // After top-row → show bottom-row option
   const endHumanTurn=useCallback((col)=>{
     setPlayers(prev=>{const n=[...prev];n[0]={...n[0],lastCol:col,movesLeft:undefined,movedUnits:[],packUpUsed:false,commerceUsed:false};return n;});
-    setSelAction(null);setMoveSource(null);
+    setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);
     // Show bottom-row option
     const bottomAction=BOTTOM[col];
     setPendingBottom({col,action:bottomAction});
@@ -1601,7 +1602,7 @@ export default function App(){
                 const hasRes=bc?countRes(me,bc.res)>=bc.qty:false;
                 const canDoBottom=hasRes&&!bottomData.max;
                 return(
-                  <button key={action} onClick={()=>{if(!disabled)setSelAction(action);}} 
+                  <button key={action} onClick={()=>{if(!disabled){setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}} 
                     onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background="rgba(201,168,76,0.06)";}}
                     onMouseLeave={e=>{e.currentTarget.style.background=disabled?"rgba(0,0,0,0.3)":"transparent";}}
                     style={{
@@ -1718,7 +1719,7 @@ export default function App(){
                   <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité</button>
                 </div>}
               </div>)}
-              <button onClick={()=>{setSelAction(null);setMoveSource(null);}} style={{marginTop:8,padding:"6px 16px",fontSize:11,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>Annuler</button>
+              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:12,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
             </div>
           )}
 
