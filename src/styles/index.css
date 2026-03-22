@@ -1,0 +1,163 @@
+@import './variables.css';
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Source Serif 4', Georgia, serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+button {
+  font-family: 'Source Serif 4', Georgia, serif;
+  cursor: pointer;
+  transition: all .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+button:hover { filter: brightness(1.1); }
+button:active { transform: scale(0.97); filter: brightness(0.95); }
+h1, h2, h3 {
+  font-family: 'Playfair Display', serif;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 4px; }
+
+/* Animations */
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes breathe { 0%, 100% { opacity: .2; } 50% { opacity: .55; } }
+@keyframes riverFlow { 0% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -16; } }
+@keyframes empireGlow { 0%, 100% { filter: drop-shadow(0 0 4px #ff2200); } 50% { filter: drop-shadow(0 0 10px #ff4400); } }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes combatFlash { 0%, 100% { background: rgba(160,30,15,0.08); } 50% { background: rgba(160,30,15,0.02); } }
+@keyframes starBurst { 0% { transform: scale(1); filter: brightness(1); } 25% { transform: scale(1.4); filter: brightness(2) drop-shadow(0 0 12px #ffd700); } 50% { transform: scale(1.1); filter: brightness(1.3); } 100% { transform: scale(1); filter: brightness(1); } }
+@keyframes slideDown { from { opacity: 0; max-height: 0; transform: translateY(-8px); } to { opacity: 1; max-height: 500px; transform: translateY(0); } }
+@keyframes glowPulse { 0%, 100% { box-shadow: 0 0 0 rgba(201,168,76,0); } 50% { box-shadow: 0 0 16px rgba(201,168,76,0.25); } }
+@keyframes botPulse { 0%, 100% { border-color: rgba(255,100,40,0.15); } 50% { border-color: rgba(255,100,40,0.5); } }
+@keyframes logSlide { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes hexRipple { 0% { r: 0; opacity: 0.6; } 100% { r: 40; opacity: 0; } }
+
+/* Utility classes */
+.fade-in { animation: fadeIn .35s ease-out both; }
+.slide-up { animation: slideUp .3s ease-out both; }
+svg text { -webkit-user-select: none; user-select: none; }
+
+/* Encounter cards */
+.enc-card {
+  background: linear-gradient(160deg, #1e1a12, #14120d);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 16px 18px;
+  cursor: pointer;
+  text-align: left;
+  transition: all .2s;
+}
+.enc-card:hover {
+  border-color: var(--gold);
+  box-shadow: 0 0 20px rgba(201,168,76,0.1);
+  transform: translateY(-2px);
+}
+
+/* Rouge River cards */
+.rr-card {
+  background: linear-gradient(160deg, #1a1208, #100e08);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: all .2s;
+  position: relative;
+  overflow: hidden;
+}
+.rr-card.ford { border: 1px solid #4a5a6a; }
+.rr-card.tesla { border: 1px solid #7050a0; }
+.rr-card:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+.rr-card.ford:hover { border-color: #7a9ab0; box-shadow: 0 0 18px rgba(100,140,180,0.15); }
+.rr-card.tesla:hover { border-color: #a070d0; box-shadow: 0 0 18px rgba(140,80,200,0.18); }
+
+/* Combat & Reward panels */
+.combat-panel {
+  border-bottom: 2px solid var(--danger);
+  animation: combatFlash 3s ease-in-out infinite, slideUp 0.3s ease;
+}
+.reward-panel {
+  border-bottom: 2px solid var(--success);
+  background: linear-gradient(180deg, rgba(20,80,20,0.08), var(--bg2));
+}
+
+/* Dial buttons */
+.dial-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+}
+.dial-btn.off { background: var(--bg3); color: var(--text-dim); border: 1px solid var(--border); }
+.dial-btn.on { background: var(--danger); color: #fff; border: 1px solid #ff5544; box-shadow: 0 0 8px rgba(200,40,30,0.4); }
+
+/* Resource pill */
+.res-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.04);
+  min-width: 44px;
+}
+.res-pill .res-icon { font-size: 13px; line-height: 1; }
+.res-pill .res-val { font-size: var(--fs-md); font-weight: 700; font-family: 'Playfair Display', serif; }
+
+/* Action button base */
+.act-btn {
+  background: var(--bg3);
+  border: 1px solid var(--border-light);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  font-family: 'Source Serif 4', Georgia, serif;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  min-height: var(--btn-min);
+  transition: all .2s ease;
+}
+.act-btn:hover {
+  border-color: var(--gold-dim);
+  background: var(--bg2);
+  transform: translateY(-1px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 12px rgba(0,0,0,0.3);
+}
+.act-btn:active { transform: translateY(1px); box-shadow: none; transition: all .05s; }
+.act-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+/* Section label */
+.section-label {
+  font-family: 'IM Fell English SC', serif;
+  font-size: var(--fs-xs);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--brass);
+}
+
+/* Log styling */
+.log-line {
+  color: var(--text-dim);
+  padding: 2px 0;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  animation: logSlide 0.3s ease forwards;
+}

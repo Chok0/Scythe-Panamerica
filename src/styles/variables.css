@@ -1,0 +1,31 @@
+:root {
+  --bg: #0d0c08;
+  --bg2: #161410;
+  --bg3: #1e1b15;
+  --panel: #1a1812;
+  --gold: #d4b254;
+  --gold-dim: #8a6e3a;
+  --gold-light: #ecd080;
+  --brass: #c4a060;
+  --copper: #b08060;
+  --text: #e8dcc4;
+  --text-dim: #a89878;
+  --text-muted: #6a5c44;
+  --border: #322a1e;
+  --border-light: #4a3e2e;
+  --red: #c83828;
+  --green: #4a9a3a;
+  --blue: #3478d0;
+  --danger: #d43838;
+  --success: #50b050;
+  /* Sizing tokens */
+  --top-h: 52px;
+  --side-w: 54px;
+  --bottom-max: 40vh;
+  --fs-xs: 10px;
+  --fs-sm: 12px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --btn-min: 40px;
+}
