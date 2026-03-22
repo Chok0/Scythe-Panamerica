@@ -47,10 +47,78 @@ export default function App(){
   const[showStars,setShowStars]=useState(false);
   const[showLog,setShowLog]=useState(true);
   const logRef=useRef(null);
+  // Map zoom/pan state
+  const MAP_BASE={x:20,y:20,w:980,h:990};
+  const[mapView,setMapView]=useState({...MAP_BASE});
+  const[isPanning,setIsPanning]=useState(false);
+  const panStart=useRef(null);
+  const mapRef=useRef(null);
 
   const me=players[0];const myFaction=me?FACTIONS[me.faction]:null;const myMat=me?MATS.find(m=>m.id===me.matId):null;
 
   useEffect(()=>{if(logRef.current)logRef.current.scrollTop=logRef.current.scrollHeight;},[log]);
+
+  // Map zoom (wheel) — zoom toward cursor
+  const handleMapWheel=useCallback((e)=>{
+    e.preventDefault();
+    const factor=e.deltaY>0?1.12:1/1.12;
+    setMapView(prev=>{
+      const newW=Math.min(MAP_BASE.w*2,Math.max(200,prev.w*factor));
+      const newH=Math.min(MAP_BASE.h*2,Math.max(200,prev.h*factor));
+      // Zoom toward mouse position
+      const svg=mapRef.current;
+      if(svg){
+        const rect=svg.getBoundingClientRect();
+        const mx=(e.clientX-rect.left)/rect.width;
+        const my=(e.clientY-rect.top)/rect.height;
+        const newX=prev.x+prev.w*mx-newW*mx;
+        const newY=prev.y+prev.h*my-newH*my;
+        return{x:newX,y:newY,w:newW,h:newH};
+      }
+      const cx=prev.x+prev.w/2,cy=prev.y+prev.h/2;
+      return{x:cx-newW/2,y:cy-newH/2,w:newW,h:newH};
+    });
+  },[]);
+
+  // Map pan (mouse drag)
+  const handleMapPointerDown=useCallback((e)=>{
+    if(e.button!==1&&!e.shiftKey)return; // middle-click or shift+left-click to pan
+    e.preventDefault();
+    setIsPanning(true);
+    panStart.current={cx:e.clientX,cy:e.clientY,vx:mapView.x,vy:mapView.y};
+  },[mapView.x,mapView.y]);
+
+  const handleMapPointerMove=useCallback((e)=>{
+    if(!isPanning||!panStart.current)return;
+    const svg=mapRef.current;if(!svg)return;
+    const rect=svg.getBoundingClientRect();
+    const scaleX=mapView.w/rect.width,scaleY=mapView.h/rect.height;
+    const dx=(e.clientX-panStart.current.cx)*scaleX;
+    const dy=(e.clientY-panStart.current.cy)*scaleY;
+    setMapView(prev=>({...prev,x:panStart.current.vx-dx,y:panStart.current.vy-dy}));
+  },[isPanning,mapView.w,mapView.h]);
+
+  const handleMapPointerUp=useCallback(()=>{
+    setIsPanning(false);panStart.current=null;
+  },[]);
+
+  // Attach wheel listener with passive:false for preventDefault
+  useEffect(()=>{
+    const el=mapRef.current;if(!el)return;
+    el.addEventListener("wheel",handleMapWheel,{passive:false});
+    return()=>el.removeEventListener("wheel",handleMapWheel);
+  },[handleMapWheel]);
+
+  const mapZoom=useCallback((factor)=>{
+    setMapView(prev=>{
+      const cx=prev.x+prev.w/2,cy=prev.y+prev.h/2;
+      const newW=Math.min(MAP_BASE.w*2,Math.max(200,prev.w*factor));
+      const newH=Math.min(MAP_BASE.h*2,Math.max(200,prev.h*factor));
+      return{x:cx-newW/2,y:cy-newH/2,w:newW,h:newH};
+    });
+  },[]);
+
+  const mapReset=useCallback(()=>setMapView({...MAP_BASE}),[]);
   const addLog=useCallback((msg)=>setLog(prev=>[...prev,msg]),[]);
   const addLogs=useCallback((msgs)=>setLog(prev=>[...prev,...msgs]),[]);
 
@@ -1236,9 +1304,17 @@ export default function App(){
       </div>
 
       {/* ═══ CENTER: MAP + OVERLAYS ═══ */}
-      <div style={{position:"relative",overflow:"auto",background:"radial-gradient(ellipse at 50% 45%,#16140e,#0a0906)"}}>
+      <div style={{position:"relative",overflow:"hidden",background:"radial-gradient(ellipse at 50% 45%,#16140e,#0a0906)",cursor:isPanning?"grabbing":"default"}}>
+        {/* Zoom controls */}
+        <div style={{position:"absolute",top:8,right:8,zIndex:5,display:"flex",flexDirection:"column",gap:4}}>
+          <button onClick={()=>mapZoom(1/1.3)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--gold)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>+</button>
+          <button onClick={()=>mapZoom(1.3)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--gold)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>−</button>
+          <button onClick={mapReset} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--text-dim)",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>⟲</button>
+        </div>
+        <div style={{position:"absolute",bottom:6,left:8,zIndex:5,fontSize:10,color:"var(--text-muted)",opacity:0.5,pointerEvents:"none"}}>Molette: zoom · Shift+clic: panoramique</div>
         {/* SVG Map */}
-        <svg viewBox="20 20 980 990" style={{width:"100%",height:"100%",display:"block",minHeight:"100%"}}>
+        <svg ref={mapRef} viewBox={`${mapView.x} ${mapView.y} ${mapView.w} ${mapView.h}`} style={{width:"100%",height:"100%",display:"block",minHeight:"100%"}}
+          onPointerDown={handleMapPointerDown} onPointerMove={handleMapPointerMove} onPointerUp={handleMapPointerUp} onPointerLeave={handleMapPointerUp}>
           <defs>
             {Object.entries(TERRAINS).map(([key,t])=>(
               <radialGradient key={`tg-${key}`} id={`tg-${key}`} cx="38%" cy="30%" r="72%">
@@ -1256,6 +1332,7 @@ export default function App(){
             <pattern id="tp-lac" width="24" height="10" patternUnits="userSpaceOnUse"><path d="M0 5Q6 3 12 5Q18 7 24 5" fill="none" stroke="rgba(200,220,255,0.1)" strokeWidth="0.8"/></pattern>
             <pattern id="tp-marecage" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M0 10Q5 8 10 10Q15 12 20 10" fill="none" stroke="rgba(200,255,200,0.06)" strokeWidth="0.6"/></pattern>
             <pattern id="tp-factory" width="14" height="14" patternUnits="userSpaceOnUse"><line x1="0" y1="0" x2="14" y2="14" stroke="rgba(255,180,80,0.08)" strokeWidth="0.4"/><line x1="14" y1="0" x2="0" y2="14" stroke="rgba(255,180,80,0.08)" strokeWidth="0.4"/></pattern>
+            <filter id="desat"><feColorMatrix type="saturate" values="0.3"/><feComponentTransfer><feFuncR type="linear" slope="0.8"/><feFuncG type="linear" slope="0.8"/><feFuncB type="linear" slope="0.8"/></feComponentTransfer></filter>
             <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <filter id="softglow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <radialGradient id="hero-aura"><stop offset="0%" stopColor="#C9A84C" stopOpacity="0.3"/><stop offset="60%" stopColor="#C9A84C" stopOpacity="0.05"/><stop offset="100%" stopColor="#C9A84C" stopOpacity="0"/></radialGradient>
