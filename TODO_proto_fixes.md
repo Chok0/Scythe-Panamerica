@@ -45,6 +45,17 @@
 - Boutons hover lift + active press, log lines slide-in, bot turn pulse scoreboard
 - Player mat column hover glow, 14 @keyframes total, 25 SVG animates, 8 CSS transitions
 
+### 🚂 Questions ouvertes — Système de Rail
+
+| # | Question | Options | Impact |
+|---|----------|---------|--------|
+| R1 | **Nombre de rails par Gare** | 3 fixe / variable selon nb joueurs (ex: 2 en 1v1, 3 en 3+) | Densité du réseau en fin de partie |
+| R2 | **Rails connectés ou indépendants ?** | Libres (actuel) / Obligatoirement connectés entre eux / Connectés au réseau existant | Contrôle la fragmentation du réseau |
+| R3 | **Pose depuis case contrôlée ?** | Libre (actuel) / Au moins un hex du segment doit être contrôlé par le joueur | Empêche la pose "offensive" de rails lointains |
+| R4 | **Pose sur cases ennemies ?** | Autorisé (actuel) / Interdit si hex contrôlé par un adversaire | Dimension stratégique vs accessibilité |
+| R5 | **Rails et décompte territoire** | Les hex avec rail comptent normalement (actuel) / Rails exclus du décompte territoire fin de partie | Évite que le réseau gonfle artificiellement le score |
+| R6 | **Rails sur lacs/marécages** | Interdit (les lacs bloquent) / Autorisé (pont ferroviaire) | Cohérence thématique vs gameplay |
+
 ### Priorité basse (polish uniquement)
 
 | # | Élément | Détail |
@@ -117,12 +128,18 @@
   - Le 2e pas utilise les mêmes règles (riverwalk, position abilities, rails) que le 1er
 - **Système de rail** — réseau partagé global, remplace les tunnels Scythe
   - `rails` state : array de `[hexA, hexB]` segments, partagés par tous les joueurs
-  - `EMPIRE_RAILS` : 4 segments pré-posés au setup autour de Rouge River
+  - `EMPIRE_RAILS` : 2 segments pré-posés au setup : `[27,30]` et `[11,15]`
   - `Gare` (bâtiment, remplace Mine) : déclenche mode placement de 3 segments
   - `railPlacement` state : `{remaining:3, fromHex:null}` pendant la pose
   - UI : cliquer 2 hex adjacents par segment, lignes dorées pulsantes pour les destinations valides
   - Bot : génère 3 segments aléatoires en chaîne depuis le hex de la Gare (`_pendingRails`)
   - Rendu map : sleeper ties bruns + double rail + bolts aux extrémités
+  - **Règles de mouvement rail** :
+    - Le déplacement sur le réseau ferroviaire est GRATUIT (ne consomme pas de move)
+    - Valide uniquement si le move COMMENCE depuis un hex du réseau
+    - Si un joueur arrive sur un hex rail, il en profite au tour suivant (pas immédiatement)
+    - Speed : si le 1er pas amène sur le réseau, le 2e pas peut partir de n'importe quel hex connecté
+    - Implémenté via `getRailNetwork(fromId, rails)` BFS + `getValidMoves` qui calcule les origines rail
 - **Système d'Upgrade — cubes mobiles** (Scythe core mechanic)
   - Chaque mat a `topCubes: [1,2,1,2]` (cubes assis sur le top au départ) et `bottomSlots: [1,1,2,2]` (places max par bottom)
   - Chaque mat a `bottomCosts: [{res, base, bonus}]` — coût de base par bottom + bonus $ quand un cube est placé

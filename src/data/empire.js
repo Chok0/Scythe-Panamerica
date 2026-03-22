@@ -3,7 +3,7 @@ export const EMPIRE_START = [
   { id: "E4", hexId: 26 }, { id: "E5", hexId: 30 }, { id: "E6", hexId: 27 },
 ];
 
-export const EMPIRE_RAILS = [[22, 26], [22, 23], [26, 30], [15, 22]];
+export const EMPIRE_RAILS = [[27, 30], [11, 15]];
 
 export const EMPIRE_DECK = [
   { power: 1, name: "Écho Rouillé" }, { power: 2, name: "Sentinelle Aveugle" }, { power: 2, name: "Patrouilleur Usé" },

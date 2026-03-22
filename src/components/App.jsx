@@ -39,6 +39,7 @@ export default function App(){
   const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
   const[moveSource,setMoveSource]=useState(null);
   const[preActionSnapshot,setPreActionSnapshot]=useState(null); // snapshot of player[0] before action, for undo
+  const[tradePicks,setTradePicks]=useState([]); // for Trade: array of picked resource types (0-2)
   const[hovHex,setHovHex]=useState(null);
   const[clickRipple,setClickRipple]=useState(null); // {hexId, key} for ripple animation
   const[log,setLog]=useState([]);
@@ -207,7 +208,7 @@ export default function App(){
   // After top-row → show bottom-row option
   const endHumanTurn=useCallback((col)=>{
     setPlayers(prev=>{const n=[...prev];n[0]={...n[0],lastCol:col,movesLeft:undefined,movedUnits:[],packUpUsed:false,commerceUsed:false};return n;});
-    setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);
+    setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);setTradePicks([]);
     // Show bottom-row option
     const bottomAction=BOTTOM[col];
     setPendingBottom({col,action:bottomAction});
@@ -953,12 +954,18 @@ export default function App(){
     endHumanTurn(myMat.topRow.indexOf("Produce"));
   };
 
-  const doTrade=(resType)=>{
+  const doTradePick=(resType)=>{
     if(!me||me.coins<1){addLog("⚠ Pas d'$");return;}
+    const newPicks=[...tradePicks,resType];
+    if(newPicks.length<2){setTradePicks(newPicks);return;}
+    // 2 picks done — apply trade
     const workerHex=me.workers.length>0?me.workers[0].hexId:me.hero;
     setPlayers(prev=>{const n=[...prev];const p={...n[0],resources:{...n[0].resources}};const hid=String(workerHex);
-      if(!p.resources[hid])p.resources[hid]={};p.resources[hid][resType]=(p.resources[hid][resType]||0)+2;p.coins--;n[0]=p;return n;});
-    addLog(`💰 -1$ → +2 ${resType}`);endHumanTurn(myMat.topRow.indexOf("Trade"));
+      if(!p.resources[hid])p.resources[hid]={};
+      newPicks.forEach(r=>{p.resources[hid][r]=(p.resources[hid][r]||0)+1;});
+      p.coins--;n[0]=p;return n;});
+    const label=newPicks[0]===newPicks[1]?`+2 ${newPicks[0]}`:`+1 ${newPicks[0]}, +1 ${newPicks[1]}`;
+    addLog(`💰 -1$ → ${label}`);setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));
   };
 
   const allHexContents=useMemo(()=>{
@@ -1710,16 +1717,18 @@ export default function App(){
                 })()}
               </div>)}
               {selAction==="Trade"&&(<div>
-                <div style={{color:"var(--gold)",fontFamily:"'Bitter',serif",fontWeight:700,marginBottom:8,fontSize:14}}>Commerce (1$)</div>
+                <div style={{color:"var(--gold)",fontFamily:"'Bitter',serif",fontWeight:700,marginBottom:8,fontSize:14}}>Commerce (1$){tradePicks.length>0&&<span style={{fontWeight:400,fontSize:12,marginLeft:8}}>— choix {tradePicks.length}/2 : {tradePicks.map(r=>({metal:"⚙",bois:"🪵",nourriture:"🌽",petrole:"🛢"}[r])).join(" ")}</span>}</div>
                 {me.coins<1?<div style={{color:"#8A3030",fontSize:12}}>Pas assez d'$</div>:
                 <div>
+                  <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>Choisissez 2 ressources (même type ou différentes)</div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                    {["metal","bois","nourriture","petrole"].map(r=><button key={r} onClick={()=>doTrade(r)} className="act-btn" style={{flex:1,minWidth:60}}>+2 {r}</button>)}
+                    {["metal","bois","nourriture","petrole"].map(r=><button key={r} onClick={()=>doTradePick(r)} className="act-btn" style={{flex:1,minWidth:60}}>{({metal:"⚙",bois:"🪵",nourriture:"🌽",petrole:"🛢"})[r]} {r}</button>)}
                   </div>
-                  <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité</button>
+                  {tradePicks.length>0&&<button onClick={()=>setTradePicks([])} className="act-btn" style={{width:"100%",fontSize:11,opacity:0.7,marginBottom:6}}>↩ Recommencer le choix</button>}
+                  <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité</button>
                 </div>}
               </div>)}
-              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:12,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
+              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:12,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
             </div>
           )}
 
