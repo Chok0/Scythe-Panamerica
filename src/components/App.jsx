@@ -988,14 +988,14 @@ export default function App(){
         <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"repeating-linear-gradient(0deg,transparent,transparent 1px,rgba(201,168,76,0.012) 1px,rgba(201,168,76,0.012) 2px)",pointerEvents:"none"}}/>
         <div style={{position:"relative",display:"flex",flexDirection:"column",alignItems:"center",width:"100%",maxWidth:640}}>
           <div style={{width:80,height:1,background:"linear-gradient(90deg,transparent,var(--gold),transparent)",marginBottom:16}}/>
-          <div style={{fontSize:10,color:"var(--gold-dim)",letterSpacing:8,textTransform:"uppercase",marginBottom:6,fontFamily:"'Bitter',serif"}}>Scythe</div>
+          <div style={{fontSize:13,color:"var(--gold-dim)",letterSpacing:8,textTransform:"uppercase",marginBottom:6,fontFamily:"'Bitter',serif"}}>Scythe</div>
           <h1 style={{fontSize:32,fontWeight:900,letterSpacing:10,textTransform:"uppercase",color:"var(--gold)",marginBottom:4,textAlign:"center",textShadow:"0 0 40px rgba(201,168,76,0.15)"}}>Panamerica</h1>
           <div style={{width:180,height:1,background:"linear-gradient(90deg,transparent,var(--gold-dim) 20%,var(--gold) 50%,var(--gold-dim) 80%,transparent)",marginBottom:8}}/>
-          <p style={{color:"var(--text-muted)",fontSize:11,letterSpacing:1.5,marginBottom:36,textAlign:"center",fontStyle:"italic",maxWidth:320,lineHeight:1.6}}>
+          <p style={{color:"var(--text-dim)",fontSize:12,letterSpacing:1.5,marginBottom:36,textAlign:"center",fontStyle:"italic",maxWidth:320,lineHeight:1.6}}>
             « L'Empire se meurt. Les machines ne savent pas. »
           </p>
           
-          <div style={{color:"var(--brass)",fontSize:10,marginBottom:10,letterSpacing:4,textTransform:"uppercase"}}>Adversaires</div>
+          <div style={{color:"var(--gold-dim)",fontSize:12,marginBottom:10,letterSpacing:4,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Adversaires</div>
           <div style={{display:"flex",gap:8,marginBottom:32}}>
             {[1,2,3,4].map(n=>(
               <button key={n} onClick={()=>setNumBots(n)} style={{
@@ -1008,7 +1008,7 @@ export default function App(){
             ))}
           </div>
 
-          <div style={{color:"var(--brass)",fontSize:10,marginBottom:12,letterSpacing:4,textTransform:"uppercase"}}>Votre Faction</div>
+          <div style={{color:"var(--gold-dim)",fontSize:12,marginBottom:12,letterSpacing:4,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Votre Faction</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,width:"100%",marginBottom:32}}>
             {FACTION_IDS.map(fid=>{const f=FACTIONS[fid];return(
               <button key={fid} onClick={()=>setSelFaction(fid)} className="fade-in" style={{
@@ -1017,19 +1017,19 @@ export default function App(){
                 borderRadius:6,padding:"14px 12px",color:"var(--text)",textAlign:"left",
                 boxShadow:selFaction===fid?`0 0 24px ${f.color}22,inset 0 1px 0 rgba(255,255,255,0.04)`:"inset 0 1px 0 rgba(255,255,255,0.02)",
               }}>
-                <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:13,color:f.color,marginBottom:3}}>{f.name}</div>
-                <div style={{fontSize:10,color:"var(--text-dim)"}}>{f.hero} & {f.companion}</div>
-                <div style={{display:"flex",gap:8,fontSize:9,color:"var(--text-muted)",marginTop:6}}>
+                <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:14,color:f.color,marginBottom:3}}>{f.name}</div>
+                <div style={{fontSize:12,color:"var(--text-dim)"}}>{f.hero} & {f.companion}</div>
+                <div style={{display:"flex",gap:8,fontSize:11,color:"var(--text-dim)",marginTop:6,fontFamily:"'IBM Plex Mono',monospace"}}>
                   <span>⚡{f.power}</span><span>🃏{f.cards}</span>
                 </div>
-                {f.fObj&&<div style={{fontSize:8,color:"var(--brass)",marginTop:4,fontStyle:"italic"}}>🏛 {f.fObj.name}</div>}
-                {f.isExtension&&<div style={{fontSize:7,color:"var(--gold-dim)",marginTop:2,letterSpacing:2,textTransform:"uppercase"}}>Extension</div>}
+                {f.fObj&&<div style={{fontSize:11,color:"var(--gold-dim)",marginTop:4,fontStyle:"italic"}}>🏛 {f.fObj.name}</div>}
+                {f.isExtension&&<div style={{fontSize:10,color:"var(--gold-dim)",marginTop:2,letterSpacing:2,textTransform:"uppercase"}}>Extension</div>}
               </button>
             );})}
           </div>
 
           {selFaction&&(<>
-            <div style={{color:"var(--brass)",fontSize:10,marginBottom:12,letterSpacing:4,textTransform:"uppercase"}}>Plateau Joueur</div>
+            <div style={{color:"var(--gold-dim)",fontSize:12,marginBottom:12,letterSpacing:4,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Plateau Joueur</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:8,width:"100%",marginBottom:32}}>
               {MATS.map(pm=>(
                 <button key={pm.id} onClick={()=>setSelMat(pm.id)} className="fade-in" style={{
@@ -1038,9 +1038,9 @@ export default function App(){
                   borderRadius:6,padding:"14px 12px",color:"var(--text)",textAlign:"left",
                   boxShadow:selMat===pm.id?"0 0 20px rgba(201,168,76,0.12)":"none",
                 }}>
-                  <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:13}}>{pm.name}</div>
-                  <div style={{fontSize:8,color:"var(--text-muted)",marginTop:4,letterSpacing:0.5}}>{pm.topRow.join(" · ")}</div>
-                  <div style={{fontSize:10,color:"var(--gold)",marginTop:6}}>♥{pm.pop}  💰{pm.coins}$</div>
+                  <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:14}}>{pm.name}</div>
+                  <div style={{fontSize:11,color:"var(--text-dim)",marginTop:4,letterSpacing:0.5}}>{pm.topRow.join(" · ")}</div>
+                  <div style={{fontSize:12,color:"var(--gold)",marginTop:6,fontFamily:"'IBM Plex Mono',monospace"}}>♥{pm.pop}  💰{pm.coins}$</div>
                 </button>
               ))}
             </div>
@@ -1149,7 +1149,7 @@ export default function App(){
                 </div>
                 <div style={{fontSize:22,fontWeight:900,color:i===0?"var(--gold)":"var(--text)",fontFamily:"'Bitter',serif"}}>{s.total}$</div>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,fontSize:9,color:"var(--text-dim)"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,fontSize:11,color:"var(--text-dim)"}}>
                 <div style={{background:"var(--bg3)",padding:"6px 8px",borderRadius:4,textAlign:"center"}}>
                   <div style={{fontSize:12,fontWeight:700,color:"var(--gold)"}}>{s.starScore}$</div>
                   <div>⭐{s.stars} × {s.starMult}</div>
@@ -1167,7 +1167,7 @@ export default function App(){
                   <div>💰 cash</div>
                 </div>
               </div>
-              <div style={{fontSize:8,color:"var(--text-muted)",marginTop:4}}>
+              <div style={{fontSize:11,color:"var(--text-dim)",marginTop:4}}>
                 Pop: {s.pop} (palier {["0-6","7-12","13-18"][s.popTier]}) — {s.totalRes} ressources
               </div>
             </div>
@@ -1193,16 +1193,16 @@ export default function App(){
     <div style={{height:"100vh",display:"grid",gridTemplateRows:"var(--top-h) 1fr auto",gridTemplateColumns:"var(--side-w) 1fr var(--side-w)",background:"var(--bg)",color:"var(--text)",overflow:"hidden"}}>
 
       {/* ═══ TOP RESOURCE BAR ═══ */}
-      <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",padding:"6px 14px",gap:8,background:"linear-gradient(180deg,#1E1A12,#1E1A12)",borderBottom:"1px solid var(--border)",flexShrink:0,height:"var(--top-h)",overflow:"hidden"}}>
+      <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",padding:"6px 16px",gap:10,background:"linear-gradient(180deg,#1E1A12,#1E1A12)",borderBottom:"1px solid var(--border)",flexShrink:0,height:"var(--top-h)",overflow:"hidden"}}>
         {/* Faction badge */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginRight:4,flexShrink:0}}>
-          <div style={{width:34,height:34,borderRadius:"50%",background:myFaction.color+"22",border:`2px solid ${myFaction.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:900,color:myFaction.color,fontFamily:"'Bitter',serif"}}>{myFaction.name[0]}</div>
+          <div style={{width:36,height:36,borderRadius:"50%",background:myFaction.color+"22",border:`2px solid ${myFaction.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:myFaction.color,fontFamily:"'Bitter',serif"}}>{myFaction.name[0]}</div>
           <div style={{lineHeight:1.2}}>
-            <div style={{fontSize:12,fontWeight:700,color:myFaction.color,fontFamily:"'Bitter',serif"}}>{myFaction.name}</div>
-            <div style={{fontSize:10,color:"var(--text-muted)"}}>{myMat.name} · T{turn}</div>
+            <div style={{fontSize:14,fontWeight:700,color:myFaction.color,fontFamily:"'Bitter',serif"}}>{myFaction.name}</div>
+            <div style={{fontSize:11,color:"var(--text-dim)"}}>{myMat.name} · T{turn}</div>
           </div>
         </div>
-        {botRunning&&<span style={{color:"var(--gold)",fontSize:10,animation:"pulse 1s infinite",marginRight:4}}>⚙ IA…</span>}
+        {botRunning&&<span style={{color:"var(--gold)",fontSize:12,animation:"pulse 1s infinite",marginRight:4}}>⚙ IA…</span>}
         {/* Divider */}
         <div style={{width:1,height:28,background:"var(--border-light)",flexShrink:0}}/>
         {/* Resource counters - redesigned */}
@@ -1228,8 +1228,8 @@ export default function App(){
         })()}
         {/* Stars - right side */}
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4}}>
-          {me.factoryCard&&<div style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:me.factoryCard.type==="tesla"?"#7050a022":"#4a5a6a22",border:me.factoryCard.type==="tesla"?"1px solid #7050a0":"1px solid #4a5a6a",color:me.factoryCard.type==="tesla"?"#b080e0":"#8aa0b8"}} title={me.factoryCard.desc}>{me.factoryCard.name}</div>}
-          {(me.fragments||0)>0&&<div style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:"#a080d0"}}>🔬{me.fragments}/2</div>}
+          {me.factoryCard&&<div style={{fontSize:12,padding:"4px 10px",borderRadius:4,background:me.factoryCard.type==="tesla"?"#7050a022":"#4a5a6a22",border:me.factoryCard.type==="tesla"?"1px solid #7050a0":"1px solid #4a5a6a",color:me.factoryCard.type==="tesla"?"#b080e0":"#8aa0b8"}} title={me.factoryCard.desc}>{me.factoryCard.name}</div>}
+          {(me.fragments||0)>0&&<div style={{fontSize:12,padding:"4px 10px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:"#a080d0"}}>🔬{me.fragments}/2</div>}
           <button onClick={()=>setShowStars(s=>!s)} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 12px",borderRadius:6,fontSize:13,fontWeight:700,background:showStars?"var(--gold)":"rgba(255,215,0,0.08)",color:showStars?"var(--bg)":"#C9A84C",border:"1px solid rgba(255,215,0,0.3)",fontFamily:"'Bitter',serif"}}>
             ⭐ {me.stars}/6
           </button>
@@ -1238,7 +1238,7 @@ export default function App(){
 
       {/* ═══ LEFT: POWER TRACK ═══ */}
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",background:"linear-gradient(180deg,#1a0a0a,#120808)",borderRight:"1px solid var(--border)",padding:"6px 0",overflow:"hidden"}}>
-        <div style={{fontSize:8,color:"#bb7766",letterSpacing:1,textTransform:"uppercase",writingMode:"vertical-rl",transform:"rotate(180deg)",marginBottom:6,fontFamily:"'Bitter',serif"}}>Puissance</div>
+        <div style={{fontSize:10,color:"#cc9988",letterSpacing:1,textTransform:"uppercase",writingMode:"vertical-rl",transform:"rotate(180deg)",marginBottom:6,fontFamily:"'Bitter',serif",fontWeight:700}}>Puissance</div>
         <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,justifyContent:"flex-start",width:"calc(var(--side-w) - 12px)"}}>
           {Array.from({length:17},(_,i)=>i).map(v=>(
             <div key={v} style={{
@@ -1246,7 +1246,7 @@ export default function App(){
               background:v<=me.power?"linear-gradient(90deg,#8b2020,#bb3838)":"rgba(255,255,255,0.03)",
               border:v<=me.power?"1px solid #dd4444":"1px solid rgba(255,255,255,0.04)",
               display:"flex",alignItems:"center",justifyContent:"center",
-              fontSize:9,fontWeight:v===me.power?900:400,
+              fontSize:10,fontWeight:v===me.power?900:400,
               color:v<=me.power?"#fff":"#3a2a2a",
               boxShadow:v===me.power?"0 0 8px rgba(220,50,30,0.5)":"none",
             }}>{v}</div>
@@ -1515,10 +1515,10 @@ export default function App(){
                   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:8,maxHeight:250,overflowY:"auto"}}>
                     {rougeRiver.cards.map(card=>(
                       <button key={card.id} onClick={()=>pickFactoryCard(card)} className={`rr-card ${card.type}`}>
-                        {card.type==="tesla"&&<div style={{position:"absolute",top:4,right:6,fontSize:7,color:"#b080e0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Tesla</div>}
-                        {card.type==="ford"&&<div style={{position:"absolute",top:4,right:6,fontSize:7,color:"#7a9ab0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Ford</div>}
+                        {card.type==="tesla"&&<div style={{position:"absolute",top:4,right:6,fontSize:10,color:"#b080e0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Tesla</div>}
+                        {card.type==="ford"&&<div style={{position:"absolute",top:4,right:6,fontSize:10,color:"#7a9ab0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Ford</div>}
                         <div style={{fontFamily:"'Bitter',serif",fontSize:13,fontWeight:700,color:card.type==="tesla"?"#c090e0":"#a0b8cc",marginBottom:5,paddingRight:30}}>{card.name}</div>
-                        <div style={{fontSize:9,color:"var(--text-dim)",lineHeight:1.5}}>{card.desc}</div>
+                        <div style={{fontSize:11,color:"var(--text-dim)",lineHeight:1.5}}>{card.desc}</div>
                       </button>
                     ))}
                   </div>
@@ -1532,7 +1532,7 @@ export default function App(){
 
       {/* ═══ RIGHT: POPULARITY TRACK ═══ */}
       <div style={{display:"flex",flexDirection:"column",alignItems:"center",background:"linear-gradient(180deg,#1a1608,#120e06)",borderLeft:"1px solid var(--border)",padding:"6px 0",overflow:"hidden"}}>
-        <div style={{fontSize:8,color:"#bb9966",letterSpacing:1,textTransform:"uppercase",writingMode:"vertical-rl",transform:"rotate(180deg)",marginBottom:6,fontFamily:"'Bitter',serif"}}>Popularité</div>
+        <div style={{fontSize:10,color:"#ccaa77",letterSpacing:1,textTransform:"uppercase",writingMode:"vertical-rl",transform:"rotate(180deg)",marginBottom:6,fontFamily:"'Bitter',serif",fontWeight:700}}>Popularité</div>
         <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,justifyContent:"flex-start",width:"calc(var(--side-w) - 12px)"}}>
           {Array.from({length:19},(_,i)=>i).map(v=>{
             const tier=v<=6?0:v<=12?1:2;
@@ -1543,7 +1543,7 @@ export default function App(){
                 background:v<=me.pop?`linear-gradient(90deg,${tierColors[tier]}cc,${tierColors[tier]})`:"rgba(255,255,255,0.03)",
                 border:v<=me.pop?`1px solid ${tierColors[tier]}`:"1px solid rgba(255,255,255,0.04)",
                 display:"flex",alignItems:"center",justifyContent:"center",
-                fontSize:9,fontWeight:v===me.pop?900:400,
+                fontSize:10,fontWeight:v===me.pop?900:400,
                 color:v<=me.pop?"#fff":"#2a2010",
                 boxShadow:v===me.pop?"0 0 8px rgba(200,160,60,0.5)":"none",
               }}>{v}{(v===7||v===13)&&<span style={{fontSize:6,marginLeft:1}}>▸</span>}</div>
@@ -1642,37 +1642,37 @@ export default function App(){
                     transition:"all 0.2s ease",
                   }}>
                     {/* TOP ROW ACTION */}
-                    <div style={{padding:"8px 6px 4px",background:"linear-gradient(180deg,rgba(30,27,20,0.8),rgba(22,20,14,0.6))",flex:1}}>
-                      <div style={{fontSize:18,marginBottom:2,color:topData.color}}>{topData.icon}</div>
-                      <div style={{fontSize:12,fontWeight:700,fontFamily:"'Bitter',serif",color:"var(--text)",letterSpacing:0.5}}>{action}</div>
-                      {topData.cost&&<div style={{fontSize:9,color:"var(--text-muted)",marginTop:2}}>{topData.cost}</div>}
-                      <div style={{fontSize:9,color:topData.color,marginTop:1,opacity:0.7}}>{topData.gain}</div>
+                    <div style={{padding:"10px 8px 6px",background:"linear-gradient(180deg,rgba(30,27,20,0.8),rgba(22,20,14,0.6))",flex:1}}>
+                      <div style={{fontSize:20,marginBottom:3,color:topData.color}}>{topData.icon}</div>
+                      <div style={{fontSize:13,fontWeight:700,fontFamily:"'Bitter',serif",color:"var(--text)",letterSpacing:0.5}}>{action}</div>
+                      {topData.cost&&<div style={{fontSize:11,color:"var(--text-dim)",marginTop:3,fontFamily:"'IBM Plex Mono',monospace"}}>{topData.cost}</div>}
+                      <div style={{fontSize:11,color:topData.color,marginTop:2}}>{topData.gain}</div>
                       {/* Top cubes — green squares (removable via Upgrade) */}
-                      {cubesTop>0&&<div style={{display:"flex",gap:2,justifyContent:"center",marginTop:4}}>
-                        {Array.from({length:cubesTop}).map((_,ci)=><div key={ci} style={{width:8,height:8,borderRadius:2,background:"#4caf50",border:"1px solid #2e7d32",opacity:0.8}}/>)}
+                      {cubesTop>0&&<div style={{display:"flex",gap:3,justifyContent:"center",marginTop:5}}>
+                        {Array.from({length:cubesTop}).map((_,ci)=><div key={ci} style={{width:10,height:10,borderRadius:2,background:"#4caf50",border:"1px solid #2e7d32",opacity:0.85}}/>)}
                       </div>}
                     </div>
                     {/* SEPARATOR — Scythe-style line between top/bottom */}
-                    <div style={{height:2,background:`linear-gradient(90deg,transparent,${myFaction?.color||"var(--gold)"}44,transparent)`}}/>
+                    <div style={{height:2,background:`linear-gradient(90deg,transparent,${myFaction?.color||"var(--gold)"}66,transparent)`}}/>
                     {/* BOTTOM ROW ACTION */}
-                    <div style={{padding:"5px 6px 7px",background:"linear-gradient(180deg,rgba(14,12,8,0.6),rgba(10,9,6,0.8))"}}>
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:3,marginBottom:2}}>
-                        <span style={{fontSize:10,opacity:0.5}}>{bottomData.icon}</span>
-                        <span style={{fontSize:10,fontWeight:600,color:"var(--text-dim)"}}>{bottomAction}</span>
+                    <div style={{padding:"8px 8px 10px",background:"linear-gradient(180deg,rgba(14,12,8,0.6),rgba(10,9,6,0.8))"}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4,marginBottom:3}}>
+                        <span style={{fontSize:13,opacity:0.6}}>{bottomData.icon}</span>
+                        <span style={{fontSize:12,fontWeight:600,color:"var(--text-dim)"}}>{bottomAction}</span>
                       </div>
                       {/* Bottom cube slots — filled green = cost reduced */}
-                      {maxBot>0&&<div style={{display:"flex",gap:2,justifyContent:"center",marginBottom:3}}>
-                        {Array.from({length:maxBot}).map((_,si)=><div key={si} style={{width:8,height:8,borderRadius:2,border:si<cubesBot?"1px solid #2e7d32":"1px solid #444",background:si<cubesBot?"#4caf50":"transparent",opacity:si<cubesBot?0.8:0.3}}/>)}
+                      {maxBot>0&&<div style={{display:"flex",gap:3,justifyContent:"center",marginBottom:4}}>
+                        {Array.from({length:maxBot}).map((_,si)=><div key={si} style={{width:10,height:10,borderRadius:2,border:si<cubesBot?"1px solid #2e7d32":"1px solid #555",background:si<cubesBot?"#4caf50":"transparent",opacity:si<cubesBot?0.85:0.4}}/>)}
                       </div>}
                       {/* Resource cost */}
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:2,fontSize:9}}>
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:3,fontSize:11,fontFamily:"'IBM Plex Mono',monospace"}}>
                         <span>{resIcon}</span>
-                        <span style={{color:canDoBottom?"var(--brass)":"var(--text-muted)",fontWeight:700}}>{bc?.qty}</span>
-                        {cubesBot>0&&<span style={{fontSize:7,color:"#4caf50"}}>(-{cubesBot})</span>}
-                        {!bottomData.max&&<span style={{color:hasRes?"rgba(80,180,80,0.7)":"rgba(200,60,60,0.6)",fontSize:8}}>({countRes(me,bc?.res||"")})</span>}
+                        <span style={{color:canDoBottom?"var(--gold)":"var(--text-muted)",fontWeight:700}}>{bc?.qty}</span>
+                        {cubesBot>0&&<span style={{fontSize:10,color:"#4caf50"}}>(-{cubesBot})</span>}
+                        {!bottomData.max&&<span style={{color:hasRes?"rgba(80,180,80,0.8)":"rgba(200,60,60,0.7)",fontSize:10}}>({countRes(me,bc?.res||"")})</span>}
                       </div>
                       {/* Bonus $ and Progress */}
-                      <div style={{fontSize:8,color:bottomData.max?"#4A8A4A":"var(--text-muted)",marginTop:2,fontWeight:bottomData.max?700:400}}>
+                      <div style={{fontSize:10,color:bottomData.max?"#4A8A4A":"var(--text-dim)",marginTop:3,fontWeight:bottomData.max?700:400}}>
                         {bottomData.max?"✓ max":bottomData.prog}
                       </div>
                     </div>
@@ -1702,14 +1702,14 @@ export default function App(){
                       const adjTargets=(ADJ[bld.hexId]||[]).filter(id=>{const h=hMap[id];return h&&h.t!=="lac"&&h.t!=="marecage"&&!(me.buildings||[]).some(b=>b.hexId===id);});
                       const bt=BUILDING_TYPES.find(t=>t.type===bld.type);
                       return <div style={{marginTop:8,padding:"8px 10px",borderRadius:6,border:"1px solid var(--nations)",background:"rgba(32,178,170,0.06)"}}>
-                        <div style={{fontSize:10,color:"var(--nations)",marginBottom:6}}>📦 Pack Up — déplacer {bt?bt.icon:""} {bt?bt.name:""} depuis #{bld.hexId}</div>
+                        <div style={{fontSize:12,color:"var(--nations)",marginBottom:6}}>📦 Pack Up — déplacer {bt?bt.icon:""} {bt?bt.name:""} depuis #{bld.hexId}</div>
                         {adjTargets.length>0?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{adjTargets.map(hid=><button key={hid} onClick={()=>doPackUpMove(bottomPick.buildingIdx,hid)} className="act-btn" style={{borderColor:"var(--nations)"}}>→ #{hid}</button>)}</div>:<div style={{fontSize:10,color:"var(--text-muted)"}}>Aucun hex adjacent libre</div>}
-                        <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:10,opacity:0.6}}>← Annuler</button>
+                        <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:12,opacity:0.7,minHeight:36}}>← Annuler</button>
                       </div>;
                     }
                     return <div style={{marginTop:8}}>
-                      <div style={{fontSize:10,color:"var(--nations)",marginBottom:4}}>📦 Pack Up (gratuit, 1×/tour) :</div>
-                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{(me.buildings||[]).map((b,i)=>{const bt=BUILDING_TYPES.find(t=>t.type===b.type);return <button key={i} onClick={()=>setBottomPick({packUp:true,buildingIdx:i})} className="act-btn" style={{fontSize:10,borderColor:"var(--nations)",padding:"6px 10px"}}>{bt?bt.icon:"🏗"} #{b.hexId}</button>;})}</div>
+                      <div style={{fontSize:12,color:"var(--nations)",marginBottom:4}}>📦 Pack Up (gratuit, 1×/tour) :</div>
+                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{(me.buildings||[]).map((b,i)=>{const bt=BUILDING_TYPES.find(t=>t.type===b.type);return <button key={i} onClick={()=>setBottomPick({packUp:true,buildingIdx:i})} className="act-btn" style={{fontSize:12,borderColor:"var(--nations)",padding:"8px 12px"}}>{bt?bt.icon:"🏗"} #{b.hexId}</button>;})}</div>
                     </div>;
                   })()}
                   {me.packUpUsed&&me.faction==="nations"&&<div style={{marginTop:6,fontSize:10,color:"var(--text-muted)"}}>📦 Pack Up utilisé ce tour</div>}
@@ -1791,14 +1791,14 @@ export default function App(){
                       {validBottoms.map(ci=>{
                         const bCost=mat.bottomCosts[ci];
                         return <button key={ci} onClick={()=>{doUpgrade(bottomPick.upgradeFrom,ci);setBottomPick(null);}} className="act-btn" style={{borderColor:"var(--brass)"}}>
-                          {BOTTOM[ci]} <span style={{fontSize:9,opacity:0.6}}>(-1 coût, +{bCost.bonus}$)</span>
+                          {BOTTOM[ci]} <span style={{fontSize:11,opacity:0.7}}>(-1 coût, +{bCost.bonus}$)</span>
                           <span style={{display:"inline-flex",gap:1,marginLeft:4}}>
                             {Array.from({length:(mat.bottomSlots||[])[ci]}).map((_2,si)=><span key={si} style={{display:"inline-block",width:6,height:6,borderRadius:1,background:si<(me.cubesOnBottom||[])[ci]?"#4caf50":"#333",border:"1px solid #555"}}/>)}
                           </span>
                         </button>;
                       })}
                     </div>
-                    <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:10,opacity:0.6}}>← Autre source</button>
+                    <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:12,opacity:0.7,minHeight:36}}>← Autre source</button>
                   </div>;
                 })()}
                 {ba==="Deploy"&&!maxed&&(()=>{
@@ -1819,10 +1819,10 @@ export default function App(){
                   return <div>
                     <div style={{fontSize:10,color:"var(--brass)",marginBottom:4}}>Deploy avec {bottomPick.deployRes} :</div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{workerHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid,bottomPick.deployRes)} className="act-btn">⬡ #{hid}</button>)}</div>
-                    <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:10,opacity:0.6}}>← Autre ressource</button>
+                    <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:12,opacity:0.7,minHeight:36}}>← Autre ressource</button>
                   </div>;
                 })()}
-                {ba==="Build"&&!maxed&&(hasRes&&buildableHexes.length>0&&availBuildings.length>0?<div>{!bottomPick||bottomPick.packUp?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{availBuildings.map(bt=><button key={bt.type} onClick={()=>setBottomPick({building:bt})} className="act-btn">{bt.icon} {bt.name}</button>)}</div>:<div><div style={{fontSize:11,marginBottom:6}}>Placer {bottomPick.building.icon} sur :</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{buildableHexes.map(hid=><button key={hid} onClick={()=>doBuild(hid,bottomPick.building.type)} className="act-btn">#{hid}</button>)}</div><button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:10,opacity:0.6}}>← Autre</button></div>}</div>:<div style={{fontSize:11,color:"var(--text-muted)"}}>Insuffisant</div>)}
+                {ba==="Build"&&!maxed&&(hasRes&&buildableHexes.length>0&&availBuildings.length>0?<div>{!bottomPick||bottomPick.packUp?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{availBuildings.map(bt=><button key={bt.type} onClick={()=>setBottomPick({building:bt})} className="act-btn">{bt.icon} {bt.name}</button>)}</div>:<div><div style={{fontSize:11,marginBottom:6}}>Placer {bottomPick.building.icon} sur :</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{buildableHexes.map(hid=><button key={hid} onClick={()=>doBuild(hid,bottomPick.building.type)} className="act-btn">#{hid}</button>)}</div><button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:12,opacity:0.7,minHeight:36}}>← Autre</button></div>}</div>:<div style={{fontSize:11,color:"var(--text-muted)"}}>Insuffisant</div>)}
                 {ba==="Enlist"&&!maxed&&(hasRes?<div>
                   <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>Recrue {(me.recruits||0)+1}/4 — Assigner à une action bottom :</div>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
@@ -1831,9 +1831,9 @@ export default function App(){
                       const ongoing=ENLIST_ONGOING[ci];
                       return <button key={ci} onClick={()=>doEnlist(ci)} className="act-btn" disabled={assigned} style={{textAlign:"center",opacity:assigned?0.3:1,cursor:assigned?"not-allowed":"pointer"}}>
                         <div style={{fontWeight:700,fontSize:12}}>{ongoing.icon} {bName}</div>
-                        <div style={{fontSize:9,color:"var(--text-dim)",marginTop:2}}>Immédiat: {ENLIST_BONUSES[ci].label}</div>
-                        <div style={{fontSize:8,color:"#4caf50",marginTop:1}}>Ongoing: {ongoing.label}</div>
-                        {assigned&&<div style={{fontSize:8,color:"#8A3030"}}>✓ assigné</div>}
+                        <div style={{fontSize:11,color:"var(--text-dim)",marginTop:2}}>Immédiat: {ENLIST_BONUSES[ci].label}</div>
+                        <div style={{fontSize:11,color:"#4caf50",marginTop:1}}>Ongoing: {ongoing.label}</div>
+                        {assigned&&<div style={{fontSize:11,color:"#8A3030"}}>✓ assigné</div>}
                       </button>;
                     })}
                   </div>
@@ -1846,11 +1846,11 @@ export default function App(){
 
           {/* Objectives */}
           {me.objective&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&!pendingBottom&&(
-            <div style={{padding:"6px 16px",borderTop:"1px solid var(--border)",fontSize:11,display:"flex",alignItems:"center",gap:8}}>
-              <span style={{color:me.objectiveRevealed?"#4A8A4A":"var(--gold)",fontSize:12}}>🎯 {me.objective.name}</span>
-              <span style={{color:"var(--text-dim)",flex:1,fontSize:10}}>{me.objective.desc}</span>
-              {!me.objectiveRevealed&&<button onClick={revealObjective} style={{padding:"5px 10px",fontSize:10,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700}}>Révéler ⭐</button>}
-              {me.objectiveRevealed&&<span style={{color:"#4A8A4A",fontSize:14}}>✅</span>}
+            <div style={{padding:"8px 16px",borderTop:"1px solid var(--border)",fontSize:12,display:"flex",alignItems:"center",gap:10}}>
+              <span style={{color:me.objectiveRevealed?"#4A8A4A":"var(--gold)",fontSize:13,fontFamily:"'Bitter',serif",fontWeight:700}}>🎯 {me.objective.name}</span>
+              <span style={{color:"var(--text-dim)",flex:1,fontSize:12}}>{me.objective.desc}</span>
+              {!me.objectiveRevealed&&<button onClick={revealObjective} style={{padding:"8px 14px",fontSize:12,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,minHeight:44}}>Révéler ⭐</button>}
+              {me.objectiveRevealed&&<span style={{color:"#4A8A4A",fontSize:16}}>✅</span>}
             </div>
           )}
 
@@ -1860,19 +1860,19 @@ export default function App(){
             const available=resTypes.filter(r=>countRes(me,r)>=1);
             if(available.length===0) return null;
             return(
-              <div style={{padding:"6px 16px",borderTop:"1px solid #882020",fontSize:11,background:"rgba(200,30,30,0.04)"}}>
-                <div style={{color:"#cc3030",fontWeight:600,marginBottom:4,fontSize:10}}>🏛 Commerce Impérial (1×/tour) — envoyer 1 ressource :</div>
-                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                  {available.map(r=><div key={r} style={{display:"flex",gap:3}}>
-                    <button onClick={()=>doCommerceImperial(r,"coins")} className="act-btn" style={{fontSize:10,padding:"5px 8px",borderColor:"#882020"}}>-1{r.slice(0,3)} →2💰</button>
-                    <button onClick={()=>doCommerceImperial(r,"cards")} className="act-btn" style={{fontSize:10,padding:"5px 8px",borderColor:"#882020"}}>-1{r.slice(0,3)} →1🃏</button>
+              <div style={{padding:"8px 16px",borderTop:"1px solid #882020",fontSize:12,background:"rgba(200,30,30,0.04)"}}>
+                <div style={{color:"#cc3030",fontWeight:600,marginBottom:6,fontSize:12}}>🏛 Commerce Impérial (1×/tour) — envoyer 1 ressource :</div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  {available.map(r=><div key={r} style={{display:"flex",gap:4}}>
+                    <button onClick={()=>doCommerceImperial(r,"coins")} className="act-btn" style={{fontSize:12,padding:"8px 12px",borderColor:"#882020"}}>-1{r.slice(0,3)} →2💰</button>
+                    <button onClick={()=>doCommerceImperial(r,"cards")} className="act-btn" style={{fontSize:12,padding:"8px 12px",borderColor:"#882020"}}>-1{r.slice(0,3)} →1🃏</button>
                   </div>)}
                 </div>
               </div>
             );
           })()}
           {me.faction==="dominion"&&me.commerceUsed&&isMyTurn&&!combat&&!selAction&&!pendingBottom&&(
-            <div style={{padding:"4px 16px",borderTop:"1px solid var(--border)",fontSize:10,color:"var(--text-muted)"}}>🏛 Commerce Impérial utilisé ce tour</div>
+            <div style={{padding:"6px 16px",borderTop:"1px solid var(--border)",fontSize:12,color:"var(--text-dim)"}}>🏛 Commerce Impérial utilisé ce tour</div>
           )}
 
           {/* Rail placement mode indicator */}
@@ -1901,8 +1901,8 @@ export default function App(){
           )}
 
           {/* Log */}
-          <div ref={logRef} style={{maxHeight:60,overflow:"auto",padding:"4px 16px",fontSize:10}}>
-            {log.slice(-8).map((msg,i)=><div key={i} className="log-line">{msg}</div>)}
+          <div ref={logRef} style={{maxHeight:100,overflow:"auto",padding:"6px 16px",fontSize:12}}>
+            {log.slice(-10).map((msg,i)=><div key={i} className="log-line">{msg}</div>)}
           </div>
         </div>
       </div>
