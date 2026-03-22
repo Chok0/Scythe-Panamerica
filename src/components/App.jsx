@@ -64,23 +64,19 @@ export default function App(){
     const shuffled=shuffleArray(OBJECTIVES);
     ps.forEach((p,i)=>{
       const o1=shuffled[(i*2)%shuffled.length];const o2=shuffled[(i*2+1)%shuffled.length];
-      p.objectiveChoices=[o1,o2];
-      if(p.isBot){p.objective=Math.random()>0.5?o1:o2;p.objectiveChoices=null;}
+      p.objectives=[o1,o2];
+      if(p.isBot){p.objective=Math.random()>0.5?o1:o2;}
     });
-    setPlayers(ps);setPhase("pick_objective");setCurrentP(0);setTurn(1);
+    setPlayers(ps);setPhase("playing");setCurrentP(0);setTurn(1);
     addLog(`⚔ ${ps.length} joueurs`);
     ps.forEach(p=>{const f=FACTIONS[p.faction];addLog(`${p.isBot?"🤖":"👤"} ${f.name} (${p.matName})  ⚡${p.power} 🃏${p.combatCards} ♥${p.pop} 💰${p.coins}`);});
   },[selFaction,selMat,numBots,addLog]);
 
-  const pickObjective=useCallback((obj)=>{
-    setPlayers(prev=>{const n=[...prev];n[0]={...n[0],objective:obj,objectiveChoices:null};return n;});
-    addLog(`🎯 ${obj.name}`);setPhase("playing");
-  },[addLog]);
-
-  const revealObjective=useCallback(()=>{
-    const p=players[0];if(!p||!p.objective||p.objectiveRevealed)return;
-    if(p.objective.check(p)){setPlayers(prev=>{const n=[...prev];n[0]={...n[0],objectiveRevealed:true,stars:n[0].stars+1};return n;});addLog(`⭐ "${p.objective.name}" révélé !`);}
-    else addLog(`❌ "${p.objective.name}" non rempli`);
+  const revealObjective=useCallback((objIdx)=>{
+    const p=players[0];if(!p||p.objectiveRevealed)return;
+    const obj=p.objectives?.[objIdx];if(!obj)return;
+    if(obj.check(p)){setPlayers(prev=>{const n=[...prev];n[0]={...n[0],objectiveRevealed:true,revealedObjectiveIdx:objIdx,stars:n[0].stars+1};return n;});addLog(`⭐ "${obj.name}" révélé !`);}
+    else addLog(`❌ "${obj.name}" — condition non remplie`);
   },[players,addLog]);
 
   useEffect(()=>{
@@ -1059,31 +1055,7 @@ export default function App(){
     );
   }
 
-  // ══════════ PICK OBJECTIVE ══════════
-  if(phase==="pick_objective"&&players[0]?.objectiveChoices){
-    const choices=players[0].objectiveChoices;
-    return(
-      <div style={{minHeight:"100vh",background:`linear-gradient(170deg, #1A1710 0%, #1A1710 40%, #1A1710 100%)`,color:"var(--text)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 16px"}}>
-        <div style={{width:50,height:1,background:"linear-gradient(90deg,transparent,var(--gold),transparent)",marginBottom:20}}/>
-        <h2 style={{fontSize:18,letterSpacing:6,textTransform:"uppercase",color:"var(--gold)",marginBottom:6}}>Objectif Secret</h2>
-        <p style={{color:"var(--text-dim)",fontSize:11,marginBottom:32,textAlign:"center",maxWidth:280,fontStyle:"italic",lineHeight:1.6}}>Choisissez votre mission. Révélez-la pour une étoile.</p>
-        <div style={{display:"flex",gap:16,flexWrap:"wrap",justifyContent:"center",maxWidth:500}}>
-          {choices.map(obj=>(
-            <button key={obj.id} onClick={()=>pickObjective(obj)} style={{
-              background:"rgba(20,18,12,0.95)",border:`1px solid var(--border)`,borderRadius:8,padding:"24px 20px",
-              color:"var(--text)",minWidth:200,maxWidth:230,textAlign:"left",
-              boxShadow:"0 8px 32px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.03)",transition:"all .2s",
-            }}
-            onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--gold)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,0.6),0 0 16px rgba(201,168,76,0.15)";}}
-            onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,0.6)";}}>
-              <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:15,color:"var(--gold)",marginBottom:10}}>🎯 {obj.name}</div>
-              <div style={{fontSize:12,color:"var(--text-dim)",lineHeight:1.7}}>{obj.desc}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // (pick_objective phase removed — player keeps both objectives per Scythe rules)
 
   // ══════════ END GAME — SCORING ══════════
   if(phase==="ended"&&players.length>0){
@@ -1563,7 +1535,7 @@ export default function App(){
             {icon:"🏗",name:"Bâtiments",prog:`${(me.buildings||[]).length}/4`,done:(me.buildings||[]).length>=4},
             {icon:"🤝",name:"Recrues",prog:`${me.recruits||0}/4`,done:(me.recruits||0)>=4},
             {icon:"👷",name:"Ouvriers",prog:`${me.workers.length}/8`,done:me.workers.length>=8},
-            {icon:"🎯",name:"Objectif",prog:me.objectiveRevealed?"✅":"…",done:me.objectiveRevealed},
+            {icon:"🎯",name:"Objectif",prog:me.objectiveRevealed?"✅":"0/1",done:me.objectiveRevealed},
             {icon:"⚔",name:"Combat ×2",prog:`${Math.min(me.combatWins||0,2)}/2`,done:(me.combatWins||0)>=2},
             {icon:"♥",name:"Pop 18",prog:`${me.pop}/18`,done:me.pop>=18},
             {icon:"⚡",name:"Pui 16",prog:`${me.power}/16`,done:me.power>=16},
@@ -1844,13 +1816,28 @@ export default function App(){
             );
           })()}
 
-          {/* Objectives */}
-          {me.objective&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&!pendingBottom&&(
-            <div style={{padding:"8px 16px",borderTop:"1px solid var(--border)",fontSize:12,display:"flex",alignItems:"center",gap:10}}>
-              <span style={{color:me.objectiveRevealed?"#4A8A4A":"var(--gold)",fontSize:13,fontFamily:"'Bitter',serif",fontWeight:700}}>🎯 {me.objective.name}</span>
-              <span style={{color:"var(--text-dim)",flex:1,fontSize:12}}>{me.objective.desc}</span>
-              {!me.objectiveRevealed&&<button onClick={revealObjective} style={{padding:"8px 14px",fontSize:12,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,minHeight:44}}>Révéler ⭐</button>}
-              {me.objectiveRevealed&&<span style={{color:"#4A8A4A",fontSize:16}}>✅</span>}
+          {/* Objectives — player keeps both, can reveal one */}
+          {me.objectives&&me.objectives.length>0&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&!pendingBottom&&(
+            <div style={{padding:"8px 16px",borderTop:"1px solid var(--border)"}}>
+              <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6,fontFamily:"'Bitter',serif"}}>🎯 Objectifs secrets {me.objectiveRevealed?"(1 révélé)":"— révélez-en un pour ⭐"}</div>
+              {me.objectives.map((obj,idx)=>{
+                const isRevealed=me.objectiveRevealed&&me.revealedObjectiveIdx===idx;
+                const canReveal=!me.objectiveRevealed&&obj.check(me);
+                const condMet=obj.check(me);
+                return(
+                  <div key={obj.id||idx} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",opacity:me.objectiveRevealed&&!isRevealed?0.4:1}}>
+                    <span style={{color:isRevealed?"#4A8A4A":condMet?"var(--gold)":"var(--text-dim)",fontSize:13,fontFamily:"'Bitter',serif",fontWeight:700,minWidth:0,flex:1}}>
+                      {isRevealed?"✅":"🎯"} {obj.name}
+                      <span style={{fontWeight:400,fontSize:12,color:"var(--text-dim)",marginLeft:8}}>{obj.desc}</span>
+                    </span>
+                    {!me.objectiveRevealed&&(
+                      canReveal
+                        ?<button onClick={()=>revealObjective(idx)} style={{padding:"8px 14px",fontSize:12,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,minHeight:44,flexShrink:0}}>Révéler ⭐</button>
+                        :<span style={{fontSize:11,color:"var(--text-muted)",flexShrink:0}}>pas rempli</span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
