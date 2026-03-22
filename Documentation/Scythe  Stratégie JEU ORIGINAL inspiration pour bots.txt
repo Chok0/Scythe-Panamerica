@@ -1,0 +1,498 @@
+Scythe : Stratégie
+Scythe : Stratégies
+Scythe : Règle & descriptif > Stratégies générales > Guide de Factions
+
+Voici la rubrique Stratégie de Scythe. Pour ceux et celles qui ne seraient pas familiers avec le jeu, je vous invite à lire la présentation de Scythe. J’ai écumé plusieurs forums en anglais sur BoardGameGeek, Reddit et autres ainsi que des vidéos Youtube que j’ai traduites.
+Mais avant de commencer, voici la Piste des Triomphes (Triumph track), personnalisée par mes soins. Il est toujours utile de l’avoir sous les yeux :
+
+Scythe : Triumph/Star Track
+Sommaire
+
+Map
+Top 5 Stratégies de Stegmaier
+Les 5 erreurs les plus courantes
+Les 4 Actions du Bas : Enrôler, Améliorer, Déployer,  Construire
+Plateau Joueur
+Interpréter votre Plateau
+Stratégies : Priorités
+AdB & Course à l’étoile
+Ouverture
+Autres considérations (a.Popularité, b.Pièces, c.Territoires & Bâtiments d.Rencontres & Usine)
+Les Combats
+Lexique
+I – La carte de Scythe
+Voici pour commencer la carte du monde de Scythe, version simplifiée et plus claire, réalisée par mes soins.
+Version noir et blanc (on se croirait dans Hive) :
+Scythe : Map
+Et version couleur flashy :
+Sur les deux versions, les Tunnels ainsi que les points Rencontre sont présents.
+Scythe : Map
+La map est constituée de 44 hexagones dont 37 hexagones exploitables + 7 lacs.
+Les 44 hexagones sont répartis en 8 rangées de respectivement, 6-7-6-7-7-7-6-et 1 tuile.
+Quantité de Villages (Ouvriers) : 9
+Quantité de ressources : 30
+Métal (Montagnes) : 8
+Pétrole (Toundra) : 8
+Nourriture (Fermes) : 7
+Bois (Forêts) : 7
+Tunnels : 6
+Points rencontre : 11
+Respawn : Chaque faction (à part les factions de l’extension) commence la partie sur une péninsule de :
+3 hexagones comportant :
+1 Village (sauf pour Nordic, mais ses Ouvriers peuvent rejoindre les villages voisines à la nage).
+2 Ressources différentes. A l’exception de Nordic qui commence avec trois hexagones de ressources. Les ressources sont très souvent :
+du métal (pour construire le mecha et sortir de l’île. Sauf pour Polonia qui a du bois pour se construire une Mine)
+Mais également, selon les factions, du pétrole ou de la nourriture.
+1 Point Rencontre.
+II – Les 5 meilleures stratégies de Stegmaier
+Voici les 5 meilleures stratégies de Jamey Stegmaier, le créateur de Scythe. J’ai traduit/résumé la vidéo de Youtube éditée et mise en ligne par Board Game Network et Ajoutée le 19 février 2017 intitulée : Top 5 Scythe Strategies with Jamey Stegmaier.
+
+Combiner les actions Produire et Commerce afin de payer une action du Bas au tour 2.
+Un total de 5 Ouvriers pour la plupart des parties. Cela correspond au seuil de productivité (on en reparlera par la suite).
+Ne pas hésiter à ignorer les cartes Objectifs qui nous éloigneraient de notre stratégie initiale.
+Se répandre sur la map lorsque vous sentez la fin de partie arriver afin de cumuler un maximum de points territoires.
+Continuer de payer les Actions du Bas, même si vous avez déjà récupéré l’étoile de ces dernières. En effet, vous bénéficierez toujours du bonus. Récupérer les pièces constitue toujours une meilleure conversion que de conserver des paires de ressources.
+III – Les 5 erreurs les plus courantes dans Scythe
+Voici le récapitulatif d’une vidéo publiée par le Youtubeur et mathématicien américain Rain Greschler (Benjamin). Benjamin dresse les erreurs les plus communes rencontrées dans Scythe. J’ai traduit et récapitulé brièvement ces dernières,  classées par ordre  de gravité croissant.
+
+Accorder trop d’importance à l’Usine. La marche vers l’Usine n’est pas forcément une mauvaise chose, mais peut sérieusement retarder votre développement.
+Tout miser sur l’Amélioration : En général 2 Améliorations suffisent (Soutien et Déplacement, le Déplacement est nécessaire en fin de partie pour répandre vos ouvriers). Lorsque vous jouez votre 2e amélioration, vous entrez dans le milieu de partie. Le nombre de ressources importe peu, réduire le coût des actions du bas est inutile. Après 2 ou 3 améliorations, l’Action Améliorer devient inutile.
+Ne pas poser son Mecha de vitesse : Il est fondamental de poser le plus rapidement possible son mecha avec l’option vitesse sur un Village afin d’escorter les Ouvriers et gagner en mobilité.
+Rester avec 2 Ouvriers : Trop passif, vous allez subir la partie sans jouer.
+Ne pas enrôler : Selon Rain, il s’agit de l’erreur la plus grave qui vous coûtera le plus de points. Enrôler est fondamental.
+VI – Les 4 actions du bas
+Enrôler
+La meilleure action du bas : L’enrôlement est la plus puissante action du bas du jeu. Plus puissante qu’enrôler des mechas qui dominent le plateau ou que construire des bâtiments qui procurent des bonus associés au Actions du Haut.
+Pourquoi ? L’enrôlement vous donne 4 Extra-ressources différentes lorsque VOUS ou l’un de vos voisins de gauche ou de droite accomplit une action du bas. Parmi ces extra-ressources :
+Points de Puissance : Super, les points de puissance vous aident à parcourir la map sans crainte de  vous faire agresser et vous permettent d’atteindre l’étoile de puissance.  
+Argent : Puissant, vous gagnez des pièces lorsque vous ou l’un de vos voisins déploie. Vous pouvez gagnez de 5-6 pièces au minimum et 10 au maximum. Toujours bon à prendre. Tout le monde déploie au moins deux mechas au cours d’une partie. Certains de Vos voisins vont en avoir 4 : Saxonie, Rusviet, Crimée. Polonia et Nordic peuvent également opter pour 4 mechas.
+Popularité : Non négligeable. Possibilité d’en gagner 2-5  par partie.  
+Cartes combat : Pas mal, surtout pour Crimée.
+Bonus immédiats : L’enrôlement est d’autant plus puissante que vous bénéficiez de Bonus immédiats à chaque enrôlement. Ces Bonus font de l’enrôlement  l’action du bas la plus cheatée du jeu.
+Déséquilibre :
+Saxonie : C’est à cause de l’enrôlement que Saxonie est difficile à jouer et qu’elle peine à tirer son épingle du jeu dès les premiers tours. En effet, elle n’a pas accès à la ferme en début de partie (et ne peut se payer la nourriture nécessaire à l’enrôlement).
+Crimée : L’enrôlement rend également Crimée extrêmement puissante. Cette dernière a accès à la ferme et peut récupérer les cartes combat de l’enrôlement pour sa capacité spéciale.
+Rusviet : également peut partir sur un rush de 8 ouvriers, rejoindre l’usine et récupérer la fameuse Carte Usine : Production : Payer 1 carte combat + 1 pièce pour produire. Il ne vous reste plus qu’à rejoindre la ferme Nord adjacente (accès immédiat avec la traversée).
+Améliorer
+Cheap : Les Améliorations ne sont en général pas cher.
+Début de partie : Les améliorations sont à faire au début de partie. En effet, les ressources sont des préoccupations de début de partie. Une fois obtenus, vos 5 Ouvriers vous permettront d’avoir des ressources en abondance. Surtout lorsque vous aurez vos étoiles de déploiement et de construction.
+Ne pas chercher l’étoile d’Amélioration : Pour décrocher une étoile en Amélioration, il vous faudra améliorer 6 fois. En d’autres termes, (à moins d’être  Rusviet) cela vous prendra 12 tours minimum, plus souvent 15.  
+Raisons : 6 améliorations, c’est trop pour plusieurs raisons :  
+Il y a mieux en AdB : En action du bas, certaines sont plus rapides et nécessitent seulement 4 étoiles : Déploiement, Construction, Enrôlement.  
+Il y a mieux en AdH : D’autres actions du haut sont faciles également : Objectif, Combat x2 (ces 3 premiers se font seulement en marchant), 8 Ouvriers, Puissance (grâce à l’enrôlement notamment)
+Etoile de Popularité ? Vous pouvez tirer un trait sur l’étoile de popularité qui est quasiment impossible à décrocher.
+Quelles Améliorations choisir ? A peu près 3 Améliorations du haut sont intéressantes (voire excellentes) :
+Soutien : (en puissance, mais également en cartes si Crimée)
+Popularité : est sympa
+Déplacement : également  
+Produire (éventuellement) : A condition de jouer Nordic.
+Par contre, toutes les améliorations du bas sont insignifiantes (mais peuvent vous aider par rapport au nombre d’Ouvriers sur les hexagones) et les autres améliorations du haut non citées sont inutiles.
+
+Considérez les Améliorations comme un outil pour vous aider à décrocher des étoiles, mais en soit, elles n’en donnent pas.
+
+Déployer
+Fonctions du déploiement :  
+Déplacer Ouvriers : Déployer un mecha vous permet de déplacer vos 5 Ouvriers de leur village de départ jusqu’à un hexagone.  
+Timing : Vous devez déployer et créer votre 5e Ouvrier quasiment en même temps.
+Vitesse : Important de déployer votre mecha Vitesse en 1er. En effet, la Vitesse vous permet de déplacer le mecha qui escorte vos ouvriers plus efficacement.
+Exemple : Albion déploie son mecha sur son Village. Ce mecha peut déposer des ouvriers les 4 Ouvriers du Village sur les deux hexagones Ouest : 2 ouvriers dans la Ferme et 2 dans la Toundra.
+Erreur : Si vous n’avez pas de mecha Vitesse, vous devrez déposer vos 4 Ouvriers tous au même endroit (dans la ferme), ce qui est inefficace car vous ne serez pas en mesure d’effectuer beaucoup d’actions du bas.
+Rappel de la règle : Si un mecha possède la capacité Vitesse, il peut pendre et déposer des Ouvriers/ressources en cours de déplacement.
+Exception : Rusviet. Rusviet est le seul à ne pas déployer de mecha Vitesse en 1er.
+Le Déploiement et l’Enrôlement sont les actions qui idéalement doivent être associées à des étoiles.
+→ Les Mecha vous donnent plus de mobilité, de contrôle de territoire et de capacité de combat. Selon les Factions, vous devrez opter entre l’étoile de mecha ou l’étoile de construction
+Milieu de partie : En milieu de partie en général, les mecha attendent avant de combattre (sauf si l’un des adversaires commet une erreur), surtout si vous souhaitez gagner l’étoile de Puissance.
+Fin de partie : Les mecha sont essentiels. Posséder plusieurs mecha vous permet de ne pas dépendre des Cartes de haute valeur. En effet, si vous êtes en surnombre (admettons 2vs1), vous bénéficiez des deux cartes combat et votre adversaire un. Utiliser les cartes de puissance 5 sont la dernière ressource. Sauf dans les combats 1v1. Avec Deux mecha contre un, vous pouvez défausser vos cartes de faible valeur (2 et 3).
+Un Personnage peut également faire une rencontre en ne bougeant qu’une fois de deux hexagones.
+
+Construire
+Bleu et Blanc : Certaines factions telles que Bleu ou Blanc disposent d’une forêt sur leur péninsule de départ.
+Prix de 3 ou moins : Si le prix d’une construction est de 3 ou moins, → vous pouvez la payer au tour 2 avec un Commerce (avant de déploiement).
+Quel bâtiment construire ?
+ 
+
+Bâtiments de début de partie :
+ 
+
+Moulin : Ce dernier vous donnera des tonnes de ressources en début de partie. Il s’agit de la meilleure action à réaliser dans les 3 premiers tours (à condition que vous ne passiez pas par Soutien qui vous ferait perdre du temps). Le Moulin reste bon même s’il est construit tour 9-10.
+ 
+
+Mine : Deuxième bâtiment de début de partie : Si votre 2e mecha n’est pas construit ou que vous ne faites pas un mecha avec la traversée, vous pouvez construire une Mine
+ 
+
+Bâtiments de milieu de partie :
+ 
+
+Monument : est puissant en milieu de partie (Définition du Milieu de partie = 5 Ouvriers, 1 Mecha Vitesse, Ouvriers déplacés, 1ère rencontre réalisée. Milieu de partie est centré sur la production et le maximum d’actions du bas possibles.) Ainsi, construire un Monument en milieu de partie vous permettra de gagner 2, voire 3 points de popularité.
+Arsenal : Si vous n’avez pas construit le Moulin tôt dans la partie, vous construirez la mine en dernier et l’Arsenal en avant dernier.
+V – Plateau Joueur
+Plateau Joueur : Patriotisme
+Chaque Plateau Joueur est différent. Leur titre, ainsi que les pièces que vous rapportent certaines Actions des Parties Inférieures orienteront votre stratégie.
+L’Action de la Partie Supérieure : Soutien (Bolster en anglais) (La colonne possédant le Coeur Scythe : Monument
+sur le Plateau Joueur)→ est souvent associée à l’Action de la Partie Inférieure (ou AdB pour Action du Bas) rapportant le plus de pièces. (le Déploiement de mechas dans l’exemple de Patriotisme)
+La partie Produire Scythe : Production vient en 2e  position
+suivie du Déplacement
+et enfin du Commerce (qui possède une action du bas peu lucrative).
+Certains Plateaux Joueur sont portés sur :
+
+Les technologies
+(Ressource : Pétrole, nom du plateau : Industrie)
+La construction
+(Ressource : bois, nom du plateau : Ingénierie)
+Le soutien
+(Ressource : nourriture, nom du Plateau : Patriotisme)
+La construction (Ressource : bois) et le déploiement de mechas (Ressource : métal)
+(Nom du plateau : Mécanique)
+L’enrôlement
+(Ressource : nourriture, nom du plateau : Agriculture)
+VI – Comment réfléchir et interpréter les plateaux ?
+Comment interpréter les plateaux joueurs et faction afin d’élaborer une stratégie ? Question posée sur Boardgamegeek par Lord Loki (How interpret-boards and combinations ?). Voici la réponse qu’a donnée John Martorana :
+
+Vous devez avoir une idée de ce que vous allez planifier dès le début de partie. Sans nécessairement tout fixer à l’avance, mais il s’agira d’établir des idées et objectifs décents.
+
+Ainsi, le but est de gagner des points (argent).
+Il paraît donc intéressant de regarder sur le Plateau Joueur les actions du bas qui rapportent le plus de points.
+Si vous jouez avec le jeu de base, il s’agira des colonnes Soutien et Production.
+→ En effet, l’action du bas correspondant à la Production vous rapportera (la plupart du temps) 2 pièces.
+→ Celle correspondant au Soutien vous rapporte 3 pièces, mais le coût du Soutien étant d’une pièces, vous n’en gagnerez dans l’affaire (si l’on fait la soustraction) que deux.
+Si ces Actions du Bas sont liées à des ressources que vous pouvez collecter facilement, alors ce sont les étoiles que vous devrez décrocher.
+D’une manière générale je détermine ce que je considère être mon nombre idéal d’ouvriers tôt.
+Je les place où ils seraient utiles le plus vite possible.
+Le plus souvent, j’opte pour un lot de 3, 5 ou 8 Ouvriers pour la partie entière.  
+→ Ces nombres correspondent aux seuils de rentabilité de l’action Production. Chaque Ouvrier en plus, ajouterait un coût supplémentaire.
+Ce sont aussi les Ouvriers que vous recevez en produisant respectivement, une, deux et trois fois dans un Village.
+Selon les éléments cités ci-dessus, j’extrais un scénario de ma boîte à outil mentale. Voici 3 cas de figure :
+
+Scénario A – Général 5 Ouvriers :
+
+Déplacer un Ouvrier au Village
+Produire (no1)
+Commerce : Métal
+Produire (no2)
+Commerce : Métal
+Déployer Mecha : Vitesse sur un Village
+Sortir le Mecha du Village et distribuer 5 Ouvriers sur les autres hexagones donc vous avez besoin. Déplacez votre personnage sur un point rencontre.
+Ce départ peut être très lent, mais vous pouvez combiner certaines étapes si vous en avez les moyens.
+Si vous commencez au Village, sautez l’étage 1
+Si vous possédez du métal sur votre territoire d’origine, il est possible que vous n’ayez pas besoin d’une section commerce. (Saxonie+Industrie ont déployé le Mecha (Vitesse) à l’étape 4)
+Si vous ne commencez pas au Village, alors peut-être bougerez-vous votre personnage à l’étape 1. Ainsi vous pouvez déployer un Mecha ayant la traversée des rivières au lieu de Vitesse et récupérer quand même des Rencontres lors de la 2e action de déplacement.
+L’idée générale est de se poser la question suivante :  « Comment puis-je produire deux fois sur un Village le plus rapidement possible, terminer avec 4 Ouvriers sur ce dernier ainsi qu’un Mecha (toujours sur le Village), le tout en récupérant des Rencontres lorsque les Ouvriers quittent le Village pour des hexagones utiles ? »
+Scénario B – Général 8 Ouvriers :
+
+Déplacer un Ouvrier jusqu’au Village
+Produire (no1)
+Commerce : Métal
+Produire (no2)
+Déplacer exactement un Ouvrier hors du Village (Ouvriers : 3x Village, 2x Autre), récupérer Rencontre
+Produire (no3) : Récupérer l’étoile pour le 8e Ouvrier
+Commerce : Métal
+Déployer un mecha au Village
+Encore un départ lent, mais de nouveau, au lieu de perdre 8 tours, vous pouvez vous débrouiller pour  combiner des actions.
+Sinon, même objectif : Obtenez vos Ouvriers rapidement et faites-les sortir du Village le plus vite possible.
+Souvent, dans ce scénario, mes Ouvriers ne bougent pas d’eux-mêmes, mes mechas s’en chargent plus efficacement, surtout lorsqu’il s’agit de les déplacer hors du Village initial.
+Si vous avez la possibilité d’utiliser l’action du bas en bougeant vos ouvriers hors du Village (avec l’Amélioration pour les plateaux Patriote et Agriculture), alors, dépenser deux tours à les extraire du Village n’est pas une mauvaise idée (surtout si vous ne produisez pas pendant l’opération)
+Scénario C – Full 8 Rush de 8 Ouvriers :
+
+Déplacer les 2 Ouvriers au Village
+Produire (no 1)
+Commerce : Métal
+Produire (no 2)
+Commerce : Métal
+Déployer Mecha (Vitesse)
+Déplacer Ouvriers hors du Village pour rejoindre deux autres hexgones. Récupérer la Rencontre.
+Il ne s’agit pas de ma façon habituelle de procéder, mais il s’agit d’un cadre pour construire de meilleures idées.
+L’idée : Si deux Ouvriers sont dans le Village avant que vous ne commenciez votre production, il ne suffit que de deux actions de production pour atteindre les 8 Ouvriers.
+Exemple 1 : Saxonie + Industrie 🙂
+
+Ressources de départ accessibles : Pétrole, Métal.
+Action du bas couplée à la Production (même colonne) : Déploiement
+Caractéristiques de la faction : Beaucoup de cartes pouvoir
+Nécessité : Gagner des points pouvoir (vous ne commencez qu’avec 1)
+Pièces : Vous gagnez 3 par Améliorations, 2 par déploiement, 1 par construction
+Les plateau joueur et faction : vous poussent à jouer les couples d’actions suivants : Soutien/Amélioration ainsi que Production/Déploiement  
+Construction, enrôlement ? Ils m’indiquent également de ne pas me faire du souci concernant l’étoile gagnée avec de la construction ou de l’enrôlement au début. En effet, j’ai l’intention de construire un Mecha, opter pour beaucoup d’améliorations et probablement me positionner pour multiplier les opportunités de combat ou de recevoir mon maximum de points pouvoir.
+Nombre d’Ouvriers : Je ne veux pas avoir le maximum de 8 Ouvriers pendant la partie parce que je veux produire beaucoup. Cela réduira leur coût de production.
+ 
+
+Je peux en fin de partie monter à 8 ouvriers pour terminer la partie rapidement (quand j’ai terminé toutes mes productions). Voilà le plan général pour maintenant.
+Bien sûr, selon la tournure des événements, je peux trouver d’autres moyens de poser ma 6e étoile (autrement qu’en posant 8 Ouvriers) :
+Objectifs : Je peux revenir sur l’accomplissement de deux Objectifs ou une série de rencontres peuvent me donner de la nourriture/des recrues qui me permettront de reévaluer la possibilité d’obtenir une étoile d’enrôlement (après 2 améliorations, une action Commerce permet d’acheter à elle seule un enrôlement).
+De très fortes fortes cartes combat.
+Pour résumer : Réunir 5 Ouvriers : Déplacement-Production-Mecha (vitesse)-4 Ouvriers sur un Village seraient probablement mon choix d’ouverture, suivis d’un déplacement hors du village pour distribuer mes Ouvriers et me donner des Rencontres.
+Lord Loki : « Par curiosité, comment tes plans changeraient-ils si tu tombais sur la faction Polonia (au lieu de Saxonie) ? Leurs ressources de départ semblent moins en accord avec le plateau Joueur : Industrie.
+
+Exemple 2 : Polonia + Industrie 🙁
+
+John Martorana : « Evidemment, j’ai pris en exemple Saxonie + Industrie car il rend les choses claires et intelligibles.
+A vrai dire, ce genre de combinaison que tu cites explique pourquoi certaines personnes pensent que certaines synergies Plateau Faction – Plateau Joueur sont meilleures que d’autres.
+En effet, toute action du bas vous rapportant un maximum de pièces en accord avec vos ressources fournies par la péninsule de départ rendent les choses bien plus faciles. Toutefois, même dans le cas idéal; Saxonie + Industrie, la 6e, voire la 5e étoiles peuvent être délicates à décrocher.
+Dois-je vraiment compter sur mon adversaire pour me donner 3 étoiles pendant que je réalise un objectif ?
+Ainsi, même lorsque le plateau et la position de départ semblent super, vous devrez continuellement chercher dess opportunités ailleurs pour terminer le jeu.
+Ceci étant dit, jetons un regard sur Polonia + Industrie :
+
+Industrie : Le Plateau Industrie me pousse à Produire et Soutenir. En admettant que vous ayez accès aux ressources, l’action sous produire est quasiment toujours une étoile que vous devez décrocher. Mais dans le cas de Polonia, cela vous prendra du temps pour accéder à une montagne et récupérer le métal nécessaire au déploiement.
+Options : Ainsi, contrairement à Saxonie, le Plateau Industrie semble donner à Polonia des options médiocres plutôt que quelques excellentes options et quelques vraiment mauvaises. (Oui, certaines combinaisons de plateau Joueur et Faction offrent des synergies médiocres ou exceptionnelles, voir les combinaisons bannies)
+Enrôlement :  semble une bonne option. Enrôler tôt est souvent très fort. Son action est sous le commerce et cela tombe bien, vous commencez sur un hexagone nourriture. Vous ne recevrez pas d’argent pour l’enrôlement, mais vous recevrez généralement un tas d’autres choses des choses joueurs qui, indirectement vous aideront à récupérer des points. A part ça, les choses ne s’alignent pas super bien contrairement au Plateau Saxonie Industrie.
+Exigences de la Faction jouée : Aussi, une autre chose qu’il faut se demander : « Qu’exige ma Faction ? » Crimée, par exemple, veut des cartes combat et enrôler. Je ne pense pas avoir joué une partie avec Crimée sans enrôler dans les premiers tours et opter pour une étoile d’enrôlement.
+ 
+
+Rencontres : Polonia veut faire des rencontres. Elle veut également rencontrer tôt et souvent. Les Rencontres tôt ont plus de valeur que celles arrivant plus tard. En effet pour pouvez espérer construire votre stratégie autour, plutôt qu’espérer qu’elle s’adaptent à la vôtre. Souvent, avec Polonia, les rencontres changeront des options mauvaises en de bonnes options.
+ 
+
+Mais pour rencontrer, vous devrez sortir de votre péninsule originelle. En sortant, vous collecterez des ressources qui s’adapteront à votre plateau.
+Résumé : Pour résumer votre plan d’ouverture :
+ 
+
+Atteindre des points Rencontres rapidement.
+ 
+
+Atteindre le milieu du plateau rapidement, utiliser les Rencontres ainsi que l’Usine pour façonner ma stratégie.
+ 
+
+Très probablement obtenir une étoile d’enrôlement, mais sinon, je suis plutôt flexible. Qu’importe l’option Rencontre/Usine, elles peuvent passer de moyenne à puissante si vous parvenez à concentrer vos actions.
+VII – Stratégies : priorités
+Voici ma traduction d’un commentaire trouvé sur Reddit et rédigé par Sidnv. Ce dernier dresse un classement des priorités stratégiques.
+
+Sortir de l’île (péninsule pour être exact) de départ
+En construisant un mecha (le mieux)
+En construisant une  mine (moins efficace)
+Actions doubles (haut et bas) : Effectuer le plus possible de couples d’actions (action de la partie supérieure et action de la partie inférieure)
+Produire des Ouvriers (5-8)
+Optimisez vos actions
+Améliorations et Mecha sont intéressants en début de partie puisqu’ils accélèrent votre engine.
+Stratégies relatives à la Faction :
+Rusviet (Rouge) : rush d’ouvriers et tp dans la mine.
+Crimeria (Jaune) : Enrôler + construire Monument + amélioration soutien.
+Polonia (Blanc) : Rencontres + Popularité
+Saxon (Noir) : Terminer le jeu le plus vite possible grâce à des combats gratuits (surtout sur les tunnels).
+En fin de partie, faites-vous des points faciles en dispersant vos ouvriers sur la carte
+VIII – AdB & Course à la 6e étoile
+Voici ma traduction (anglais vers français) d’un post publié sur BoardGameGeek  par John Martorana.
+
+Une course : A l’instar d’une course, l’objectif est d’arriver le plus loin, le plus rapidement possible. En effet, le joueur ayant posé sa 6e étoile (la condition de fin de partie) sera avantagé au score.
+Nb de Tours : Combien de temps dure cette course ? A peu près 18-22 tours.
+Comment décrocher des étoiles ?
+AdB : Les Actions du Bas (de votre plateau joueur : Améliorer, Déployer, Construire, Enrôler) vous permettent d’en décrocher 4.
+Pour chaque AdB (Action du Bas), il vous faudra au moins 4 tours pour décrocher une étoile (4 déploiements, 4 enrôlements, etc.).
+Ainsi, le gagnant généralement aura cumulé :
+3 étoiles d’AdB (n’en visez pas plus pour ne pas vous disperser)
+1/2 étoiles en combat
+1/2 autre
+Améliorations : Il sera nécessaire, même si vous ne visez pas son étoile, de faire au moins deux améliorations (de soutien, production/déplacement) qui réduiront des AdB.
+Tours morts : Même avec la meilleure optimisation, vous effectuerez à peu près 4 ou 6 tours sans AdB (surtout en début de partie).
+Objectif en nombre de tours : Ainsi, vous viserez :
+3 AdB : 12 tours (3×4)
+Améliorations : 2 tours
+Gaspillage : 4 à 6 tours sans AdB
+→ Total : 18-22 tours
+IX – Ouverture
+Idées générales :
+Ouvriers de départ : Chaque Faction commence avec deux ouvriers.
+(Re)production : Selon la faction et son plateau de jeu, vous aurez besoin de 3, 5 ou 8 ouvriers. Ces nombres correspondent aux paliers de prix lorsque vous produisez. 5 est un bon compromis (vous ne paierez pas de points de popularité). Reportez-vous au « planification du milieu de partie » pour déterminer le nombre d’ouvriers à produire.
+Scythe : Production
+Gaspillage : Chaque action de production que vous entreprenez avant d’avoir atteint votre nombre idéal d’ouvriers (ou d’avoir placé un Moulin si vous désirez en construire un) est un gaspillage de temps.
+Focus : Produisez vos ouvriers en une fois.
+Du balai : Ensuite, faites sortir vos ouvriers :
+En y déployant un mecha (pour les transporter) avec la capacité Vitesse.
+Si le déploiement est impossible, il faut les sortir manuellement, mais en ayant suffisamment de ressources pour exécuter les AdB de la colonne déplacement.
+Lorsque le mecha escorte vos ouvriers à l’extérieur du village, profitez-en pour déplacer votre Personnage jusqu’aux points rencontres.
+N’hésitez pas à utiliser le cycle : Production-commerce-production pour construire certaines AdB.
+Planification du milieu de partie :
+Plateau joueur : Regarder votre plateau joueur, les AdB des colonnes Production et Commerce vont orienter votre stratégie. Ce seront souvent les AdB qui vous donneront des étoiles (puisqu’ils seront joués tout le temps).
+Du Pétrole pour Améliorer : Regardez si vous avez accès au pétrole et espérez gagner une étoile pour l’Amélioration.
+Si tel est le cas, vous pouvez jouer avec peu d’ouvriers.
+Quoi qu’il arrive, vous ferez au moins deux améliorations pour rendre les actions : Déplacement, soutien et production plus efficaces.
+Construction : Allez-vous gagner une étoile en Construisant ? Si oui, construisez votre moulin tôt.
+Des pièces ! Dans l’idéal, vous opterez pour des AdB rapportant le plus de pièces, mais il s’agit d’une considération secondaire.
+1AdB/Tour : Le principal étant de pouvoir exécuter une AdB à chaque tour !
+Anticipez Les Cycles : Exemple :
+3 étoiles : Production-Soutien-Commerce
+ou 2 étoiles : Production-Déplacement + Atteindre Usine + bouger Mechas et combats + Carte objectif
+Anticipez leurs Coûts :
+Le coût d’un cycle de 3 actions (Action1-Action2-Action3) coûtera 6 à 8 ressources après quelques améliorations.
+Ainsi, avec 5 ouvriers et éventuellement un Moulin, un cycle : Production-Commerce produira une AdB à chaque tour.
+X – Autres considérations
+a) Popularité Popularité
+Tiers 2 : Atteindre le Tiers 2 de popularité est souvent une nécessité si vous envisagez gagner la partie.
+Soyez avare en popularité :
+N’attaquez pas des ouvriez trop tôt.
+Ne dépensez pas vos points lors de Rencontres sans de bonnes raisons.
+Voici les différents moyens de gagner des points de popularité :
+Carte Rencontre (si vous êtes chanceux)
+Carte Usine (très rare)
+Action du Haut : Commerce (si vous ne prenez pas les ressources)
+Bonus immédiat d’enrôlement
+Bonus permanent d’enrôlement lors de construction d’un adversaire
+Action du Haut : Soutien grâce au Monument (si vous l’avez construit)
+Ainsi, seuls les deux derniers peuvent augmenter considérablement votre popularité sans vous ralentir.
+Tiers 2 ou 3 ? Planifiez le Tiers ciblé. Atteindre le T2 est aussi important que collecter les étoiles. Possibilité de prolonger des tours si vous n’avez pas passé un Tiers.
+Un 6 étoiles à T1 vaut souvent moins qu’un 3 étoiles à T2.
+b) Pièces Scythe : argent (dollar)
+Scorer : Très simple, l’objectif du jeu est de scorer le plus de points (dollars). Une pièce = Un point.
+→ Portez donc votre attention (si possible) sur les AdB qui vous rapportent le plus d’argent.
+c) Territoires & Bâtiments Contrôle de territoire
+Moulin
+Territoires : Bon nombre de vos points doivent venir de vos territoires. Ces derniers rapportent quasiment autant de points que les étoiles !
+Parfois, il vous est possible de récupérer un territoire avec un simple déplacement.
+Bâtiments & Bonus de placements : Ces derniers sont accessoires, mais si vous avez le choix, optez pour le placement vous rapportant le plus.
+Endgame Race : Si en début de partie vous n’avez pas répandu vos unités sur le plateau, faites-le dès qu’un joueur pose sa 3e étoile. En effet la partie peut terminer très soudainement.
+d) Rencontres & Usine
+Scythe est un jeu stratégique. Aussi, 3 éléments majeurs peuvent bouleverser vos plans :
+
+Les Rencontres
+L’Usine
+Les décisions adverses
+Les Rencontres et l’Usine sont les deux éléments du jeu soumis à la tyrannie du hasard.
+
+Scythe : Rencontre
+Les Rencontres :
+
+Chaque Rencontre vient avec 3 choix qui sont en général :
+Recevoir un petit Bonus
+Payer un peu pour recevoir un plus gros Bonus
+Payer de la popularité pour recevoir un Gros Bonus
+Ouverture : Les Rencontres en début de partie sont un tremplin pour votre économie. Plus ces Rencontres viennent tôt, plus vous pouvez adapter votre stratégie autour.
+Finale : Plus le jeu avance et plus les Rencontres perdront de l’intérêt.
+Atteindre votre 1er point Rencontre : En début de partie, il existe deux façons de rencontrer :
+Lorsque vous bougez un ouvrier, profitez-en pour bouger votre Personnage (lorsque les ouvriers entrent au Village et lorsqu’ils en sortent)
+Construire un Mecha avec le pouvoir de vitesse.
+L’Usine :
+
+
+Scythe : Usine
+3 hexagones sont représentés sur l’Usine car contrôler l’Usine rapporte 3 territoires en fin de partie
+Usine en début de partie : L’intérêt de posséder une carte Usine est très élevé en début de partie, mais beaucoup moins par la suite.  
+D’autant que plus vous attendrez pour récupérer votre carte Usine, moins vous aurez de choix (si tous les joueurs sauf vous récupèrent leur carte Usine, la pile tombe à deux cartes).
+Evaluation : Je pense qu’il y a des joueurs qui sous-évaluent l’Usine et d’autres qui, au contraire la surévaluent.
+Options ouvertes : Atteindre l’Usine tôt est une option que vous devez garder ouverte. En effet, si vous êtes le seul contrôlant le milieu de la carte, les avantages de l’Usine vont décupler lorsque vous collecterez les rencontres.
+L’Usine pour initier des combats : Aussi, la possibilité de vous déplacer d’une case de plus vous permettra de trouver davantage de combats favorables et d’initier des combats. Ou, plus subtilement, vous pouvez déloger des opposants plus faibles de certaines zones puisqu’ils ne peuvent entrer sans prendre le risque de subir un retrait et de vous offrir une étoile.
+Score : Vous pouvez contrôler l’Usine jusqu’à la fin de la partie puisqu’elle vaut 3 territoires.
+Investissement lourd : Ceci étant dit, atteindre l’Usine en début de partie souvent nécessite un investissement. Si l’adversaire rush également l’Usine, vous pouvez vous retrouver dans une position où vous ne pouvez ni gagner le combat nécessaire à rejoindre l’Usine.   
+Aussi, s’il vous faut 3 mechas voire plus ainsi que des Ouvriers pour défendre l’Usine et dissuader les autres de vous la voler, l’intérêt de le faire en début de partie n’en vaut pas forcément la chandelle.
+Flexibilité : La moitié des parties que j’ai gagnées, je les remportées sans aller à l’Usine. La chose principale à prendre en considération : Garder vos options ouvertes.
+Evaluation :
+Si vous trouvez que vous ne vous rendez jamais à l’Usine ou que vous y allez toujours, alors, semble-t-il vous commettez une erreur d’évaluation.
+Si vous cherchez des moyens de cumuler exactement 6 étoiles dès le début du jeu, alors atteindre des points rencontre peut vous aider à définir une stratégie.
+XI – Combats
+Wargme ? Bien que Scythe ait la réputation de ne pas être un jeu de guerre, les combats occupent une place significative dans la partie.
+Une menace continuelle : Aussi, bien que très peu de batailles n’éclateront pendant la partie, la menace du combat va planer continuellement.
+Le bon moment : Vous ou vos adversaires attendrez le bon moment pour attaquer lorsque cela vous arrangera le mieux.
+Voici quelques questions élémentaires concernant les combats :
+A) Pourquoi attaquer ?
+Pour l’étoile : La raison la plus évident est récupérer une étoile. Vous pouvez en gagner jusqu’à 2 (sauf Saxonie qui n’est pas limitée) et d’une certaine manière il peut s’agit des étoiles les moins chères à gagner : Vous n’avez besoin que d’une action (contre les 4 minimum d’une action du bas)  sans aucune ressource et un minimum de pouvoir avec les bonnes circonstances. Dans à peu près chaque partie, vous envisagerez de gagner au moins une étoile de combat, car si vous ne la prenez pas, quelqu’un le fera et mettra un terme à la partie.  
+Les points supplémentaires : Gagner un combat pour obtenir la 6e étoile est également un moyen très efficace de gagner quelques points supplémentaires. En effet, vous pouvez contrôler dans la foulée quelques territoires supplémentaires (tout en enlevant un à votre adversaire) et en empêchant votre adversaire de vous les récupérer et ou de scorer davantage de points.
+Voler des ressources : Si la personne que vous souhaitez attaquer possède une pile de ressources, alors vous pouvez envisager une attaque. Vous perdrez certainement des points de popularité et devrez considérer si la perte en vaut la peine. En effet, il y aura rarement sur un hexagone plus d’un cycle de production. Le taux de popularité perdu doit être proportionnel au taux en ressources gagné. Aussi, attaquer des Ouvriers non protégés est souvent une mauvaise idée à moins que vous ne soyez en fin de partie et que vous avez calculé que vous mettrez un terme à la partie en restant dans votre Tiers de Popularité.
+Date limite de consommation : Aussi, vous devrez être capable de dépenser ces ressources rapidement. Ces ressources volées devront être utilisées au même tour (c’est rarement le cas) dans les actions du bas de l’action Déplacement ou vous prenez le risque de vous les faire revoler. Il est donc souvent déconseillé d’attaquer pour voler des ressources.
+Pour contrôler un territoire : Il peut s’agir de l’Usine ou d’un hexagone sur lequel vous souhaitez construire ou pour accomplir un objectif.
+Pour handicaper un adversaire : Il s’agit de la dernière raison d’attaquer. Mais attention, comme dans tout jeu multijoueur, lorsqu’un joueur dépense des ressources pour attaquer un autre joueur, tous les autres joueurs en tirent des bénéfices. Vous devez donc considérer si l’attaque va considérablement handicaper votre adversaire (en lui infligeant un repli d’un personnage et deux mechas par exemple), dans ce cas , le jeu peut en valoir la chandelle.
+Résumé : Vous n’avez pas nécessairement besoin d’une raison pour attaquer un adversaire. Faire fuir 4 ouvriers n’est certainement pas la meilleure idée pour attaquer. Mais si vous forcez sont Personnage à effectuer un retrait en gagnant en plus une étoile plus quelques bois qui peuvent être utilisés lors du même tour sous l’action déplacement pour y construire un Monument, alors cela peut valoir les 4 points de popularité perdus.
+B) Pourquoi êtes-vous attaqué ?
+Le corollaire de la question précédente. L’adversaire vous attaquera pour les mêmes raisons qui vous pousseront à l’attaquer. Il est important que vous ne dessiniez pas une cible rouge sur votre dos. Vous devez apparaître comme une cible ayant un coût lourd pour celui qui voudrait vous attaquer.
+
+N’empilez pas toutes vos ressources sur un hexagone à la portée de vos adversaires. Soyez conscient que des ressources récupérées lors d’une rencontre apparaîtront sur l’hexagone de votre personnage. Si vous ne pouvez les dépenser immédiatement,  vous créez une situation pouvant donner une étoile à votre adversaire, tout en vous renvoyant à la maison et concédant des ressources sans le moindre coût en points de popularité. Ainsi, ne choisissez pas les ressources de points rencontres lorsque vous pouvez essuyer une attaque ennemie.
+
+Ne dépensez pas tous vos points de puissance et vos cartes combat en une attaque. En effet, vous seriez vulnérables et les unités renvoyées à leur base vous retomberaient dessus en payant un minimum de cartes combat et points de puissance.
+
+Méfiez-vous des adversaires très bas en popularité. En effet, la popularité ne peut descendre en dessous de 0 et vos ouvriers, aussi nombreux soient-ils, ne vont pas dissuader les adversaires impopulaires de ne pas vous attaquer. A un certain niveau dans la partie, un adversaire peut décider de ne pas atteindre le Tiers 2 de popularité. Il peut vous être coûteux de ne pas réaliser la nouvelle menace qu’ils vous imposent.
+
+C) Quand attaquer ?
+Maintenant que nous connaissons les motivations qui nous poussent à attaquer, il est temps d’envisager le moment congru pour une bonne attaque.
+
+Souvent, lorsque vous lancez une attaque, vous devez vous trouver dans une position qui vous garantit une victoire. Attention, je ne dis pas que vous devez dépenser absolument le nombre nécessaire de points et cartes combat (seulement que vous devriez éviter les combats sil vous pouvez pas techniquement le gagner). Au moins, votre adversaire doit être en mesure de perdre ce combat, sinon vous lui offrez une bonne chance de le remporter. Gagner une étoile pendant le tour d’un adversaire est l’action la plus efficace que vous puissiez faire !
+
+Ensuite, vous devez observer le plateau et vous demander si d’autres adversaires peuvent contre-attaquer au tour d’après. Et si c’est le cas, demandez-vous si la retraite vous importe ou pas. Retirer un Mecha n’est pas si coûteux.  Après le combat assurez-vous de ne pas  apparaître comme une cible facile et veillez à conserver quelques points de puissance et cartes combat.
+
+Ce qui arrive fréquemment dans Scythe : Un joueur attaque afin de remporter une étoile en combat. Ce dernier devient le joueur le plus faible et un autre joueur vient l’attaquer. Evidemment, maintenant ce joueur devient le plus faible. Il est souvent plus avantageux d’être en queue de ces chaînes de combat plutôt qu’en tête. Ce n’est pas parce que vous pouvez gagner une étoile en combat que vous ne devez pas attendre une meilleure opportunité qui vous coûterait moins de puissance.
+
+Enfin, si vous êtes à 11 ou 12 de puissance, vous devrez envisager de reporter votre attaque. Surtout si la partie commence car il y aura plus d’opportunité de combat plus tard. L’étoile gratuite que vous gagnez en atteignant les 16 points de puissance vous met également en excellente position de gagner rapidement deux autres étoiles en combat même si vous devez payer plus de puissance. Mais d’un autre côté, si la partie est bien avancée, vous ne pouvez être certain d’atteindre la puissance maximum et remporter deux étoiles au combat. Vous ne voudrez probablement pas abandonner un combat facile contre une étoile en points de puissance quelques tours plus tard. En admettant que vous remportiez l’étoile de puissance, vous ne finirez certainement pas avec le plus d’étoiles. Enfin, n’oubliez pas qu’une partie de Scythe peut être très soudaine. Plus la partie s’approche de la fin, plus vous devez gagner des étoiles IMMÉDIATEMENT.
+
+D) Combien dépenser ?
+Gagner votre 1ère étoile en combat est aussi au moins efficace que décrocher une étoile liée à une action du bas. Même dépenser 7 de puissance et 2 cartes combat ne vous aurait coûté que 3 soutiens. Aussi, sur quasiment tous les plateaux joueurs, les actions du bas sous le soutien vous font gagner 2 ou 3 pièces. Ainsi, l’action du bas liée au soutien est celle que vous jouerez le plus (à l’exception du plateau Militant de l’extension les Conquérants du Lointain).
+
+Comme je l’ai mentionné plus tôt, il est presque toujours erroné d’attaquer si votre adversaire sait qu’il peut remporter le combat. Ainsi, en attaquant, votre adversaire s’attend à ce que vous forciez le gain en payant exactement le nombre de puissance et de cartes combat nécessaires. Cela s’appelle, payer la position par défaut.
+
+E) La Position par Défaut
+Ce que j’entends par position par défaut correspond au coût exact que paie l’Attaquant en puissance et cartes de combat pour garantir sa victoire. Le défenseur, se sachant perdant quoi qu’il fasse paie exactement 1 en puissance et 0 cartes (ou 0 en puissance et une carte combat de faible valeur) afin de recevoir la carte combat de consolation. Beaucoup de combats se passent de la sorte. Pour l’Attaquant, dépenser  un tour entier ainsi que des points et cartes combat seulement pour perdre un territoire est un gaspillage qui n’est pas envisageable. Pour le Défenseur, estimer que l’Attaquant paie la position par défaut , tout coût dépensé au dessus du minimum n’est également qu’une perte.
+
+Dans plusieurs cas, il est plus facile pour l’Attaquant de s’écarter de cette Position par Défaut. En effet, si l’Attaquant opte pour la Position par Défaut, le Défenseur ne peut tirer profit de son adversaire. Tout ce que le Défenseur peut gagner, c’est une carte ! Par contre, d’un point de vue de l’Attaquant, la Position par défaut n’est pas risquée et assure le gain.
+
+D’un autre côté, l’Attaquant peut bénéficier d’un gros avantage d’un Défenseur dépendant seulement 1 en puissance. Si vous savez que votre adversaire se « couchera », vous n’avez qu’à payer une partie de la Position par Défaut. Prêter une attention particulière au coût payé par vos adversaires lorsqu’ils défendent. Souvent, si vous voyez un adversaire payer le minimum, ce dernier cherchera à ce que tout le monde dépense des cartes combat afin d’attaquer en retour. Ils peuvent également attendre d’atteindre le maximum de puissance. C’est le type de joueur que vous pouvez abuser et attaquer en dépensant peu pour décrocher vos étoiles en combat. (Seulement, assurez-vous de lui faire comprendre que vous pouvez vous garantir la victoire, autrement ils prendraient leur étoile gratuitement).
+
+Ainsi, l’Attaquant n’a besoin que d’envisager un jeu raisonnable de la part de son Défenseur. Le Défenseur par contre, varier ses réponses et opposer parfois un peu de résistance à l’Attaquant, pour lui faire « cracher du matériel ».
+
+Rechercher la variation
+Il existe un principe dans les jeux : Le joueur en tête doit éviter les variances, alors que les joueurs en queue doivent les rechercher, s’accrochant à des opportunités. En effet, plus vous êtes à la traîne, plus vous enclin à prendre des risques.
+
+Cela nous donne un aperçu de quand il  convient de s’écarter de la Position par Défaut. Si, lorsque vous attaquez, vous vous sentez confortablement ancré en tête de position, alors vous tendrez à dépenser suffisamment pour garantir le gain. Egalement, si votre adversaire est en tête et qu’il vous attaque, vous avez intérêt, en tant que Défenseur, à dépenser le moins possible.
+
+Par contre, lorsque l’Attaquant est derrière, vous devrez sérieusement considérer vous écarter plus ou moins de la Position par Défaut. Vous pouvez considérer l’Attaquant et la situation :
+
+L’Attaquant est-il très en retard ?
+Etes-vous très en avance sur les autres joueurs ?
+Cela vous garantit-il un gain si vous laissez l’Attaquant incapable de faire d’autres attaques ou de se défendre ?
+Ces joueurs sont-il du genre à opter pour de faibles chances de gain même si cela les mène de la 2e place à la dernière ? (Est-ce un tournant où seule la première place importe ?)
+Plus vous rencontrez de « Oui », plus vous pouvez payer en puissance.
+
+Si vous attaquez le joueur en tête, vous devez considérer quoi dépenser. Etes-vous à ce point à la ramasse que vous devrez « parier » ? Combien de cartes et de puissance devez-vous exactement posséder pour dissuader vos adversaires de vous attaquer ? Dépenser suffisamment de puissance pour arriver à 7 (le maximum) est mieux que la dépenser pour terminer à 4.
+
+Enfin, lorsque deux joueurs en fin de position sont en combat, alors il s’agit vraiment d’une partie de poker. Chacun doit accepter une part de risque. Celui qui prendra un gros risque terminera soit plus loin en tête, soit plus loin derrière. Le meilleur conseil est de bien connaître votre adversaire et ne pas être trop prévisible.
+
+Aussi, si vous jouez avec les mêmes joueurs, encore et encore, alors vous devrez vraiment éviter de devenir prévisible. Si je constate qu’un joueur particulier ne prend jamais de risque en combat, j’en abuserai. Lors de certaines occasions, cela me donnera même une information totale concernant les valeurs de leurs cartes. Ne soyez pas cette personne.
+
+Stratégies en vrac :
+Bouclier humain : Placer des Ouvriers près de vos mecha pour dissuader les autres joueurs d’attaquer.
+Automa : Jeu solo contre Automa : Attaquer l’Automa tôt pour l’empêcher de gagner son étoile de Puissance.
+Endgame : En fin de partie, si vous êtes en plein milieu d’un Tiers de Popularité et qu’il vous sera impossible de passer dans le Tiers supérieur, pourquoi ne pas renvoyer des Ouvriers adversaires sur leur base de départ. Cela fera des territoires en moins à l’adversaires et vous lui volerez éventuellement des paires de ressources.
+Cartes combat : Prêtez attention au nombre de cartes combat de vos adversaires. Si un adversaire possède 5 de puissance et 0 cartes combat, vous connaissez alors avec certitude sa puissance de feu maximum (sans avoir à estimer une Position par défaut déterminée par une éventuelle carte de valeur 5)
+Le Tao de Scythe
+Un jeu multi-joueur !
+Scythe n’est pas un jeu solo (même quand vous jouez contre l’Automa), mais il est facile de rester concentré uniquement sur ses plans en oubliant ceux de l’adversaire. Aussi, gardez toujours à l’esprit ce que l’adversaire envisage de faire.
+Vos adversaires en (des humains en général) ne vous laisseront pas faire ce que vous voulez et réciproquement.Demandez-vous toujours « Que n’aimeraient-ils pas que je fasse » et faites-le.
+
+Attaquer des attaquants puissants
+Paradoxalement, les adversaires ayant beaucoup de points de puissance (plus que 13), mais moins que 16 peuvent vous fournir des étoiles de combat pour pas cher. Cela est surtout vrai lorsqu’ils ont suffisamment de ressources pour acheter leur action du bas associée au Soutien.
+Il vous sera ainsi possible de gagner des combats en ne dépensant que 2 à 5 de puissance totale.
+Il est important de conserver l’objectif de votre adversaire en tête. Un adversaire qui, au prochain tour peut faire Soutien et décrocher son étoile de Puissance en ayant collecté les ressources nécessaires pour faire l’action du bas qui lui est associée le fera très certainement au prochain tour.
+Ce dernier prévoit en suite de dépenser ses points de Puissance en combat pour décrocher de étoiles de plus.
+Si cet adversaire dépense ses points de combat et gagne maintenant, il retarde de plusieurs tours son étoile de puissance et son assaut. Si l’adversaire dépense beaucoup de points de puissance, alors il y a de fortes chances pour qu’il n’atteigne jamais les 3 étoiles et qu’il se contente de 2. En effet il ne pourra atteindre la puissance maximum.
+
+Paramètres à évaluer avant l’attaque : Avant une attaque, prenez en compte les paramètres suivants :
+
+Mon adversaire peut techniquement, lors d’un soutien monter à puissance 17 (il peut se permettre de dépenser 1 puissance)
+Le plan de mon adversaire nécessite presque certainement une étoile de puissance
+Il peut faire Soutien au prochain tour plus l’action du bas associée
+Vous attaquez un hexagone qui n’a que peu d’importance (ex : un mecha solitaire)
+Il n’a pas beaucoup d’autres hexagones à défendre et n’est pas une cible facile.
+Il a déjà 2 étoiles de combat
+Il a des Ovriers sur sa base de départ et perdre un combat l’aidera à les disperser plus facilement
+Vous possédez au moins 7 de puissance et des cartes de combat
+Si vous cherchez des opportunités, les étoiles de combat peuvent être les moins chères du jeu.
+
+Défendre vos biens
+Distance : Pas nécessairement dissuasif, mais la distance est la moyen le plus facile pour Protéger vos biens. Vous pouvez utiliser le bord du plateau, les lacs, des endroits inaccessibles et bases non utilisées.
+Mechas : Un mecha est un moyen évident de défendre vos biens, mais n’est pas forcément dissuasif. Au contraire un mecha peut inciter l’adversaire à attaquer
+Ouvriers : Les Ouvriers offrent une meilleure protection que les mechas. L’adversaire craint pour sa popularité.
+Temps : Gardez à l’esprit l’action du bas associée au déplacement pour chaque adversaire. Si vous laissez des ressources sur un hexagone, votre adversaire ne doit pas pas pouvoir vous les dérober pour construire immédiatement avec en utilisant l’action du bas.
+Echec : Malgré ces pages stratégiques, ces réflexions consacrées à Scythe, il se peut que rien ne fonctionne comme prévu. En ce début d’année 2019, Il n’y a pour l’instant aucun Dieu Scythe / Scythe PGM / Scythe Grand Master reconnu par quelque fédération internationale. Tout reste encore à découvrir.
+Pour aller plus loin, je vous invite à lire le Guide de Factions.
+
+XII – Lexique
+Petit rappel vocabulaire des mots/expressions rencontrés dans Scythe
+
+AdH : Action du Haut. Il s’agit des actions de la partie supérieure du Plateau Joueur. Cet ordre peut varier, les voici  par ordre lucratif (ceux qui rapportent le plus de pièces en premier) : Soutien, Produire, Déplacer, Commerce.
+
+AdB : Action du Bas : Il s’agit des actions de la partie inférieure du Plateau Joueur. Dans l’ordre (l’ordre ne varie jamais) : Améliorer, Déployer, Construire, Enrôler.
+
+Milieu de partie : Ou middlegame en anglais. Terme employé dans le milieu échiquéen. Une partie de 4X ou de jeu de stratégie est composée en 3 phases : L’ouverture ou début de partie, le milieu de partie et la Finale. Vous entrez dans le Milieu de partie dans Scythe lorsque globalement vous atteignez votre capacité maximale désirée d’Ouvriers. Exemple : 5, mais également un Mecha de Vitesse (pour les escorter) et lorsque tous vos Ouvriers sont déplacés et aptes à produire. Enfin, la 1ère rencontre est réalisée. Le Milieu de partie est centré sur la production et le maximum d’actions du bas possibles.)
+
+Finale : Lorsqu’un adversaire possède 3 étoiles, la partie touche à sa fin. En effet, ce dernier peut facilement poser 3 étoiles d’un coup via deux combats et la réalisation d’un objectif.
+Si vous voyez la fin approcher, n’hésitez pas à disperser vos unités pour gagner des points. Aussi, il vous est possible d’engager des combats contre des mechas escortés d’Ouvriers si vous êtes certain de ne pas passer dans le tiers supérieur ou inférieur de popularité. Possibilité également de déloger des ouvriers seuls pour les renvoyer à leur base. Noter que même si vous possédez la capacité Camaraderie, vous perdrez des points de popularité. Voir ci-dessous.
+
+Camaraderie : Capacité débloquée par le déploiement d’un mecha
+Attention : La capacité Camaraderie ne s’applique que lorsqu’il y a un combat. Vous perdre des points de popularité lorsque vous forcez les ouvriers adverses à battre en retraite sans combattre. Rappel de cette capacité : Lors des combats, ne perdez pas de popularité lorsque vous forcez les ouvriers adverses à battre en retraite.
+
+Vitesse : Capacité débloquée par le déploiement d’un mecha. La capacité Vitesse ajoute un +1 au déplacement de votre Personnage et de vos mechas.
+→ Attention : Vos Ouvriers ne sont pas concernés ! Ils continueront d’avancer d’une case, voire de 2 avec l’action du bas de la carte Usine.
+→ Conséquence 1 : L’un de vos mechas ou votre personnage peut se déplacer jusqu’à 3 territoires grâce à cette action (cf. règles p.25 : Vitesse).
+→ Conséquence 2 : Si un mecha possède la capacité Vitesse, il peut prendre et déposer des Ouvriers/ressources en cours de déplacement. (Cf. Règles p.31 : Mechas)
+Mots clés associés : disperser les ressources, égrainer, distribuer lors d’un déplacement de mecha.

@@ -1,0 +1,460 @@
+{
+  "title": "Panamerica Map Export",
+  "date": "2026-03-20T11:54:34.946Z",
+  "hexes": [
+    {
+      "id": 0,
+      "rx": 265,
+      "ry": 103,
+      "terrain": "toundra"
+    },
+    {
+      "id": 1,
+      "rx": 501,
+      "ry": 103,
+      "terrain": "montagne"
+    },
+    {
+      "id": 2,
+      "rx": 737,
+      "ry": 103,
+      "terrain": "toundra"
+    },
+    {
+      "id": 3,
+      "rx": 146,
+      "ry": 171,
+      "terrain": "marecage"
+    },
+    {
+      "id": 4,
+      "rx": 382,
+      "ry": 171,
+      "terrain": "village"
+    },
+    {
+      "id": 5,
+      "rx": 618,
+      "ry": 171,
+      "terrain": "lac"
+    },
+    {
+      "id": 6,
+      "rx": 855,
+      "ry": 171,
+      "terrain": "plaine"
+    },
+    {
+      "id": 7,
+      "rx": 265,
+      "ry": 240,
+      "terrain": "plaine"
+    },
+    {
+      "id": 8,
+      "rx": 501,
+      "ry": 240,
+      "terrain": "toundra"
+    },
+    {
+      "id": 9,
+      "rx": 737,
+      "ry": 240,
+      "terrain": "foret"
+    },
+    {
+      "id": 10,
+      "rx": 146,
+      "ry": 308,
+      "terrain": "foret"
+    },
+    {
+      "id": 11,
+      "rx": 382,
+      "ry": 308,
+      "terrain": "foret"
+    },
+    {
+      "id": 12,
+      "rx": 618,
+      "ry": 308,
+      "terrain": "village"
+    },
+    {
+      "id": 13,
+      "rx": 855,
+      "ry": 308,
+      "terrain": "lac"
+    },
+    {
+      "id": 14,
+      "rx": 265,
+      "ry": 376,
+      "terrain": "village"
+    },
+    {
+      "id": 15,
+      "rx": 501,
+      "ry": 376,
+      "terrain": "montagne"
+    },
+    {
+      "id": 16,
+      "rx": 737,
+      "ry": 376,
+      "terrain": "champs"
+    },
+    {
+      "id": 17,
+      "rx": 146,
+      "ry": 445,
+      "terrain": "plaine"
+    },
+    {
+      "id": 18,
+      "rx": 382,
+      "ry": 445,
+      "terrain": "lac"
+    },
+    {
+      "id": 19,
+      "rx": 618,
+      "ry": 445,
+      "terrain": "lac"
+    },
+    {
+      "id": 20,
+      "rx": 855,
+      "ry": 445,
+      "terrain": "marecage"
+    },
+    {
+      "id": 21,
+      "rx": 265,
+      "ry": 513,
+      "terrain": "montagne"
+    },
+    {
+      "id": 22,
+      "rx": 501,
+      "ry": 513,
+      "terrain": "factory"
+    },
+    {
+      "id": 23,
+      "rx": 737,
+      "ry": 513,
+      "terrain": "desert"
+    },
+    {
+      "id": 25,
+      "rx": 146,
+      "ry": 581,
+      "terrain": "marecage"
+    },
+    {
+      "id": 26,
+      "rx": 382,
+      "ry": 581,
+      "terrain": "plaine"
+    },
+    {
+      "id": 27,
+      "rx": 618,
+      "ry": 581,
+      "terrain": "village"
+    },
+    {
+      "id": 28,
+      "rx": 855,
+      "ry": 581,
+      "terrain": "foret"
+    },
+    {
+      "id": 29,
+      "rx": 265,
+      "ry": 650,
+      "terrain": "foret"
+    },
+    {
+      "id": 30,
+      "rx": 501,
+      "ry": 650,
+      "terrain": "champs"
+    },
+    {
+      "id": 31,
+      "rx": 737,
+      "ry": 650,
+      "terrain": "marecage"
+    },
+    {
+      "id": 32,
+      "rx": 146,
+      "ry": 718,
+      "terrain": "sierra"
+    },
+    {
+      "id": 33,
+      "rx": 382,
+      "ry": 718,
+      "terrain": "lac"
+    },
+    {
+      "id": 34,
+      "rx": 618,
+      "ry": 718,
+      "terrain": "foret"
+    },
+    {
+      "id": 35,
+      "rx": 855,
+      "ry": 718,
+      "terrain": "village"
+    },
+    {
+      "id": 36,
+      "rx": 265,
+      "ry": 786,
+      "terrain": "village"
+    },
+    {
+      "id": 37,
+      "rx": 501,
+      "ry": 786,
+      "terrain": "desert"
+    },
+    {
+      "id": 38,
+      "rx": 737,
+      "ry": 786,
+      "terrain": "sierra"
+    },
+    {
+      "id": 40,
+      "rx": 382,
+      "ry": 855,
+      "terrain": "desert"
+    },
+    {
+      "id": 41,
+      "rx": 618,
+      "ry": 855,
+      "terrain": "champs"
+    },
+    {
+      "id": 45,
+      "rx": 737,
+      "ry": 923,
+      "terrain": "sierra"
+    },
+    {
+      "id": 46,
+      "rx": 500,
+      "ry": 923,
+      "terrain": "village"
+    },
+    {
+      "id": 47,
+      "rx": 855,
+      "ry": 855,
+      "terrain": "lac"
+    }
+  ],
+  "rivers": [
+    [
+      0,
+      3
+    ],
+    [
+      0,
+      7
+    ],
+    [
+      4,
+      7
+    ],
+    [
+      4,
+      8
+    ],
+    [
+      3,
+      10
+    ],
+    [
+      7,
+      10
+    ],
+    [
+      17,
+      21
+    ],
+    [
+      17,
+      25
+    ],
+    [
+      23,
+      28
+    ],
+    [
+      31,
+      35
+    ],
+    [
+      35,
+      38
+    ],
+    [
+      38,
+      45
+    ],
+    [
+      7,
+      14
+    ],
+    [
+      14,
+      21
+    ],
+    [
+      25,
+      32
+    ],
+    [
+      25,
+      29
+    ],
+    [
+      21,
+      29
+    ],
+    [
+      26,
+      29
+    ],
+    [
+      29,
+      33
+    ],
+    [
+      33,
+      36
+    ],
+    [
+      36,
+      40
+    ],
+    [
+      40,
+      46
+    ],
+    [
+      37,
+      41
+    ],
+    [
+      37,
+      46
+    ],
+    [
+      38,
+      41
+    ],
+    [
+      34,
+      41
+    ],
+    [
+      20,
+      23
+    ],
+    [
+      16,
+      20
+    ],
+    [
+      9,
+      16
+    ],
+    [
+      1,
+      8
+    ],
+    [
+      4,
+      11
+    ],
+    [
+      11,
+      14
+    ],
+    [
+      14,
+      18
+    ],
+    [
+      1,
+      5
+    ],
+    [
+      22,
+      26
+    ],
+    [
+      28,
+      31
+    ]
+  ],
+  "home_bases": [
+    {
+      "factionId": "dominion",
+      "rx": 395,
+      "ry": 65,
+      "name": "Dominion"
+    },
+    {
+      "factionId": "acadiane",
+      "rx": 834,
+      "ry": 79,
+      "name": "Acadiane"
+    },
+    {
+      "factionId": "nations",
+      "rx": 61,
+      "ry": 356,
+      "name": "Nations Souv."
+    },
+    {
+      "factionId": "bayou",
+      "rx": 945,
+      "ry": 683,
+      "name": "Bayou"
+    },
+    {
+      "factionId": "confederation",
+      "rx": 172,
+      "ry": 829,
+      "name": "Confédération"
+    },
+    {
+      "factionId": "frente",
+      "rx": 610,
+      "ry": 944,
+      "name": "Frente Libre"
+    }
+  ],
+  "terrain_counts": {
+    "toundra": 3,
+    "montagne": 3,
+    "marecage": 4,
+    "village": 7,
+    "lac": 6,
+    "plaine": 4,
+    "foret": 6,
+    "champs": 3,
+    "desert": 3,
+    "sierra": 3
+  }
+}

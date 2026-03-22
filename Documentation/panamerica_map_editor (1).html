@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panamerica Map Editor</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:system-ui,-apple-system,sans-serif; font-size:13px; background:#f8f8f8; padding:12px; }
+.toolbar { display:flex; gap:5px; flex-wrap:wrap; margin-bottom:8px; align-items:center; }
+.btn { padding:5px 13px; border-radius:5px; font-size:11px; cursor:pointer; border:1px solid #aaa; background:#fff; font-weight:400; }
+.btn.active { border:2px solid #333; background:#e8e8e8; font-weight:700; }
+.btn-primary { border:none; background:#1565C0; color:#fff; font-weight:600; }
+.btn-green { border:none; background:#4caf50; color:#fff; font-weight:600; }
+.btn-red { border:none; background:#e53935; color:#fff; font-weight:600; }
+.btn-ref { border:1px solid #2c6cc0; color:#2c6cc0; }
+.btn-ref.active { background:#2c6cc0; color:#fff; }
+.instructions { padding:4px 8px; background:#f0f0f0; border-radius:4px; margin-bottom:6px; font-size:10px; color:#555; }
+.picker { padding:6px 8px; background:#fff8e1; border-radius:5px; margin-bottom:6px; border:1px solid #f9a825; }
+.picker-btn { padding:3px 8px; border-radius:3px; font-size:10px; cursor:pointer; border:1px solid transparent; color:#fff; margin:2px; }
+.picker-btn.active { border:2px solid #333; font-weight:700; }
+.faction-btn { padding:4px 10px; border-radius:4px; font-size:10px; cursor:pointer; border:1px solid #ccc; color:#fff; margin:2px; }
+.faction-btn.active { border:2px solid #333; font-weight:700; }
+.counts { margin-top:6px; display:flex; gap:3px; flex-wrap:wrap; }
+.count-tag { padding:2px 6px; border-radius:3px; color:#fff; font-size:10px; font-weight:500; }
+.ref-panel { padding:6px 8px; background:#f5f8ff; border-radius:5px; margin-bottom:6px; border:1px solid #cde; font-size:10px; line-height:1.7; }
+.hex-controls { display:flex; gap:5px; margin-bottom:6px; align-items:center; }
+#map-svg { display:block; margin:0 auto; max-width:700px; width:100%; }
+.status { margin-top:4px; font-size:11px; color:#666; }
+</style>
+</head>
+<body>
+
+<div class="toolbar" id="toolbar"></div>
+<div class="instructions" id="instructions"></div>
+<div id="picker-area"></div>
+<div id="ref-panel-area"></div>
+<svg id="map-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+<div class="counts" id="counts"></div>
+<div class="status" id="status"></div>
+
+<script>
+// ==================== DATA ====================
+const TERRAINS = {
+  montagne:{color:"#7A7A7A",label:"Montagne",res:"Métal",icon:"⛰"},
+  sierra:{color:"#8B6B45",label:"Sierra",res:"Métal",icon:"🏔"},
+  champs:{color:"#E8D44D",label:"Champs",res:"Nourriture",icon:"🌾"},
+  plaine:{color:"#B8A040",label:"Plaine",res:"Nourriture",icon:"🌿"},
+  village:{color:"#CC3030",label:"Village",res:"Ouvriers",icon:"🏘"},
+  foret:{color:"#1B8C30",label:"Forêt",res:"Bois",icon:"🌲"},
+  toundra:{color:"#6B3FA0",label:"Toundra",res:"Pétrole",icon:"❄"},
+  desert:{color:"#C49020",label:"Désert",res:"Pétrole",icon:"☀"},
+  lac:{color:"#1E7AB8",label:"Lac",res:"—",icon:"~"},
+  marecage:{color:"#3B6B3B",label:"Marécage",res:"coût pui.",icon:"≋"},
+  factory:{color:"#9B1010",label:"Rouge River",res:"Plans",icon:"⚙"},
+};
+const T_KEYS = Object.keys(TERRAINS);
+
+const FACTIONS = [
+  {id:"dominion",name:"Dominion",color:"#CC2222",short:"DOM"},
+  {id:"acadiane",name:"Acadiane",color:"#228B22",short:"ACA"},
+  {id:"nations",name:"Nations Souv.",color:"#20B2AA",short:"NAT"},
+  {id:"bayou",name:"Bayou",color:"#7B2D8B",short:"BAY"},
+  {id:"confederation",name:"Confédération",color:"#666",short:"CON"},
+  {id:"frente",name:"Frente Libre",color:"#A05020",short:"FRE"},
+];
+
+const REF_DATA = [
+  {f:"Dominion",rw:"Queen's Road → Forêts + Plaines",s3:"Éclaireur (voir main)",s4:"Sidle (bâtiments↔unités adj.)",fa:"Commerce Impérial (1 res→2$ ou 1 carte)",color:"#CC2222"},
+  {f:"Acadiane",rw:"Portage → Forêts + Villages",s3:"White Flag (refus→+2 pop)",s4:"Submerge (lac↔lac)",fa:"Comptoir (flags sur lacs)",color:"#228B22"},
+  {f:"Nations Souv.",rw:"Piste → Plaines + Forêts",s3:"Ronin (+1 carte si seul)",s4:"Pack Up (bâtiments mobiles)",fa:"Esprit Sauvage (deploy métal OU bois)",color:"#20B2AA"},
+  {f:"Bayou",rw:"Mangrove → Déserts + Villages",s3:"Flibuste (gagner→2 pièces)",s4:"Seaworthy (lacs+stationner)",fa:"Chimère (capturer 1 mecha)",color:"#7B2D8B"},
+  {f:"Confédération",rw:"Gué → Plaines + Villages",s3:"Cavaliers (+2 si bougé)",s4:"Township (villages↔RR)",fa:"Servitude (capturer ouvrier)",color:"#666"},
+  {f:"Frente Libre",rw:"Sentier → Sierras + Déserts",s3:"Peuple Armé (+1 si ouvrier)",s4:"Terrier (sierras adj.)",fa:"Tierra Minada (traps)",color:"#A05020"},
+];
+
+let hexes = [
+  {id:0,rx:265,ry:103,pt:"toundra"},{id:1,rx:501,ry:103,pt:"montagne"},{id:2,rx:737,ry:103,pt:"toundra"},
+  {id:3,rx:146,ry:171,pt:"village"},{id:4,rx:382,ry:171,pt:"village"},{id:5,rx:618,ry:171,pt:"lac"},{id:6,rx:855,ry:171,pt:"village"},
+  {id:7,rx:265,ry:240,pt:"champs"},{id:8,rx:501,ry:240,pt:"toundra"},{id:9,rx:737,ry:240,pt:"montagne"},
+  {id:10,rx:146,ry:308,pt:"foret"},{id:11,rx:382,ry:308,pt:"foret"},{id:12,rx:618,ry:308,pt:"foret"},{id:13,rx:855,ry:308,pt:"lac"},
+  {id:14,rx:265,ry:376,pt:"montagne"},{id:15,rx:501,ry:376,pt:"plaine"},{id:16,rx:737,ry:376,pt:"champs"},
+  {id:17,rx:146,ry:445,pt:"plaine"},{id:18,rx:382,ry:445,pt:"lac"},{id:19,rx:618,ry:445,pt:"lac"},{id:20,rx:855,ry:445,pt:"marecage"},
+  {id:21,rx:265,ry:513,pt:"desert"},{id:22,rx:501,ry:513,pt:"factory"},{id:23,rx:737,ry:513,pt:"desert"},{id:24,rx:974,ry:513,pt:"village"},
+  {id:25,rx:146,ry:581,pt:"village"},{id:26,rx:382,ry:581,pt:"champs"},{id:27,rx:618,ry:581,pt:"village"},{id:28,rx:855,ry:581,pt:"foret"},
+  {id:29,rx:265,ry:650,pt:"lac"},{id:30,rx:501,ry:650,pt:"lac"},{id:31,rx:737,ry:650,pt:"marecage"},
+  {id:32,rx:146,ry:718,pt:"plaine"},{id:33,rx:382,ry:718,pt:"foret"},{id:34,rx:618,ry:718,pt:"foret"},{id:35,rx:855,ry:718,pt:"champs"},
+  {id:36,rx:265,ry:786,pt:"village"},{id:37,rx:501,ry:786,pt:"village"},{id:38,rx:737,ry:786,pt:"village"},
+  {id:39,rx:146,ry:855,pt:"sierra"},{id:40,rx:382,ry:855,pt:"desert"},{id:41,rx:618,ry:855,pt:"desert"},{id:42,rx:855,ry:855,pt:"desert"},
+  {id:43,rx:265,ry:923,pt:"marecage"},{id:44,rx:501,ry:923,pt:"champs"},{id:45,rx:737,ry:923,pt:"sierra"},
+  {id:46,rx:618,ry:991,pt:"sierra"},
+];
+
+let rivers = [
+  [0,3],[0,7],[4,7],[4,8],[4,11],[1,4],
+  [2,5],[2,9],[6,9],[6,13],
+  [3,10],[7,10],[10,14],[14,17],[17,21],[17,25],
+  [20,24],[20,28],[23,28],[28,31],[31,35],[35,38],[35,42],
+  [32,39],[36,39],[36,43],[40,43],
+  [38,42],[38,45],[41,45],[45,46],
+];
+
+let hbs = [
+  {fid:"dominion",rx:361,ry:79},{fid:"acadiane",rx:834,ry:79},
+  {fid:"nations",rx:23,ry:409},{fid:"bayou",rx:945,ry:683},
+  {fid:"confederation",rx:265,ry:1018},{fid:"frente",rx:841,ry:1018},
+];
+
+// ==================== STATE ====================
+let mode = "terrain";
+let selHex = null;
+let selFaction = null;
+let rSel1 = null;
+let pendingHex = null;
+let hexAnchor = null; // existing hex to add adjacent to
+let showRef = false;
+
+// ==================== HELPERS ====================
+const HS = 62;
+function hexPts(cx,cy) {
+  let pts = [];
+  for(let i=0;i<6;i++){
+    const a = (Math.PI/180)*(60*i);
+    pts.push((cx+HS*Math.cos(a))+","+(cy+HS*Math.sin(a)));
+  }
+  return pts.join(" ");
+}
+function dist(x1,y1,x2,y2){return Math.sqrt((x2-x1)**2+(y2-y1)**2);}
+function ek(a,b){return a<b?a+"-"+b:b+"-"+a;}
+
+// 6 neighbor offsets for pointy-top hex grid (derived from actual positions)
+const HEX_OFFSETS = [[0,-137],[0,137],[118,-68],[-118,-68],[118,68],[-118,68]];
+
+function getGhostPositions(anchorId){
+  const anchor=hexes.find(h=>h.id===anchorId);
+  if(!anchor)return[];
+  const ghosts=[];
+  HEX_OFFSETS.forEach(([dx,dy])=>{
+    const gx=anchor.rx+dx, gy=anchor.ry+dy;
+    // Check no existing hex within 80px
+    const occupied=hexes.some(h=>dist(h.rx,h.ry,gx,gy)<80);
+    if(!occupied) ghosts.push({rx:gx,ry:gy});
+  });
+  return ghosts;
+}
+
+function getAdj(){
+  const a=[];
+  for(let i=0;i<hexes.length;i++)
+    for(let j=i+1;j<hexes.length;j++)
+      if(dist(hexes[i].rx,hexes[i].ry,hexes[j].rx,hexes[j].ry)<160)
+        a.push([hexes[i].id,hexes[j].id]);
+  return a;
+}
+
+function edgeGeo(a,b){
+  const h1=hexes.find(h=>h.id===a),h2=hexes.find(h=>h.id===b);
+  if(!h1||!h2)return null;
+  const mx=(h1.rx+h2.rx)/2,my=(h1.ry+h2.ry)/2;
+  const dx=h2.rx-h1.rx,dy=h2.ry-h1.ry;
+  const len=Math.sqrt(dx*dx+dy*dy);
+  if(len===0)return null;
+  const nx=-dy/len,ny=dx/len,half=28;
+  return{x1:mx+nx*half,y1:my+ny*half,x2:mx-nx*half,y2:my-ny*half};
+}
+
+function rSet(){return new Set(rivers.map(([a,b])=>ek(a,b)));}
+
+function svgCoords(e){
+  const svg=document.getElementById("map-svg");
+  const pt=svg.createSVGPoint();
+  pt.x=e.clientX;pt.y=e.clientY;
+  const p=pt.matrixTransform(svg.getScreenCTM().inverse());
+  return{x:Math.round(p.x),y:Math.round(p.y)};
+}
+
+function getCounts(){
+  const c={};
+  hexes.forEach(h=>{if(h.pt!=="factory")c[h.pt]=(c[h.pt]||0)+1;});
+  return c;
+}
+
+// ==================== RENDER ====================
+function render(){
+  renderToolbar();
+  renderInstructions();
+  renderPicker();
+  renderRefPanel();
+  renderSVG();
+  renderCounts();
+}
+
+function renderToolbar(){
+  const tb=document.getElementById("toolbar");
+  const modes=[["terrain","🎨 Terrains"],["faction","🏴 Factions"],["river","🌊 Rivières"],["hex","⬡ Hex"]];
+  let html="";
+  modes.forEach(([m,l])=>{
+    html+=`<button class="btn ${mode===m?"active":""}" onclick="setMode('${m}')">${l}</button>`;
+  });
+  html+=`<button class="btn btn-ref ${showRef?"active":""}" onclick="toggleRef()">📋 Ref</button>`;
+  html+=`<button class="btn btn-primary" onclick="exportJSON()" style="margin-left:auto">Export JSON</button>`;
+  tb.innerHTML=html;
+}
+
+function renderInstructions(){
+  const el=document.getElementById("instructions");
+  if(mode==="terrain") el.textContent="Cliquer hex → choisir terrain";
+  else if(mode==="faction") el.textContent=selFaction?`Cliquer sur le FOND de la carte (pas un hex) pour placer ${FACTIONS.find(f=>f.id===selFaction).name}`:"Choisir faction ci-dessous → cliquer sur le fond de la carte (hors-grille)";
+  else if(mode==="river") el.textContent=rSel1!=null?`#${rSel1} sélectionné → cliquer hex adjacent (vert=ajouter, rouge=supprimer)`:"Cliquer hex A puis hex B adjacent. Rivière existante → supprime, sinon → ajoute";
+  else if(mode==="hex"){
+    if(hexAnchor!=null) el.textContent=`#${hexAnchor} sélectionné — cliquer une position adjacente (vert) pour placer le nouveau hex`;
+    else if(pendingHex!=null) el.textContent="Cliquer un hex existant pour choisir où ajouter le nouveau hex adjacent";
+    else el.textContent="Cliquer + pour ajouter (puis choisir hex voisin). Cliquer hex existant pour supprimer.";
+  }
+}
+
+function renderPicker(){
+  const area=document.getElementById("picker-area");
+  let html="";
+  
+  if(mode==="terrain"&&selHex!=null){
+    const h=hexes.find(x=>x.id===selHex);
+    if(h){
+      const td=TERRAINS[h.pt];
+      html+=`<div class="picker"><span style="font-weight:600">#${h.id} — ${td.icon} ${td.label}</span>`;
+      html+=` <button class="btn" style="font-size:10px;padding:1px 6px" onclick="selHex=null;render()">✕</button><br>`;
+      T_KEYS.forEach(tk=>{
+        const t=TERRAINS[tk];
+        html+=`<button class="picker-btn ${h.pt===tk?"active":""}" style="background:${t.color}" onclick="assignTerrain(${h.id},'${tk}')">${t.icon} ${t.label}</button>`;
+      });
+      html+=`</div>`;
+    }
+  }
+  
+  if(mode==="faction"){
+    html+=`<div style="display:flex;gap:3px;margin-bottom:5px;flex-wrap:wrap">`;
+    FACTIONS.forEach(f=>{
+      html+=`<button class="faction-btn ${selFaction===f.id?"active":""}" style="background:${f.color}" onclick="pickFaction('${f.id}')">${f.name}</button>`;
+    });
+    html+=`</div>`;
+  }
+  
+  if(mode==="hex"){
+    html+=`<div class="hex-controls">`;
+    if(pendingHex==null&&hexAnchor==null){
+      html+=`<button class="btn btn-green" onclick="startAddHex()">+ Ajouter hex</button>`;
+    }
+    if(pendingHex!=null||hexAnchor!=null){
+      html+=`<button class="btn" onclick="cancelAddHex()">Annuler ajout</button>`;
+    }
+    if(selHex!=null&&pendingHex==null&&hexAnchor==null){
+      html+=`<button class="btn btn-red" onclick="removeHex(${selHex})">Supprimer #${selHex}</button>`;
+    }
+    if(hexAnchor!=null){
+      html+=`<span style="font-size:10px;color:#4caf50;font-weight:600">Cliquer une position verte adjacente à #${hexAnchor}</span>`;
+    } else if(pendingHex!=null){
+      html+=`<span style="font-size:10px;color:#4caf50;font-weight:600">Cliquer un hex existant comme point d'ancrage</span>`;
+    }
+    html+=`</div>`;
+  }
+  
+  area.innerHTML=html;
+}
+
+function renderRefPanel(){
+  const area=document.getElementById("ref-panel-area");
+  if(!showRef){area.innerHTML="";return;}
+  let html=`<div class="ref-panel"><div style="font-weight:700;margin-bottom:3px;font-size:11px">Riverwalk + Abilities</div>`;
+  REF_DATA.forEach(r=>{
+    html+=`<div style="border-bottom:1px solid #e8e8e8;padding-bottom:2px;margin-bottom:2px">`;
+    html+=`<span style="color:${r.color};font-weight:700">${r.f}</span> `;
+    html+=`<span style="color:#333">${r.rw}</span><br>`;
+    html+=`<span style="color:#666">Combat: ${r.s3} | Position: ${r.s4}</span><br>`;
+    html+=`<span style="color:#888">Faction: ${r.fa}</span></div>`;
+  });
+  html+=`</div>`;
+  area.innerHTML=html;
+}
+
+function renderSVG(){
+  const svg=document.getElementById("map-svg");
+  const allP=[...hexes.map(h=>[h.rx,h.ry]),...hbs.map(h=>[h.rx,h.ry])];
+  const pad=95;
+  const minX=Math.min(...allP.map(p=>p[0]))-pad;
+  const maxX=Math.max(...allP.map(p=>p[0]))+pad;
+  const minY=Math.min(...allP.map(p=>p[1]))-pad;
+  const maxY=Math.max(...allP.map(p=>p[1]))+pad;
+  
+  svg.setAttribute("viewBox",`${minX} ${minY} ${maxX-minX} ${maxY-minY}`);
+  svg.style.cursor=(mode==="faction"&&selFaction)?"crosshair":"default";
+  
+  let s="";
+  // Background
+  s+=`<rect x="${minX}" y="${minY}" width="${maxX-minX}" height="${maxY-minY}" fill="#1a1a10" rx="10"/>`;
+  s+=`<text x="${(minX+maxX)/2}" y="${minY+14}" text-anchor="middle" font-size="9" fill="rgba(255,200,150,0.4)" font-weight="500">NORD — Toundra</text>`;
+  s+=`<text x="${(minX+maxX)/2}" y="${maxY-6}" text-anchor="middle" font-size="9" fill="rgba(255,200,150,0.4)" font-weight="500">SUD — Désert / Sierra</text>`;
+  
+  // Rivers
+  const rs=rSet();
+  rivers.forEach(([a,b])=>{
+    const g=edgeGeo(a,b);if(!g)return;
+    s+=`<line x1="${g.x1}" y1="${g.y1}" x2="${g.x2}" y2="${g.y2}" stroke="#2c6cc0" stroke-width="6" stroke-linecap="round" opacity="0.75"/>`;
+  });
+  
+  // River mode highlights
+  if(mode==="river"&&rSel1!=null){
+    const adj=getAdj();
+    adj.filter(([a,b])=>a===rSel1||b===rSel1).forEach(([a,b])=>{
+      const g=edgeGeo(a,b);if(!g)return;
+      const has=rs.has(ek(a,b));
+      const other=a===rSel1?b:a;
+      s+=`<line x1="${g.x1}" y1="${g.y1}" x2="${g.x2}" y2="${g.y2}" stroke="${has?"#ff5252":"#69f0ae"}" stroke-width="9" stroke-linecap="round" opacity="0.5" style="cursor:pointer" data-river-target="${other}"/>`;
+    });
+  }
+  
+  // Ghost hex positions (hex add mode)
+  if(mode==="hex"&&hexAnchor!=null){
+    const ghosts=getGhostPositions(hexAnchor);
+    ghosts.forEach((g,i)=>{
+      s+=`<polygon points="${hexPts(g.rx,g.ry)}" fill="#69f0ae" stroke="#4caf50" stroke-width="2" opacity="0.3" style="cursor:pointer" data-ghost="${i}" data-ghost-x="${g.rx}" data-ghost-y="${g.ry}"/>`;
+      s+=`<text x="${g.rx}" y="${g.ry+5}" text-anchor="middle" font-size="20" fill="#4caf50" opacity="0.7" pointer-events="none">+</text>`;
+    });
+  }
+  
+  // Hexes
+  hexes.forEach(hex=>{
+    const td=TERRAINS[hex.pt];if(!td)return;
+    const isSel=selHex===hex.id,isRS=rSel1===hex.id,isAnchor=hexAnchor===hex.id;
+    let sc="rgba(0,0,0,0.3)",sw=1;
+    if(isSel){sc="#ffcc00";sw=3;}else if(isRS){sc="#69f0ae";sw=3;}else if(isAnchor){sc="#4caf50";sw=3;}
+    s+=`<g data-hex="${hex.id}" style="cursor:pointer">`;
+    s+=`<polygon points="${hexPts(hex.rx,hex.ry)}" fill="${td.color}" stroke="${sc}" stroke-width="${sw}" opacity="0.88" data-hex="${hex.id}"/>`;
+    s+=`<text x="${hex.rx}" y="${hex.ry-5}" text-anchor="middle" font-size="14" pointer-events="none">${td.icon}</text>`;
+    s+=`<text x="${hex.rx}" y="${hex.ry+12}" text-anchor="middle" font-size="8" fill="#fff" font-weight="500" pointer-events="none" style="text-shadow:0 1px 3px rgba(0,0,0,0.9)">${td.label}</text>`;
+    s+=`<text x="${hex.rx}" y="${hex.ry-23}" text-anchor="middle" font-size="6" fill="rgba(255,255,255,0.35)" pointer-events="none">#${hex.id}</text>`;
+    s+=`</g>`;
+  });
+  
+  // Home bases
+  hbs.forEach(hb=>{
+    const f=FACTIONS.find(x=>x.id===hb.fid);if(!f)return;
+    const isSel=mode==="faction"&&selFaction===hb.fid;
+    s+=`<circle cx="${hb.rx}" cy="${hb.ry}" r="22" fill="${f.color}" opacity="0.2"/>`;
+    s+=`<circle cx="${hb.rx}" cy="${hb.ry}" r="22" fill="none" stroke="${f.color}" stroke-width="${isSel?4:2}" stroke-dasharray="${isSel?"":"5 3"}"/>`;
+    s+=`<text x="${hb.rx}" y="${hb.ry+4}" text-anchor="middle" font-size="9" fill="#fff" font-weight="600" pointer-events="none" style="text-shadow:0 1px 3px rgba(0,0,0,0.9)">${f.short}</text>`;
+    s+=`<text x="${hb.rx}" y="${hb.ry+18}" text-anchor="middle" font-size="7" fill="${f.color}" font-weight="500" opacity="0.8" pointer-events="none">${f.name}</text>`;
+  });
+  
+  svg.innerHTML=s;
+}
+
+function renderCounts(){
+  const c=getCounts();
+  let html="";
+  Object.entries(c).sort((a,b)=>b[1]-a[1]).forEach(([t,n])=>{
+    const td=TERRAINS[t];
+    html+=`<span class="count-tag" style="background:${td.color}">${td.label}: ${n}</span>`;
+  });
+  html+=`<span class="count-tag" style="background:#555">Total: ${Object.values(c).reduce((s,v)=>s+v,0)+1} | Riv: ${rivers.length}</span>`;
+  document.getElementById("counts").innerHTML=html;
+}
+
+// ==================== ACTIONS ====================
+function setMode(m){
+  mode=m;selHex=null;selFaction=null;rSel1=null;pendingHex=null;hexAnchor=null;render();
+}
+
+function toggleRef(){showRef=!showRef;render();}
+
+function assignTerrain(id,t){
+  const h=hexes.find(x=>x.id===id);if(h)h.pt=t;
+  selHex=null;render();
+}
+
+function pickFaction(fid){
+  selFaction=selFaction===fid?null:fid;render();
+}
+
+function startAddHex(){
+  pendingHex=true; // flag that we're in "pick anchor" mode
+  hexAnchor=null;selHex=null;render();
+}
+
+function cancelAddHex(){
+  pendingHex=null;hexAnchor=null;render();
+}
+
+function placeGhostHex(gx,gy){
+  const nid=Math.max(...hexes.map(h=>h.id),0)+1;
+  hexes.push({id:nid,rx:gx,ry:gy,pt:"village"});
+  pendingHex=null;hexAnchor=null;selHex=nid;render();
+  document.getElementById("status").textContent=`✅ Hex #${nid} ajouté à (${gx},${gy}) — basculer en mode Terrains pour changer son type`;
+}
+
+function removeHex(id){
+  hexes=hexes.filter(h=>h.id!==id);
+  rivers=rivers.filter(([a,b])=>a!==id&&b!==id);
+  selHex=null;render();
+}
+
+function exportJSON(){
+  const data={
+    title:"Panamerica Map Export",
+    date:new Date().toISOString(),
+    hexes:hexes.map(h=>({id:h.id,rx:h.rx,ry:h.ry,terrain:h.pt})),
+    rivers:rivers,
+    home_bases:hbs.map(h=>({factionId:h.fid,rx:h.rx,ry:h.ry,name:FACTIONS.find(f=>f.id===h.fid)?.name})),
+    terrain_counts:getCounts(),
+  };
+  const json=JSON.stringify(data,null,2);
+  const blob=new Blob([json],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url;a.download="panamerica_map.json";
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  document.getElementById("status").textContent="✅ Export téléchargé: panamerica_map.json";
+}
+
+// ==================== SVG CLICK HANDLER ====================
+document.getElementById("map-svg").addEventListener("click",function(e){
+  // Check if clicked on a ghost hex position
+  const ghostEl=e.target.closest("[data-ghost]");
+  if(ghostEl){
+    const gx=parseInt(ghostEl.getAttribute("data-ghost-x"));
+    const gy=parseInt(ghostEl.getAttribute("data-ghost-y"));
+    placeGhostHex(gx,gy);
+    return;
+  }
+
+  // Check if clicked on a river target line
+  const riverTarget=e.target.getAttribute("data-river-target");
+  if(riverTarget!=null){
+    const otherId=parseInt(riverTarget);
+    handleRiverClick(otherId);
+    return;
+  }
+  
+  // Check if clicked on a hex
+  let hexId=e.target.getAttribute("data-hex");
+  if(!hexId){
+    const g=e.target.closest("[data-hex]");
+    if(g) hexId=g.getAttribute("data-hex");
+  }
+  
+  if(hexId!=null){
+    const id=parseInt(hexId);
+    onHexClick(id);
+    return;
+  }
+  
+  // Clicked on background
+  onBgClick(e);
+});
+
+function onHexClick(id){
+  if(mode==="terrain"){
+    selHex=id;render();
+  } else if(mode==="hex"){
+    if(pendingHex&&hexAnchor==null){
+      // Pick this hex as anchor → show ghost positions
+      hexAnchor=id;render();
+    } else if(!pendingHex){
+      // Select for deletion
+      selHex=id;render();
+    }
+  } else if(mode==="river"){
+    if(rSel1==null){rSel1=id;render();}
+    else{handleRiverClick(id);}
+  }
+  // In faction mode, hex clicks are ignored
+}
+
+function handleRiverClick(id){
+  if(rSel1==null)return;
+  const k=ek(rSel1,id);
+  const adj=getAdj();
+  const isAdj=adj.some(([a,b])=>ek(a,b)===k);
+  if(isAdj){
+    const rs=rSet();
+    if(rs.has(k)){
+      rivers=rivers.filter(([a,b])=>ek(a,b)!==k);
+    } else {
+      rivers.push(rSel1<id?[rSel1,id]:[id,rSel1]);
+    }
+  }
+  rSel1=null;render();
+}
+
+function onBgClick(e){
+  const c=svgCoords(e);
+  
+  if(mode==="faction"&&selFaction){
+    const hb=hbs.find(h=>h.fid===selFaction);
+    if(hb){hb.rx=c.x;hb.ry=c.y;}
+    selFaction=null;render();
+  }
+  else if(mode==="river"){
+    rSel1=null;render();
+  }
+  else if(mode==="hex"&&(pendingHex||hexAnchor)){
+    // Clicking bg cancels add mode
+    pendingHex=null;hexAnchor=null;render();
+  }
+}
+
+// ==================== INIT ====================
+render();
+</script>
+</body>
+</html>
