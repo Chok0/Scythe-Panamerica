@@ -1,31 +1,49 @@
 :root {
-  --bg: #0d0c08;
-  --bg2: #161410;
-  --bg3: #1e1b15;
-  --panel: #1a1812;
-  --gold: #d4b254;
-  --gold-dim: #8a6e3a;
-  --gold-light: #ecd080;
-  --brass: #c4a060;
-  --copper: #b08060;
-  --text: #e8dcc4;
-  --text-dim: #a89878;
-  --text-muted: #6a5c44;
-  --border: #322a1e;
-  --border-light: #4a3e2e;
-  --red: #c83828;
-  --green: #4a9a3a;
-  --blue: #3478d0;
-  --danger: #d43838;
-  --success: #50b050;
-  /* Sizing tokens */
-  --top-h: 52px;
-  --side-w: 54px;
-  --bottom-max: 40vh;
-  --fs-xs: 10px;
-  --fs-sm: 12px;
-  --fs-md: 14px;
-  --fs-lg: 16px;
-  --fs-xl: 20px;
-  --btn-min: 40px;
+  /* === DA Doc: Palette === */
+  --bg: #1A1710;
+  --bg2: #1E1A12;
+  --bg3: #2A2418;
+  --panel: #1E1A12;
+  --panel-elevated: #2A2418;
+
+  /* Or / Accent */
+  --gold: #C9A84C;
+  --gold-dim: #8A7A3A;
+  --gold-light: #E8DCC8;
+
+  /* Texte */
+  --text: #E8DCC8;
+  --text-dim: #8A7A6A;
+  --text-muted: #4A4030;
+
+  /* Bordures */
+  --border: #2A2418;
+  --border-light: #1E1A14;
+  --grid: #2A2518;
+
+  /* Fonctionnel */
+  --danger: #8A3030;
+  --success: #4A8A4A;
+  --info: #3A6A9A;
+
+  /* === Typographie === */
+  --font-title: 'Bitter', 'Roboto Slab', serif;
+  --font-body: 'IBM Plex Serif', Georgia, serif;
+  --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+
+  /* Échelle typo DA doc */
+  --fs-title: 20px;
+  --fs-section: 14px;
+  --fs-faction: 12px;
+  --fs-label: 10px;
+  --fs-body: 11px;
+  --fs-counter: 11px;
+  --fs-micro: 8px;
+  --fs-debug: 6px;
+
+  /* Sizing */
+  --top-h: 38px;
+  --side-w: 42px;
+  --bottom-max: 35vh;
+  --btn-min: 44px;
 }
