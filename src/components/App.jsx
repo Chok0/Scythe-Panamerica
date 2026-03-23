@@ -1129,29 +1129,29 @@ export default function App(){
 
     return(
       <div style={{minHeight:"100vh",background:"linear-gradient(170deg,#1A1710 0%,#1A1710 40%,#1A1710 100%)",color:"var(--text)",display:"flex",flexDirection:"column",alignItems:"center",padding:"32px 16px",overflow:"auto"}}>
-        <div style={{width:80,height:1,background:"linear-gradient(90deg,transparent,var(--gold),transparent)",marginBottom:16}}/>
-        <h1 style={{fontSize:24,fontWeight:900,letterSpacing:8,textTransform:"uppercase",color:"var(--gold)",marginBottom:4,textAlign:"center"}}>Fin de Partie</h1>
-        <div style={{width:140,height:1,background:"linear-gradient(90deg,transparent,var(--gold-dim),transparent)",marginBottom:24}}/>
+        <div style={{width:80,height:1,background:"linear-gradient(90deg,transparent,var(--rust),transparent)",marginBottom:16}}/>
+        <h1 style={{fontSize:24,fontWeight:900,letterSpacing:8,textTransform:"uppercase",color:"var(--rust)",marginBottom:4,textAlign:"center"}}>Fin de Partie</h1>
+        <div style={{width:140,height:1,background:"linear-gradient(90deg,transparent,var(--rust-dark),transparent)",marginBottom:24}}/>
 
         {/* Rankings */}
         <div style={{width:"100%",maxWidth:560}}>
           {scores.map((s,i)=>(
             <div key={s.faction} className="fade-in" style={{
-              background:i===0?"rgba(201,168,76,0.08)":"rgba(20,18,12,0.6)",
-              border:i===0?`2px solid var(--gold)`:`1px solid var(--border)`,
+              background:i===0?"rgba(200,112,64,0.08)":"rgba(20,18,12,0.6)",
+              border:i===0?`2px solid var(--rust)`:`1px solid var(--border)`,
               borderRadius:8,padding:"16px 20px",marginBottom:8,
-              boxShadow:i===0?"0 0 30px rgba(201,168,76,0.12)":"none",
+              boxShadow:i===0?"0 0 30px rgba(200,112,64,0.15)":"none",
               animationDelay:`${i*0.1}s`,
             }}>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
-                <span style={{fontSize:24,fontWeight:900,color:i===0?"var(--gold)":"var(--text-muted)",fontFamily:"var(--font-title)",width:32}}>
+                <span style={{fontSize:24,fontWeight:900,color:i===0?"var(--rust)":"var(--text-muted)",fontFamily:"var(--font-title)",width:32}}>
                   {i===0?"🏆":i+1+"."}
                 </span>
                 <div style={{flex:1}}>
                   <div style={{fontFamily:"var(--font-title)",fontSize:16,fontWeight:700,color:s.color}}>{s.name}</div>
                   <div style={{fontSize:10,color:"var(--text-dim)"}}>{s.hero} {s.isBot?"🤖":"👤"}</div>
                 </div>
-                <div style={{fontSize:22,fontWeight:900,color:i===0?"var(--gold)":"var(--text)",fontFamily:"var(--font-title)"}}>{s.total}$</div>
+                <div style={{fontSize:22,fontWeight:900,color:i===0?"var(--rust)":"var(--text)",fontFamily:"var(--font-title)"}}>{s.total}$</div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,fontSize:11,color:"var(--text-dim)"}}>
                 <div style={{background:"var(--bg3)",padding:"6px 8px",borderRadius:4,textAlign:"center"}}>
@@ -1206,7 +1206,7 @@ export default function App(){
             <div style={{fontSize:11,color:"var(--text-dim)",fontFamily:"var(--font-body)"}}>{myMat.name} · T{turn}</div>
           </div>
         </div>
-        {botRunning&&<span style={{color:"var(--gold)",fontSize:12,animation:"pulse 1s infinite",marginRight:4,display:"flex",alignItems:"center",gap:3}}>{React.createElement(RESOURCE_ICONS.metal,{size:12,color:"var(--gold)"})} IA…</span>}
+        {botRunning&&<span style={{color:"var(--rust)",fontSize:12,animation:"pulse 1s infinite",marginRight:4,display:"flex",alignItems:"center",gap:3}}>{React.createElement(RESOURCE_ICONS.metal,{size:12,color:"var(--rust)"})} IA…</span>}
         {/* Divider */}
         <div style={{width:1,height:28,background:"var(--border-light)",flexShrink:0}}/>
         {/* Resource counters — SVG icons */}
@@ -1246,7 +1246,7 @@ export default function App(){
       <div style={{display:"flex",gap:4,background:"linear-gradient(180deg,var(--bg-panel),#0a0906)",borderRight:"1px solid var(--border)",padding:"4px 4px",overflow:"hidden"}}>
         {/* Power track */}
         <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
-          <div style={{fontSize:8,color:"#cc9988",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pui</div>
+          <div style={{fontSize:8,color:"var(--rust)",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pui</div>
           <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,width:"100%"}}>
             {Array.from({length:17},(_,i)=>i).map(v=>(
               <div key={v} style={{
@@ -1260,15 +1260,15 @@ export default function App(){
               }}>{v%2===0?v:""}</div>
             ))}
           </div>
-          <div style={{fontSize:16,fontWeight:700,color:"#dd6644",marginTop:4,fontFamily:"var(--font-title)"}}>{me.power}</div>
+          <div style={{fontSize:16,fontWeight:700,color:"var(--rust-light)",marginTop:4,fontFamily:"var(--font-title)"}}>{me.power}</div>
         </div>
         {/* Popularity track */}
         <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
-          <div style={{fontSize:8,color:"#ccaa77",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pop</div>
+          <div style={{fontSize:8,color:"var(--brass)",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pop</div>
           <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,width:"100%"}}>
             {Array.from({length:19},(_,i)=>i).map(v=>{
               const tier=v<=6?0:v<=12?1:2;
-              const tierColors=["#8a6020","#b88030","#d0a040"];
+              const tierColors=["var(--oxide)","var(--brass)","var(--gold)"];
               return(
                 <div key={v} style={{
                   flex:1,minHeight:0,width:"100%",borderRadius:2,
@@ -1283,7 +1283,7 @@ export default function App(){
               );
             })}
           </div>
-          <div style={{fontSize:16,fontWeight:700,color:"#d0a040",marginTop:4,fontFamily:"var(--font-title)"}}>{me.pop}</div>
+          <div style={{fontSize:16,fontWeight:700,color:"var(--brass)",marginTop:4,fontFamily:"var(--font-title)"}}>{me.pop}</div>
         </div>
       </div>
 
@@ -1468,7 +1468,7 @@ export default function App(){
                 const enemy=!isPve?players[combat.enemyIdx]:null;
                 const ef=enemy?FACTIONS[enemy.faction]:null;
                 return(
-                  <div className="combat-panel" style={{padding:"24px",background:"linear-gradient(180deg,#1a0c08,var(--bg2))",borderRadius:12}}>
+                  <div className="combat-panel" style={{padding:"24px",background:"linear-gradient(180deg,#200e0a,var(--bg2))",borderRadius:12}}>
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
                       <div style={{width:50,height:50,borderRadius:"50%",background:isPve?"rgba(180,30,15,0.2)":"rgba(200,100,30,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,border:isPve?"2px solid #1A3A6A":"2px solid "+(ef?ef.color:"#888"),flexShrink:0}}>⚔</div>
                       <div>
@@ -1491,17 +1491,17 @@ export default function App(){
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16,padding:"12px 16px",background:"rgba(0,0,0,0.4)",borderRadius:10,border:"1px solid var(--border)"}}>
                       <span style={{fontSize:22,fontWeight:900,color:"var(--gold)",fontFamily:"var(--font-title)"}}>{total}</span>
                       <span style={{fontSize:12,color:"var(--text-muted)"}}>{combat.powerSpend}{cBonus.powerBonus>0?`+${cBonus.powerBonus}`:""}⚡ + {combat.cardsSpend}×2🃏</span>
-                      {cBonus.name&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:"rgba(200,160,60,0.15)",border:"1px solid var(--gold-dim)",color:"var(--gold)"}}>{cBonus.name}{cBonus.powerBonus>0?` +${cBonus.powerBonus}⚡`:""}{cBonus.cardBonus>0?` +${cBonus.cardBonus}🃏`:""}</span>}
+                      {cBonus.name&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:"rgba(200,112,64,0.12)",border:"1px solid var(--rust)",color:"var(--rust)"}}>{cBonus.name}{cBonus.powerBonus>0?` +${cBonus.powerBonus}⚡`:""}{cBonus.cardBonus>0?` +${cBonus.cardBonus}🃏`:""}</span>}
                       {isPve&&<span style={{fontSize:16,fontWeight:700,marginLeft:"auto",color:total>=combat.empireCard.power?"var(--success)":"#ff4444"}}>{total>=combat.empireCard.power?"✓":"✗"} vs {combat.empireCard.power}</span>}
                     </div>
-                    <button onClick={resolveCombat} style={{width:"100%",padding:"14px",fontSize:15,fontWeight:700,fontFamily:"var(--font-title)",letterSpacing:3,textTransform:"uppercase",background:"linear-gradient(135deg,#8b2020,#6b1515)",color:"#fff",border:"none",borderRadius:10,boxShadow:"0 3px 20px rgba(140,30,20,0.5)"}}>⚔ Combattre</button>
+                    <button onClick={resolveCombat} style={{width:"100%",padding:"14px",fontSize:15,fontWeight:700,fontFamily:"var(--font-title)",letterSpacing:3,textTransform:"uppercase",background:"linear-gradient(135deg,var(--danger),#8b1515)",color:"#fff",border:"none",borderRadius:10,boxShadow:"0 3px 20px rgba(200,56,40,0.4)"}}>⚔ Combattre</button>
                   </div>
                 );
               })()}
 
               {/* COMBAT REWARD */}
               {combat&&combat.phase==="reward"&&(
-                <div className="reward-panel" style={{padding:"24px",background:"linear-gradient(180deg,#0c1a0c,var(--bg2))",borderRadius:12}}>
+                <div className="reward-panel" style={{padding:"24px",background:"linear-gradient(180deg,#0e200e,var(--bg2))",borderRadius:12}}>
                   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
                     <span style={{fontSize:32}}>🏆</span>
                     <div><div style={{fontFamily:"var(--font-title)",color:"var(--success)",fontSize:20,fontWeight:700}}>Victoire !</div><div style={{fontSize:12,color:"var(--text-dim)"}}>Choisissez votre butin</div></div>
@@ -1520,7 +1520,7 @@ export default function App(){
 
               {/* ENCOUNTER */}
               {encounter&&(
-                <div style={{padding:"20px",background:"linear-gradient(180deg,#1a1608,var(--bg2))",borderRadius:10,border:"1px solid var(--gold-dim)",animation:"slideUp 0.35s ease"}}>
+                <div style={{padding:"20px",background:"linear-gradient(180deg,#1a1608,var(--bg2))",borderRadius:10,border:"1px solid var(--rust)",animation:"slideUp 0.35s ease"}}>
                   <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:16}}>
                     <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(201,168,76,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:"2px solid var(--gold)",flexShrink:0}}>📜</div>
                     <div>
@@ -1547,7 +1547,7 @@ export default function App(){
 
               {/* ROUGE RIVER */}
               {rougeRiver&&(
-                <div style={{padding:"20px",background:"linear-gradient(180deg,#1a0a08,var(--bg2))",borderRadius:10,border:"1px solid #6b1010",animation:"slideUp 0.35s ease"}}>
+                <div style={{padding:"20px",background:"linear-gradient(180deg,#1a0a08,var(--bg2))",borderRadius:10,border:"1px solid var(--danger)",animation:"slideUp 0.35s ease"}}>
                   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
                     <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(139,32,32,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:"2px solid #8b2020",flexShrink:0}}>⚙</div>
                     <div>
@@ -1582,7 +1582,7 @@ export default function App(){
         <div style={{padding:"6px 8px",borderBottom:"1px solid var(--border)",flexShrink:0}}>
           {players.map((p,i)=>{const fc=FACTIONS[p.faction];const isActive=i===currentP;return(
             <div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 6px",borderRadius:4,
-              background:isActive?"rgba(201,168,76,0.06)":"transparent",
+              background:isActive?"rgba(200,112,64,0.06)":"transparent",
               borderLeft:isActive?`3px solid ${fc.color}`:"3px solid transparent",
               animation:isActive&&i>0?"botPulse 1.5s ease infinite":"none",
               marginBottom:2,
@@ -1659,7 +1659,7 @@ export default function App(){
                 return(
                   <React.Fragment key={action}>
                   <button onClick={()=>{if(!disabled){setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
-                    onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background="rgba(201,168,76,0.06)";}}
+                    onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background="rgba(200,112,64,0.06)";}}
                     onMouseLeave={e=>{e.currentTarget.style.background=disabled?"rgba(0,0,0,0.3)":"transparent";}}
                     style={{
                     padding:0,background:disabled?"rgba(0,0,0,0.3)":"transparent",
@@ -1672,7 +1672,7 @@ export default function App(){
                     {/* TOP ACTION */}
                     <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(30,27,20,0.8),rgba(22,20,14,0.6))"}}>
                       <div style={{minWidth:0,flex:1}}>
-                        <div style={{fontSize:11,fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",color:"var(--gold-dim)",marginBottom:4,fontFamily:"var(--font-title)"}}>{action}</div>
+                        <div style={{fontSize:11,fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",color:"var(--rust)",marginBottom:4,fontFamily:"var(--font-title)"}}>{action}</div>
                         <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact />
                       </div>
                       <CubeSlots total={cubesTop} filled={cubesTop} />
@@ -1693,7 +1693,7 @@ export default function App(){
                   </button>
                   {/* GROUP SEPARATOR: strong between action pairs, light within pair */}
                   {!isLastAction&&(isGroupEnd
-                    ?<div style={{height:6,background:"var(--bg)",borderTop:"2px solid var(--gold-dim)",borderBottom:"1px solid var(--border)",opacity:0.7}}/>
+                    ?<div style={{height:6,background:"var(--bg)",borderTop:"2px solid var(--rust-dark)",borderBottom:"1px solid var(--border)",opacity:0.7}}/>
                     :<div style={{height:1,background:"var(--border)"}}/>
                   )}
                   </React.Fragment>

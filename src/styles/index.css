@@ -40,10 +40,11 @@ h1, h2, h3 {
   letter-spacing: 0.04em;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 3px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 3px; }
+/* Scrollbar — 8px, rouille */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border-dark); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--rust); }
 
 /* === Animations (DA doc: 150-400ms, ease-out) === */
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
@@ -82,7 +83,7 @@ svg text { -webkit-user-select: none; user-select: none; }
   transition: all .2s;
 }
 .enc-card:hover {
-  border-color: var(--gold);
+  border-color: var(--rust);
   background: var(--bg3);
 }
 
@@ -103,14 +104,16 @@ svg text { -webkit-user-select: none; user-select: none; }
 .rr-card.ford:hover { border-color: #4A8ABA; }
 .rr-card.tesla:hover { border-color: #9B4DAB; }
 
-/* Combat & Reward panels */
+/* Combat & Reward panels — style guide tones */
 .combat-panel {
   border-bottom: 2px solid var(--danger);
   animation: combatFlash 3s ease-in-out infinite, slideUp 0.25s ease;
+  box-shadow: inset 0 0 30px rgba(200,56,40,0.06);
 }
 .reward-panel {
-  border-bottom: 2px solid var(--success);
-  background: linear-gradient(180deg, rgba(74,138,74,0.06), var(--bg2));
+  border-bottom: 2px solid var(--patina);
+  background: linear-gradient(180deg, rgba(90,122,106,0.08), var(--bg2));
+  box-shadow: inset 0 0 30px rgba(90,122,106,0.06);
 }
 
 /* Dial buttons (combat power/card selection) */
@@ -160,8 +163,9 @@ svg text { -webkit-user-select: none; user-select: none; }
   transition: all .15s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 .act-btn:hover {
-  border-color: var(--gold-dim);
+  border-color: var(--rust);
   background: var(--panel-elevated);
+  color: var(--text);
 }
 .act-btn:active { transform: translateY(1px); }
 .act-btn:disabled { opacity: 0.2; cursor: not-allowed; transform: none !important; }
@@ -172,7 +176,7 @@ svg text { -webkit-user-select: none; user-select: none; }
   font-size: var(--fs-micro);
   letter-spacing: 2px;
   text-transform: uppercase;
-  color: var(--gold-dim);
+  color: var(--rust);
 }
 
 /* Log styling */
@@ -220,7 +224,7 @@ svg text { -webkit-user-select: none; user-select: none; }
 .rules-header-line--wide { width: 180px; margin-bottom: 8px; margin-top: 4px; }
 .rules-subtitle {
   font-size: 13px;
-  color: var(--gold-dim);
+  color: var(--rust);
   letter-spacing: 8px;
   text-transform: uppercase;
   margin-bottom: 6px;
@@ -231,9 +235,9 @@ svg text { -webkit-user-select: none; user-select: none; }
   font-weight: 900;
   letter-spacing: 8px;
   text-transform: uppercase;
-  color: var(--gold);
+  color: var(--rust);
   text-align: center;
-  text-shadow: 0 0 40px rgba(201,168,76,0.15);
+  text-shadow: 0 0 40px rgba(200,112,64,0.2);
   margin-bottom: 0;
 }
 .rules-close {
@@ -249,7 +253,7 @@ svg text { -webkit-user-select: none; user-select: none; }
   font-family: var(--font-title);
   font-weight: 700;
 }
-.rules-close:hover { border-color: var(--gold-dim); color: var(--gold); }
+.rules-close:hover { border-color: var(--rust); color: var(--rust); }
 .rules-list { display: flex; flex-direction: column; gap: 6px; }
 .rules-card {
   background: rgba(20,18,12,0.8);
@@ -258,7 +262,7 @@ svg text { -webkit-user-select: none; user-select: none; }
   overflow: hidden;
   transition: border-color .2s;
 }
-.rules-card--open { border-color: var(--gold-dim); }
+.rules-card--open { border-color: var(--rust); }
 .rules-card-header {
   width: 100%;
   display: flex;
@@ -289,7 +293,7 @@ svg text { -webkit-user-select: none; user-select: none; }
   font-family: var(--font-title);
   font-size: 12px;
   font-weight: 700;
-  color: var(--gold);
+  color: var(--rust);
   letter-spacing: 2px;
   text-transform: uppercase;
   margin-bottom: 6px;
@@ -316,5 +320,5 @@ svg text { -webkit-user-select: none; user-select: none; }
   content: '—';
   position: absolute;
   left: 0;
-  color: var(--gold-dim);
+  color: var(--rust);
 }
