@@ -190,3 +190,131 @@ svg text { -webkit-user-select: none; user-select: none; }
   outline: 2px solid var(--gold);
   outline-offset: 2px;
 }
+
+/* === Rules Page === */
+.rules-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg);
+  overflow-y: auto;
+  animation: fadeIn .25s ease both;
+}
+.rules-container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 40px 16px 60px;
+}
+.rules-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 32px;
+}
+.rules-header-line {
+  width: 80px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  margin-bottom: 16px;
+}
+.rules-header-line--wide { width: 180px; margin-bottom: 8px; margin-top: 4px; }
+.rules-subtitle {
+  font-size: 13px;
+  color: var(--gold-dim);
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  font-family: var(--font-title);
+}
+.rules-title {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  text-transform: uppercase;
+  color: var(--gold);
+  text-align: center;
+  text-shadow: 0 0 40px rgba(201,168,76,0.15);
+  margin-bottom: 0;
+}
+.rules-close {
+  margin-top: 16px;
+  padding: 8px 32px;
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: var(--font-title);
+  font-weight: 700;
+}
+.rules-close:hover { border-color: var(--gold-dim); color: var(--gold); }
+.rules-list { display: flex; flex-direction: column; gap: 6px; }
+.rules-card {
+  background: rgba(20,18,12,0.8);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color .2s;
+}
+.rules-card--open { border-color: var(--gold-dim); }
+.rules-card-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: var(--font-title);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+}
+.rules-card-icon { font-size: 18px; flex-shrink: 0; }
+.rules-card-title { flex: 1; }
+.rules-card-chevron {
+  font-size: 18px;
+  color: var(--gold-dim);
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+.rules-card-body { padding: 0 16px 16px; }
+.rules-section { margin-bottom: 14px; }
+.rules-section:last-child { margin-bottom: 0; }
+.rules-section-title {
+  font-family: var(--font-title);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.rules-section-text {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  margin-bottom: 6px;
+}
+.rules-section-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.rules-section-list li {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.7;
+  padding-left: 14px;
+  position: relative;
+}
+.rules-section-list li::before {
+  content: '—';
+  position: absolute;
+  left: 0;
+  color: var(--gold-dim);
+}

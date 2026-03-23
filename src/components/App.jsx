@@ -8,6 +8,7 @@ import { ENCOUNTERS, ENCOUNTER_HEXES } from '../data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA } from '../data/plans.js';
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, applyEnlistOngoing } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
+import RulesPage from './RulesPage.jsx';
 import { countRes, spendRes, getWorkerHexes } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
@@ -46,6 +47,7 @@ export default function App(){
   const[botRunning,setBotRunning]=useState(false);
   const[showStars,setShowStars]=useState(false);
   const[showLog,setShowLog]=useState(true);
+  const[showRules,setShowRules]=useState(false);
   const logRef=useRef(null);
   // Map zoom/pan state
   const MAP_BASE={x:20,y:20,w:980,h:990};
@@ -1053,6 +1055,9 @@ export default function App(){
     return c;
   },[players]);
 
+  // ══════════ RULES OVERLAY ══════════
+  if(showRules) return <RulesPage onClose={()=>setShowRules(false)} />;
+
   // ══════════ SETUP SCREEN ══════════
   if(phase==="setup"){
     return(
@@ -1064,9 +1069,14 @@ export default function App(){
           <div style={{fontSize:13,color:"var(--gold-dim)",letterSpacing:8,textTransform:"uppercase",marginBottom:6,fontFamily:"'Bitter',serif"}}>Scythe</div>
           <h1 style={{fontSize:32,fontWeight:900,letterSpacing:10,textTransform:"uppercase",color:"var(--gold)",marginBottom:4,textAlign:"center",textShadow:"0 0 40px rgba(201,168,76,0.15)"}}>Panamerica</h1>
           <div style={{width:180,height:1,background:"linear-gradient(90deg,transparent,var(--gold-dim) 20%,var(--gold) 50%,var(--gold-dim) 80%,transparent)",marginBottom:8}}/>
-          <p style={{color:"var(--text-dim)",fontSize:12,letterSpacing:1.5,marginBottom:36,textAlign:"center",fontStyle:"italic",maxWidth:320,lineHeight:1.6}}>
+          <p style={{color:"var(--text-dim)",fontSize:12,letterSpacing:1.5,marginBottom:20,textAlign:"center",fontStyle:"italic",maxWidth:320,lineHeight:1.6}}>
             « L'Empire se meurt. Les machines ne savent pas. »
           </p>
+          <button onClick={()=>setShowRules(true)} style={{
+            marginBottom:32,padding:"8px 28px",fontSize:12,letterSpacing:3,textTransform:"uppercase",
+            background:"transparent",color:"var(--gold-dim)",border:"1px solid var(--border)",
+            borderRadius:4,fontWeight:700,fontFamily:"'Bitter',serif",
+          }}>Regles du Jeu</button>
           
           <div style={{color:"var(--gold-dim)",fontSize:12,marginBottom:10,letterSpacing:4,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Adversaires</div>
           <div style={{display:"flex",gap:8,marginBottom:32}}>
@@ -1282,6 +1292,7 @@ export default function App(){
           <button onClick={()=>setShowStars(s=>!s)} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 12px",borderRadius:6,fontSize:13,fontWeight:700,background:showStars?"var(--gold)":"rgba(255,215,0,0.08)",color:showStars?"var(--bg)":"#C9A84C",border:"1px solid rgba(255,215,0,0.3)",fontFamily:"'Bitter',serif"}}>
             ⭐ {me.stars}/6
           </button>
+          <button onClick={()=>setShowRules(true)} title="Regles du jeu" style={{padding:"5px 10px",borderRadius:6,fontSize:13,fontWeight:700,background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)",fontFamily:"'Bitter',serif"}}>?</button>
         </div>
       </div>
 
