@@ -1,5 +1,5 @@
 :root {
-  /* === DA Doc: Palette === */
+  /* === Palette === */
   --bg: #1A1710;
   --bg2: #1E1A12;
   --bg3: #2A2418;
@@ -26,12 +26,13 @@
   --success: #4A8A4A;
   --info: #3A6A9A;
 
-  /* === Typographie === */
-  --font-title: 'Bitter', 'Roboto Slab', serif;
-  --font-body: 'IBM Plex Serif', Georgia, serif;
+  /* === Typographie — 1920s Ameriques === */
+  --font-title: 'Playfair Display', 'Bitter', serif;
+  --font-body: 'Crimson Text', Georgia, serif;
   --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+  --font-map: 'IM Fell English SC', 'Bitter', serif;
 
-  /* Échelle typo — bumped up for readability */
+  /* Echelle typo */
   --fs-title: 22px;
   --fs-section: 15px;
   --fs-faction: 13px;
@@ -41,16 +42,37 @@
   --fs-micro: 9px;
   --fs-debug: 7px;
 
-  /* Sizing — v0.10 layout */
+  /* Spacing tokens */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  /* Radius tokens */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 12px;
+
+  /* Surface elevation (by opacity, no shadows) */
+  --surface-0: #0B0A07;
+  --surface-1: #12110B;
+  --surface-2: #1A1710;
+  --surface-3: #2A2418;
+
+  /* Sizing */
   --top-h: 44px;
   --left-w: 72px;
   --right-w: 320px;
   --btn-min: 44px;
 
-  /* v0.10 palette additions */
+  /* Map */
   --bg-map: #0B0A07;
   --bg-panel: #12110B;
   --bg-topbar: #1A1812;
+
+  /* Action cost/gain */
   --cost-bg: #8B2E2E;
   --cost-border: #A03030;
   --gain-bg: #2E6B2E;

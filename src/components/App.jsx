@@ -23,7 +23,7 @@ import { createPlayer } from '../logic/player.js';
 import { botTurn } from '../logic/bot.js';
 import { applyPlanTop, getPlanBottomBonus } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
-import { ActionRow, CubeSlots } from './svg/ActionIcons.jsx';
+import { ActionRow, CubeSlots, RESOURCE_ICONS } from './svg/ActionIcons.jsx';
 
 export default function App(){
   const[phase,setPhase]=useState("setup");
@@ -1144,14 +1144,14 @@ export default function App(){
               animationDelay:`${i*0.1}s`,
             }}>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
-                <span style={{fontSize:24,fontWeight:900,color:i===0?"var(--gold)":"var(--text-muted)",fontFamily:"'Bitter',serif",width:32}}>
+                <span style={{fontSize:24,fontWeight:900,color:i===0?"var(--gold)":"var(--text-muted)",fontFamily:"var(--font-title)",width:32}}>
                   {i===0?"🏆":i+1+"."}
                 </span>
                 <div style={{flex:1}}>
-                  <div style={{fontFamily:"'Bitter',serif",fontSize:16,fontWeight:700,color:s.color}}>{s.name}</div>
+                  <div style={{fontFamily:"var(--font-title)",fontSize:16,fontWeight:700,color:s.color}}>{s.name}</div>
                   <div style={{fontSize:10,color:"var(--text-dim)"}}>{s.hero} {s.isBot?"🤖":"👤"}</div>
                 </div>
-                <div style={{fontSize:22,fontWeight:900,color:i===0?"var(--gold)":"var(--text)",fontFamily:"'Bitter',serif"}}>{s.total}$</div>
+                <div style={{fontSize:22,fontWeight:900,color:i===0?"var(--gold)":"var(--text)",fontFamily:"var(--font-title)"}}>{s.total}$</div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,fontSize:11,color:"var(--text-dim)"}}>
                 <div style={{background:"var(--bg3)",padding:"6px 8px",borderRadius:4,textAlign:"center"}}>
@@ -1181,7 +1181,7 @@ export default function App(){
         <button onClick={()=>{setPhase("setup");setPlayers([]);setLog([]);setTurn(1);setEmpire(Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])));setRails([...EMPIRE_RAILS]);setRailPlacement(null);setSelFaction(null);setSelMat(null);}} style={{
           marginTop:24,padding:"12px 40px",fontSize:13,letterSpacing:4,textTransform:"uppercase",
           background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:6,fontWeight:700,
-          fontFamily:"'Bitter',serif",cursor:"pointer",
+          fontFamily:"var(--font-title)",cursor:"pointer",
         }}>Nouvelle Partie</button>
       </div>
     );
@@ -1200,43 +1200,45 @@ export default function App(){
       <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",padding:"6px 16px",gap:10,background:"var(--bg-topbar)",borderBottom:"1px solid var(--border)",flexShrink:0,height:"var(--top-h)",overflow:"hidden"}}>
         {/* Faction badge */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginRight:4,flexShrink:0}}>
-          <div style={{width:36,height:36,borderRadius:"50%",background:myFaction.color+"22",border:`2px solid ${myFaction.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:myFaction.color,fontFamily:"'Bitter',serif"}}>{myFaction.name[0]}</div>
+          <div style={{width:36,height:36,borderRadius:"50%",background:myFaction.color+"22",border:`2px solid ${myFaction.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:myFaction.color,fontFamily:"var(--font-title)"}}>{myFaction.name[0]}</div>
           <div style={{lineHeight:1.2}}>
-            <div style={{fontSize:14,fontWeight:700,color:myFaction.color,fontFamily:"'Bitter',serif"}}>{myFaction.name}</div>
-            <div style={{fontSize:11,color:"var(--text-dim)"}}>{myMat.name} · T{turn}</div>
+            <div style={{fontSize:14,fontWeight:700,color:myFaction.color,fontFamily:"var(--font-title)"}}>{myFaction.name}</div>
+            <div style={{fontSize:11,color:"var(--text-dim)",fontFamily:"var(--font-body)"}}>{myMat.name} · T{turn}</div>
           </div>
         </div>
-        {botRunning&&<span style={{color:"var(--gold)",fontSize:12,animation:"pulse 1s infinite",marginRight:4}}>⚙ IA…</span>}
+        {botRunning&&<span style={{color:"var(--gold)",fontSize:12,animation:"pulse 1s infinite",marginRight:4,display:"flex",alignItems:"center",gap:3}}>{React.createElement(RESOURCE_ICONS.metal,{size:12,color:"var(--gold)"})} IA…</span>}
         {/* Divider */}
         <div style={{width:1,height:28,background:"var(--border-light)",flexShrink:0}}/>
-        {/* Resource counters - redesigned */}
+        {/* Resource counters — SVG icons */}
         {(()=>{
           const totalRes=(t)=>{let s=0;Object.values(me.resources).forEach(r=>{if(r[t])s+=r[t];});return s;};
           const stats=[
-            {icon:"💰",val:me.coins,color:"var(--gold)",label:"$"},
-            {icon:"🃏",val:me.combatCards,color:"#bbaacc",label:"CC"},
-            {icon:"⚙",val:totalRes("metal"),color:"#99aabb",label:"Mét"},
-            {icon:"🪵",val:totalRes("bois"),color:"#7aaa55",label:"Bois"},
-            {icon:"🌽",val:totalRes("nourriture"),color:"#d4b050",label:"Nour"},
-            {icon:"🛢",val:totalRes("petrole"),color:"#8a90a0",label:"Pét"},
-            {icon:"👤",val:me.workers.length,color:"#c89966",label:"Ouv"},
-            {icon:"⬡",val:me.mechs.length,color:"#99aabb",label:"Mech"},
+            {svgKey:"coins",val:me.coins,color:"var(--gold)",label:"$"},
+            {svgKey:"combatCards",val:me.combatCards,color:"#bbaacc",label:"CC"},
+            {svgKey:"metal",val:totalRes("metal"),color:"#99aabb",label:"Mét"},
+            {svgKey:"bois",val:totalRes("bois"),color:"#7aaa55",label:"Bois"},
+            {svgKey:"nourriture",val:totalRes("nourriture"),color:"#d4b050",label:"Nour"},
+            {svgKey:"petrole",val:totalRes("petrole"),color:"#8a90a0",label:"Pét"},
+            {svgKey:"worker",val:me.workers.length,color:"#c89966",label:"Ouv"},
+            {svgKey:"mech",val:me.mechs.length,color:"#99aabb",label:"Mech"},
           ];
-          return stats.map((s,i)=>(
+          return stats.map((s,i)=>{
+            const Icon=RESOURCE_ICONS[s.svgKey];
+            return(
             <div key={i} className="res-pill" title={s.label}>
-              <span className="res-icon">{s.icon}</span>
+              <span className="res-icon" style={{display:"flex",alignItems:"center"}}>{Icon?<Icon size={13} color={s.color}/>:s.svgKey}</span>
               <span className="res-val" style={{color:s.color}}>{s.val}</span>
             </div>
-          ));
+          );});
         })()}
         {/* Stars - right side */}
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4}}>
           {me.factoryCard&&<div style={{fontSize:12,padding:"4px 10px",borderRadius:4,background:me.factoryCard.type==="tesla"?"#7050a022":"#4a5a6a22",border:me.factoryCard.type==="tesla"?"1px solid #7050a0":"1px solid #4a5a6a",color:me.factoryCard.type==="tesla"?"#b080e0":"#8aa0b8"}} title={me.factoryCard.desc}>{me.factoryCard.name}</div>}
-          {(me.fragments||0)>0&&<div style={{fontSize:12,padding:"4px 10px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:"#a080d0"}}>🔬{me.fragments}/2</div>}
-          <button onClick={()=>setShowStars(s=>!s)} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 12px",borderRadius:6,fontSize:13,fontWeight:700,background:showStars?"var(--gold)":"rgba(255,215,0,0.08)",color:showStars?"var(--bg)":"#C9A84C",border:"1px solid rgba(255,215,0,0.3)",fontFamily:"'Bitter',serif"}}>
-            ⭐ {me.stars}/6
+          {(me.fragments||0)>0&&<div style={{fontSize:12,padding:"4px 10px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:"#a080d0"}}>{me.fragments}/2 frag.</div>}
+          <button onClick={()=>setShowStars(s=>!s)} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 12px",borderRadius:6,fontSize:13,fontWeight:700,background:showStars?"var(--gold)":"rgba(255,215,0,0.08)",color:showStars?"var(--bg)":"#C9A84C",border:"1px solid rgba(255,215,0,0.3)",fontFamily:"var(--font-title)"}}>
+            {me.stars}/6
           </button>
-          <button onClick={()=>setShowRules(true)} title="Regles du jeu" style={{padding:"5px 10px",borderRadius:6,fontSize:13,fontWeight:700,background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)",fontFamily:"'Bitter',serif"}}>?</button>
+          <button onClick={()=>setShowRules(true)} title="Regles du jeu" style={{padding:"5px 10px",borderRadius:6,fontSize:13,fontWeight:700,background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)",fontFamily:"var(--font-title)"}}>?</button>
         </div>
       </div>
 
@@ -1244,7 +1246,7 @@ export default function App(){
       <div style={{display:"flex",gap:4,background:"linear-gradient(180deg,var(--bg-panel),#0a0906)",borderRight:"1px solid var(--border)",padding:"4px 4px",overflow:"hidden"}}>
         {/* Power track */}
         <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
-          <div style={{fontSize:8,color:"#cc9988",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"'Bitter',serif",fontWeight:700}}>Pui</div>
+          <div style={{fontSize:8,color:"#cc9988",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pui</div>
           <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,width:"100%"}}>
             {Array.from({length:17},(_,i)=>i).map(v=>(
               <div key={v} style={{
@@ -1258,11 +1260,11 @@ export default function App(){
               }}>{v%2===0?v:""}</div>
             ))}
           </div>
-          <div style={{fontSize:16,fontWeight:700,color:"#dd6644",marginTop:4,fontFamily:"'Bitter',serif"}}>{me.power}</div>
+          <div style={{fontSize:16,fontWeight:700,color:"#dd6644",marginTop:4,fontFamily:"var(--font-title)"}}>{me.power}</div>
         </div>
         {/* Popularity track */}
         <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
-          <div style={{fontSize:8,color:"#ccaa77",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"'Bitter',serif",fontWeight:700}}>Pop</div>
+          <div style={{fontSize:8,color:"#ccaa77",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pop</div>
           <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,width:"100%"}}>
             {Array.from({length:19},(_,i)=>i).map(v=>{
               const tier=v<=6?0:v<=12?1:2;
@@ -1281,7 +1283,7 @@ export default function App(){
               );
             })}
           </div>
-          <div style={{fontSize:16,fontWeight:700,color:"#d0a040",marginTop:4,fontFamily:"'Bitter',serif"}}>{me.pop}</div>
+          <div style={{fontSize:16,fontWeight:700,color:"#d0a040",marginTop:4,fontFamily:"var(--font-title)"}}>{me.pop}</div>
         </div>
       </div>
 
@@ -1327,7 +1329,7 @@ export default function App(){
           <g transform="translate(920,90)" opacity={0.2}>
             <circle r="20" fill="none" stroke="#c9a84c" strokeWidth="0.5"/>
             <polygon points="0,-22 -3,-6 0,-8 3,-6" fill="#c9a84c" opacity="0.9"/>
-            <text y="-26" textAnchor="middle" fontSize="7" fill="#c9a84c" style={{fontFamily:"'Bitter',serif"}}>N</text>
+            <text y="-26" textAnchor="middle" fontSize="7" fill="#c9a84c" style={{fontFamily:"var(--font-title)"}}>N</text>
           </g>
           {/* Rivers */}
           {RIVERS.map(([a,b],i)=>{const g=edgeGeo(a,b,hMap);if(!g)return null;return(
@@ -1379,7 +1381,7 @@ export default function App(){
             return(<g key={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
               <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory}/>
               {/* Terrain label removed — TerrainDecor provides visual identification */}
-              <text x={hex.rx} y={hex.ry+32} textAnchor="middle" fontSize={6.5} fill="#4a4030" opacity={0.2} style={{fontFamily:"'Source Serif 4',serif",pointerEvents:"none"}}>#{hex.id}</text>
+              <text x={hex.rx} y={hex.ry+32} textAnchor="middle" fontSize={6.5} fill="#4a4030" opacity={0.2} style={{fontFamily:"var(--font-map)",pointerEvents:"none"}}>#{hex.id}</text>
               {units.length>0&&(()=>{const fc=units[0].factionId;const c=FACTIONS[fc]?.color||"#888";return <FactionHalo cx={hex.rx} cy={hex.ry+6} color={c} r={22}/>;})()}
               {units.map((u,ui)=>{
                 const ox=(ui-(units.length-1)/2)*24;
@@ -1437,12 +1439,12 @@ export default function App(){
             return(<g key={fid} opacity={isMe?1:0.2}>
               <line x1={hb.rx} y1={hb.ry-16} x2={hb.rx} y2={hb.ry+16} stroke={fc.color} strokeWidth={isMe?1.5:0.5} opacity={0.5}/>
               <path d={`M${hb.rx} ${hb.ry-14} L${hb.rx+30} ${hb.ry-8} L${hb.rx+28} ${hb.ry} L${hb.rx} ${hb.ry+6} Z`} fill={isMe?fc.color+"44":fc.color+"15"} stroke={fc.color} strokeWidth={isMe?1.5:0.6}/>
-              <text x={hb.rx+14} y={hb.ry-1} textAnchor="middle" fontSize={isMe?9:7} fill={fc.color} fontWeight={isMe?700:400} style={{fontFamily:"'Bitter',serif"}}>{fc.name.slice(0,8)}</text>
+              <text x={hb.rx+14} y={hb.ry-1} textAnchor="middle" fontSize={isMe?9:7} fill={fc.color} fontWeight={isMe?700:400} style={{fontFamily:"var(--font-title)"}}>{fc.name.slice(0,8)}</text>
               <circle cx={hb.rx} cy={hb.ry-16} r={isMe?2.5:1.5} fill={fc.color}/>
             </g>);
           })}
           {/* Watermark */}
-          <g opacity={0.04} style={{fontFamily:"'Bitter',serif"}}>
+          <g opacity={0.04} style={{fontFamily:"var(--font-title)"}}>
             <text x="510" y="505" textAnchor="middle" fontSize="80" fill="#c9a84c" letterSpacing="25">1920+</text>
           </g>
         </svg>
@@ -1470,7 +1472,7 @@ export default function App(){
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
                       <div style={{width:50,height:50,borderRadius:"50%",background:isPve?"rgba(180,30,15,0.2)":"rgba(200,100,30,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,border:isPve?"2px solid #1A3A6A":"2px solid "+(ef?ef.color:"#888"),flexShrink:0}}>⚔</div>
                       <div>
-                        <div style={{fontFamily:"'Bitter',serif",color:isPve?"#2A5A8A":ef.color,fontSize:18,fontWeight:700}}>{isPve?combat.empireCard.name:`Combat vs ${ef.name}`}</div>
+                        <div style={{fontFamily:"var(--font-title)",color:isPve?"#2A5A8A":ef.color,fontSize:18,fontWeight:700}}>{isPve?combat.empireCard.name:`Combat vs ${ef.name}`}</div>
                         <div style={{fontSize:12,color:"var(--text-muted)",marginTop:3}}>{isPve?`Force Empire: ${combat.empireCard.power}`:"L'adversaire choisit secrètement…"}</div>
                       </div>
                     </div>
@@ -1487,12 +1489,12 @@ export default function App(){
                       ))}</div>
                     </div>}
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16,padding:"12px 16px",background:"rgba(0,0,0,0.4)",borderRadius:10,border:"1px solid var(--border)"}}>
-                      <span style={{fontSize:22,fontWeight:900,color:"var(--gold)",fontFamily:"'Bitter',serif"}}>{total}</span>
+                      <span style={{fontSize:22,fontWeight:900,color:"var(--gold)",fontFamily:"var(--font-title)"}}>{total}</span>
                       <span style={{fontSize:12,color:"var(--text-muted)"}}>{combat.powerSpend}{cBonus.powerBonus>0?`+${cBonus.powerBonus}`:""}⚡ + {combat.cardsSpend}×2🃏</span>
                       {cBonus.name&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:"rgba(200,160,60,0.15)",border:"1px solid var(--gold-dim)",color:"var(--gold)"}}>{cBonus.name}{cBonus.powerBonus>0?` +${cBonus.powerBonus}⚡`:""}{cBonus.cardBonus>0?` +${cBonus.cardBonus}🃏`:""}</span>}
                       {isPve&&<span style={{fontSize:16,fontWeight:700,marginLeft:"auto",color:total>=combat.empireCard.power?"var(--success)":"#ff4444"}}>{total>=combat.empireCard.power?"✓":"✗"} vs {combat.empireCard.power}</span>}
                     </div>
-                    <button onClick={resolveCombat} style={{width:"100%",padding:"14px",fontSize:15,fontWeight:700,fontFamily:"'Bitter',serif",letterSpacing:3,textTransform:"uppercase",background:"linear-gradient(135deg,#8b2020,#6b1515)",color:"#fff",border:"none",borderRadius:10,boxShadow:"0 3px 20px rgba(140,30,20,0.5)"}}>⚔ Combattre</button>
+                    <button onClick={resolveCombat} style={{width:"100%",padding:"14px",fontSize:15,fontWeight:700,fontFamily:"var(--font-title)",letterSpacing:3,textTransform:"uppercase",background:"linear-gradient(135deg,#8b2020,#6b1515)",color:"#fff",border:"none",borderRadius:10,boxShadow:"0 3px 20px rgba(140,30,20,0.5)"}}>⚔ Combattre</button>
                   </div>
                 );
               })()}
@@ -1502,7 +1504,7 @@ export default function App(){
                 <div className="reward-panel" style={{padding:"24px",background:"linear-gradient(180deg,#0c1a0c,var(--bg2))",borderRadius:12}}>
                   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
                     <span style={{fontSize:32}}>🏆</span>
-                    <div><div style={{fontFamily:"'Bitter',serif",color:"var(--success)",fontSize:20,fontWeight:700}}>Victoire !</div><div style={{fontSize:12,color:"var(--text-dim)"}}>Choisissez votre butin</div></div>
+                    <div><div style={{fontFamily:"var(--font-title)",color:"var(--success)",fontSize:20,fontWeight:700}}>Victoire !</div><div style={{fontSize:12,color:"var(--text-dim)"}}>Choisissez votre butin</div></div>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
                     {[{k:"metal",icon:"⚙",label:"2 Métal",sub:"Ferraille"},{k:"pop",icon:"♥",label:"+2 Pop",sub:"Acclamation"},{k:"fragment",icon:"🔬",label:"Fragment",sub:`Tesla (${(me.fragments||0)}/2)`}].map(r=>(
@@ -1522,7 +1524,7 @@ export default function App(){
                   <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:16}}>
                     <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(201,168,76,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:"2px solid var(--gold)",flexShrink:0}}>📜</div>
                     <div>
-                      <div style={{fontFamily:"'Bitter',serif",color:"var(--gold)",fontSize:16,fontWeight:700}}>{encounter.card.name}</div>
+                      <div style={{fontFamily:"var(--font-title)",color:"var(--gold)",fontSize:16,fontWeight:700}}>{encounter.card.name}</div>
                       <div style={{fontSize:11,color:"var(--text-dim)",lineHeight:1.6,marginTop:4,fontStyle:"italic"}}>{encounter.card.desc}</div>
                     </div>
                   </div>
@@ -1549,7 +1551,7 @@ export default function App(){
                   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
                     <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(139,32,32,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:"2px solid #8b2020",flexShrink:0}}>⚙</div>
                     <div>
-                      <div style={{fontFamily:"'Bitter',serif",color:"#cc4433",fontSize:16,fontWeight:700}}>Rouge River</div>
+                      <div style={{fontFamily:"var(--font-title)",color:"#cc4433",fontSize:16,fontWeight:700}}>Rouge River</div>
                       <div style={{fontSize:10,color:"var(--text-dim)"}}>
                         {rougeRiver.hasFragments?<span>Plans Ford <span style={{color:"#9060c0",fontWeight:700}}>+ Tesla</span></span>:"Plans Ford"} — Choisissez 1 carte
                       </div>
@@ -1560,7 +1562,7 @@ export default function App(){
                       <button key={card.id} onClick={()=>pickFactoryCard(card)} className={`rr-card ${card.type}`}>
                         {card.type==="tesla"&&<div style={{position:"absolute",top:4,right:6,fontSize:10,color:"#b080e0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Tesla</div>}
                         {card.type==="ford"&&<div style={{position:"absolute",top:4,right:6,fontSize:10,color:"#7a9ab0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Ford</div>}
-                        <div style={{fontFamily:"'Bitter',serif",fontSize:13,fontWeight:700,color:card.type==="tesla"?"#c090e0":"#a0b8cc",marginBottom:5,paddingRight:30}}>{card.name}</div>
+                        <div style={{fontFamily:"var(--font-title)",fontSize:13,fontWeight:700,color:card.type==="tesla"?"#c090e0":"#a0b8cc",marginBottom:5,paddingRight:30}}>{card.name}</div>
                         <div style={{fontSize:11,color:"var(--text-dim)",lineHeight:1.5}}>{card.desc}</div>
                       </button>
                     ))}
@@ -1587,7 +1589,7 @@ export default function App(){
             }}>
               <div style={{width:8,height:8,borderRadius:"50%",background:fc.color,flexShrink:0}}/>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:11,fontWeight:700,color:fc.color,fontFamily:"'Bitter',serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{fc.name.slice(0,8)}{isActive&&<span style={{color:"var(--gold)",marginLeft:4}}>◀</span>}</div>
+                <div style={{fontSize:11,fontWeight:700,color:fc.color,fontFamily:"var(--font-title)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{fc.name.slice(0,8)}{isActive&&<span style={{color:"var(--gold)",marginLeft:4}}>◀</span>}</div>
               </div>
               <div style={{fontSize:10,color:"var(--text-dim)",whiteSpace:"nowrap",fontFamily:"var(--font-mono)"}}>⚡{p.power} ♥{p.pop} ⭐{p.stars}</div>
             </div>
@@ -1670,7 +1672,7 @@ export default function App(){
                     {/* TOP ACTION */}
                     <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(30,27,20,0.8),rgba(22,20,14,0.6))"}}>
                       <div style={{minWidth:0,flex:1}}>
-                        <div style={{fontSize:11,fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",color:"var(--gold-dim)",marginBottom:4,fontFamily:"'Bitter',serif"}}>{action}</div>
+                        <div style={{fontSize:11,fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",color:"var(--gold-dim)",marginBottom:4,fontFamily:"var(--font-title)"}}>{action}</div>
                         <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact />
                       </div>
                       <CubeSlots total={cubesTop} filled={cubesTop} />
@@ -1705,7 +1707,7 @@ export default function App(){
             <div style={{padding:"12px 16px",fontSize:12,animation:"slideUp 0.25s ease"}}>
               {selAction==="Move"&&(
                 <div>
-                  <div style={{color:"var(--gold)",fontFamily:"'Bitter',serif",fontWeight:700,marginBottom:8,fontSize:14}}>Déplacement ({(me.movedUnits||[]).length}/2)</div>
+                  <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:14}}>Déplacement ({(me.movedUnits||[]).length}/2)</div>
                   <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+1};return n;});addLog(`💰 +1$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner 1$ (pas de déplacement)</button>
                   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                     {!(me.movedUnits||[]).includes("hero")&&<button onClick={()=>doMove("hero","hero",me.hero)} className="act-btn" style={{borderColor:myFaction.color+"66"}}>★ {myFaction.hero} <span style={{opacity:0.5}}>#{me.hero}</span></button>}
@@ -1737,7 +1739,7 @@ export default function App(){
                 </div>
               )}
               {selAction==="Bolster"&&(<div>
-                <div style={{color:"var(--gold)",fontFamily:"'Bitter',serif",fontWeight:700,marginBottom:8,fontSize:14}}>Soutien (1$)</div>
+                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:14}}>Soutien (1$)</div>
                 {me.coins<1?<div style={{color:"#8A3030",fontSize:12}}>Pas assez d'$</div>:
                 <div style={{display:"flex",gap:10}}>
                   <button onClick={()=>doBolster("power")} className="act-btn" style={{flex:1}}>⚡ +2 Puissance</button>
@@ -1745,7 +1747,7 @@ export default function App(){
                 </div>}
               </div>)}
               {selAction==="Produce"&&(<div>
-                <div style={{color:"var(--gold)",fontFamily:"'Bitter',serif",fontWeight:700,marginBottom:8,fontSize:14}}>Production (max 2 hex)</div>
+                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:14}}>Production (max 2 hex)</div>
                 {(()=>{
                   const nw=me.workers.length;const costStr=produceCostLabel(nw);const canPay=canPayProduce(me);const c=getProduceCost(nw);
                   return(<div>
@@ -1755,7 +1757,7 @@ export default function App(){
                 })()}
               </div>)}
               {selAction==="Trade"&&(<div>
-                <div style={{color:"var(--gold)",fontFamily:"'Bitter',serif",fontWeight:700,marginBottom:8,fontSize:14}}>Commerce (1$){tradePicks.length>0&&<span style={{fontWeight:400,fontSize:12,marginLeft:8}}>— choix {tradePicks.length}/2 : {tradePicks.map(r=>({metal:"⚙",bois:"🪵",nourriture:"🌽",petrole:"🛢"}[r])).join(" ")}</span>}</div>
+                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:14}}>Commerce (1$){tradePicks.length>0&&<span style={{fontWeight:400,fontSize:12,marginLeft:8}}>— choix {tradePicks.length}/2 : {tradePicks.map(r=>({metal:"⚙",bois:"🪵",nourriture:"🌽",petrole:"🛢"}[r])).join(" ")}</span>}</div>
                 {me.coins<1?<div style={{color:"#8A3030",fontSize:12}}>Pas assez d'$</div>:
                 <div>
                   <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>Choisissez 2 ressources (même type ou différentes)</div>
@@ -1783,7 +1785,7 @@ export default function App(){
             return(
               <div style={{padding:"12px 16px",borderTop:"1px solid var(--border)",animation:"slideUp 0.25s ease"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-                  <span style={{fontFamily:"'Bitter',serif",color:"var(--brass)",fontSize:14,fontWeight:700}}>▼ {ba}</span>
+                  <span style={{fontFamily:"var(--font-title)",color:"var(--brass)",fontSize:14,fontWeight:700}}>▼ {ba}</span>
                   {bc&&<span style={{fontSize:11,color:hasRes&&!maxed?"var(--text-dim)":"#8A3030"}}>{maxed?"Maximum":` ${bc.qty} ${bc.res} (${resCount} dispo)`}</span>}
                 </div>
                 {/* UPGRADE — 2-step: pick top source then bottom dest */}
@@ -1916,7 +1918,7 @@ export default function App(){
 
         {/* ── Dropdown: Star Tracker ── */}
         <div style={{borderTop:"1px solid var(--border)",flexShrink:0}}>
-          <button onClick={()=>setShowStars(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"'Bitter',serif",cursor:"pointer"}}>
+          <button onClick={()=>setShowStars(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
             <span>⭐ Étoiles ({me.stars}/6)</span>
             <span style={{fontSize:9,color:"var(--text-dim)",transform:showStars?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
           </button>
@@ -1925,7 +1927,7 @@ export default function App(){
         {/* ── Dropdown: Objectives ── */}
         {me.objectives&&me.objectives.length>0&&(
           <div style={{borderTop:"1px solid var(--border)",flexShrink:0}}>
-            <button onClick={()=>setShowObjectives(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"'Bitter',serif",cursor:"pointer"}}>
+            <button onClick={()=>setShowObjectives(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
               <span>🎯 Objectifs {me.objectiveRevealed?"(1 révélé)":""}</span>
               <span style={{fontSize:9,color:"var(--text-dim)",transform:showObjectives?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
             </button>
@@ -1940,7 +1942,7 @@ export default function App(){
                   const condMet=obj.check(me);
                   return(
                     <div key={obj.id||idx} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",opacity:me.objectiveRevealed&&!isRevealed?0.4:1}}>
-                      <span style={{color:isRevealed?"#4A8A4A":condMet?"var(--gold)":"var(--text-dim)",fontSize:13,fontFamily:"'Bitter',serif",fontWeight:700,minWidth:0,flex:1}}>
+                      <span style={{color:isRevealed?"#4A8A4A":condMet?"var(--gold)":"var(--text-dim)",fontSize:13,fontFamily:"var(--font-title)",fontWeight:700,minWidth:0,flex:1}}>
                         {isRevealed?"✅":"🎯"} {obj.name}
                         <span style={{fontWeight:400,fontSize:12,color:"var(--text-dim)",marginLeft:8}}>{obj.desc}</span>
                       </span>
@@ -1959,7 +1961,7 @@ export default function App(){
 
         {/* ── Dropdown: Journal ── */}
         <div style={{borderTop:"1px solid var(--border)",flexShrink:0,marginTop:"auto"}}>
-          <button onClick={()=>setShowLog(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"'Bitter',serif",cursor:"pointer"}}>
+          <button onClick={()=>setShowLog(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
             <span>📜 Journal</span>
             <span style={{fontSize:9,color:"var(--text-dim)",transform:showLog?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
           </button>
