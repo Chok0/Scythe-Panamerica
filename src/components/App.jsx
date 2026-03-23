@@ -56,6 +56,7 @@ export default function App(){
   const[showStars,setShowStars]=useState(false);
   const[showObjectives,setShowObjectives]=useState(false);
   const[showLog,setShowLog]=useState(true);
+  const[logFilter,setLogFilter]=useState("all"); // "all"|"combat"|"move"|"resource"|"bot"|"warn"|"star"
   const[showRules,setShowRules]=useState(false);
   const logRef=useRef(null);
   // Map zoom/pan state
@@ -130,8 +131,36 @@ export default function App(){
   },[]);
 
   const mapReset=useCallback(()=>setMapView({...MAP_BASE}),[]);
-  const addLog=useCallback((msg)=>setLog(prev=>[...prev,msg]),[]);
-  const addLogs=useCallback((msgs)=>setLog(prev=>[...prev,...msgs]),[]);
+  // ── Structured log: auto-categorize from emoji/content ──
+  const turnRef=useRef(0);
+  const stepRef=useRef(0);
+  const categorize=(msg)=>{
+    if(/⚔|Combat|combat|Combattre/.test(msg))return"combat";
+    if(/🤖/.test(msg))return"bot";
+    if(/⭐|étoile|star/i.test(msg))return"star";
+    if(/⚠|❌|Err/i.test(msg))return"warn";
+    if(/📜|Rencontre|encounter/i.test(msg))return"encounter";
+    if(/⚙|Rouge River/i.test(msg))return"rr";
+    if(/🚶|Move|Déplacement|mouvement|→ #/i.test(msg))return"move";
+    if(/⬡|Deploy|Mecha déployé/i.test(msg))return"deploy";
+    if(/🏗|Build|construit/i.test(msg))return"build";
+    if(/🤝|Enlist|Recrue/i.test(msg))return"enlist";
+    if(/⬆|Upgrade/i.test(msg))return"upgrade";
+    if(/💰|Commerce|Trade|Bolster|pui|puissance/i.test(msg))return"resource";
+    if(/🔓|Ability/i.test(msg))return"ability";
+    if(/── Tour/.test(msg))return"turn";
+    return"info";
+  };
+  const mkEntry=(msg)=>{stepRef.current++;return{msg,turn:turnRef.current,step:stepRef.current,ts:Date.now(),cat:categorize(msg)};};
+  const addLog=useCallback((msg)=>setLog(prev=>[...prev,mkEntry(msg)]),[]);
+  const addLogs=useCallback((msgs)=>setLog(prev=>[...prev,...msgs.map(mkEntry)]),[]);
+  // State snapshot for debug — shows key stats of a player
+  const logSnap=useCallback((label,p)=>{
+    if(!p)return;
+    const totalRes=(t)=>{let s=0;Object.values(p.resources||{}).forEach(r=>{if(r[t])s+=r[t];});return s;};
+    const snap=`[${label}] ⚡${p.power} 🃏${p.combatCards} ♥${p.pop} 💰${p.coins} ⭐${p.stars||0} W${p.workers?.length||0} M${p.mechs?.length||0} Fe${totalRes("metal")} Bo${totalRes("bois")} No${totalRes("nourriture")} Pe${totalRes("petrole")} Ab[${(p.unlockedAbilities||[]).join(",")}]`;
+    addLog(snap);
+  },[addLog]);
 
   const startGame=useCallback(()=>{
     if(!selFaction||!selMat)return;
@@ -182,7 +211,7 @@ export default function App(){
           // Check if empire moved onto a player's unit → combat triggered next turn
         }
       }
-      setCurrentP(0);setTurn(t=>t+1);setBotRunning(false);addLog(`── Tour ${turn+1} ──`);
+      turnRef.current=turn+1;setCurrentP(0);setTurn(t=>t+1);setBotRunning(false);addLog(`── Tour ${turn+1} ──`);logSnap("Début",players[0]);
       return;
     }
     if(!players[cp].isBot){setBotRunning(false);return;}
@@ -767,7 +796,7 @@ export default function App(){
       });
       
       if(win){
-        addLog(`✅ Victoire ! ${combat.empireCard.name} détruit (${playerTotal} vs ${empireTotal})`);
+        addLog(`✅ Victoire ! ${combat.empireCard.name} détruit (${playerTotal} vs ${empireTotal} — dépensé: ${combat.powerSpend}⚡ ${combat.cardsSpend}🃏)`);
         // Move unit to hex + TRANSPORT
         setPlayers(prev=>{
           const n=[...prev];let p={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
@@ -794,7 +823,7 @@ export default function App(){
         setCombat(prev=>({...prev,phase:"reward",win:true}));
         return; // Don't close yet — reward phase
       } else {
-        addLog(`❌ Défaite... ${combat.empireCard.name} vous repousse (${playerTotal} vs ${empireTotal})`);
+        addLog(`❌ Défaite... ${combat.empireCard.name} vous repousse (${playerTotal} vs ${empireTotal} — dépensé: ${combat.powerSpend}⚡ ${combat.cardsSpend}🃏)`);
       }
     }
     
@@ -2017,15 +2046,41 @@ export default function App(){
           </div>
         )}
 
-        {/* ── Dropdown: Journal ── */}
+        {/* ── Dropdown: Journal enrichi ── */}
         <div style={{borderTop:"1px solid var(--border)",flexShrink:0,marginTop:"auto"}}>
-          <button onClick={()=>setShowLog(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
-            <span>📜 Journal</span>
+          <button onClick={()=>setShowLog(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(200,112,64,0.04)",border:"none",color:"var(--rust)",fontSize:11,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
+            <span>📜 Journal ({log.length})</span>
             <span style={{fontSize:9,color:"var(--text-dim)",transform:showLog?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
           </button>
-          {showLog&&<div ref={logRef} style={{maxHeight:120,overflow:"auto",padding:"4px 8px",fontSize:10}}>
-            {log.slice(-20).map((msg,i)=><div key={i} className="log-line">{msg}</div>)}
-          </div>}
+          {showLog&&<>
+            {/* Filter bar + copy */}
+            <div style={{display:"flex",gap:2,padding:"3px 6px",flexWrap:"wrap",alignItems:"center",borderBottom:"1px solid var(--border)"}}>
+              {[["all","Tout"],["combat","⚔"],["move","🚶"],["bot","🤖"],["resource","💰"],["deploy","⬡"],["encounter","📜"],["warn","⚠"],["star","⭐"]].map(([k,label])=>(
+                <button key={k} onClick={()=>setLogFilter(k)} style={{
+                  padding:"1px 5px",fontSize:9,borderRadius:3,cursor:"pointer",
+                  background:logFilter===k?"var(--rust)":"transparent",
+                  color:logFilter===k?"#fff":"var(--text-muted)",
+                  border:logFilter===k?"1px solid var(--rust)":"1px solid transparent",
+                }}>{label}</button>
+              ))}
+              <button onClick={()=>{
+                const txt=log.map(e=>`[T${e.turn}#${e.step}] ${e.msg}`).join("\n");
+                navigator.clipboard.writeText(txt);
+              }} style={{marginLeft:"auto",padding:"1px 5px",fontSize:9,borderRadius:3,cursor:"pointer",background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)"}} title="Copier tout le log">📋</button>
+            </div>
+            <div ref={logRef} style={{maxHeight:200,overflow:"auto",padding:"4px 6px",fontSize:10}}>
+              {(()=>{
+                const CAT_COLORS={combat:"#e04838",bot:"#a89878",star:"#d4b254",warn:"#e08850",encounter:"#b08060",rr:"#c87040",move:"#5a9aca",deploy:"#7aaa55",build:"#7aaa55",enlist:"#5a7a6a",upgrade:"#c4a060",resource:"#d4b254",ability:"#e08850",turn:"var(--rust)",info:"var(--text-dim)"};
+                const filtered=logFilter==="all"?log:log.filter(e=>e.cat===logFilter);
+                return filtered.slice(-60).map((e,i)=>(
+                  <div key={i} className="log-line" style={{display:"flex",gap:5,alignItems:"baseline"}}>
+                    <span style={{fontSize:8,color:"var(--text-muted)",fontFamily:"var(--font-mono)",flexShrink:0,minWidth:36,textAlign:"right"}}>T{e.turn}.{e.step}</span>
+                    <span style={{color:CAT_COLORS[e.cat]||"var(--text-dim)",fontWeight:e.cat==="turn"||e.cat==="star"?700:400}}>{e.msg}</span>
+                  </div>
+                ));
+              })()}
+            </div>
+          </>}
         </div>
       </div>
       <AmbientSound />
