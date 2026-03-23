@@ -972,7 +972,7 @@ export default function App(){
     if(!encounter)return;
     const choice=encounter.card.choices[choiceIdx];
     setPlayers(prev=>{
-      const n=[...prev];const p={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
+      const n=[...prev];const p={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources},unlockedAbilities:[...(n[0].unlockedAbilities||[])]};
       // Deep copy resources
       Object.entries(n[0].resources).forEach(([k,v])=>{p.resources[k]={...v};});
       choice.effect(p);
