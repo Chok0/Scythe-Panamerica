@@ -1,3 +1,6 @@
+// TODO [v0.11]: Add movement animations — smooth unit transitions between hexes (CSS transform + requestAnimationFrame)
+// TODO [v0.11]: Add action feedback animations — resource gain/spend particles, combat flash, star burst on milestone
+// TODO [v0.11]: Add bot turn visualization — highlight bot's chosen hex, show movement trail
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { TERRAINS } from '../data/terrains.js';
 import { FACTIONS, FACTION_IDS } from '../data/factions.js';
@@ -9,6 +12,8 @@ import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA } from '../data/plans.js';
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, applyEnlistOngoing } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
 import RulesPage from './RulesPage.jsx';
+import AmbientSound from './AmbientSound.jsx';
+import SetupScreen from './SetupScreen.jsx';
 import { countRes, spendRes, getWorkerHexes } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
@@ -16,6 +21,7 @@ import { getValidMoves } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer } from '../logic/player.js';
 import { botTurn } from '../logic/bot.js';
+import { applyPlanTop, getPlanBottomBonus } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
 import { ActionRow, CubeSlots } from './svg/ActionIcons.jsx';
 
@@ -47,6 +53,7 @@ export default function App(){
   const[log,setLog]=useState([]);
   const[botRunning,setBotRunning]=useState(false);
   const[showStars,setShowStars]=useState(false);
+  const[showObjectives,setShowObjectives]=useState(false);
   const[showLog,setShowLog]=useState(true);
   const[showRules,setShowRules]=useState(false);
   const logRef=useRef(null);
@@ -308,24 +315,29 @@ export default function App(){
     if(!me||(me.upgrades||0)>=6)return;
     const costs=getBottomCost(me);
     const cost=costs[0]; // Upgrade is always bottom col 0
-    if(countRes(me,cost.res)<cost.qty){addLog(`⚠ ${cost.qty} ${cost.res} requis`);return;}
+    // Apply plan bottom bonus (cost reduction)
+    const planBonus=getPlanBottomBonus(me,"Upgrade");
+    const effectiveQty=Math.max(0,cost.qty-planBonus.costReduction);
+    if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${cost.res} requis`);return;}
     const mat=MATS.find(m=>m.id===me.matId);
     if(!mat)return;
     if((me.cubesOnTop||[])[fromCol]<=0){addLog(`⚠ Pas de cube sur cette action top`);return;}
     if((me.cubesOnBottom||[])[toCol]>=(mat.bottomSlots||[])[toCol]){addLog(`⚠ Plus de place sur cette action bottom`);return;}
     setPlayers(prev=>{
       const n=[...prev];let p={...n[0]};
-      p=spendRes(p,cost.res,cost.qty);
+      p=spendRes(p,cost.res,effectiveQty);
       p.cubesOnTop=[...(p.cubesOnTop||[])];p.cubesOnTop[fromCol]--;
       p.cubesOnBottom=[...(p.cubesOnBottom||[])];p.cubesOnBottom[toCol]++;
       p.upgrades=(p.upgrades||0)+1;
-      p.coins+=mat.bottomCosts[toCol].bonus||0;
+      p.coins+=(mat.bottomCosts[toCol].bonus||0)+planBonus.bonusCoins;
+      p.power=Math.min(p.power+planBonus.bonusPower,16);
       const earned=p.upgrades>=6&&!p.starUpgrades;
       if(earned){p.stars++;p.starUpgrades=true;}
       n[0]=p;return n;
     });
     const topName=me.topRow[fromCol];const bottomName=BOTTOM[toCol];
-    addLog(`⬆ Upgrade ${(me.upgrades||0)+1}/6: ${topName}↑ → ${bottomName}↓ (-${cost.qty} ${cost.res}, +${mat.bottomCosts[toCol].bonus||0}$)`);
+    planBonus.logs.forEach(l=>addLog(l));
+    addLog(`⬆ Upgrade ${(me.upgrades||0)+1}/6: ${topName}↑ → ${bottomName}↓ (-${effectiveQty} ${cost.res}, +${(mat.bottomCosts[toCol].bonus||0)+planBonus.bonusCoins}$)`);
     if((me.upgrades||0)+1>=6)addLog(`⭐ 6 Upgrades complétés !`);
     finishBottom(0);
   },[me,addLog,finishBottom]);
@@ -336,21 +348,25 @@ export default function App(){
     if(!me||me.mechs.length>=4)return;
     const costs=getBottomCost(me);
     const depCost=costs[1]; // Deploy is bottom col 1
-    const baseRes=overrideRes||depCost.res; // Nations can override with "bois"
-    const qty=depCost.qty;
-    const res=overrideRes||baseRes; // Nations can override with "bois"
+    const baseRes=overrideRes||depCost.res;
+    const planBonus=getPlanBottomBonus(me,"Deploy");
+    const qty=Math.max(0,depCost.qty-planBonus.costReduction);
+    const res=overrideRes||baseRes;
     if(countRes(me,res)<qty){addLog(`⚠ ${qty} ${res} requis`);return;}
     setPlayers(prev=>{
       const n=[...prev];let p=spendRes(n[0],res,qty);
-      const abilityIdx=p.mechs.length; // 0=Speed,1=Riverwalk,2=Combat,3=Position
+      const abilityIdx=p.mechs.length;
       p.mechs=[...p.mechs,{id:`${p.faction}_m${p.mechs.length}`,hexId:targetHex}];
       p.unlockedAbilities=[...(p.unlockedAbilities||[]),abilityIdx];
+      p.coins+=planBonus.bonusCoins;
+      p.power=Math.min(p.power+planBonus.bonusPower,16);
       const earned=p.mechs.length>=4&&!p.starMechs;
       if(earned){p.stars++;p.starMechs=true;}
       n[0]=p;return n;
     });
     const abilityNames=["Speed","Riverwalk","Combat","Position"];
-    const unlockIdx=me.mechs.length; // next ability index
+    const unlockIdx=me.mechs.length;
+    planBonus.logs.forEach(l=>addLog(l));
     addLog(`⬡ Mecha déployé sur #${targetHex} (-${qty} ${res}) → 🔓 ${abilityNames[unlockIdx]||"?"}`);
     if(me.mechs.length+1>=4)addLog(`⭐ 4 Mechas déployés !`);
     finishBottom(1);
@@ -359,28 +375,30 @@ export default function App(){
   // ── BOTTOM-ROW: BUILD ──
   const doBuild=useCallback((targetHex,buildingType)=>{
     if(!me||(me.buildings||[]).length>=4)return;
-    // Check not already a building on that hex
     if((me.buildings||[]).some(b=>b.hexId===targetHex)){addLog(`⚠ Déjà un bâtiment sur #${targetHex}`);return;}
-    // Check building type not already built
     if((me.buildings||[]).some(b=>b.type===buildingType)){addLog(`⚠ ${buildingType} déjà construit`);return;}
     const costs=getBottomCost(me);
     const cost=costs[2]; // Build is bottom col 2
-    if(countRes(me,cost.res)<cost.qty){addLog(`⚠ ${cost.qty} ${cost.res} requis`);return;}
+    const planBonus=getPlanBottomBonus(me,"Build");
+    const effectiveQty=Math.max(0,cost.qty-planBonus.costReduction);
+    if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${cost.res} requis`);return;}
     const bt=BUILDING_TYPES.find(b=>b.type===buildingType);
     setPlayers(prev=>{
-      const n=[...prev];let p=spendRes(n[0],cost.res,cost.qty);
+      const n=[...prev];let p=spendRes(n[0],cost.res,effectiveQty);
       p.buildings=[...(p.buildings||[]),{type:buildingType,hexId:targetHex}];
+      p.coins+=planBonus.bonusCoins;
+      p.power=Math.min(p.power+planBonus.bonusPower,16);
       const earned=p.buildings.length>=4&&!p.starBuildings;
       if(earned){p.stars++;p.starBuildings=true;}
       n[0]=p;return n;
     });
-    addLog(`🏗 ${bt.name} construit sur #${targetHex} (-${cost.qty} ${cost.res})`);
+    planBonus.logs.forEach(l=>addLog(l));
+    addLog(`🏗 ${bt.name} construit sur #${targetHex} (-${effectiveQty} ${cost.res})`);
     if((me.buildings||[]).length+1>=4)addLog(`⭐ 4 Bâtiments construits !`);
-    // Gare: enter rail placement mode (3 segments to place)
     if(buildingType==="gare"){
       setRailPlacement({remaining:3,fromHex:null});
       addLog(`🚂 Posez 3 segments de rail (cliquez 2 hex adjacents par segment)`);
-      return; // Don't end turn yet — player must place rails
+      return;
     }
     finishBottom(2);
   },[me,addLog,finishBottom]);
@@ -416,19 +434,24 @@ export default function App(){
     if((me.enlistMap||[])[colIdx]){addLog(`⚠ Déjà une recrue sur ${BOTTOM[colIdx]}`);return;}
     const costs=getBottomCost(me);
     const cost=costs[3]; // Enlist is bottom col 3
-    if(countRes(me,cost.res)<cost.qty){addLog(`⚠ ${cost.qty} ${cost.res} requis`);return;}
+    const planBonus=getPlanBottomBonus(me,"Enlist");
+    const effectiveQty=Math.max(0,cost.qty-planBonus.costReduction);
+    if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${cost.res} requis`);return;}
     const bonus=ENLIST_BONUSES[colIdx];
     setPlayers(prev=>{
-      const n=[...prev];let p=spendRes(n[0],cost.res,cost.qty);
+      const n=[...prev];let p=spendRes(n[0],cost.res,effectiveQty);
       p.recruits=(p.recruits||0)+1;
       p.enlistMap=[...(p.enlistMap||[false,false,false,false])];
       p.enlistMap[colIdx]=true;
       bonus.apply(p);
+      p.coins+=planBonus.bonusCoins;
+      p.power=Math.min(p.power+planBonus.bonusPower,16);
       const earned=p.recruits>=4&&!p.starRecruits;
       if(earned){p.stars++;p.starRecruits=true;}
       n[0]=p;return n;
     });
-    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${BOTTOM[colIdx]} (-${cost.qty} ${cost.res}, ${bonus.label})`);
+    planBonus.logs.forEach(l=>addLog(l));
+    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${BOTTOM[colIdx]} (-${effectiveQty} ${cost.res}, ${bonus.label})`);
     addLog(`   Ongoing: ${ENLIST_ONGOING[colIdx].icon} quand vous/voisins faites ${BOTTOM[colIdx]}`);
     if((me.recruits||0)+1>=4)addLog(`⭐ 4 Recrues enrôlées !`);
     finishBottom(3);
@@ -1061,86 +1084,7 @@ export default function App(){
 
   // ══════════ SETUP SCREEN ══════════
   if(phase==="setup"){
-    return(
-      <div style={{minHeight:"100vh",background:`linear-gradient(170deg, #1A1710 0%, #1A1710 30%, #1a1610 60%, #1A1710 100%)`,color:"var(--text)",display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 16px",position:"relative",overflow:"auto"}}>
-        {/* Noise texture overlay */}
-        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"repeating-linear-gradient(0deg,transparent,transparent 1px,rgba(201,168,76,0.012) 1px,rgba(201,168,76,0.012) 2px)",pointerEvents:"none"}}/>
-        <div style={{position:"relative",display:"flex",flexDirection:"column",alignItems:"center",width:"100%",maxWidth:640}}>
-          <div style={{width:80,height:1,background:"linear-gradient(90deg,transparent,var(--gold),transparent)",marginBottom:16}}/>
-          <div style={{fontSize:13,color:"var(--gold-dim)",letterSpacing:8,textTransform:"uppercase",marginBottom:6,fontFamily:"'Bitter',serif"}}>Scythe</div>
-          <h1 style={{fontSize:32,fontWeight:900,letterSpacing:10,textTransform:"uppercase",color:"var(--gold)",marginBottom:4,textAlign:"center",textShadow:"0 0 40px rgba(201,168,76,0.15)"}}>Panamerica</h1>
-          <div style={{width:180,height:1,background:"linear-gradient(90deg,transparent,var(--gold-dim) 20%,var(--gold) 50%,var(--gold-dim) 80%,transparent)",marginBottom:8}}/>
-          <p style={{color:"var(--text-dim)",fontSize:12,letterSpacing:1.5,marginBottom:20,textAlign:"center",fontStyle:"italic",maxWidth:320,lineHeight:1.6}}>
-            « L'Empire se meurt. Les machines ne savent pas. »
-          </p>
-          <button onClick={()=>setShowRules(true)} style={{
-            marginBottom:32,padding:"8px 28px",fontSize:12,letterSpacing:3,textTransform:"uppercase",
-            background:"transparent",color:"var(--gold-dim)",border:"1px solid var(--border)",
-            borderRadius:4,fontWeight:700,fontFamily:"'Bitter',serif",
-          }}>Regles du Jeu</button>
-          
-          <div style={{color:"var(--gold-dim)",fontSize:12,marginBottom:10,letterSpacing:4,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Adversaires</div>
-          <div style={{display:"flex",gap:8,marginBottom:32}}>
-            {[1,2,3,4].map(n=>(
-              <button key={n} onClick={()=>setNumBots(n)} style={{
-                width:42,height:42,borderRadius:"50%",fontSize:15,fontWeight:700,
-                background:numBots===n?"linear-gradient(135deg,var(--gold),#a08030)":"transparent",
-                color:numBots===n?"var(--bg)":"var(--text-muted)",
-                border:numBots===n?"none":`1px solid var(--border)`,
-                boxShadow:numBots===n?"0 0 20px rgba(201,168,76,0.3),inset 0 1px 0 rgba(255,255,255,0.2)":"none",
-              }}>{n}</button>
-            ))}
-          </div>
-
-          <div style={{color:"var(--gold-dim)",fontSize:12,marginBottom:12,letterSpacing:4,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Votre Faction</div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,width:"100%",marginBottom:32}}>
-            {FACTION_IDS.map(fid=>{const f=FACTIONS[fid];return(
-              <button key={fid} onClick={()=>setSelFaction(fid)} className="fade-in" style={{
-                background:selFaction===fid?`linear-gradient(135deg,${f.color}18,${f.color}08)`:"rgba(20,18,12,0.8)",
-                border:selFaction===fid?`2px solid ${f.color}`:`1px solid var(--border)`,
-                borderRadius:6,padding:"14px 12px",color:"var(--text)",textAlign:"left",
-                boxShadow:selFaction===fid?`0 0 24px ${f.color}22,inset 0 1px 0 rgba(255,255,255,0.04)`:"inset 0 1px 0 rgba(255,255,255,0.02)",
-              }}>
-                <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:14,color:f.color,marginBottom:3}}>{f.name}</div>
-                <div style={{fontSize:12,color:"var(--text-dim)"}}>{f.hero} & {f.companion}</div>
-                <div style={{display:"flex",gap:8,fontSize:11,color:"var(--text-dim)",marginTop:6,fontFamily:"'IBM Plex Mono',monospace"}}>
-                  <span>⚡{f.power}</span><span>🃏{f.cards}</span>
-                </div>
-                {f.fObj&&<div style={{fontSize:11,color:"var(--gold-dim)",marginTop:4,fontStyle:"italic"}}>🏛 {f.fObj.name}</div>}
-                {f.isExtension&&<div style={{fontSize:10,color:"var(--gold-dim)",marginTop:2,letterSpacing:2,textTransform:"uppercase"}}>Extension</div>}
-              </button>
-            );})}
-          </div>
-
-          {selFaction&&(<>
-            <div style={{color:"var(--gold-dim)",fontSize:12,marginBottom:12,letterSpacing:4,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Plateau Joueur</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:8,width:"100%",marginBottom:32}}>
-              {MATS.map(pm=>(
-                <button key={pm.id} onClick={()=>setSelMat(pm.id)} className="fade-in" style={{
-                  background:selMat===pm.id?"rgba(201,168,76,0.08)":"rgba(20,18,12,0.8)",
-                  border:selMat===pm.id?"2px solid var(--gold)":`1px solid var(--border)`,
-                  borderRadius:6,padding:"14px 12px",color:"var(--text)",textAlign:"left",
-                  boxShadow:selMat===pm.id?"0 0 20px rgba(201,168,76,0.12)":"none",
-                }}>
-                  <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:14}}>{pm.name}</div>
-                  <div style={{fontSize:11,color:"var(--text-dim)",marginTop:4,letterSpacing:0.5}}>{pm.topRow.join(" · ")}</div>
-                  <div style={{fontSize:12,color:"var(--gold)",marginTop:6,fontFamily:"'IBM Plex Mono',monospace"}}>♥{pm.pop}  💰{pm.coins}$</div>
-                </button>
-              ))}
-            </div>
-          </>)}
-
-          {selFaction&&selMat&&(
-            <button onClick={startGame} className="fade-in" style={{
-              background:`linear-gradient(135deg, ${FACTIONS[selFaction].color}ee, ${FACTIONS[selFaction].color}aa)`,
-              color:"#fff",border:"none",borderRadius:6,padding:"14px 56px",fontSize:14,
-              letterSpacing:5,textTransform:"uppercase",fontWeight:700,fontFamily:"'Bitter',serif",
-              boxShadow:`0 4px 30px ${FACTIONS[selFaction].color}44,inset 0 1px 0 rgba(255,255,255,0.15)`,
-            }}>Commencer</button>
-          )}
-        </div>
-      </div>
-    );
+    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
   }
 
   // (pick_objective phase removed — player keeps both objectives per Scythe rules)
@@ -1394,34 +1338,36 @@ export default function App(){
               <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#60b8f0" strokeWidth={1.2} strokeLinecap="round" opacity={0.2} strokeDasharray="4 12" style={{animation:"riverFlow 3s linear infinite"}}/>
             </React.Fragment>
           );})}
-          {/* Rails — iron tracks on hex edges (adjacent faces) */}
+          {/* Rails — center-to-center hex lines */}
           {rails.map(([a,b],i)=>{
-            const g=edgeGeo(a,b,hMap);
-            if(!g)return null;
+            const ha=hMap[a],hb=hMap[b];
+            if(!ha||!hb)return null;
             return(
               <React.Fragment key={`rail${i}`}>
-                {/* Sleeper ties — thick dark base on the edge */}
-                <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#2a1a0a" strokeWidth={9} strokeLinecap="round" opacity={0.5}/>
+                {/* Sleeper ties — thick dark base center-to-center */}
+                <line x1={ha.rx} y1={ha.ry} x2={hb.rx} y2={hb.ry} stroke="#2a1a0a" strokeWidth={9} strokeLinecap="round" opacity={0.5}/>
                 {/* Wooden sleepers — dashed perpendicular marks */}
-                <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#5a4020" strokeWidth={7} strokeLinecap="butt" opacity={0.6} strokeDasharray="2 4"/>
+                <line x1={ha.rx} y1={ha.ry} x2={hb.rx} y2={hb.ry} stroke="#5a4020" strokeWidth={7} strokeLinecap="butt" opacity={0.6} strokeDasharray="2 4"/>
                 {/* Double rail tracks */}
-                <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#8a6a40" strokeWidth={3.5} strokeLinecap="round" opacity={0.7}/>
-                <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#c0a060" strokeWidth={1.5} strokeLinecap="round" opacity={0.5}/>
+                <line x1={ha.rx} y1={ha.ry} x2={hb.rx} y2={hb.ry} stroke="#8a6a40" strokeWidth={3.5} strokeLinecap="round" opacity={0.7}/>
+                <line x1={ha.rx} y1={ha.ry} x2={hb.rx} y2={hb.ry} stroke="#c0a060" strokeWidth={1.5} strokeLinecap="round" opacity={0.5}/>
                 {/* Rail bolts at ends */}
-                <circle cx={g.x1} cy={g.y1} r={2.5} fill="#6a5030" stroke="#a08050" strokeWidth={0.5} opacity={0.6}/>
-                <circle cx={g.x2} cy={g.y2} r={2.5} fill="#6a5030" stroke="#a08050" strokeWidth={0.5} opacity={0.6}/>
+                <circle cx={ha.rx} cy={ha.ry} r={2.5} fill="#6a5030" stroke="#a08050" strokeWidth={0.5} opacity={0.6}/>
+                <circle cx={hb.rx} cy={hb.ry} r={2.5} fill="#6a5030" stroke="#a08050" strokeWidth={0.5} opacity={0.6}/>
               </React.Fragment>
             );
           })}
-          {/* Rail placement highlight — edge-based */}
+          {/* Rail placement highlight — center-to-center */}
           {railPlacement&&railPlacement.fromHex!==null&&(()=>{
             const adjIds=ADJ[railPlacement.fromHex]||[];
+            const fromH=hMap[railPlacement.fromHex];
+            if(!fromH)return null;
             return adjIds.map(aid=>{
               const exists=rails.some(([a,b])=>(a===railPlacement.fromHex&&b===aid)||(a===aid&&b===railPlacement.fromHex));
               if(exists)return null;
-              const g=edgeGeo(railPlacement.fromHex,aid,hMap);
-              if(!g)return null;
-              return <line key={`rp${aid}`} x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#C9A84C" strokeWidth={6} strokeLinecap="round" opacity={0.3} strokeDasharray="4 3"><animate attributeName="opacity" values="0.15;0.55;0.15" dur="1.2s" repeatCount="indefinite"/></line>;
+              const toH=hMap[aid];
+              if(!toH)return null;
+              return <line key={`rp${aid}`} x1={fromH.rx} y1={fromH.ry} x2={toH.rx} y2={toH.ry} stroke="#C9A84C" strokeWidth={6} strokeLinecap="round" opacity={0.3} strokeDasharray="4 3"><animate attributeName="opacity" values="0.15;0.55;0.15" dur="1.2s" repeatCount="indefinite"/></line>;
             });
           })()}
           {/* Hexes */}
@@ -1679,7 +1625,7 @@ export default function App(){
         {/* ── Actions area ── */}
         <div style={{flex:1,overflow:"auto",padding:0}}>
 
-          {/* Player mat — 4 vertical action cards */}
+          {/* Player mat — 4 vertical action cards, grouped: columns 0+1 (top pair) / columns 2+3 (bottom pair) with strong separator */}
           {isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&!pendingBottom&&(
             <div style={{display:"flex",flexDirection:"column",gap:0}}>
               {myMat.topRow.map((action,i)=>{
@@ -1705,40 +1651,50 @@ export default function App(){
                 }[bottomAction]||{prog:"",max:false};
                 const hasRes=bc?countRes(me,bc.res)>=bc.qty:false;
                 const bottomPay=bc?Array(bc.qty).fill(bc.res):[];
+                // Action group separator: strong between pairs (after index 1), light between actions within a pair (after index 0, 2)
+                const isGroupEnd=i===1;
+                const isLastAction=i===3;
                 return(
-                  <button key={action} onClick={()=>{if(!disabled){setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
+                  <React.Fragment key={action}>
+                  <button onClick={()=>{if(!disabled){setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
                     onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background="rgba(201,168,76,0.06)";}}
                     onMouseLeave={e=>{e.currentTarget.style.background=disabled?"rgba(0,0,0,0.3)":"transparent";}}
                     style={{
                     padding:0,background:disabled?"rgba(0,0,0,0.3)":"transparent",
-                    border:"none",borderBottom:"1px solid var(--border)",
+                    border:"none",
                     color:disabled?"var(--text-muted)":"var(--text)",
                     opacity:disabled?0.2:1,cursor:disabled?"not-allowed":"pointer",
                     display:"flex",flexDirection:"column",
                     transition:"all 0.2s ease",
                   }}>
                     {/* TOP ACTION */}
-                    <div style={{padding:"6px 8px",display:"flex",alignItems:"center",gap:6,background:"linear-gradient(180deg,rgba(30,27,20,0.8),rgba(22,20,14,0.6))"}}>
+                    <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(30,27,20,0.8),rgba(22,20,14,0.6))"}}>
                       <div style={{minWidth:0,flex:1}}>
-                        <div style={{fontSize:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"var(--text-dim)",marginBottom:3}}>{action}</div>
+                        <div style={{fontSize:11,fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",color:"var(--gold-dim)",marginBottom:4,fontFamily:"'Bitter',serif"}}>{action}</div>
                         <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact />
                       </div>
                       <CubeSlots total={cubesTop} filled={cubesTop} />
                     </div>
-                    {/* SEPARATOR */}
+                    {/* INNER SEPARATOR (top↔bottom within same column) */}
                     <div style={{height:2,background:`linear-gradient(90deg,transparent,${myFaction?.color||"var(--gold)"}66,transparent)`}}/>
                     {/* BOTTOM ACTION */}
-                    <div style={{padding:"6px 8px",display:"flex",alignItems:"center",gap:6,background:"linear-gradient(180deg,rgba(14,12,8,0.6),rgba(10,9,6,0.8))"}}>
+                    <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(14,12,8,0.6),rgba(10,9,6,0.8))"}}>
                       <div style={{minWidth:0,flex:1}}>
-                        <div style={{fontSize:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"var(--text-dim)",marginBottom:3}}>{bottomAction}</div>
+                        <div style={{fontSize:10,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"var(--text-dim)",marginBottom:3}}>{bottomAction}</div>
                         <ActionRow pay={bottomPay} gain={[bottomAction==="Upgrade"?"power":bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":"pop"]} compact />
                       </div>
-                      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3}}>
                         <CubeSlots total={maxBot} filled={cubesBot} />
-                        <span style={{fontSize:9,color:bottomData.max?"var(--success)":"var(--text-muted)",whiteSpace:"nowrap"}}>{bottomData.max?"✓ max":bottomData.prog}</span>
+                        <span style={{fontSize:10,fontWeight:600,color:bottomData.max?"var(--success)":"var(--text-muted)",whiteSpace:"nowrap"}}>{bottomData.max?"✓ max":bottomData.prog}</span>
                       </div>
                     </div>
                   </button>
+                  {/* GROUP SEPARATOR: strong between action pairs, light within pair */}
+                  {!isLastAction&&(isGroupEnd
+                    ?<div style={{height:6,background:"var(--bg)",borderTop:"2px solid var(--gold-dim)",borderBottom:"1px solid var(--border)",opacity:0.7}}/>
+                    :<div style={{height:1,background:"var(--border)"}}/>
+                  )}
+                  </React.Fragment>
                 );
               })}
             </div>
@@ -1908,30 +1864,7 @@ export default function App(){
             );
           })()}
 
-          {/* Objectives — player keeps both, can reveal one */}
-          {me.objectives&&me.objectives.length>0&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&!pendingBottom&&(
-            <div style={{padding:"8px 16px",borderTop:"1px solid var(--border)"}}>
-              <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6,fontFamily:"'Bitter',serif"}}>🎯 Objectifs secrets {me.objectiveRevealed?"(1 révélé)":"— révélez-en un pour ⭐"}</div>
-              {me.objectives.map((obj,idx)=>{
-                const isRevealed=me.objectiveRevealed&&me.revealedObjectiveIdx===idx;
-                const canReveal=!me.objectiveRevealed&&obj.check(me);
-                const condMet=obj.check(me);
-                return(
-                  <div key={obj.id||idx} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",opacity:me.objectiveRevealed&&!isRevealed?0.4:1}}>
-                    <span style={{color:isRevealed?"#4A8A4A":condMet?"var(--gold)":"var(--text-dim)",fontSize:13,fontFamily:"'Bitter',serif",fontWeight:700,minWidth:0,flex:1}}>
-                      {isRevealed?"✅":"🎯"} {obj.name}
-                      <span style={{fontWeight:400,fontSize:12,color:"var(--text-dim)",marginLeft:8}}>{obj.desc}</span>
-                    </span>
-                    {!me.objectiveRevealed&&(
-                      canReveal
-                        ?<button onClick={()=>revealObjective(idx)} style={{padding:"8px 14px",fontSize:12,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,minHeight:44,flexShrink:0}}>Révéler ⭐</button>
-                        :<span style={{fontSize:11,color:"var(--text-muted)",flexShrink:0}}>pas rempli</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* Objectives — now controlled by showObjectives dropdown toggle */}
 
           {/* Commerce Impérial — Dominion free action 1×/tour */}
           {me.faction==="dominion"&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&!me.commerceUsed&&(()=>{
@@ -1981,13 +1914,46 @@ export default function App(){
 
         </div>
 
-        {/* ── Dropdowns: Objectives ── */}
+        {/* ── Dropdown: Star Tracker ── */}
+        <div style={{borderTop:"1px solid var(--border)",flexShrink:0}}>
+          <button onClick={()=>setShowStars(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"'Bitter',serif",cursor:"pointer"}}>
+            <span>⭐ Étoiles ({me.stars}/6)</span>
+            <span style={{fontSize:9,color:"var(--text-dim)",transform:showStars?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
+          </button>
+        </div>
+
+        {/* ── Dropdown: Objectives ── */}
         {me.objectives&&me.objectives.length>0&&(
           <div style={{borderTop:"1px solid var(--border)",flexShrink:0}}>
-            <button onClick={()=>setShowStars(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"'Bitter',serif",cursor:"pointer"}}>
-              <span>🎯 Objectifs</span>
-              <span style={{fontSize:9,color:"var(--text-dim)",transform:showStars?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
+            <button onClick={()=>setShowObjectives(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"'Bitter',serif",cursor:"pointer"}}>
+              <span>🎯 Objectifs {me.objectiveRevealed?"(1 révélé)":""}</span>
+              <span style={{fontSize:9,color:"var(--text-dim)",transform:showObjectives?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
             </button>
+            {showObjectives&&(
+              <div style={{padding:"8px 12px",animation:"slideDown 0.2s ease"}}>
+                <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>
+                  {me.objectiveRevealed?"1 objectif révélé":"Révélez-en un quand la condition est remplie pour gagner ⭐"}
+                </div>
+                {me.objectives.map((obj,idx)=>{
+                  const isRevealed=me.objectiveRevealed&&me.revealedObjectiveIdx===idx;
+                  const canReveal=!me.objectiveRevealed&&obj.check(me);
+                  const condMet=obj.check(me);
+                  return(
+                    <div key={obj.id||idx} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",opacity:me.objectiveRevealed&&!isRevealed?0.4:1}}>
+                      <span style={{color:isRevealed?"#4A8A4A":condMet?"var(--gold)":"var(--text-dim)",fontSize:13,fontFamily:"'Bitter',serif",fontWeight:700,minWidth:0,flex:1}}>
+                        {isRevealed?"✅":"🎯"} {obj.name}
+                        <span style={{fontWeight:400,fontSize:12,color:"var(--text-dim)",marginLeft:8}}>{obj.desc}</span>
+                      </span>
+                      {!me.objectiveRevealed&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&(
+                        canReveal
+                          ?<button onClick={()=>revealObjective(idx)} style={{padding:"8px 14px",fontSize:12,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,minHeight:44,flexShrink:0}}>Révéler ⭐</button>
+                          :<span style={{fontSize:11,color:"var(--text-muted)",flexShrink:0}}>pas rempli</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -2002,6 +1968,7 @@ export default function App(){
           </div>}
         </div>
       </div>
+      <AmbientSound />
     </div>
   );
 }
