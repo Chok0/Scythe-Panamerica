@@ -34,6 +34,59 @@ export const RULES = [
     ]
   },
   {
+    id: "panamerica",
+    title: "Spécificités Panamerica",
+    icon: "🌎",
+    sections: [
+      {
+        title: "Nouveau Monde",
+        content: "Scythe: Panamerica transpose le conflit dans les Amériques. La carte, les factions, les terrains et les mécaniques sont adaptés à ce nouveau cadre uchronique."
+      },
+      {
+        title: "Terrains Uniques",
+        list: [
+          "Sierra 🏔 — produit du Métal (remplace Montagne)",
+          "Désert 🏜 — produit du Pétrole (remplace Toundra)",
+          "Plaine 🌿 — produit de la Nourriture",
+          "Forêt 🌲 — produit du Bois",
+          "Village 🏘 — recrute des Ouvriers",
+          "Lac 〰 — infranchissable (sauf capacités spéciales)",
+          "Marécage ≋ — terrain spécial, pas de ressource"
+        ]
+      },
+      {
+        title: "L'Empire Mécanique (PvE)",
+        content: "Contrairement au Scythe original, Panamerica ajoute des mechas de l'Empire comme ennemis PvE. 6 colosses rouillés occupent la carte au début. Ils tirent une carte de combat aléatoire (puissance 1-12). Les vaincre rapporte des récompenses et contribue à certains objectifs de faction."
+      },
+      {
+        title: "Réseau de Rails",
+        content: "Un réseau ferroviaire partagé entre tous les joueurs. Construire une Gare pose 3 segments de rails. Les rails permettent le déplacement instantané entre hex connectés. L'Empire possède aussi ses propres rails."
+      },
+      {
+        title: "Rouge River & Plans",
+        content: "L'Usine centrale (Rouge River) propose 2 types de plans au lieu d'un :",
+        list: [
+          "Plans Ford — 5 plans utilitaires, toujours accessibles",
+          "Plans Tesla — 5 plans puissants, accessibles uniquement avec 2 Fragments Tesla",
+          "Fragments Tesla — obtenus via rencontres ou récompenses de combat PvE"
+        ]
+      },
+      {
+        title: "Jetons de Faction",
+        content: "Certaines factions possèdent des jetons spéciaux posés automatiquement :",
+        list: [
+          "Frente Libre — Traps (Tierra Minada) : posés quand le héros se déplace. Infligent -3 Puissance aux ennemis qui marchent dessus (max 4)",
+          "Acadiane — Comptoirs : posés quand le héros se déplace. Comptent comme territoire au scoring (max 4)",
+          "Les deux types de jetons contribuent aux Objectifs de Faction respectifs"
+        ]
+      },
+      {
+        title: "Capture & Méchas",
+        content: "Le Bayou peut capturer des mechas ennemis. La Confédération peut capturer des ouvriers ennemis. Ces mécaniques uniques alimentent leurs objectifs de faction respectifs."
+      }
+    ]
+  },
+  {
     id: "turn",
     title: "Tour de Jeu",
     icon: "🔄",
