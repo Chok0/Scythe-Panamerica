@@ -6,7 +6,7 @@ import React from 'react';
 // Confédération — Cavalier: armored horse-like mech, grey steel
 export const IconConfederation = React.memo(({ cx, cy, size = 28, color = "#808080" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Body — armored hull */}
       <rect x="8" y="10" width="16" height="10" rx="2" fill={color + "44"} stroke={color} strokeWidth="0.8" />
       {/* Turret */}
@@ -33,7 +33,7 @@ export const IconConfederation = React.memo(({ cx, cy, size = 28, color = "#8080
 // harvester cutter bar, exposed drive chain, bolted armor plates, gun nest, exhaust stack
 export const IconFrente = React.memo(({ cx, cy, size = 28, color = "#A05020" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* 6 HYDRAULIC PISTON LEGS — industrial cylinders */}
       <g stroke="#5a3a20" strokeWidth="0.4">
         {/* Left side: 3 piston assemblies */}
@@ -121,7 +121,7 @@ export const IconFrente = React.memo(({ cx, cy, size = 28, color = "#A05020" }) 
 // timber frame, hammered copper plates, bronze cast joints, rawhide bindings, antenna masts
 export const IconNations = React.memo(({ cx, cy, size = 28, color = "#20B2AA" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* 4 LEGS — wood beams with copper/bronze joint castings */}
       {/* Front-left leg */}
       <g>
@@ -237,7 +237,7 @@ export const IconNations = React.memo(({ cx, cy, size = 28, color = "#20B2AA" })
 // Acadiane — Airboat/swamp craft, green, stealthy
 export const IconAcadiane = React.memo(({ cx, cy, size = 28, color = "#228B22" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Hull — flat-bottomed swamp boat shape */}
       <path d="M4,18 L8,14 L24,14 L28,18 L26,22 L6,22Z" fill={color + "44"} stroke={color} strokeWidth="0.7" />
       {/* Deck */}
@@ -266,7 +266,7 @@ export const IconAcadiane = React.memo(({ cx, cy, size = 28, color = "#228B22" }
 // Bayou — Chimère: crocodilian amphibious mech, purple
 export const IconBayou = React.memo(({ cx, cy, size = 28, color = "#7B2D8B" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Low, long body — croc-like profile */}
       <path d="M3,16 L6,12 L26,12 L30,15 L28,19 L4,19Z" fill={color + "44"} stroke={color} strokeWidth="0.7" />
       {/* Jaw / snout */}
@@ -300,7 +300,7 @@ export const IconBayou = React.memo(({ cx, cy, size = 28, color = "#7B2D8B" }) =
 // Dominion — Imperial walker, red, imposing military
 export const IconDominion = React.memo(({ cx, cy, size = 28, color = "#CC2222" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Tall body — imperial tower */}
       <rect x="10" y="6" width="12" height="14" rx="1.5" fill={color + "44"} stroke={color} strokeWidth="0.7" />
       {/* Crown/crenelations on top */}
@@ -337,7 +337,7 @@ export const IconDominion = React.memo(({ cx, cy, size = 28, color = "#CC2222" }
 // Confédération — J. Cole: cavalry officer on horseback with sabre
 export const HeroConfederation = React.memo(({ cx, cy, size = 24, color = "#808080" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Horse body */}
       <ellipse cx="16" cy="20" rx="9" ry="4" fill={color + "44"} stroke={color} strokeWidth="0.6" />
       {/* Horse legs */}
@@ -363,7 +363,7 @@ export const HeroConfederation = React.memo(({ cx, cy, size = 24, color = "#8080
 // Frente Libre — E. Rojas: revolutionary with rifle and bandolier
 export const HeroFrente = React.memo(({ cx, cy, size = 24, color = "#A05020" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Legs */}
       <rect x="12" y="22" width="3" height="7" rx="0.5" fill={color + "55"} stroke={color} strokeWidth="0.4" />
       <rect x="17" y="22" width="3" height="7" rx="0.5" fill={color + "55"} stroke={color} strokeWidth="0.4" />
@@ -390,7 +390,7 @@ export const HeroFrente = React.memo(({ cx, cy, size = 24, color = "#A05020" }) 
 // Nations Souveraines — Aiyana: indigenous leader with staff and feathers
 export const HeroNations = React.memo(({ cx, cy, size = 24, color = "#20B2AA" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Legs */}
       <rect x="12" y="22" width="3" height="7" rx="0.5" fill="#5a4020" stroke={color} strokeWidth="0.3" />
       <rect x="17" y="22" width="3" height="7" rx="0.5" fill="#5a4020" stroke={color} strokeWidth="0.3" />
@@ -422,7 +422,7 @@ export const HeroNations = React.memo(({ cx, cy, size = 24, color = "#20B2AA" })
 // Acadiane — M. Thibodeau: trapper/explorer with lantern and paddle
 export const HeroAcadiane = React.memo(({ cx, cy, size = 24, color = "#228B22" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Legs (wading boots) */}
       <rect x="12" y="22" width="3" height="7" rx="0.5" fill="#4a3a20" stroke={color} strokeWidth="0.3" />
       <rect x="17" y="22" width="3" height="7" rx="0.5" fill="#4a3a20" stroke={color} strokeWidth="0.3" />
@@ -453,7 +453,7 @@ export const HeroAcadiane = React.memo(({ cx, cy, size = 24, color = "#228B22" }
 // Bayou — Cap. Zeke: pirate captain with harpoon and hook
 export const HeroBayou = React.memo(({ cx, cy, size = 24, color = "#7B2D8B" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Peg leg + normal leg */}
       <rect x="12" y="22" width="3" height="7" rx="0.5" fill={color + "55"} stroke={color} strokeWidth="0.4" />
       <line x1="18.5" y1="22" x2="18.5" y2="29" stroke="#6a5030" strokeWidth="1.5" />
@@ -486,7 +486,7 @@ export const HeroBayou = React.memo(({ cx, cy, size = 24, color = "#7B2D8B" }) =
 // Dominion — Col. Whitfield: imperial officer with sword and medals
 export const HeroDominion = React.memo(({ cx, cy, size = 24, color = "#CC2222" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Legs (polished boots) */}
       <rect x="12" y="22" width="3" height="7" rx="0.5" fill="#2a2a2a" stroke={color} strokeWidth="0.3" />
       <rect x="17" y="22" width="3" height="7" rx="0.5" fill="#2a2a2a" stroke={color} strokeWidth="0.3" />
@@ -521,7 +521,7 @@ export const HeroDominion = React.memo(({ cx, cy, size = 24, color = "#CC2222" }
 // Confédération — Industrial worker with wrench and flat cap
 export const WorkerConfederation = React.memo(({ cx, cy, size = 16, color = "#808080" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Legs */}
       <rect x="12" y="22" width="3" height="7" rx="0.5" fill={color + "55"} stroke={color} strokeWidth="0.5" />
       <rect x="17" y="22" width="3" height="7" rx="0.5" fill={color + "55"} stroke={color} strokeWidth="0.5" />
@@ -544,7 +544,7 @@ export const WorkerConfederation = React.memo(({ cx, cy, size = 16, color = "#80
 // Frente Libre — Campesino worker with hoe and straw hat
 export const WorkerFrente = React.memo(({ cx, cy, size = 16, color = "#A05020" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Legs */}
       <rect x="12" y="22" width="3" height="7" rx="0.5" fill={color + "44"} stroke={color} strokeWidth="0.5" />
       <rect x="17" y="22" width="3" height="7" rx="0.5" fill={color + "44"} stroke={color} strokeWidth="0.5" />
@@ -564,7 +564,7 @@ export const WorkerFrente = React.memo(({ cx, cy, size = 16, color = "#A05020" }
 // Nations Souveraines — Tribal gatherer with basket
 export const WorkerNations = React.memo(({ cx, cy, size = 16, color = "#20B2AA" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Legs */}
       <rect x="12" y="22" width="3" height="7" rx="0.5" fill="#5a4020" stroke={color} strokeWidth="0.4" />
       <rect x="17" y="22" width="3" height="7" rx="0.5" fill="#5a4020" stroke={color} strokeWidth="0.4" />
@@ -586,7 +586,7 @@ export const WorkerNations = React.memo(({ cx, cy, size = 16, color = "#20B2AA" 
 // Acadiane — Swamp fisherman with net
 export const WorkerAcadiane = React.memo(({ cx, cy, size = 16, color = "#228B22" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Legs (wading) */}
       <rect x="12" y="22" width="3" height="7" rx="0.5" fill="#4a3a20" stroke={color} strokeWidth="0.4" />
       <rect x="17" y="22" width="3" height="7" rx="0.5" fill="#4a3a20" stroke={color} strokeWidth="0.4" />
@@ -608,7 +608,7 @@ export const WorkerAcadiane = React.memo(({ cx, cy, size = 16, color = "#228B22"
 // Bayou — Swamp scavenger with grappling hook
 export const WorkerBayou = React.memo(({ cx, cy, size = 16, color = "#7B2D8B" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Legs */}
       <rect x="12" y="22" width="3" height="7" rx="0.5" fill={color + "44"} stroke={color} strokeWidth="0.4" />
       <rect x="17" y="22" width="3" height="7" rx="0.5" fill={color + "44"} stroke={color} strokeWidth="0.4" />
@@ -632,7 +632,7 @@ export const WorkerBayou = React.memo(({ cx, cy, size = 16, color = "#7B2D8B" })
 // Dominion — Imperial laborer with pickaxe and uniform
 export const WorkerDominion = React.memo(({ cx, cy, size = 16, color = "#CC2222" }) => (
   <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
-    <svg width={size} height={size} viewBox="0 0 32 32">
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
       {/* Legs */}
       <rect x="12" y="22" width="3" height="7" rx="0.5" fill="#3a3a3a" stroke={color} strokeWidth="0.4" />
       <rect x="17" y="22" width="3" height="7" rx="0.5" fill="#3a3a3a" stroke={color} strokeWidth="0.4" />
