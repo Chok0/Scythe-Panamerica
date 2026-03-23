@@ -16,7 +16,8 @@ import { getValidMoves } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer } from '../logic/player.js';
 import { botTurn } from '../logic/bot.js';
-import { HexTerrain, UnitToken, EmpireMecha, ResourceToken } from './svg/MapComponents.jsx';
+import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
+import { ActionRow, CubeSlots } from './svg/ActionIcons.jsx';
 
 export default function App(){
   const[phase,setPhase]=useState("setup");
@@ -1249,10 +1250,10 @@ export default function App(){
 
 
   return(
-    <div style={{height:"100vh",display:"grid",gridTemplateRows:"var(--top-h) 1fr auto",gridTemplateColumns:"var(--side-w) 1fr var(--side-w)",background:"var(--bg)",color:"var(--text)",overflow:"hidden"}}>
+    <div style={{height:"100vh",display:"grid",gridTemplateRows:"var(--top-h) 1fr",gridTemplateColumns:"var(--left-w) 1fr var(--right-w)",background:"var(--bg)",color:"var(--text)",overflow:"hidden"}}>
 
       {/* ═══ TOP RESOURCE BAR ═══ */}
-      <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",padding:"6px 16px",gap:10,background:"linear-gradient(180deg,#1E1A12,#1E1A12)",borderBottom:"1px solid var(--border)",flexShrink:0,height:"var(--top-h)",overflow:"hidden"}}>
+      <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",padding:"6px 16px",gap:10,background:"var(--bg-topbar)",borderBottom:"1px solid var(--border)",flexShrink:0,height:"var(--top-h)",overflow:"hidden"}}>
         {/* Faction badge */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginRight:4,flexShrink:0}}>
           <div style={{width:36,height:36,borderRadius:"50%",background:myFaction.color+"22",border:`2px solid ${myFaction.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:myFaction.color,fontFamily:"'Bitter',serif"}}>{myFaction.name[0]}</div>
@@ -1269,14 +1270,13 @@ export default function App(){
           const totalRes=(t)=>{let s=0;Object.values(me.resources).forEach(r=>{if(r[t])s+=r[t];});return s;};
           const stats=[
             {icon:"💰",val:me.coins,color:"var(--gold)",label:"$"},
-            {icon:"⚡",val:me.power,color:"#8cc4dd",label:"Pui"},
-            {icon:"♥",val:me.pop,color:"#dd8888",label:"Pop"},
             {icon:"🃏",val:me.combatCards,color:"#bbaacc",label:"CC"},
             {icon:"⚙",val:totalRes("metal"),color:"#99aabb",label:"Mét"},
             {icon:"🪵",val:totalRes("bois"),color:"#7aaa55",label:"Bois"},
             {icon:"🌽",val:totalRes("nourriture"),color:"#d4b050",label:"Nour"},
             {icon:"🛢",val:totalRes("petrole"),color:"#8a90a0",label:"Pét"},
-            {icon:"👷",val:me.workers.length,color:"#c89966",label:"Ouv"},
+            {icon:"👤",val:me.workers.length,color:"#c89966",label:"Ouv"},
+            {icon:"⬡",val:me.mechs.length,color:"#99aabb",label:"Mech"},
           ];
           return stats.map((s,i)=>(
             <div key={i} className="res-pill" title={s.label}>
@@ -1296,26 +1296,53 @@ export default function App(){
         </div>
       </div>
 
-      {/* ═══ LEFT: POWER TRACK ═══ */}
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",background:"linear-gradient(180deg,#1a0a0a,#120808)",borderRight:"1px solid var(--border)",padding:"6px 0",overflow:"hidden"}}>
-        <div style={{fontSize:10,color:"#cc9988",letterSpacing:1,textTransform:"uppercase",writingMode:"vertical-rl",transform:"rotate(180deg)",marginBottom:6,fontFamily:"'Bitter',serif",fontWeight:700}}>Puissance</div>
-        <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,justifyContent:"flex-start",width:"calc(var(--side-w) - 12px)"}}>
-          {Array.from({length:17},(_,i)=>i).map(v=>(
-            <div key={v} style={{
-              height:v===0?14:16,width:"100%",borderRadius:3,
-              background:v<=me.power?"linear-gradient(90deg,#8b2020,#bb3838)":"rgba(255,255,255,0.03)",
-              border:v<=me.power?"1px solid #dd4444":"1px solid rgba(255,255,255,0.04)",
-              display:"flex",alignItems:"center",justifyContent:"center",
-              fontSize:10,fontWeight:v===me.power?900:400,
-              color:v<=me.power?"#fff":"#3a2a2a",
-              boxShadow:v===me.power?"0 0 8px rgba(220,50,30,0.5)":"none",
-            }}>{v}</div>
-          ))}
+      {/* ═══ LEFT: POWER + POPULARITY TRACKS ═══ */}
+      <div style={{display:"flex",gap:4,background:"linear-gradient(180deg,var(--bg-panel),#0a0906)",borderRight:"1px solid var(--border)",padding:"4px 4px",overflow:"hidden"}}>
+        {/* Power track */}
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
+          <div style={{fontSize:8,color:"#cc9988",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"'Bitter',serif",fontWeight:700}}>Pui</div>
+          <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,width:"100%"}}>
+            {Array.from({length:17},(_,i)=>i).map(v=>(
+              <div key={v} style={{
+                flex:1,minHeight:0,width:"100%",borderRadius:2,
+                background:v<=me.power?"linear-gradient(90deg,#8b2020,#bb3838)":"rgba(255,255,255,0.03)",
+                border:v<=me.power?"1px solid #dd4444":"1px solid rgba(255,255,255,0.04)",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:8,fontWeight:v===me.power?900:400,
+                color:v<=me.power?"#fff":"#3a2a2a",
+                boxShadow:v===me.power?"0 0 6px rgba(220,50,30,0.5)":"none",
+              }}>{v%2===0?v:""}</div>
+            ))}
+          </div>
+          <div style={{fontSize:16,fontWeight:700,color:"#dd6644",marginTop:4,fontFamily:"'Bitter',serif"}}>{me.power}</div>
+        </div>
+        {/* Popularity track */}
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
+          <div style={{fontSize:8,color:"#ccaa77",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"'Bitter',serif",fontWeight:700}}>Pop</div>
+          <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,width:"100%"}}>
+            {Array.from({length:19},(_,i)=>i).map(v=>{
+              const tier=v<=6?0:v<=12?1:2;
+              const tierColors=["#8a6020","#b88030","#d0a040"];
+              return(
+                <div key={v} style={{
+                  flex:1,minHeight:0,width:"100%",borderRadius:2,
+                  background:v<=me.pop?`linear-gradient(90deg,${tierColors[tier]}cc,${tierColors[tier]})`:"rgba(255,255,255,0.03)",
+                  border:v<=me.pop?`1px solid ${tierColors[tier]}`:"1px solid rgba(255,255,255,0.04)",
+                  display:"flex",alignItems:"center",justifyContent:"center",
+                  fontSize:8,fontWeight:v===me.pop?900:400,
+                  color:v<=me.pop?"#fff":"#2a2010",
+                  boxShadow:v===me.pop?"0 0 6px rgba(200,160,60,0.5)":"none",
+                  borderLeft:v===7||v===13?`2px solid ${tierColors[tier]}88`:"none",
+                }}>{v%2===0?v:""}</div>
+              );
+            })}
+          </div>
+          <div style={{fontSize:16,fontWeight:700,color:"#d0a040",marginTop:4,fontFamily:"'Bitter',serif"}}>{me.pop}</div>
         </div>
       </div>
 
       {/* ═══ CENTER: MAP + OVERLAYS ═══ */}
-      <div style={{position:"relative",overflow:"hidden",background:"radial-gradient(ellipse at 50% 45%,#16140e,#0a0906)",cursor:isPanning?"grabbing":"default"}}>
+      <div style={{position:"relative",overflow:"hidden",background:"radial-gradient(ellipse at 50% 45%,#16140e,var(--bg-map))",cursor:isPanning?"grabbing":"default"}}>
         {/* Zoom controls */}
         <div style={{position:"absolute",top:8,right:8,zIndex:5,display:"flex",flexDirection:"column",gap:4}}>
           <button onClick={()=>mapZoom(1/1.3)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--gold)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>+</button>
@@ -1405,8 +1432,9 @@ export default function App(){
             const isFactory=hex.t==="factory";
             return(<g key={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
               <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory}/>
-              {units.length===0&&empHere.length===0&&<text x={hex.rx} y={hex.ry+4} textAnchor="middle" fontSize={8} opacity={0.12} fill="#c9a84c" style={{pointerEvents:"none",fontFamily:"'Bitter',serif"}}>{TERRAINS[hex.t].label}</text>}
+              {/* Terrain label removed — TerrainDecor provides visual identification */}
               <text x={hex.rx} y={hex.ry+32} textAnchor="middle" fontSize={6.5} fill="#4a4030" opacity={0.2} style={{fontFamily:"'Source Serif 4',serif",pointerEvents:"none"}}>#{hex.id}</text>
+              {units.length>0&&(()=>{const fc=units[0].factionId;const c=FACTIONS[fc]?.color||"#888";return <FactionHalo cx={hex.rx} cy={hex.ry+6} color={c} r={22}/>;})()}
               {units.map((u,ui)=>{
                 const ox=(ui-(units.length-1)/2)*24;
                 return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}/>;
@@ -1428,14 +1456,14 @@ export default function App(){
                 const fc=FACTIONS[pl.faction];
                 return <React.Fragment key={pl.faction+"tok"}>
                   {traps.map((t,ti)=><g key={`trap${ti}`} style={{pointerEvents:"none"}}>
-                    <circle cx={hex.rx-26} cy={hex.ry-22+ti*16} r={7} fill="rgba(6,5,3,0.7)"/>
-                    <circle cx={hex.rx-26} cy={hex.ry-22+ti*16} r={6} fill={t.disarmed?"rgba(100,50,20,0.3)":"rgba(208,112,48,0.35)"} stroke={t.disarmed?"#6a4020":fc.color} strokeWidth={1}/>
-                    <text x={hex.rx-26} y={hex.ry-18+ti*16} textAnchor="middle" fontSize={8} fill={t.disarmed?"#6a4020":"#D07030"} fontWeight={700}>{t.disarmed?"✗":"💀"}</text>
+                    <circle cx={hex.rx-26} cy={hex.ry-22+ti*16} r={9} fill="rgba(6,5,3,0.85)"/>
+                    <circle cx={hex.rx-26} cy={hex.ry-22+ti*16} r={8} fill={t.disarmed?"rgba(100,50,20,0.4)":"rgba(208,112,48,0.5)"} stroke={t.disarmed?"#6a4020":fc.color} strokeWidth={1.2}/>
+                    <text x={hex.rx-26} y={hex.ry-17+ti*16} textAnchor="middle" fontSize={10} fill={t.disarmed?"#6a4020":"#D07030"} fontWeight={700}>{t.disarmed?"✗":"💀"}</text>
                   </g>)}
                   {flags.map((f2,fi)=><g key={`flag${fi}`} style={{pointerEvents:"none"}}>
-                    <circle cx={hex.rx-26} cy={hex.ry-22+fi*16} r={7} fill="rgba(6,5,3,0.7)"/>
-                    <circle cx={hex.rx-26} cy={hex.ry-22+fi*16} r={6} fill="rgba(51,170,51,0.3)" stroke={fc.color} strokeWidth={1}/>
-                    <text x={hex.rx-26} y={hex.ry-18+fi*16} textAnchor="middle" fontSize={9} fill="#33AA33" fontWeight={700}>⚑</text>
+                    <circle cx={hex.rx-26} cy={hex.ry-22+fi*16} r={9} fill="rgba(6,5,3,0.85)"/>
+                    <circle cx={hex.rx-26} cy={hex.ry-22+fi*16} r={8} fill="rgba(51,170,51,0.4)" stroke={fc.color} strokeWidth={1.2}/>
+                    <text x={hex.rx-26} y={hex.ry-17+fi*16} textAnchor="middle" fontSize={11} fill="#33AA33" fontWeight={700}>⚑</text>
                   </g>)}
                 </React.Fragment>;
               })}
@@ -1599,80 +1627,61 @@ export default function App(){
         )}
       </div>
 
-      {/* ═══ RIGHT: POPULARITY TRACK ═══ */}
-      <div style={{display:"flex",flexDirection:"column",alignItems:"center",background:"linear-gradient(180deg,#1a1608,#120e06)",borderLeft:"1px solid var(--border)",padding:"6px 0",overflow:"hidden"}}>
-        <div style={{fontSize:10,color:"#ccaa77",letterSpacing:1,textTransform:"uppercase",writingMode:"vertical-rl",transform:"rotate(180deg)",marginBottom:6,fontFamily:"'Bitter',serif",fontWeight:700}}>Popularité</div>
-        <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,justifyContent:"flex-start",width:"calc(var(--side-w) - 12px)"}}>
-          {Array.from({length:19},(_,i)=>i).map(v=>{
-            const tier=v<=6?0:v<=12?1:2;
-            const tierColors=["#8a6020","#b88030","#d0a040"];
-            return(
-              <div key={v} style={{
-                height:v===0?14:15,width:"100%",borderRadius:3,
-                background:v<=me.pop?`linear-gradient(90deg,${tierColors[tier]}cc,${tierColors[tier]})`:"rgba(255,255,255,0.03)",
-                border:v<=me.pop?`1px solid ${tierColors[tier]}`:"1px solid rgba(255,255,255,0.04)",
-                display:"flex",alignItems:"center",justifyContent:"center",
-                fontSize:10,fontWeight:v===me.pop?900:400,
-                color:v<=me.pop?"#fff":"#2a2010",
-                boxShadow:v===me.pop?"0 0 8px rgba(200,160,60,0.5)":"none",
-              }}>{v}{(v===7||v===13)&&<span style={{fontSize:6,marginLeft:1}}>▸</span>}</div>
-            );
-          })}
-        </div>
-      </div>
+      {/* ═══ RIGHT PANEL: SCOREBOARD + ACTIONS + DROPDOWNS ═══ */}
+      <div style={{display:"flex",flexDirection:"column",background:"linear-gradient(180deg,var(--bg-panel),#0a0906)",borderLeft:"1px solid var(--border)",overflow:"hidden"}}>
 
-      {/* ═══ BOTTOM: PLAYER MAT + ACTIONS ═══ */}
-      <div style={{gridColumn:"1/-1",background:"linear-gradient(180deg,#16140e,#0e0c08)",borderTop:"2px solid var(--gold-dim)",display:"flex",flexDirection:"column",overflow:"hidden",maxHeight:"var(--bottom-max)"}}>
-        
-        {/* Star tracker (toggled) */}
-        {showStars&&(()=>{
-          const stars=[
-            {icon:"⬆",name:"Upgrades",prog:`${me.upgrades||0}/6`,done:(me.upgrades||0)>=6},
-            {icon:"⬡",name:"Mechas",prog:`${me.mechs.length}/4`,done:me.mechs.length>=4},
-            {icon:"🏗",name:"Bâtiments",prog:`${(me.buildings||[]).length}/4`,done:(me.buildings||[]).length>=4},
-            {icon:"🤝",name:"Recrues",prog:`${me.recruits||0}/4`,done:(me.recruits||0)>=4},
-            {icon:"👷",name:"Ouvriers",prog:`${me.workers.length}/8`,done:me.workers.length>=8},
-            {icon:"🎯",name:"Objectif",prog:me.objectiveRevealed?"✅":"0/1",done:me.objectiveRevealed},
-            {icon:"⚔",name:"Combat ×2",prog:`${Math.min(me.combatWins||0,2)}/2`,done:(me.combatWins||0)>=2},
-            {icon:"♥",name:"Pop 18",prog:`${me.pop}/18`,done:me.pop>=18},
-            {icon:"⚡",name:"Pui 16",prog:`${me.power}/16`,done:me.power>=16},
-            {icon:"🏛",name:"Faction",prog:me.fObjRevealed?"✅":"…",done:me.fObjRevealed},
-            {icon:"💀",name:"Libérateur",prog:`${me.empireKills||0}/3`,done:(me.empireKills||0)>=3},
-          ];
-          return(
-            <div style={{display:"flex",gap:4,padding:"6px 14px",overflowX:"auto",borderBottom:"1px solid var(--border)",flexShrink:0}}>
-              {stars.map((s,i)=>(
-                <div key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"4px 8px",borderRadius:5,fontSize:10,whiteSpace:"nowrap",background:s.done?"rgba(76,175,80,0.1)":"transparent",border:s.done?"1px solid rgba(76,175,80,0.25)":"1px solid var(--border)"}}>
-                  <span style={{fontSize:12}}>{s.done?"⭐":s.icon}</span>
-                  <span style={{color:s.done?"#4A8A4A":"var(--text-dim)",fontWeight:500}}>{s.name}</span>
-                  {!s.done&&<span style={{color:"var(--brass)",fontWeight:700}}>{s.prog}</span>}
-                </div>
-              ))}
-            </div>
-          );
-        })()}
-
-        {/* Scoreboard row */}
-        <div style={{display:"flex",gap:4,padding:"5px 14px",borderBottom:"1px solid var(--border)",fontSize:11,flexShrink:0,overflowX:"auto"}}>
+        {/* ── Scoreboard ── */}
+        <div style={{padding:"6px 8px",borderBottom:"1px solid var(--border)",flexShrink:0}}>
           {players.map((p,i)=>{const fc=FACTIONS[p.faction];const isActive=i===currentP;return(
-            <div key={i} style={{padding:"4px 10px",borderRadius:5,whiteSpace:"nowrap",
-              borderBottom:isActive?`2px solid ${fc.color}`:"2px solid transparent",
-              background:i===0?"var(--bg3)":"transparent",
+            <div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 6px",borderRadius:4,
+              background:isActive?"rgba(201,168,76,0.06)":"transparent",
+              borderLeft:isActive?`3px solid ${fc.color}`:"3px solid transparent",
               animation:isActive&&i>0?"botPulse 1.5s ease infinite":"none",
-              transition:"all 0.3s ease",
+              marginBottom:2,
             }}>
-              <span style={{color:fc.color,fontWeight:700,fontFamily:"'Bitter',serif",fontSize:12}}>{fc.name.slice(0,5)}</span>
-              <span style={{color:"var(--text-dim)",marginLeft:6,fontSize:11}}>⚡{p.power} ♥{p.pop} 💰{p.coins} ⭐{p.stars}</span>
+              <div style={{width:8,height:8,borderRadius:"50%",background:fc.color,flexShrink:0}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:11,fontWeight:700,color:fc.color,fontFamily:"'Bitter',serif",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{fc.name.slice(0,8)}{isActive&&<span style={{color:"var(--gold)",marginLeft:4}}>◀</span>}</div>
+              </div>
+              <div style={{fontSize:10,color:"var(--text-dim)",whiteSpace:"nowrap",fontFamily:"var(--font-mono)"}}>⚡{p.power} ♥{p.pop} ⭐{p.stars}</div>
             </div>
           );})}
         </div>
 
-        {/* Action area */}
-        <div style={{flex:1,overflow:"auto",padding:"0"}}>
+        {/* Star tracker (toggled) */}
+        {showStars&&(()=>{
+          const stars=[
+            {icon:"⬆",name:"Upg",prog:`${me.upgrades||0}/6`,done:(me.upgrades||0)>=6},
+            {icon:"⬡",name:"Mech",prog:`${me.mechs.length}/4`,done:me.mechs.length>=4},
+            {icon:"🏗",name:"Bât",prog:`${(me.buildings||[]).length}/4`,done:(me.buildings||[]).length>=4},
+            {icon:"🤝",name:"Recr",prog:`${me.recruits||0}/4`,done:(me.recruits||0)>=4},
+            {icon:"⚔",name:"Cmbt",prog:`${Math.min(me.combatWins||0,2)}/2`,done:(me.combatWins||0)>=2},
+            {icon:"🎯",name:"Obj",prog:me.objectiveRevealed?"✓":"…",done:me.objectiveRevealed},
+            {icon:"🏛",name:"Fact",prog:me.fObjRevealed?"✓":"…",done:me.fObjRevealed},
+            {icon:"♥",name:"Pop18",prog:`${me.pop}/18`,done:me.pop>=18},
+            {icon:"⚡",name:"Pui16",prog:`${me.power}/16`,done:me.power>=16},
+          ];
+          return(
+            <div style={{padding:"4px 8px",borderBottom:"1px solid var(--border)",flexShrink:0}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:2}}>
+                {stars.map((s,i)=>(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 4px",borderRadius:3,fontSize:9,whiteSpace:"nowrap",background:s.done?"rgba(76,175,80,0.1)":"transparent",border:s.done?"1px solid rgba(76,175,80,0.2)":"1px solid transparent"}}>
+                    <span style={{fontSize:10}}>{s.done?"⭐":s.icon}</span>
+                    <span style={{color:s.done?"#4A8A4A":"var(--text-dim)"}}>{s.name}</span>
+                    {!s.done&&<span style={{color:"var(--gold)",fontWeight:700,fontSize:9}}>{s.prog}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
-          {/* Player mat — Scythe-style 4-column visual layout */}
+        {/* ── Actions area ── */}
+        <div style={{flex:1,overflow:"auto",padding:0}}>
+
+          {/* Player mat — 4 vertical action cards */}
           {isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&!pendingBottom&&(
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:0,borderBottom:"1px solid var(--border)"}}>
+            <div style={{display:"flex",flexDirection:"column",gap:0}}>
               {myMat.topRow.map((action,i)=>{
                 const disabled=me.lastCol===i;
                 const bottomAction=BOTTOM[i];
@@ -1682,67 +1691,51 @@ export default function App(){
                 const cubesTop=(me.cubesOnTop||[])[i]||0;
                 const cubesBot=(me.cubesOnBottom||[])[i]||0;
                 const maxBot=(mat?.bottomSlots||[])[i]||0;
-                const topData={
-                  Move:{icon:"⇢",cost:"",gain:"2 unités",color:"#8cc4dd"},
-                  Bolster:{icon:"⚡",cost:"1$",gain:"+2⚡ ou +1🃏",color:"#dd8888"},
-                  Trade:{icon:"💰",cost:"1$",gain:"+2 res ou +1♥",color:"#d4b050"},
-                  Produce:{icon:"⚒",cost:"variable",gain:"2 hex",color:"#7aaa55"},
-                }[action]||{icon:"?",cost:"",gain:"",color:"#888"};
+                const topActionRow={
+                  Move:{pay:[],gain:["worker","worker"],altGain:null,label:"Move"},
+                  Bolster:{pay:["coins"],gain:["power","power"],altGain:["combatCards"],label:"Bolster"},
+                  Trade:{pay:["coins"],gain:["metal","metal"],altGain:["pop"],label:"Trade"},
+                  Produce:{pay:[],gain:["nourriture","nourriture"],altGain:null,label:"Produce"},
+                }[action]||{pay:[],gain:[],altGain:null,label:action};
                 const bottomData={
-                  Upgrade:{icon:"⬆",prog:`${me.upgrades||0}/6`,max:(me.upgrades||0)>=6,color:"#8a90a0"},
-                  Deploy:{icon:"⬡",prog:`${me.mechs.length}/4`,max:me.mechs.length>=4,color:"#99aabb"},
-                  Build:{icon:"🏗",prog:`${(me.buildings||[]).length}/4`,max:(me.buildings||[]).length>=4,color:"#7aaa55"},
-                  Enlist:{icon:"🤝",prog:`${me.recruits||0}/4`,max:(me.recruits||0)>=4,color:"#d4b050"},
-                }[bottomAction]||{icon:"?",prog:"",max:false,color:"#888"};
-                const resIcon={petrole:"🛢",metal:"⚙",bois:"🪵",nourriture:"🌽"}[bc?.res]||"?";
+                  Upgrade:{prog:`${me.upgrades||0}/6`,max:(me.upgrades||0)>=6},
+                  Deploy:{prog:`${me.mechs.length}/4`,max:me.mechs.length>=4},
+                  Build:{prog:`${(me.buildings||[]).length}/4`,max:(me.buildings||[]).length>=4},
+                  Enlist:{prog:`${me.recruits||0}/4`,max:(me.recruits||0)>=4},
+                }[bottomAction]||{prog:"",max:false};
                 const hasRes=bc?countRes(me,bc.res)>=bc.qty:false;
-                const canDoBottom=hasRes&&!bottomData.max;
+                const bottomPay=bc?Array(bc.qty).fill(bc.res):[];
                 return(
-                  <button key={action} onClick={()=>{if(!disabled){setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}} 
+                  <button key={action} onClick={()=>{if(!disabled){setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
                     onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background="rgba(201,168,76,0.06)";}}
                     onMouseLeave={e=>{e.currentTarget.style.background=disabled?"rgba(0,0,0,0.3)":"transparent";}}
                     style={{
                     padding:0,background:disabled?"rgba(0,0,0,0.3)":"transparent",
-                    borderRight:i<3?`1px solid var(--border)`:"none",
-                    border:"none",borderBottom:"none",
+                    border:"none",borderBottom:"1px solid var(--border)",
                     color:disabled?"var(--text-muted)":"var(--text)",
                     opacity:disabled?0.2:1,cursor:disabled?"not-allowed":"pointer",
                     display:"flex",flexDirection:"column",
                     transition:"all 0.2s ease",
                   }}>
-                    {/* TOP ROW ACTION */}
-                    <div style={{padding:"10px 8px 6px",background:"linear-gradient(180deg,rgba(30,27,20,0.8),rgba(22,20,14,0.6))",flex:1}}>
-                      <div style={{fontSize:20,marginBottom:3,color:topData.color}}>{topData.icon}</div>
-                      <div style={{fontSize:13,fontWeight:700,fontFamily:"'Bitter',serif",color:"var(--text)",letterSpacing:0.5}}>{action}</div>
-                      {topData.cost&&<div style={{fontSize:11,color:"var(--text-dim)",marginTop:3,fontFamily:"'IBM Plex Mono',monospace"}}>{topData.cost}</div>}
-                      <div style={{fontSize:11,color:topData.color,marginTop:2}}>{topData.gain}</div>
-                      {/* Top cubes — green squares (removable via Upgrade) */}
-                      {cubesTop>0&&<div style={{display:"flex",gap:3,justifyContent:"center",marginTop:5}}>
-                        {Array.from({length:cubesTop}).map((_,ci)=><div key={ci} style={{width:10,height:10,borderRadius:2,background:"#4caf50",border:"1px solid #2e7d32",opacity:0.85}}/>)}
-                      </div>}
+                    {/* TOP ACTION */}
+                    <div style={{padding:"6px 8px",display:"flex",alignItems:"center",gap:6,background:"linear-gradient(180deg,rgba(30,27,20,0.8),rgba(22,20,14,0.6))"}}>
+                      <div style={{minWidth:0,flex:1}}>
+                        <div style={{fontSize:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"var(--text-dim)",marginBottom:3}}>{action}</div>
+                        <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact />
+                      </div>
+                      <CubeSlots total={cubesTop} filled={cubesTop} />
                     </div>
-                    {/* SEPARATOR — Scythe-style line between top/bottom */}
+                    {/* SEPARATOR */}
                     <div style={{height:2,background:`linear-gradient(90deg,transparent,${myFaction?.color||"var(--gold)"}66,transparent)`}}/>
-                    {/* BOTTOM ROW ACTION */}
-                    <div style={{padding:"8px 8px 10px",background:"linear-gradient(180deg,rgba(14,12,8,0.6),rgba(10,9,6,0.8))"}}>
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4,marginBottom:3}}>
-                        <span style={{fontSize:13,opacity:0.6}}>{bottomData.icon}</span>
-                        <span style={{fontSize:12,fontWeight:600,color:"var(--text-dim)"}}>{bottomAction}</span>
+                    {/* BOTTOM ACTION */}
+                    <div style={{padding:"6px 8px",display:"flex",alignItems:"center",gap:6,background:"linear-gradient(180deg,rgba(14,12,8,0.6),rgba(10,9,6,0.8))"}}>
+                      <div style={{minWidth:0,flex:1}}>
+                        <div style={{fontSize:9,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"var(--text-dim)",marginBottom:3}}>{bottomAction}</div>
+                        <ActionRow pay={bottomPay} gain={[bottomAction==="Upgrade"?"power":bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":"pop"]} compact />
                       </div>
-                      {/* Bottom cube slots — filled green = cost reduced */}
-                      {maxBot>0&&<div style={{display:"flex",gap:3,justifyContent:"center",marginBottom:4}}>
-                        {Array.from({length:maxBot}).map((_,si)=><div key={si} style={{width:10,height:10,borderRadius:2,border:si<cubesBot?"1px solid #2e7d32":"1px solid #555",background:si<cubesBot?"#4caf50":"transparent",opacity:si<cubesBot?0.85:0.4}}/>)}
-                      </div>}
-                      {/* Resource cost */}
-                      <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:3,fontSize:11,fontFamily:"'IBM Plex Mono',monospace"}}>
-                        <span>{resIcon}</span>
-                        <span style={{color:canDoBottom?"var(--gold)":"var(--text-muted)",fontWeight:700}}>{bc?.qty}</span>
-                        {cubesBot>0&&<span style={{fontSize:10,color:"#4caf50"}}>(-{cubesBot})</span>}
-                        {!bottomData.max&&<span style={{color:hasRes?"rgba(80,180,80,0.8)":"rgba(200,60,60,0.7)",fontSize:10}}>({countRes(me,bc?.res||"")})</span>}
-                      </div>
-                      {/* Bonus $ and Progress */}
-                      <div style={{fontSize:10,color:bottomData.max?"#4A8A4A":"var(--text-dim)",marginTop:3,fontWeight:bottomData.max?700:400}}>
-                        {bottomData.max?"✓ max":bottomData.prog}
+                      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:2}}>
+                        <CubeSlots total={maxBot} filled={cubesBot} />
+                        <span style={{fontSize:9,color:bottomData.max?"var(--success)":"var(--text-muted)",whiteSpace:"nowrap"}}>{bottomData.max?"✓ max":bottomData.prog}</span>
                       </div>
                     </div>
                   </button>
@@ -1987,17 +1980,27 @@ export default function App(){
           )}
 
         </div>
-      </div>
 
-      {/* ═══ FLOATING LOG BOX — bottom-right ═══ */}
-      <div style={{position:"fixed",bottom:12,right:12,zIndex:20,width:280,maxHeight:showLog?260:36,transition:"max-height 0.25s ease",display:"flex",flexDirection:"column",borderRadius:8,overflow:"hidden",background:"rgba(14,12,8,0.92)",border:"1px solid var(--border)",backdropFilter:"blur(8px)",boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
-        <button onClick={()=>setShowLog(s=>!s)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:"rgba(201,168,76,0.06)",border:"none",borderBottom:showLog?"1px solid var(--border)":"none",color:"var(--gold)",fontSize:12,fontWeight:700,fontFamily:"'Bitter',serif",cursor:"pointer",flexShrink:0}}>
-          <span>📜 Journal</span>
-          <span style={{fontSize:10,color:"var(--text-dim)",transform:showLog?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
-        </button>
-        {showLog&&<div ref={logRef} style={{flex:1,overflow:"auto",padding:"6px 10px",fontSize:11}}>
-          {log.slice(-20).map((msg,i)=><div key={i} className="log-line">{msg}</div>)}
-        </div>}
+        {/* ── Dropdowns: Objectives ── */}
+        {me.objectives&&me.objectives.length>0&&(
+          <div style={{borderTop:"1px solid var(--border)",flexShrink:0}}>
+            <button onClick={()=>setShowStars(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"'Bitter',serif",cursor:"pointer"}}>
+              <span>🎯 Objectifs</span>
+              <span style={{fontSize:9,color:"var(--text-dim)",transform:showStars?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
+            </button>
+          </div>
+        )}
+
+        {/* ── Dropdown: Journal ── */}
+        <div style={{borderTop:"1px solid var(--border)",flexShrink:0,marginTop:"auto"}}>
+          <button onClick={()=>setShowLog(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"'Bitter',serif",cursor:"pointer"}}>
+            <span>📜 Journal</span>
+            <span style={{fontSize:9,color:"var(--text-dim)",transform:showLog?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
+          </button>
+          {showLog&&<div ref={logRef} style={{maxHeight:120,overflow:"auto",padding:"4px 8px",fontSize:10}}>
+            {log.slice(-20).map((msg,i)=><div key={i} className="log-line">{msg}</div>)}
+          </div>}
+        </div>
       </div>
     </div>
   );

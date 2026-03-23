@@ -7,26 +7,32 @@ import { TerrainDecor } from './TerrainDecor.jsx';
 // Stroke 0.5px, no rounded corners, flat (no drop-shadows on game elements)
 const RES_ICONS = { metal: "⚙", bois: "🪵", nourriture: "🌽", petrole: "🛢", ouvriers: "👷" };
 
+// Terrain-specific border colors for liseré
+const TERRAIN_LISERÉ = {
+  foret: "#1A5A1A", plaine: "#7A6B3A", sierra: "#5A6A7A", desert: "#8B6B35",
+  village: "#7A4A3A", lac: "#1A3A5A", marecage: "#2A4A2A", factory: "#5A1A1A",
+  montagne: "#4A4A4A", champs: "#7A6A20", toundra: "#4A5A6A",
+};
+
 export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory }) => {
   const t = TERRAINS[hex.t];
   const isWater = hex.t === "lac" || hex.t === "marecage";
+  const liseré = TERRAIN_LISERÉ[hex.t] || "#2A2518";
   return (
     <g>
-      {/* Base fill with gradient — desaturated */}
-      <g filter="url(#desat)">
-        <polygon points={hPts(hex.rx, hex.ry)}
-          fill={`url(#tg-${hex.t})`}
-          stroke={isV ? "#4A8A4A" : isSel ? "#C9A84C" : isHov ? t.stroke : "#2A2518"}
-          strokeWidth={isV ? 1.5 : isSel ? 2 : isHov ? 1 : 0.5}
-          opacity={isWater ? 0.7 : 0.9}
-        />
-        {/* Texture pattern overlay */}
-        <polygon points={hPts(hex.rx, hex.ry)} fill={`url(#tp-${hex.t})`} opacity={isWater ? 0.4 : 0.6} style={{ pointerEvents: "none" }} />
-      </g>
-      {/* Terrain decorations */}
-      <TerrainDecor hex={hex} />
+      {/* Base fill with gradient — higher saturation */}
+      <polygon points={hPts(hex.rx, hex.ry)}
+        fill={`url(#tg-${hex.t})`}
+        stroke={isV ? "#4A8A4A" : isSel ? "#C9A84C" : isHov ? t.stroke : liseré}
+        strokeWidth={isV ? 1.5 : isSel ? 2 : isHov ? 1.2 : 0.8}
+        opacity={isWater ? 0.75 : 1}
+      />
+      {/* Texture pattern overlay — boosted opacity */}
+      <polygon points={hPts(hex.rx, hex.ry)} fill={`url(#tp-${hex.t})`} opacity={isWater ? 0.5 : 0.7} style={{ pointerEvents: "none" }} />
+      {/* Terrain decorations — higher opacity */}
+      <g opacity={0.55}><TerrainDecor hex={hex} /></g>
       {/* Resource icon — centered, subtle */}
-      {t.res && <text x={hex.rx} y={hex.ry + 2} textAnchor="middle" fontSize={18} opacity={0.18} style={{ pointerEvents: "none" }}>{RES_ICONS[t.res] || ""}</text>}
+      {t.res && <text x={hex.rx} y={hex.ry + 2} textAnchor="middle" fontSize={18} opacity={0.22} style={{ pointerEvents: "none" }}>{RES_ICONS[t.res] || ""}</text>}
       {/* Factory special: subtle pulsing ring */}
       {isFactory && <>
         <polygon points={hPts(hex.rx, hex.ry, HS + 4)} fill="none" stroke="#8A2A2A" strokeWidth={0.6} opacity={0.2} strokeDasharray="5 3">
@@ -46,46 +52,50 @@ export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory }) => 
   );
 });
 
-// DA Doc: Unit tokens — simple military silhouettes
-// Hero = 5-pointed star, Mech = hexagon, Worker = filled circle, Building = square
+// Unit tokens — white outline 1.5px for visibility on all terrains
+// Hero = 5-pointed star, Mech = hexagon (bigger), Worker = filled circle, Building = square
 export const UnitToken = React.memo(({ type, cx, cy, color, label, icon, factionId }) => {
   if (type === "hero") {
-    // 5-pointed star — DA doc: filled, color faction, 10-12px
-    const r = 11, ri = 5;
+    const r = 12, ri = 5.5;
     const pts = Array.from({ length: 10 }, (_, i) => {
       const a = (Math.PI / 5) * i - Math.PI / 2;
       const rad = i % 2 === 0 ? r : ri;
       return `${cx + rad * Math.cos(a)},${cy + rad * Math.sin(a)}`;
     }).join(" ");
     return (<g>
-      <polygon points={pts} fill={color} stroke="rgba(255,255,240,0.6)" strokeWidth={1.2} opacity={0.9} />
-      <text x={cx} y={cy + 18} textAnchor="middle" fontSize="7" fill={color} fontWeight="700" style={{ fontFamily: "'Bitter',serif" }}>{label}</text>
+      <polygon points={pts} fill={color} stroke="rgba(255,255,240,0.8)" strokeWidth={1.5} opacity={0.95} />
+      <text x={cx} y={cy + 19} textAnchor="middle" fontSize="7" fill={color} fontWeight="700" style={{ fontFamily: "'Bitter',serif" }}>{label}</text>
     </g>);
   }
   if (type === "mech") {
-    // Hexagon — DA doc: stroke faction color, semi-transparent fill, 10-12px
-    const r = 11;
+    const r = 14;
     const pts = Array.from({ length: 6 }, (_, i) => {
       const a = (Math.PI / 3) * i - Math.PI / 6;
       return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
     }).join(" ");
     return (<g>
-      <polygon points={pts} fill={color + "44"} stroke={color} strokeWidth={1.5} opacity={0.9} />
+      <polygon points={pts} fill={color + "55"} stroke="rgba(255,255,240,0.7)" strokeWidth={1.5} opacity={0.95} />
+      <polygon points={pts} fill="none" stroke={color} strokeWidth={1} opacity={0.9} />
     </g>);
   }
   if (type === "building") {
-    // Square — DA doc: 10px, color faction
     const bt = icon || "■";
     return (<g>
-      <rect x={cx - 7} y={cy - 7} width={14} height={14} rx={1} fill={color + "44"} stroke={color} strokeWidth={1} opacity={0.9} />
-      <text x={cx} y={cy + 4} textAnchor="middle" fontSize={9}>{bt}</text>
+      <rect x={cx - 8} y={cy - 8} width={16} height={16} rx={2} fill={color + "44"} stroke="rgba(255,255,240,0.6)" strokeWidth={1.5} opacity={0.95} />
+      <rect x={cx - 8} y={cy - 8} width={16} height={16} rx={2} fill="none" stroke={color} strokeWidth={0.8} opacity={0.9} />
+      <text x={cx} y={cy + 4} textAnchor="middle" fontSize={10}>{bt}</text>
     </g>);
   }
-  // Worker — filled circle, DA doc: 6-8px
+  // Worker — filled circle, slightly bigger with white outline
   return (<g>
-    <circle cx={cx} cy={cy} r={5} fill={color} stroke="rgba(255,255,240,0.4)" strokeWidth={0.8} opacity={0.9} />
+    <circle cx={cx} cy={cy} r={6} fill={color} stroke="rgba(255,255,240,0.7)" strokeWidth={1.5} opacity={0.95} />
   </g>);
 });
+
+// Faction halo — semi-transparent circle under unit groups
+export const FactionHalo = React.memo(({ cx, cy, color, r = 20 }) => (
+  <circle cx={cx} cy={cy} r={r} fill={color} opacity={0.15} style={{ pointerEvents: "none" }} />
+));
 
 // Empire mecha — DA doc: hexagon with X cross, navy blue, slightly larger
 export const EmpireMecha = React.memo(({ cx, cy, eid }) => {
