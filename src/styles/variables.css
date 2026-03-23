@@ -41,9 +41,20 @@
   --fs-micro: 9px;
   --fs-debug: 7px;
 
-  /* Sizing — larger panels for readability */
-  --top-h: 46px;
-  --side-w: 56px;
-  --bottom-max: 38vh;
+  /* Sizing — v0.10 layout */
+  --top-h: 44px;
+  --left-w: 72px;
+  --right-w: 240px;
   --btn-min: 44px;
+
+  /* v0.10 palette additions */
+  --bg-map: #0B0A07;
+  --bg-panel: #12110B;
+  --bg-topbar: #1A1812;
+  --cost-bg: #8B2E2E;
+  --cost-border: #A03030;
+  --gain-bg: #2E6B2E;
+  --gain-border: #308030;
+  --cube-active: #4CAF50;
+  --cube-border: #2E7D32;
 }
