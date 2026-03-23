@@ -2,6 +2,7 @@ import React from 'react';
 import { TERRAINS } from '../../data/terrains.js';
 import { hPts, HS } from '../../logic/hexMath.js';
 import { TerrainDecor } from './TerrainDecor.jsx';
+import { FACTION_ICON_MAP } from './FactionIcons.jsx';
 
 // DA Doc: Hex rendering — cartographic military style
 // Stroke 0.5px, no rounded corners, flat (no drop-shadows on game elements)
@@ -68,6 +69,14 @@ export const UnitToken = React.memo(({ type, cx, cy, color, label, icon, faction
     </g>);
   }
   if (type === "mech") {
+    const FactionIcon = factionId ? FACTION_ICON_MAP[factionId] : null;
+    if (FactionIcon) {
+      return (<g>
+        {/* Background hex outline for visibility */}
+        {(() => { const r = 18; const pts = Array.from({ length: 6 }, (_, i) => { const a = (Math.PI / 3) * i - Math.PI / 6; return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`; }).join(" "); return <polygon points={pts} fill={color + "22"} stroke={color} strokeWidth={0.8} opacity={0.6} />; })()}
+        <FactionIcon cx={cx} cy={cy} size={36} color={color} />
+      </g>);
+    }
     const r = 14;
     const pts = Array.from({ length: 6 }, (_, i) => {
       const a = (Math.PI / 3) * i - Math.PI / 6;
