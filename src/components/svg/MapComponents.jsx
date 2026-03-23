@@ -5,22 +5,28 @@ import { TerrainDecor } from './TerrainDecor.jsx';
 
 // DA Doc: Hex rendering — cartographic military style
 // Stroke 0.5px, no rounded corners, flat (no drop-shadows on game elements)
+const RES_ICONS = { metal: "⚙", bois: "🪵", nourriture: "🌽", petrole: "🛢", ouvriers: "👷" };
+
 export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory }) => {
   const t = TERRAINS[hex.t];
   const isWater = hex.t === "lac" || hex.t === "marecage";
   return (
     <g>
-      {/* Base fill with gradient */}
-      <polygon points={hPts(hex.rx, hex.ry)}
-        fill={`url(#tg-${hex.t})`}
-        stroke={isV ? "#4A8A4A" : isSel ? "#C9A84C" : isHov ? t.stroke : "#2A2518"}
-        strokeWidth={isV ? 1.5 : isSel ? 2 : isHov ? 1 : 0.5}
-        opacity={isWater ? 0.7 : 0.9}
-      />
-      {/* Texture pattern overlay */}
-      <polygon points={hPts(hex.rx, hex.ry)} fill={`url(#tp-${hex.t})`} opacity={isWater ? 0.4 : 0.6} style={{ pointerEvents: "none" }} />
+      {/* Base fill with gradient — desaturated */}
+      <g filter="url(#desat)">
+        <polygon points={hPts(hex.rx, hex.ry)}
+          fill={`url(#tg-${hex.t})`}
+          stroke={isV ? "#4A8A4A" : isSel ? "#C9A84C" : isHov ? t.stroke : "#2A2518"}
+          strokeWidth={isV ? 1.5 : isSel ? 2 : isHov ? 1 : 0.5}
+          opacity={isWater ? 0.7 : 0.9}
+        />
+        {/* Texture pattern overlay */}
+        <polygon points={hPts(hex.rx, hex.ry)} fill={`url(#tp-${hex.t})`} opacity={isWater ? 0.4 : 0.6} style={{ pointerEvents: "none" }} />
+      </g>
       {/* Terrain decorations */}
       <TerrainDecor hex={hex} />
+      {/* Resource icon — centered, subtle */}
+      {t.res && <text x={hex.rx} y={hex.ry + 2} textAnchor="middle" fontSize={18} opacity={0.18} style={{ pointerEvents: "none" }}>{RES_ICONS[t.res] || ""}</text>}
       {/* Factory special: subtle pulsing ring */}
       {isFactory && <>
         <polygon points={hPts(hex.rx, hex.ry, HS + 4)} fill="none" stroke="#8A2A2A" strokeWidth={0.6} opacity={0.2} strokeDasharray="5 3">

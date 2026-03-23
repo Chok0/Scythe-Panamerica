@@ -38,16 +38,87 @@ export default function App(){
   const[encounterTokens,setEncounterTokens]=useState(new Set(ENCOUNTER_HEXES));
   const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
   const[moveSource,setMoveSource]=useState(null);
+  const[preActionSnapshot,setPreActionSnapshot]=useState(null); // snapshot of player[0] before action, for undo
+  const[tradePicks,setTradePicks]=useState([]); // for Trade: array of picked resource types (0-2)
   const[hovHex,setHovHex]=useState(null);
   const[clickRipple,setClickRipple]=useState(null); // {hexId, key} for ripple animation
   const[log,setLog]=useState([]);
   const[botRunning,setBotRunning]=useState(false);
   const[showStars,setShowStars]=useState(false);
+  const[showLog,setShowLog]=useState(true);
   const logRef=useRef(null);
+  // Map zoom/pan state
+  const MAP_BASE={x:20,y:20,w:980,h:990};
+  const[mapView,setMapView]=useState({...MAP_BASE});
+  const[isPanning,setIsPanning]=useState(false);
+  const panStart=useRef(null);
+  const mapRef=useRef(null);
 
   const me=players[0];const myFaction=me?FACTIONS[me.faction]:null;const myMat=me?MATS.find(m=>m.id===me.matId):null;
 
   useEffect(()=>{if(logRef.current)logRef.current.scrollTop=logRef.current.scrollHeight;},[log]);
+
+  // Map zoom (wheel) — zoom toward cursor
+  const handleMapWheel=useCallback((e)=>{
+    e.preventDefault();
+    const factor=e.deltaY>0?1.12:1/1.12;
+    setMapView(prev=>{
+      const newW=Math.min(MAP_BASE.w*2,Math.max(200,prev.w*factor));
+      const newH=Math.min(MAP_BASE.h*2,Math.max(200,prev.h*factor));
+      // Zoom toward mouse position
+      const svg=mapRef.current;
+      if(svg){
+        const rect=svg.getBoundingClientRect();
+        const mx=(e.clientX-rect.left)/rect.width;
+        const my=(e.clientY-rect.top)/rect.height;
+        const newX=prev.x+prev.w*mx-newW*mx;
+        const newY=prev.y+prev.h*my-newH*my;
+        return{x:newX,y:newY,w:newW,h:newH};
+      }
+      const cx=prev.x+prev.w/2,cy=prev.y+prev.h/2;
+      return{x:cx-newW/2,y:cy-newH/2,w:newW,h:newH};
+    });
+  },[]);
+
+  // Map pan (mouse drag)
+  const handleMapPointerDown=useCallback((e)=>{
+    if(e.button!==1&&!e.shiftKey)return; // middle-click or shift+left-click to pan
+    e.preventDefault();
+    setIsPanning(true);
+    panStart.current={cx:e.clientX,cy:e.clientY,vx:mapView.x,vy:mapView.y};
+  },[mapView.x,mapView.y]);
+
+  const handleMapPointerMove=useCallback((e)=>{
+    if(!isPanning||!panStart.current)return;
+    const svg=mapRef.current;if(!svg)return;
+    const rect=svg.getBoundingClientRect();
+    const scaleX=mapView.w/rect.width,scaleY=mapView.h/rect.height;
+    const dx=(e.clientX-panStart.current.cx)*scaleX;
+    const dy=(e.clientY-panStart.current.cy)*scaleY;
+    setMapView(prev=>({...prev,x:panStart.current.vx-dx,y:panStart.current.vy-dy}));
+  },[isPanning,mapView.w,mapView.h]);
+
+  const handleMapPointerUp=useCallback(()=>{
+    setIsPanning(false);panStart.current=null;
+  },[]);
+
+  // Attach wheel listener with passive:false for preventDefault
+  useEffect(()=>{
+    const el=mapRef.current;if(!el)return;
+    el.addEventListener("wheel",handleMapWheel,{passive:false});
+    return()=>el.removeEventListener("wheel",handleMapWheel);
+  },[handleMapWheel]);
+
+  const mapZoom=useCallback((factor)=>{
+    setMapView(prev=>{
+      const cx=prev.x+prev.w/2,cy=prev.y+prev.h/2;
+      const newW=Math.min(MAP_BASE.w*2,Math.max(200,prev.w*factor));
+      const newH=Math.min(MAP_BASE.h*2,Math.max(200,prev.h*factor));
+      return{x:cx-newW/2,y:cy-newH/2,w:newW,h:newH};
+    });
+  },[]);
+
+  const mapReset=useCallback(()=>setMapView({...MAP_BASE}),[]);
   const addLog=useCallback((msg)=>setLog(prev=>[...prev,msg]),[]);
   const addLogs=useCallback((msgs)=>setLog(prev=>[...prev,...msgs]),[]);
 
@@ -64,23 +135,19 @@ export default function App(){
     const shuffled=shuffleArray(OBJECTIVES);
     ps.forEach((p,i)=>{
       const o1=shuffled[(i*2)%shuffled.length];const o2=shuffled[(i*2+1)%shuffled.length];
-      p.objectiveChoices=[o1,o2];
-      if(p.isBot){p.objective=Math.random()>0.5?o1:o2;p.objectiveChoices=null;}
+      p.objectives=[o1,o2];
+      if(p.isBot){p.objective=Math.random()>0.5?o1:o2;}
     });
-    setPlayers(ps);setPhase("pick_objective");setCurrentP(0);setTurn(1);
+    setPlayers(ps);setPhase("playing");setCurrentP(0);setTurn(1);
     addLog(`⚔ ${ps.length} joueurs`);
     ps.forEach(p=>{const f=FACTIONS[p.faction];addLog(`${p.isBot?"🤖":"👤"} ${f.name} (${p.matName})  ⚡${p.power} 🃏${p.combatCards} ♥${p.pop} 💰${p.coins}`);});
   },[selFaction,selMat,numBots,addLog]);
 
-  const pickObjective=useCallback((obj)=>{
-    setPlayers(prev=>{const n=[...prev];n[0]={...n[0],objective:obj,objectiveChoices:null};return n;});
-    addLog(`🎯 ${obj.name}`);setPhase("playing");
-  },[addLog]);
-
-  const revealObjective=useCallback(()=>{
-    const p=players[0];if(!p||!p.objective||p.objectiveRevealed)return;
-    if(p.objective.check(p)){setPlayers(prev=>{const n=[...prev];n[0]={...n[0],objectiveRevealed:true,stars:n[0].stars+1};return n;});addLog(`⭐ "${p.objective.name}" révélé !`);}
-    else addLog(`❌ "${p.objective.name}" non rempli`);
+  const revealObjective=useCallback((objIdx)=>{
+    const p=players[0];if(!p||p.objectiveRevealed)return;
+    const obj=p.objectives?.[objIdx];if(!obj)return;
+    if(obj.check(p)){setPlayers(prev=>{const n=[...prev];n[0]={...n[0],objectiveRevealed:true,revealedObjectiveIdx:objIdx,stars:n[0].stars+1};return n;});addLog(`⭐ "${obj.name}" révélé !`);}
+    else addLog(`❌ "${obj.name}" — condition non remplie`);
   },[players,addLog]);
 
   useEffect(()=>{
@@ -210,7 +277,7 @@ export default function App(){
   // After top-row → show bottom-row option
   const endHumanTurn=useCallback((col)=>{
     setPlayers(prev=>{const n=[...prev];n[0]={...n[0],lastCol:col,movesLeft:undefined,movedUnits:[],packUpUsed:false,commerceUsed:false};return n;});
-    setSelAction(null);setMoveSource(null);
+    setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);setTradePicks([]);
     // Show bottom-row option
     const bottomAction=BOTTOM[col];
     setPendingBottom({col,action:bottomAction});
@@ -956,12 +1023,18 @@ export default function App(){
     endHumanTurn(myMat.topRow.indexOf("Produce"));
   };
 
-  const doTrade=(resType)=>{
+  const doTradePick=(resType)=>{
     if(!me||me.coins<1){addLog("⚠ Pas d'$");return;}
+    const newPicks=[...tradePicks,resType];
+    if(newPicks.length<2){setTradePicks(newPicks);return;}
+    // 2 picks done — apply trade
     const workerHex=me.workers.length>0?me.workers[0].hexId:me.hero;
     setPlayers(prev=>{const n=[...prev];const p={...n[0],resources:{...n[0].resources}};const hid=String(workerHex);
-      if(!p.resources[hid])p.resources[hid]={};p.resources[hid][resType]=(p.resources[hid][resType]||0)+2;p.coins--;n[0]=p;return n;});
-    addLog(`💰 -1$ → +2 ${resType}`);endHumanTurn(myMat.topRow.indexOf("Trade"));
+      if(!p.resources[hid])p.resources[hid]={};
+      newPicks.forEach(r=>{p.resources[hid][r]=(p.resources[hid][r]||0)+1;});
+      p.coins--;n[0]=p;return n;});
+    const label=newPicks[0]===newPicks[1]?`+2 ${newPicks[0]}`:`+1 ${newPicks[0]}, +1 ${newPicks[1]}`;
+    addLog(`💰 -1$ → ${label}`);setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));
   };
 
   const allHexContents=useMemo(()=>{
@@ -1059,31 +1132,7 @@ export default function App(){
     );
   }
 
-  // ══════════ PICK OBJECTIVE ══════════
-  if(phase==="pick_objective"&&players[0]?.objectiveChoices){
-    const choices=players[0].objectiveChoices;
-    return(
-      <div style={{minHeight:"100vh",background:`linear-gradient(170deg, #1A1710 0%, #1A1710 40%, #1A1710 100%)`,color:"var(--text)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"24px 16px"}}>
-        <div style={{width:50,height:1,background:"linear-gradient(90deg,transparent,var(--gold),transparent)",marginBottom:20}}/>
-        <h2 style={{fontSize:18,letterSpacing:6,textTransform:"uppercase",color:"var(--gold)",marginBottom:6}}>Objectif Secret</h2>
-        <p style={{color:"var(--text-dim)",fontSize:11,marginBottom:32,textAlign:"center",maxWidth:280,fontStyle:"italic",lineHeight:1.6}}>Choisissez votre mission. Révélez-la pour une étoile.</p>
-        <div style={{display:"flex",gap:16,flexWrap:"wrap",justifyContent:"center",maxWidth:500}}>
-          {choices.map(obj=>(
-            <button key={obj.id} onClick={()=>pickObjective(obj)} style={{
-              background:"rgba(20,18,12,0.95)",border:`1px solid var(--border)`,borderRadius:8,padding:"24px 20px",
-              color:"var(--text)",minWidth:200,maxWidth:230,textAlign:"left",
-              boxShadow:"0 8px 32px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.03)",transition:"all .2s",
-            }}
-            onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--gold)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,0.6),0 0 16px rgba(201,168,76,0.15)";}}
-            onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.boxShadow="0 8px 32px rgba(0,0,0,0.6)";}}>
-              <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:15,color:"var(--gold)",marginBottom:10}}>🎯 {obj.name}</div>
-              <div style={{fontSize:12,color:"var(--text-dim)",lineHeight:1.7}}>{obj.desc}</div>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // (pick_objective phase removed — player keeps both objectives per Scythe rules)
 
   // ══════════ END GAME — SCORING ══════════
   if(phase==="ended"&&players.length>0){
@@ -1255,9 +1304,17 @@ export default function App(){
       </div>
 
       {/* ═══ CENTER: MAP + OVERLAYS ═══ */}
-      <div style={{position:"relative",overflow:"auto",background:"radial-gradient(ellipse at 50% 45%,#16140e,#0a0906)"}}>
+      <div style={{position:"relative",overflow:"hidden",background:"radial-gradient(ellipse at 50% 45%,#16140e,#0a0906)",cursor:isPanning?"grabbing":"default"}}>
+        {/* Zoom controls */}
+        <div style={{position:"absolute",top:8,right:8,zIndex:5,display:"flex",flexDirection:"column",gap:4}}>
+          <button onClick={()=>mapZoom(1/1.3)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--gold)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>+</button>
+          <button onClick={()=>mapZoom(1.3)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--gold)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>−</button>
+          <button onClick={mapReset} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--text-dim)",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>⟲</button>
+        </div>
+        <div style={{position:"absolute",bottom:6,left:8,zIndex:5,fontSize:10,color:"var(--text-muted)",opacity:0.5,pointerEvents:"none"}}>Molette: zoom · Shift+clic: panoramique</div>
         {/* SVG Map */}
-        <svg viewBox="20 20 980 990" style={{width:"100%",height:"100%",display:"block",minHeight:"100%"}}>
+        <svg ref={mapRef} viewBox={`${mapView.x} ${mapView.y} ${mapView.w} ${mapView.h}`} style={{width:"100%",height:"100%",display:"block",minHeight:"100%"}}
+          onPointerDown={handleMapPointerDown} onPointerMove={handleMapPointerMove} onPointerUp={handleMapPointerUp} onPointerLeave={handleMapPointerUp}>
           <defs>
             {Object.entries(TERRAINS).map(([key,t])=>(
               <radialGradient key={`tg-${key}`} id={`tg-${key}`} cx="38%" cy="30%" r="72%">
@@ -1275,6 +1332,7 @@ export default function App(){
             <pattern id="tp-lac" width="24" height="10" patternUnits="userSpaceOnUse"><path d="M0 5Q6 3 12 5Q18 7 24 5" fill="none" stroke="rgba(200,220,255,0.1)" strokeWidth="0.8"/></pattern>
             <pattern id="tp-marecage" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M0 10Q5 8 10 10Q15 12 20 10" fill="none" stroke="rgba(200,255,200,0.06)" strokeWidth="0.6"/></pattern>
             <pattern id="tp-factory" width="14" height="14" patternUnits="userSpaceOnUse"><line x1="0" y1="0" x2="14" y2="14" stroke="rgba(255,180,80,0.08)" strokeWidth="0.4"/><line x1="14" y1="0" x2="0" y2="14" stroke="rgba(255,180,80,0.08)" strokeWidth="0.4"/></pattern>
+            <filter id="desat"><feColorMatrix type="saturate" values="0.3"/><feComponentTransfer><feFuncR type="linear" slope="0.8"/><feFuncG type="linear" slope="0.8"/><feFuncB type="linear" slope="0.8"/></feComponentTransfer></filter>
             <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <filter id="softglow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <radialGradient id="hero-aura"><stop offset="0%" stopColor="#C9A84C" stopOpacity="0.3"/><stop offset="60%" stopColor="#C9A84C" stopOpacity="0.05"/><stop offset="100%" stopColor="#C9A84C" stopOpacity="0"/></radialGradient>
@@ -1563,7 +1621,7 @@ export default function App(){
             {icon:"🏗",name:"Bâtiments",prog:`${(me.buildings||[]).length}/4`,done:(me.buildings||[]).length>=4},
             {icon:"🤝",name:"Recrues",prog:`${me.recruits||0}/4`,done:(me.recruits||0)>=4},
             {icon:"👷",name:"Ouvriers",prog:`${me.workers.length}/8`,done:me.workers.length>=8},
-            {icon:"🎯",name:"Objectif",prog:me.objectiveRevealed?"✅":"…",done:me.objectiveRevealed},
+            {icon:"🎯",name:"Objectif",prog:me.objectiveRevealed?"✅":"0/1",done:me.objectiveRevealed},
             {icon:"⚔",name:"Combat ×2",prog:`${Math.min(me.combatWins||0,2)}/2`,done:(me.combatWins||0)>=2},
             {icon:"♥",name:"Pop 18",prog:`${me.pop}/18`,done:me.pop>=18},
             {icon:"⚡",name:"Pui 16",prog:`${me.power}/16`,done:me.power>=16},
@@ -1629,7 +1687,7 @@ export default function App(){
                 const hasRes=bc?countRes(me,bc.res)>=bc.qty:false;
                 const canDoBottom=hasRes&&!bottomData.max;
                 return(
-                  <button key={action} onClick={()=>{if(!disabled)setSelAction(action);}} 
+                  <button key={action} onClick={()=>{if(!disabled){setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}} 
                     onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background="rgba(201,168,76,0.06)";}}
                     onMouseLeave={e=>{e.currentTarget.style.background=disabled?"rgba(0,0,0,0.3)":"transparent";}}
                     style={{
@@ -1737,16 +1795,18 @@ export default function App(){
                 })()}
               </div>)}
               {selAction==="Trade"&&(<div>
-                <div style={{color:"var(--gold)",fontFamily:"'Bitter',serif",fontWeight:700,marginBottom:8,fontSize:14}}>Commerce (1$)</div>
+                <div style={{color:"var(--gold)",fontFamily:"'Bitter',serif",fontWeight:700,marginBottom:8,fontSize:14}}>Commerce (1$){tradePicks.length>0&&<span style={{fontWeight:400,fontSize:12,marginLeft:8}}>— choix {tradePicks.length}/2 : {tradePicks.map(r=>({metal:"⚙",bois:"🪵",nourriture:"🌽",petrole:"🛢"}[r])).join(" ")}</span>}</div>
                 {me.coins<1?<div style={{color:"#8A3030",fontSize:12}}>Pas assez d'$</div>:
                 <div>
+                  <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>Choisissez 2 ressources (même type ou différentes)</div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                    {["metal","bois","nourriture","petrole"].map(r=><button key={r} onClick={()=>doTrade(r)} className="act-btn" style={{flex:1,minWidth:60}}>+2 {r}</button>)}
+                    {["metal","bois","nourriture","petrole"].map(r=><button key={r} onClick={()=>doTradePick(r)} className="act-btn" style={{flex:1,minWidth:60}}>{({metal:"⚙",bois:"🪵",nourriture:"🌽",petrole:"🛢"})[r]} {r}</button>)}
                   </div>
-                  <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité</button>
+                  {tradePicks.length>0&&<button onClick={()=>setTradePicks([])} className="act-btn" style={{width:"100%",fontSize:11,opacity:0.7,marginBottom:6}}>↩ Recommencer le choix</button>}
+                  <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité</button>
                 </div>}
               </div>)}
-              <button onClick={()=>{setSelAction(null);setMoveSource(null);}} style={{marginTop:8,padding:"6px 16px",fontSize:11,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>Annuler</button>
+              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:12,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
             </div>
           )}
 
@@ -1844,13 +1904,28 @@ export default function App(){
             );
           })()}
 
-          {/* Objectives */}
-          {me.objective&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&!pendingBottom&&(
-            <div style={{padding:"8px 16px",borderTop:"1px solid var(--border)",fontSize:12,display:"flex",alignItems:"center",gap:10}}>
-              <span style={{color:me.objectiveRevealed?"#4A8A4A":"var(--gold)",fontSize:13,fontFamily:"'Bitter',serif",fontWeight:700}}>🎯 {me.objective.name}</span>
-              <span style={{color:"var(--text-dim)",flex:1,fontSize:12}}>{me.objective.desc}</span>
-              {!me.objectiveRevealed&&<button onClick={revealObjective} style={{padding:"8px 14px",fontSize:12,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,minHeight:44}}>Révéler ⭐</button>}
-              {me.objectiveRevealed&&<span style={{color:"#4A8A4A",fontSize:16}}>✅</span>}
+          {/* Objectives — player keeps both, can reveal one */}
+          {me.objectives&&me.objectives.length>0&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&!pendingBottom&&(
+            <div style={{padding:"8px 16px",borderTop:"1px solid var(--border)"}}>
+              <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6,fontFamily:"'Bitter',serif"}}>🎯 Objectifs secrets {me.objectiveRevealed?"(1 révélé)":"— révélez-en un pour ⭐"}</div>
+              {me.objectives.map((obj,idx)=>{
+                const isRevealed=me.objectiveRevealed&&me.revealedObjectiveIdx===idx;
+                const canReveal=!me.objectiveRevealed&&obj.check(me);
+                const condMet=obj.check(me);
+                return(
+                  <div key={obj.id||idx} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",opacity:me.objectiveRevealed&&!isRevealed?0.4:1}}>
+                    <span style={{color:isRevealed?"#4A8A4A":condMet?"var(--gold)":"var(--text-dim)",fontSize:13,fontFamily:"'Bitter',serif",fontWeight:700,minWidth:0,flex:1}}>
+                      {isRevealed?"✅":"🎯"} {obj.name}
+                      <span style={{fontWeight:400,fontSize:12,color:"var(--text-dim)",marginLeft:8}}>{obj.desc}</span>
+                    </span>
+                    {!me.objectiveRevealed&&(
+                      canReveal
+                        ?<button onClick={()=>revealObjective(idx)} style={{padding:"8px 14px",fontSize:12,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,minHeight:44,flexShrink:0}}>Révéler ⭐</button>
+                        :<span style={{fontSize:11,color:"var(--text-muted)",flexShrink:0}}>pas rempli</span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
@@ -1900,11 +1975,18 @@ export default function App(){
             </div>
           )}
 
-          {/* Log */}
-          <div ref={logRef} style={{maxHeight:100,overflow:"auto",padding:"6px 16px",fontSize:12}}>
-            {log.slice(-10).map((msg,i)=><div key={i} className="log-line">{msg}</div>)}
-          </div>
         </div>
+      </div>
+
+      {/* ═══ FLOATING LOG BOX — bottom-right ═══ */}
+      <div style={{position:"fixed",bottom:12,right:12,zIndex:20,width:280,maxHeight:showLog?260:36,transition:"max-height 0.25s ease",display:"flex",flexDirection:"column",borderRadius:8,overflow:"hidden",background:"rgba(14,12,8,0.92)",border:"1px solid var(--border)",backdropFilter:"blur(8px)",boxShadow:"0 4px 20px rgba(0,0,0,0.5)"}}>
+        <button onClick={()=>setShowLog(s=>!s)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:"rgba(201,168,76,0.06)",border:"none",borderBottom:showLog?"1px solid var(--border)":"none",color:"var(--gold)",fontSize:12,fontWeight:700,fontFamily:"'Bitter',serif",cursor:"pointer",flexShrink:0}}>
+          <span>📜 Journal</span>
+          <span style={{fontSize:10,color:"var(--text-dim)",transform:showLog?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
+        </button>
+        {showLog&&<div ref={logRef} style={{flex:1,overflow:"auto",padding:"6px 10px",fontSize:11}}>
+          {log.slice(-20).map((msg,i)=><div key={i} className="log-line">{msg}</div>)}
+        </div>}
       </div>
     </div>
   );

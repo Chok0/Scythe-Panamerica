@@ -19,7 +19,7 @@ export const createPlayer = (factionId, matId, isBot) => {
     topRow: pm.topRow, matName: pm.name,
     cubesOnTop: [...(pm.topCubes || [1, 2, 1, 2])], cubesOnBottom: [0, 0, 0, 0],
     enlistMap: [false, false, false, false],
-    objectiveChoices: null, objective: null, objectiveRevealed: false, fObjRevealed: false,
+    objectives: [], objective: null, objectiveRevealed: false, revealedObjectiveIdx: null, fObjRevealed: false,
     capturedWorkers: 0, capturedMech: 0, empireKills: 0, trapTokens: [], flagTokens: [], imperialCoins: 0,
     upgrades: 0, recruits: 0, combatWins: 0,
     starUpgrades: false, starMechs: false, starBuildings: false, starRecruits: false,
