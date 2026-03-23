@@ -46,7 +46,7 @@ export const ENCOUNTERS = [
   { id: 8, name: "Le Mécanicien Errant", desc: "Un génie mécanique cherche du travail. Ses mains tremblent.",
     choices: [
       { label: "Embaucher", icon: "⬆", desc: "+1 upgrade gratuit", effect: p => { p.upgrades = Math.min((p.upgrades || 0) + 1, 6); } },
-      { label: "Payer cash", icon: "💰", desc: "-2$, +1 mecha (si <4)", effect: p => { if (p.coins >= 2 && p.mechs.length < 4) { p.coins -= 2; const abilityIdx = p.mechs.length; p.mechs.push({ id: `${p.faction}_m${p.mechs.length}`, hexId: p.hero }); p.unlockedAbilities = [...(p.unlockedAbilities || []), abilityIdx]; if (p.mechs.length >= 4 && !p.starMechs) { p.stars++; p.starMechs = true; } } } },
+      { label: "Payer cash", icon: "💰", desc: "-2$, +1 mecha (si <4)", grantsMech: true, effect: p => { if (p.coins >= 2 && p.mechs.length < 4) { p.coins -= 2; p.mechs.push({ id: `${p.faction}_m${p.mechs.length}`, hexId: p.hero }); if (p.mechs.length >= 4 && !p.starMechs) { p.stars++; p.starMechs = true; } } } },
       { label: "Renvoyer", icon: "🃏", desc: "+2 cartes combat", effect: p => { p.combatCards += 2; } },
     ] },
   { id: 9, name: "Le Champ de Pétrole", desc: "Du pétrole jaillit du sol. Sacré pour les uns, fortune pour les autres.",

@@ -40,6 +40,7 @@ export default function App(){
   const[selAction,setSelAction]=useState(null);
   const[pendingBottom,setPendingBottom]=useState(null); // {col, action} after top-row done
   const[bottomPick,setBottomPick]=useState(null); // for Build: choosing building type / Deploy: choosing hex
+  const[pendingAbility,setPendingAbility]=useState(null); // {source:"deploy"|"encounter", hexId} — waiting for player to pick mech ability
   const[combat,setCombat]=useState(null); // {type:"pvp"|"pve", hexId, enemyIdx?, empireId?, empireCard?, phase:"choose"|"reward", powerSpend:0, cardsSpend:0}
   const[encounter,setEncounter]=useState(null); // {card, hexId}
   const[rougeRiver,setRougeRiver]=useState(null); // {cards:[]}
@@ -344,6 +345,10 @@ export default function App(){
 
   // ── BOTTOM-ROW: DEPLOY ──
   // Nations "Esprit Sauvage": can deploy with metal OR bois
+  const ABILITY_NAMES=["Speed","Riverwalk","Combat","Position"];
+  const ABILITY_DESC=["Déplacement +1 hex","Traverser rivières","Bonus combat +1⚡","Recul au choix"];
+  const ABILITY_ICONS=["🏃","🌊","⚔","📍"];
+
   const doDeploy=useCallback((targetHex,overrideRes)=>{
     if(!me||me.mechs.length>=4)return;
     const costs=getBottomCost(me);
@@ -355,22 +360,36 @@ export default function App(){
     if(countRes(me,res)<qty){addLog(`⚠ ${qty} ${res} requis`);return;}
     setPlayers(prev=>{
       const n=[...prev];let p=spendRes(n[0],res,qty);
-      const abilityIdx=p.mechs.length;
       p.mechs=[...p.mechs,{id:`${p.faction}_m${p.mechs.length}`,hexId:targetHex}];
-      p.unlockedAbilities=[...(p.unlockedAbilities||[]),abilityIdx];
+      // Do NOT unlock ability yet — player chooses
       p.coins+=planBonus.bonusCoins;
       p.power=Math.min(p.power+planBonus.bonusPower,16);
       const earned=p.mechs.length>=4&&!p.starMechs;
       if(earned){p.stars++;p.starMechs=true;}
       n[0]=p;return n;
     });
-    const abilityNames=["Speed","Riverwalk","Combat","Position"];
-    const unlockIdx=me.mechs.length;
     planBonus.logs.forEach(l=>addLog(l));
-    addLog(`⬡ Mecha déployé sur #${targetHex} (-${qty} ${res}) → 🔓 ${abilityNames[unlockIdx]||"?"}`);
+    addLog(`⬡ Mecha déployé sur #${targetHex} (-${qty} ${res})`);
     if(me.mechs.length+1>=4)addLog(`⭐ 4 Mechas déployés !`);
-    finishBottom(1);
-  },[me,addLog,finishBottom]);
+    // Show ability picker — finishBottom will be called after player picks
+    setPendingAbility({source:"deploy",col:1});
+  },[me,addLog]);
+
+  const confirmAbility=useCallback((abilityIdx)=>{
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0],unlockedAbilities:[...(n[0].unlockedAbilities||[]),abilityIdx]};
+      n[0]=p;return n;
+    });
+    addLog(`🔓 Ability débloquée : ${ABILITY_ICONS[abilityIdx]} ${ABILITY_NAMES[abilityIdx]}`);
+    const source=pendingAbility;
+    setPendingAbility(null);
+    if(source&&source.source==="deploy") finishBottom(source.col);
+    if(source&&source.source==="encounter"){
+      // Resume movement check after encounter mech ability pick
+      const moved=(me.movedUnits||[]).length;
+      if(moved>=2){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
+    }
+  },[pendingAbility,me,addLog,finishBottom,endHumanTurn,myMat]);
 
   // ── BOTTOM-ROW: BUILD ──
   const doBuild=useCallback((targetHex,buildingType)=>{
@@ -971,6 +990,7 @@ export default function App(){
   const resolveEncounter=useCallback((choiceIdx)=>{
     if(!encounter)return;
     const choice=encounter.card.choices[choiceIdx];
+    const mechsBefore=me.mechs.length;
     setPlayers(prev=>{
       const n=[...prev];const p={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources},unlockedAbilities:[...(n[0].unlockedAbilities||[])]};
       // Deep copy resources
@@ -981,6 +1001,11 @@ export default function App(){
     });
     addLog(`📜 ${encounter.card.name}: ${choice.label} → ${choice.desc}`);
     setEncounter(null);
+    // If the encounter granted a mech, show ability picker
+    if(choice.grantsMech&&me.coins>=2&&mechsBefore<4){
+      setPendingAbility({source:"encounter"});
+      return; // don't end turn yet — ability picker will handle it
+    }
     // Resume movement check
     const moved=(me.movedUnits||[]).length;
     if(moved>=2){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
@@ -1570,6 +1595,39 @@ export default function App(){
                 </div>
               )}
 
+            </div>
+          </div>
+        )}
+
+        {/* ═══ ABILITY PICKER MODAL ═══ */}
+        {pendingAbility&&(
+          <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:12}}>
+            <div style={{maxWidth:420,width:"90%",borderRadius:12,border:"1px solid var(--rust)",boxShadow:"0 10px 50px rgba(0,0,0,0.8)",background:"linear-gradient(180deg,#1a1510,var(--bg2))",padding:24,animation:"slideUp 0.25s ease"}}>
+              <div style={{textAlign:"center",marginBottom:16}}>
+                <div style={{fontSize:22,fontWeight:900,fontFamily:"var(--font-title)",color:"var(--rust)",letterSpacing:2,textTransform:"uppercase"}}>Choisir une Ability</div>
+                <div style={{fontSize:12,color:"var(--text-dim)",marginTop:4}}>Mecha déployé — débloque une capacité</div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                {ABILITY_NAMES.map((name,idx)=>{
+                  const already=(me.unlockedAbilities||[]).includes(idx);
+                  return(
+                    <button key={idx} onClick={()=>{if(!already)confirmAbility(idx);}} disabled={already}
+                      style={{
+                        padding:"14px 12px",borderRadius:8,cursor:already?"not-allowed":"pointer",
+                        background:already?"rgba(0,0,0,0.3)":"var(--bg3)",
+                        border:already?"1px solid var(--border)":"1px solid var(--rust-dark)",
+                        opacity:already?0.3:1,transition:"all 0.15s",textAlign:"center",
+                      }}
+                      onMouseEnter={e=>{if(!already)e.currentTarget.style.borderColor="var(--rust)";e.currentTarget.style.background="rgba(200,112,64,0.1)";}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor=already?"var(--border)":"var(--rust-dark)";e.currentTarget.style.background=already?"rgba(0,0,0,0.3)":"var(--bg3)";}}
+                    >
+                      <div style={{fontSize:28,marginBottom:6}}>{ABILITY_ICONS[idx]}</div>
+                      <div style={{fontSize:14,fontWeight:700,fontFamily:"var(--font-title)",color:already?"var(--text-muted)":"var(--rust)",letterSpacing:1}}>{name}</div>
+                      <div style={{fontSize:11,color:already?"var(--text-muted)":"var(--text-dim)",marginTop:4}}>{already?"Déjà débloqué":ABILITY_DESC[idx]}</div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
