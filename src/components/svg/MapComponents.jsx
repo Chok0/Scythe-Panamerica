@@ -2,7 +2,7 @@ import React from 'react';
 import { TERRAINS } from '../../data/terrains.js';
 import { hPts, HS } from '../../logic/hexMath.js';
 import { TerrainDecor } from './TerrainDecor.jsx';
-import { FACTION_ICON_MAP } from './FactionIcons.jsx';
+import { FACTION_ICON_MAP, HERO_ICON_MAP, WORKER_ICON_MAP } from './FactionIcons.jsx';
 
 // DA Doc: Hex rendering — cartographic military style
 // Stroke 0.5px, no rounded corners, flat (no drop-shadows on game elements)
@@ -53,10 +53,18 @@ export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory }) => 
   );
 });
 
-// Unit tokens — white outline 1.5px for visibility on all terrains
-// Hero = 5-pointed star, Mech = hexagon (bigger), Worker = filled circle, Building = square
+// Unit tokens — faction-specific SVG silhouettes for heroes, mechs, workers
+// Hero = unique character silhouette, Mech = faction mech, Worker = faction worker, Building = square
 export const UnitToken = React.memo(({ type, cx, cy, color, label, icon, factionId }) => {
   if (type === "hero") {
+    const HeroIcon = factionId ? HERO_ICON_MAP[factionId] : null;
+    if (HeroIcon) {
+      return (<g>
+        <HeroIcon cx={cx} cy={cy} size={28} color={color} />
+        <text x={cx} y={cy + 21} textAnchor="middle" fontSize="6.5" fill={color} fontWeight="700" style={{ fontFamily: "'Bitter',serif" }}>{label}</text>
+      </g>);
+    }
+    // Fallback — generic star
     const r = 12, ri = 5.5;
     const pts = Array.from({ length: 10 }, (_, i) => {
       const a = (Math.PI / 5) * i - Math.PI / 2;
@@ -95,7 +103,14 @@ export const UnitToken = React.memo(({ type, cx, cy, color, label, icon, faction
       <text x={cx} y={cy + 4} textAnchor="middle" fontSize={10}>{bt}</text>
     </g>);
   }
-  // Worker — filled circle, slightly bigger with white outline
+  // Worker — faction-specific silhouette
+  const WorkerIcon = factionId ? WORKER_ICON_MAP[factionId] : null;
+  if (WorkerIcon) {
+    return (<g>
+      <WorkerIcon cx={cx} cy={cy} size={18} color={color} />
+    </g>);
+  }
+  // Fallback — filled circle
   return (<g>
     <circle cx={cx} cy={cy} r={6} fill={color} stroke="rgba(255,255,240,0.7)" strokeWidth={1.5} opacity={0.95} />
   </g>);
