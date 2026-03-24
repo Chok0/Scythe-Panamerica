@@ -70,16 +70,21 @@ export default function App(){
 
   useEffect(()=>{if(logRef.current)logRef.current.scrollTop=logRef.current.scrollHeight;},[log]);
 
-  // ── MAP INTERACTION: wheel zoom, drag pan, touch pinch+pan ──
-  const ZOOM_MIN=80,ZOOM_MAX=MAP_BASE.w*2.5; // deep zoom allowed
-  const dragThreshold=5; // px to distinguish click from drag
-  const touchRef=useRef(null); // for pinch tracking
-  const wasDragging=useRef(false); // suppress hex click after drag
+  // ── MAP INTERACTION: wheel/trackpad zoom, drag pan, touch pinch+pan ──
+  const ZOOM_MIN=80,ZOOM_MAX=MAP_BASE.w*2.5;
+  const dragThreshold=5;
+  const touchRef=useRef(null);
+  const wasDragging=useRef(false);
+  const mapViewRef=useRef(mapView); // always-fresh ref for event handlers
+  useEffect(()=>{mapViewRef.current=mapView;},[mapView]);
 
-  // Wheel zoom toward cursor
+  // Wheel/trackpad zoom toward cursor
   const handleMapWheel=useCallback((e)=>{
     e.preventDefault();
-    const factor=e.deltaY>0?1.12:1/1.12;
+    // Trackpads send ctrlKey+deltaY for pinch, or plain deltaY for scroll
+    const isTrackpadPinch=e.ctrlKey;
+    const delta=isTrackpadPinch?e.deltaY*3:e.deltaY; // amplify trackpad pinch
+    const factor=delta>0?1.08:1/1.08;
     setMapView(prev=>{
       const newW=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,prev.w*factor));
       const newH=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,prev.h*factor));
@@ -95,41 +100,45 @@ export default function App(){
     });
   },[]);
 
-  // Drag pan — left-click drag, no modifier needed. Click vs drag detected on up.
+  // Drag pan — left-click drag
   const handleMapPointerDown=useCallback((e)=>{
     if(e.button>1)return;
-    panStart.current={cx:e.clientX,cy:e.clientY,vx:mapView.x,vy:mapView.y,moved:false};
-  },[mapView.x,mapView.y]);
+    const mv=mapViewRef.current;
+    panStart.current={cx:e.clientX,cy:e.clientY,vx:mv.x,vy:mv.y,moved:false};
+  },[]);
 
   const handleMapPointerMove=useCallback((e)=>{
-    if(!panStart.current)return;
-    const dx0=e.clientX-panStart.current.cx,dy0=e.clientY-panStart.current.cy;
-    if(!panStart.current.moved&&Math.abs(dx0)<dragThreshold&&Math.abs(dy0)<dragThreshold)return;
-    panStart.current.moved=true;
+    const ps=panStart.current;if(!ps)return;
+    const dx0=e.clientX-ps.cx,dy0=e.clientY-ps.cy;
+    if(!ps.moved&&Math.abs(dx0)<dragThreshold&&Math.abs(dy0)<dragThreshold)return;
+    ps.moved=true;
     if(!isPanning)setIsPanning(true);
     const svg=mapRef.current;if(!svg)return;
     const rect=svg.getBoundingClientRect();
-    const scaleX=mapView.w/rect.width,scaleY=mapView.h/rect.height;
-    setMapView(prev=>({...prev,x:panStart.current.vx-dx0*scaleX,y:panStart.current.vy-dy0*scaleY}));
-  },[isPanning,mapView.w,mapView.h]);
+    const mv=mapViewRef.current;
+    const scaleX=mv.w/rect.width,scaleY=mv.h/rect.height;
+    setMapView(prev=>({...prev,x:ps.vx-dx0*scaleX,y:ps.vy-dy0*scaleY}));
+  },[isPanning]);
 
   const handleMapPointerUp=useCallback(()=>{
     wasDragging.current=!!(panStart.current&&panStart.current.moved);
     setIsPanning(false);panStart.current=null;
   },[]);
 
-  // Touch: pinch zoom + two-finger pan
+  // Touch: pinch zoom + single-finger pan
   const handleTouchStart=useCallback((e)=>{
     if(e.touches.length===2){
       const t=e.touches;
       const dist=Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
       const mx=(t[0].clientX+t[1].clientX)/2,my=(t[0].clientY+t[1].clientY)/2;
-      touchRef.current={dist,mx,my,vx:mapView.x,vy:mapView.y,vw:mapView.w,vh:mapView.h};
+      const mv=mapViewRef.current;
+      touchRef.current={dist,mx,my,vx:mv.x,vy:mv.y,vw:mv.w,vh:mv.h};
     } else if(e.touches.length===1){
       const t=e.touches[0];
-      panStart.current={cx:t.clientX,cy:t.clientY,vx:mapView.x,vy:mapView.y,moved:false};
+      const mv=mapViewRef.current;
+      panStart.current={cx:t.clientX,cy:t.clientY,vx:mv.x,vy:mv.y,moved:false};
     }
-  },[mapView]);
+  },[]);
 
   const handleTouchMove=useCallback((e)=>{
     if(e.touches.length===2&&touchRef.current){
@@ -139,19 +148,15 @@ export default function App(){
       const scale=touchRef.current.dist/dist;
       const newW=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,touchRef.current.vw*scale));
       const newH=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,touchRef.current.vh*scale));
-      // Pan component
       const svg=mapRef.current;if(!svg)return;
       const rect=svg.getBoundingClientRect();
       const mx2=(t[0].clientX+t[1].clientX)/2,my2=(t[0].clientY+t[1].clientY)/2;
       const panScaleX=touchRef.current.vw/rect.width,panScaleY=touchRef.current.vh/rect.height;
       const panDx=(mx2-touchRef.current.mx)*panScaleX;
       const panDy=(my2-touchRef.current.my)*panScaleY;
-      // Zoom toward pinch center
       const mxN=(touchRef.current.mx-rect.left)/rect.width;
       const myN=(touchRef.current.my-rect.top)/rect.height;
-      const newX=touchRef.current.vx+touchRef.current.vw*mxN-newW*mxN-panDx;
-      const newY=touchRef.current.vy+touchRef.current.vh*myN-newH*myN-panDy;
-      setMapView({x:newX,y:newY,w:newW,h:newH});
+      setMapView({x:touchRef.current.vx+touchRef.current.vw*mxN-newW*mxN-panDx,y:touchRef.current.vy+touchRef.current.vh*myN-newH*myN-panDy,w:newW,h:newH});
     } else if(e.touches.length===1&&panStart.current){
       const t=e.touches[0];
       const dx0=t.clientX-panStart.current.cx,dy0=t.clientY-panStart.current.cy;
@@ -159,7 +164,8 @@ export default function App(){
       panStart.current.moved=true;
       const svg=mapRef.current;if(!svg)return;
       const rect=svg.getBoundingClientRect();
-      setMapView(prev=>({...prev,x:panStart.current.vx-(dx0*prev.w/rect.width),y:panStart.current.vy-(dy0*prev.h/rect.height)}));
+      const mv=mapViewRef.current;
+      setMapView(prev=>({...prev,x:panStart.current.vx-(dx0*mv.w/rect.width),y:panStart.current.vy-(dy0*mv.h/rect.height)}));
     }
   },[]);
 
@@ -1417,8 +1423,8 @@ export default function App(){
           <button onClick={mapReset} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--text-dim)",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>⟲</button>
         </div>
         <div style={{position:"absolute",bottom:6,left:8,zIndex:5,fontSize:10,color:"var(--text-muted)",opacity:0.5,pointerEvents:"none"}}>Glisser: panoramique · Molette/pinch: zoom</div>
-        {/* SVG Map — perspective tilt */}
-        <svg ref={mapRef} viewBox={`${mapView.x} ${mapView.y} ${mapView.w} ${mapView.h}`} style={{width:"100%",height:"100%",display:"block",minHeight:"100%",transform:"perspective(1800px) rotateX(8deg)",transformOrigin:"center 60%"}}
+        {/* SVG Map */}
+        <svg ref={mapRef} viewBox={`${mapView.x} ${mapView.y} ${mapView.w} ${mapView.h}`} style={{width:"100%",height:"100%",display:"block",minHeight:"100%"}}
           onPointerDown={handleMapPointerDown} onPointerMove={handleMapPointerMove} onPointerUp={handleMapPointerUp} onPointerLeave={handleMapPointerUp}
           onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           <defs>
