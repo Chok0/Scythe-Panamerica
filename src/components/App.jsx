@@ -279,9 +279,51 @@ export default function App(){
           const toId=validEmpire[Math.floor(Math.random()*validEmpire.length)];
           setEmpire(prev=>({...prev,[eid]:toId}));
           addLog(`🔴 Empire ${eid} → #${toId}`);
-          // Check if empire moved onto a player's unit → combat triggered next turn
+          // Check if empire moved onto a player's combat unit → trigger combat
+          for(let pi=0;pi<players.length;pi++){
+            const pl=players[pi];
+            const hasCombatUnit=pl.hero===toId||pl.mechs.some(m=>m.hexId===toId);
+            if(hasCombatUnit){
+              if(pl.isBot){
+                // Auto-resolve bot defense
+                const card=drawEmpireCombat();
+                const botCBonus=getCombatBonus(pl,toId,false);
+                const botPow=Math.min(Math.floor(pl.power*0.5),5)+botCBonus.powerBonus;
+                const botUnitsOnHex=(pl.hero===toId?1:0)+pl.mechs.filter(m=>m.hexId===toId).length;
+                const botCC=Math.min(Math.floor(Math.random()*(pl.combatCards+1)),botUnitsOnHex+botCBonus.cardBonus);
+                const botTotal=botPow+(botCC*2);
+                const bf=FACTIONS[pl.faction];
+                const updPlayers=[...players];const bp={...updPlayers[pi]};
+                bp.power-=botPow;bp.combatCards-=botCC;
+                if(botTotal>card.power){ // defender wins ties
+                  addLog(`⚔🤖 ${bf.name} défend vs ${card.name} (${botTotal} vs ${card.power}) ✅`);
+                  setEmpire(prev2=>{const n2={...prev2};delete n2[eid];return n2;});
+                  bp.empireKills=(bp.empireKills||0)+1;
+                  if(bp.empireKills>=3&&!bp.starLiberator){bp.stars++;bp.starLiberator=true;addLog(`⭐💀 ${bf.name} LIBÉRATEUR !`);}
+                } else {
+                  addLog(`⚔🤖 ${bf.name} échoue vs ${card.name} (${botTotal} vs ${card.power})`);
+                  // Retreat bot unit to home base
+                  const hb=HOME_BASES[pl.faction];
+                  const hbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-hb.rx)**2+(h.ry-hb.ry)**2);const db=best?Math.sqrt((best.rx-hb.rx)**2+(best.ry-hb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+                  if(bp.hero===toId)bp.hero=hbHex.id;
+                  bp.mechs=bp.mechs.map(m=>m.hexId===toId?{...m,hexId:hbHex.id}:m);
+                }
+                updPlayers[pi]=bp;
+                setPlayers(updPlayers);
+              } else {
+                // Human player — trigger interactive combat (defender)
+                const card=drawEmpireCombat();
+                setCombat({type:"pve",hexId:toId,empireId:eid,empireCard:card,phase:"choose",powerSpend:0,cardsSpend:0,
+                  empireAttacks:true});
+                addLog(`⚔ L'Empire attaque ! ${card.name} (Force: ${card.power}) sur #${toId}`);
+              }
+              break; // only one combat per empire move
+            }
+          }
         }
       }
+      // Reset commerceUsed for human player at start of new turn
+      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],commerceUsed:false};return n;});
       turnRef.current=turn+1;setCurrentP(0);setTurn(t=>t+1);setBotRunning(false);addLog(`── Tour ${turn+1} ──`);logSnap("Début",players[0]);
       return;
     }
@@ -387,7 +429,7 @@ export default function App(){
 
   // After top-row → show bottom-row option
   const endHumanTurn=useCallback((col)=>{
-    setPlayers(prev=>{const n=[...prev];n[0]={...n[0],lastCol:col,movesLeft:undefined,movedUnits:[],packUpUsed:false,commerceUsed:false};return n;});
+    setPlayers(prev=>{const n=[...prev];n[0]={...n[0],lastCol:col,movesLeft:undefined,movedUnits:[],packUpUsed:false};return n;});
     setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);setTradePicks([]);
     // Show bottom-row option
     const bottomAction=BOTTOM[col];
@@ -842,46 +884,60 @@ export default function App(){
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
     if(!combat||!me)return;
-    // Player combat ability bonus
-    const playerCBonus=getCombatBonus(me, combat.hexId, true); // player is always attacker
+    // Player combat ability bonus (attacker if player moved, defender if empire attacked)
+    const isDefender=!!combat.empireAttacks;
+    const playerCBonus=getCombatBonus(me, combat.hexId, !isDefender);
     const playerTotal=combat.powerSpend + playerCBonus.powerBonus + (combat.cardsSpend*2);
     if(playerCBonus.name&&(playerCBonus.powerBonus>0||playerCBonus.cardBonus>0)){
       addLog(`🛡 ${playerCBonus.name}: ${playerCBonus.powerBonus>0?`+${playerCBonus.powerBonus}⚡ `:""}${playerCBonus.cardBonus>0?`+${playerCBonus.cardBonus}🃏`:""}`);
     }
-    
+
     if(combat.type==="pve"){
       const empireTotal=combat.empireCard.power;
-      const win=playerTotal>=empireTotal; // attacker wins ties
+      // Attacker wins ties when player attacks; defender (player) wins ties when Empire attacks
+      const win=isDefender?playerTotal>=empireTotal:playerTotal>=empireTotal;
       // Spend resources
       setPlayers(prev=>{
         const n=[...prev];const p={...n[0]};
         p.power-=combat.powerSpend;p.combatCards-=combat.cardsSpend;
         if(!win){
-          // Retreat hero/mech to nearest HB hex
-          const hb=HOME_BASES[p.faction];
-          const hbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-hb.rx)**2+(h.ry-hb.ry)**2);const db=best?Math.sqrt((best.rx-hb.rx)**2+(best.ry-hb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
-          if(combat.moveData.unitType==="hero")p.hero=hbHex.id;
-          // Mech stays — it didn't actually move yet
+          if(isDefender){
+            // Empire attacked us — retreat ALL our combat units from that hex to home base
+            const hb=HOME_BASES[p.faction];
+            const hbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-hb.rx)**2+(h.ry-hb.ry)**2);const db=best?Math.sqrt((best.rx-hb.rx)**2+(best.ry-hb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+            if(p.hero===combat.hexId)p.hero=hbHex.id;
+            p.mechs=p.mechs.map(m=>m.hexId===combat.hexId?{...m,hexId:hbHex.id}:m);
+            // Workers also retreat
+            p.workers=p.workers.map(w=>w.hexId===combat.hexId?{...w,hexId:hbHex.id}:w);
+          } else {
+            // Player attacked Empire — retreat the attacking unit
+            const hb=HOME_BASES[p.faction];
+            const hbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-hb.rx)**2+(h.ry-hb.ry)**2);const db=best?Math.sqrt((best.rx-hb.rx)**2+(best.ry-hb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+            if(combat.moveData.unitType==="hero")p.hero=hbHex.id;
+          }
         }
-        p.movesLeft=(me.movesLeft||2)-1;p.movedUnits=[...(me.movedUnits||[]),combat.moveData.unitId];
+        if(!isDefender){
+          p.movesLeft=(me.movesLeft||2)-1;p.movedUnits=[...(me.movedUnits||[]),combat.moveData.unitId];
+        }
         n[0]=p;return n;
       });
-      
+
       if(win){
         addLog(`✅ Victoire ! ${combat.empireCard.name} détruit (${playerTotal} vs ${empireTotal} — dépensé: ${combat.powerSpend}⚡ ${combat.cardsSpend}🃏)`);
-        // Move unit to hex + TRANSPORT
         setPlayers(prev=>{
           const n=[...prev];let p={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
           Object.keys(n[0].resources).forEach(k=>{p.resources[k]={...n[0].resources[k]};});
-          if(combat.moveData.unitType==="hero")p.hero=combat.hexId;
-          else if(combat.moveData.unitType==="mech")p.mechs=p.mechs.map(m=>m.id===combat.moveData.unitId?{...m,hexId:combat.hexId}:m);
-          // Transport workers+resources with mech, resources with hero
-          const tr=transportUnits(p, combat.moveData.fromHex, combat.hexId, combat.moveData.unitType);
-          p=tr.player;
-          if(tr.carried.workers>0||tr.carried.resTypes.length>0) addLog(`🚚 Transport:${tr.carried.workers>0?` 👷×${tr.carried.workers}`:""}${tr.carried.resTypes.length>0?` 📦${tr.carried.resTypes.join(",")}`:""}`);
+          if(!isDefender){
+            // Player attacked → move unit to hex + transport
+            if(combat.moveData.unitType==="hero")p.hero=combat.hexId;
+            else if(combat.moveData.unitType==="mech")p.mechs=p.mechs.map(m=>m.id===combat.moveData.unitId?{...m,hexId:combat.hexId}:m);
+            const tr=transportUnits(p, combat.moveData.fromHex, combat.hexId, combat.moveData.unitType);
+            p=tr.player;
+            if(tr.carried.workers>0||tr.carried.resTypes.length>0) addLog(`🚚 Transport:${tr.carried.workers>0?` 👷×${tr.carried.workers}`:""}${tr.carried.resTypes.length>0?` 📦${tr.carried.resTypes.join(",")}`:""}`);
+          }
+          // Empire attacked → player stays in place, no transport needed
           p.empireKills=(p.empireKills||0)+1;
           if(p.empireKills>=3&&!p.starLiberator){p.stars++;p.starLiberator=true;addLog(`⭐💀 LIBÉRATEUR ! 3 Empire détruits !`);}
-          // Chimère: Bayou captures Empire mech (1×/game)
           if(p.faction==="bayou"&&!p.chimereUsed){
             p.mechs=[...p.mechs,{id:`${p.faction}_chimere`,hexId:combat.hexId}];
             p.chimereUsed=true;p.capturedMech=(p.capturedMech||0)+1;
