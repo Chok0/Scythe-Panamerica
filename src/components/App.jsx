@@ -40,6 +40,7 @@ export default function App(){
   const[selAction,setSelAction]=useState(null);
   const[pendingBottom,setPendingBottom]=useState(null); // {col, action} after top-row done
   const[bottomPick,setBottomPick]=useState(null); // for Build: choosing building type / Deploy: choosing hex
+  const[pendingAbility,setPendingAbility]=useState(null); // {source:"deploy"|"encounter", hexId} — waiting for player to pick mech ability
   const[combat,setCombat]=useState(null); // {type:"pvp"|"pve", hexId, enemyIdx?, empireId?, empireCard?, phase:"choose"|"reward", powerSpend:0, cardsSpend:0}
   const[encounter,setEncounter]=useState(null); // {card, hexId}
   const[rougeRiver,setRougeRiver]=useState(null); // {cards:[]}
@@ -55,6 +56,7 @@ export default function App(){
   const[showStars,setShowStars]=useState(false);
   const[showObjectives,setShowObjectives]=useState(false);
   const[showLog,setShowLog]=useState(true);
+  const[logFilter,setLogFilter]=useState("all"); // "all"|"combat"|"move"|"resource"|"bot"|"warn"|"star"
   const[showRules,setShowRules]=useState(false);
   const logRef=useRef(null);
   // Map zoom/pan state
@@ -68,69 +70,159 @@ export default function App(){
 
   useEffect(()=>{if(logRef.current)logRef.current.scrollTop=logRef.current.scrollHeight;},[log]);
 
-  // Map zoom (wheel) — zoom toward cursor
+  // ── MAP INTERACTION: wheel zoom, drag pan, touch pinch+pan ──
+  const ZOOM_MIN=80,ZOOM_MAX=MAP_BASE.w*2.5; // deep zoom allowed
+  const dragThreshold=5; // px to distinguish click from drag
+  const touchRef=useRef(null); // for pinch tracking
+  const wasDragging=useRef(false); // suppress hex click after drag
+
+  // Wheel zoom toward cursor
   const handleMapWheel=useCallback((e)=>{
     e.preventDefault();
     const factor=e.deltaY>0?1.12:1/1.12;
     setMapView(prev=>{
-      const newW=Math.min(MAP_BASE.w*2,Math.max(200,prev.w*factor));
-      const newH=Math.min(MAP_BASE.h*2,Math.max(200,prev.h*factor));
-      // Zoom toward mouse position
+      const newW=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,prev.w*factor));
+      const newH=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,prev.h*factor));
       const svg=mapRef.current;
       if(svg){
         const rect=svg.getBoundingClientRect();
         const mx=(e.clientX-rect.left)/rect.width;
         const my=(e.clientY-rect.top)/rect.height;
-        const newX=prev.x+prev.w*mx-newW*mx;
-        const newY=prev.y+prev.h*my-newH*my;
-        return{x:newX,y:newY,w:newW,h:newH};
+        return{x:prev.x+prev.w*mx-newW*mx,y:prev.y+prev.h*my-newH*my,w:newW,h:newH};
       }
       const cx=prev.x+prev.w/2,cy=prev.y+prev.h/2;
       return{x:cx-newW/2,y:cy-newH/2,w:newW,h:newH};
     });
   },[]);
 
-  // Map pan (mouse drag)
+  // Drag pan — left-click drag, no modifier needed. Click vs drag detected on up.
   const handleMapPointerDown=useCallback((e)=>{
-    if(e.button!==1&&!e.shiftKey)return; // middle-click or shift+left-click to pan
-    e.preventDefault();
-    setIsPanning(true);
-    panStart.current={cx:e.clientX,cy:e.clientY,vx:mapView.x,vy:mapView.y};
+    if(e.button>1)return;
+    panStart.current={cx:e.clientX,cy:e.clientY,vx:mapView.x,vy:mapView.y,moved:false};
   },[mapView.x,mapView.y]);
 
   const handleMapPointerMove=useCallback((e)=>{
-    if(!isPanning||!panStart.current)return;
+    if(!panStart.current)return;
+    const dx0=e.clientX-panStart.current.cx,dy0=e.clientY-panStart.current.cy;
+    if(!panStart.current.moved&&Math.abs(dx0)<dragThreshold&&Math.abs(dy0)<dragThreshold)return;
+    panStart.current.moved=true;
+    if(!isPanning)setIsPanning(true);
     const svg=mapRef.current;if(!svg)return;
     const rect=svg.getBoundingClientRect();
     const scaleX=mapView.w/rect.width,scaleY=mapView.h/rect.height;
-    const dx=(e.clientX-panStart.current.cx)*scaleX;
-    const dy=(e.clientY-panStart.current.cy)*scaleY;
-    setMapView(prev=>({...prev,x:panStart.current.vx-dx,y:panStart.current.vy-dy}));
+    setMapView(prev=>({...prev,x:panStart.current.vx-dx0*scaleX,y:panStart.current.vy-dy0*scaleY}));
   },[isPanning,mapView.w,mapView.h]);
 
   const handleMapPointerUp=useCallback(()=>{
+    wasDragging.current=!!(panStart.current&&panStart.current.moved);
     setIsPanning(false);panStart.current=null;
   },[]);
 
-  // Attach wheel listener with passive:false for preventDefault
+  // Touch: pinch zoom + two-finger pan
+  const handleTouchStart=useCallback((e)=>{
+    if(e.touches.length===2){
+      const t=e.touches;
+      const dist=Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+      const mx=(t[0].clientX+t[1].clientX)/2,my=(t[0].clientY+t[1].clientY)/2;
+      touchRef.current={dist,mx,my,vx:mapView.x,vy:mapView.y,vw:mapView.w,vh:mapView.h};
+    } else if(e.touches.length===1){
+      const t=e.touches[0];
+      panStart.current={cx:t.clientX,cy:t.clientY,vx:mapView.x,vy:mapView.y,moved:false};
+    }
+  },[mapView]);
+
+  const handleTouchMove=useCallback((e)=>{
+    if(e.touches.length===2&&touchRef.current){
+      e.preventDefault();
+      const t=e.touches;
+      const dist=Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+      const scale=touchRef.current.dist/dist;
+      const newW=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,touchRef.current.vw*scale));
+      const newH=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,touchRef.current.vh*scale));
+      // Pan component
+      const svg=mapRef.current;if(!svg)return;
+      const rect=svg.getBoundingClientRect();
+      const mx2=(t[0].clientX+t[1].clientX)/2,my2=(t[0].clientY+t[1].clientY)/2;
+      const panScaleX=touchRef.current.vw/rect.width,panScaleY=touchRef.current.vh/rect.height;
+      const panDx=(mx2-touchRef.current.mx)*panScaleX;
+      const panDy=(my2-touchRef.current.my)*panScaleY;
+      // Zoom toward pinch center
+      const mxN=(touchRef.current.mx-rect.left)/rect.width;
+      const myN=(touchRef.current.my-rect.top)/rect.height;
+      const newX=touchRef.current.vx+touchRef.current.vw*mxN-newW*mxN-panDx;
+      const newY=touchRef.current.vy+touchRef.current.vh*myN-newH*myN-panDy;
+      setMapView({x:newX,y:newY,w:newW,h:newH});
+    } else if(e.touches.length===1&&panStart.current){
+      const t=e.touches[0];
+      const dx0=t.clientX-panStart.current.cx,dy0=t.clientY-panStart.current.cy;
+      if(!panStart.current.moved&&Math.abs(dx0)<dragThreshold&&Math.abs(dy0)<dragThreshold)return;
+      panStart.current.moved=true;
+      const svg=mapRef.current;if(!svg)return;
+      const rect=svg.getBoundingClientRect();
+      setMapView(prev=>({...prev,x:panStart.current.vx-(dx0*prev.w/rect.width),y:panStart.current.vy-(dy0*prev.h/rect.height)}));
+    }
+  },[]);
+
+  const handleTouchEnd=useCallback(()=>{
+    touchRef.current=null;panStart.current=null;setIsPanning(false);
+  },[]);
+
+  // Attach wheel + touch listeners with passive:false
   useEffect(()=>{
     const el=mapRef.current;if(!el)return;
     el.addEventListener("wheel",handleMapWheel,{passive:false});
-    return()=>el.removeEventListener("wheel",handleMapWheel);
-  },[handleMapWheel]);
+    el.addEventListener("touchmove",handleTouchMove,{passive:false});
+    return()=>{el.removeEventListener("wheel",handleMapWheel);el.removeEventListener("touchmove",handleTouchMove);};
+  },[handleMapWheel,handleTouchMove]);
 
   const mapZoom=useCallback((factor)=>{
     setMapView(prev=>{
       const cx=prev.x+prev.w/2,cy=prev.y+prev.h/2;
-      const newW=Math.min(MAP_BASE.w*2,Math.max(200,prev.w*factor));
-      const newH=Math.min(MAP_BASE.h*2,Math.max(200,prev.h*factor));
+      const newW=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,prev.w*factor));
+      const newH=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,prev.h*factor));
       return{x:cx-newW/2,y:cy-newH/2,w:newW,h:newH};
     });
   },[]);
 
   const mapReset=useCallback(()=>setMapView({...MAP_BASE}),[]);
-  const addLog=useCallback((msg)=>setLog(prev=>[...prev,msg]),[]);
-  const addLogs=useCallback((msgs)=>setLog(prev=>[...prev,...msgs]),[]);
+
+  // Center on player's hero
+  const mapCenterOnMe=useCallback(()=>{
+    if(!me)return;
+    const heroHex=hMap[me.hero];if(!heroHex)return;
+    const zoomW=400,zoomH=400; // tight view around hero
+    setMapView({x:heroHex.rx-zoomW/2,y:heroHex.ry-zoomH/2,w:zoomW,h:zoomH});
+  },[me]);
+  // ── Structured log: auto-categorize from emoji/content ──
+  const turnRef=useRef(0);
+  const stepRef=useRef(0);
+  const categorize=(msg)=>{
+    if(/⚔|Combat|combat|Combattre/.test(msg))return"combat";
+    if(/🤖/.test(msg))return"bot";
+    if(/⭐|étoile|star/i.test(msg))return"star";
+    if(/⚠|❌|Err/i.test(msg))return"warn";
+    if(/📜|Rencontre|encounter/i.test(msg))return"encounter";
+    if(/⚙|Rouge River/i.test(msg))return"rr";
+    if(/🚶|Move|Déplacement|mouvement|→ #/i.test(msg))return"move";
+    if(/⬡|Deploy|Mecha déployé/i.test(msg))return"deploy";
+    if(/🏗|Build|construit/i.test(msg))return"build";
+    if(/🤝|Enlist|Recrue/i.test(msg))return"enlist";
+    if(/⬆|Upgrade/i.test(msg))return"upgrade";
+    if(/💰|Commerce|Trade|Bolster|pui|puissance/i.test(msg))return"resource";
+    if(/🔓|Ability/i.test(msg))return"ability";
+    if(/── Tour/.test(msg))return"turn";
+    return"info";
+  };
+  const mkEntry=(msg)=>{stepRef.current++;return{msg,turn:turnRef.current,step:stepRef.current,ts:Date.now(),cat:categorize(msg)};};
+  const addLog=useCallback((msg)=>setLog(prev=>[...prev,mkEntry(msg)]),[]);
+  const addLogs=useCallback((msgs)=>setLog(prev=>[...prev,...msgs.map(mkEntry)]),[]);
+  // State snapshot for debug — shows key stats of a player
+  const logSnap=useCallback((label,p)=>{
+    if(!p)return;
+    const totalRes=(t)=>{let s=0;Object.values(p.resources||{}).forEach(r=>{if(r[t])s+=r[t];});return s;};
+    const snap=`[${label}] ⚡${p.power} 🃏${p.combatCards} ♥${p.pop} 💰${p.coins} ⭐${p.stars||0} W${p.workers?.length||0} M${p.mechs?.length||0} Fe${totalRes("metal")} Bo${totalRes("bois")} No${totalRes("nourriture")} Pe${totalRes("petrole")} Ab[${(p.unlockedAbilities||[]).join(",")}]`;
+    addLog(snap);
+  },[addLog]);
 
   const startGame=useCallback(()=>{
     if(!selFaction||!selMat)return;
@@ -148,9 +240,12 @@ export default function App(){
       p.objectives=[o1,o2];
       if(p.isBot){p.objective=Math.random()>0.5?o1:o2;}
     });
-    setPlayers(ps);setPhase("playing");setCurrentP(0);setTurn(1);
+    setPlayers(ps);setPhase("playing");setCurrentP(0);setTurn(1);turnRef.current=1;
     addLog(`⚔ ${ps.length} joueurs`);
     ps.forEach(p=>{const f=FACTIONS[p.faction];addLog(`${p.isBot?"🤖":"👤"} ${f.name} (${p.matName})  ⚡${p.power} 🃏${p.combatCards} ♥${p.pop} 💰${p.coins}`);});
+    // Auto-center on player's hero
+    const heroHex=hMap[ps[0].hero];
+    if(heroHex){const zw=500,zh=500;setMapView({x:heroHex.rx-zw/2,y:heroHex.ry-zh/2,w:zw,h:zh});}
   },[selFaction,selMat,numBots,addLog]);
 
   const revealObjective=useCallback((objIdx)=>{
@@ -181,7 +276,7 @@ export default function App(){
           // Check if empire moved onto a player's unit → combat triggered next turn
         }
       }
-      setCurrentP(0);setTurn(t=>t+1);setBotRunning(false);addLog(`── Tour ${turn+1} ──`);
+      turnRef.current=turn+1;setCurrentP(0);setTurn(t=>t+1);setBotRunning(false);addLog(`── Tour ${turn+1} ──`);logSnap("Début",players[0]);
       return;
     }
     if(!players[cp].isBot){setBotRunning(false);return;}
@@ -344,6 +439,10 @@ export default function App(){
 
   // ── BOTTOM-ROW: DEPLOY ──
   // Nations "Esprit Sauvage": can deploy with metal OR bois
+  const ABILITY_NAMES=["Speed","Riverwalk","Combat","Position"];
+  const ABILITY_DESC=["Déplacement +1 hex","Traverser rivières","Bonus combat +1⚡","Recul au choix"];
+  const ABILITY_ICONS=["🏃","🌊","⚔","📍"];
+
   const doDeploy=useCallback((targetHex,overrideRes)=>{
     if(!me||me.mechs.length>=4)return;
     const costs=getBottomCost(me);
@@ -355,22 +454,36 @@ export default function App(){
     if(countRes(me,res)<qty){addLog(`⚠ ${qty} ${res} requis`);return;}
     setPlayers(prev=>{
       const n=[...prev];let p=spendRes(n[0],res,qty);
-      const abilityIdx=p.mechs.length;
       p.mechs=[...p.mechs,{id:`${p.faction}_m${p.mechs.length}`,hexId:targetHex}];
-      p.unlockedAbilities=[...(p.unlockedAbilities||[]),abilityIdx];
+      // Do NOT unlock ability yet — player chooses
       p.coins+=planBonus.bonusCoins;
       p.power=Math.min(p.power+planBonus.bonusPower,16);
       const earned=p.mechs.length>=4&&!p.starMechs;
       if(earned){p.stars++;p.starMechs=true;}
       n[0]=p;return n;
     });
-    const abilityNames=["Speed","Riverwalk","Combat","Position"];
-    const unlockIdx=me.mechs.length;
     planBonus.logs.forEach(l=>addLog(l));
-    addLog(`⬡ Mecha déployé sur #${targetHex} (-${qty} ${res}) → 🔓 ${abilityNames[unlockIdx]||"?"}`);
+    addLog(`⬡ Mecha déployé sur #${targetHex} (-${qty} ${res})`);
     if(me.mechs.length+1>=4)addLog(`⭐ 4 Mechas déployés !`);
-    finishBottom(1);
-  },[me,addLog,finishBottom]);
+    // Show ability picker — finishBottom will be called after player picks
+    setPendingAbility({source:"deploy",col:1});
+  },[me,addLog]);
+
+  const confirmAbility=useCallback((abilityIdx)=>{
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0],unlockedAbilities:[...(n[0].unlockedAbilities||[]),abilityIdx]};
+      n[0]=p;return n;
+    });
+    addLog(`🔓 Ability débloquée : ${ABILITY_ICONS[abilityIdx]} ${ABILITY_NAMES[abilityIdx]}`);
+    const source=pendingAbility;
+    setPendingAbility(null);
+    if(source&&source.source==="deploy") finishBottom(source.col);
+    if(source&&source.source==="encounter"){
+      // Resume movement check after encounter mech ability pick
+      const moved=(me.movedUnits||[]).length;
+      if(moved>=2){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
+    }
+  },[pendingAbility,me,addLog,finishBottom,endHumanTurn,myMat]);
 
   // ── BOTTOM-ROW: BUILD ──
   const doBuild=useCallback((targetHex,buildingType)=>{
@@ -500,6 +613,7 @@ export default function App(){
   },[players,phase,addLog]);
 
   const handleHexClick=useCallback((hexId)=>{
+    if(wasDragging.current){wasDragging.current=false;return;} // suppress click after drag
     if(phase!=="playing"||botRunning||combat)return;
     // Ripple effect on click
     setClickRipple({hexId,key:Date.now()});
@@ -748,7 +862,7 @@ export default function App(){
       });
       
       if(win){
-        addLog(`✅ Victoire ! ${combat.empireCard.name} détruit (${playerTotal} vs ${empireTotal})`);
+        addLog(`✅ Victoire ! ${combat.empireCard.name} détruit (${playerTotal} vs ${empireTotal} — dépensé: ${combat.powerSpend}⚡ ${combat.cardsSpend}🃏)`);
         // Move unit to hex + TRANSPORT
         setPlayers(prev=>{
           const n=[...prev];let p={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
@@ -775,7 +889,7 @@ export default function App(){
         setCombat(prev=>({...prev,phase:"reward",win:true}));
         return; // Don't close yet — reward phase
       } else {
-        addLog(`❌ Défaite... ${combat.empireCard.name} vous repousse (${playerTotal} vs ${empireTotal})`);
+        addLog(`❌ Défaite... ${combat.empireCard.name} vous repousse (${playerTotal} vs ${empireTotal} — dépensé: ${combat.powerSpend}⚡ ${combat.cardsSpend}🃏)`);
       }
     }
     
@@ -971,8 +1085,9 @@ export default function App(){
   const resolveEncounter=useCallback((choiceIdx)=>{
     if(!encounter)return;
     const choice=encounter.card.choices[choiceIdx];
+    const mechsBefore=me.mechs.length;
     setPlayers(prev=>{
-      const n=[...prev];const p={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
+      const n=[...prev];const p={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources},unlockedAbilities:[...(n[0].unlockedAbilities||[])]};
       // Deep copy resources
       Object.entries(n[0].resources).forEach(([k,v])=>{p.resources[k]={...v};});
       choice.effect(p);
@@ -981,6 +1096,11 @@ export default function App(){
     });
     addLog(`📜 ${encounter.card.name}: ${choice.label} → ${choice.desc}`);
     setEncounter(null);
+    // If the encounter granted a mech, show ability picker
+    if(choice.grantsMech&&me.coins>=2&&mechsBefore<4){
+      setPendingAbility({source:"encounter"});
+      return; // don't end turn yet — ability picker will handle it
+    }
     // Resume movement check
     const moved=(me.movedUnits||[]).length;
     if(moved>=2){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
@@ -1129,29 +1249,29 @@ export default function App(){
 
     return(
       <div style={{minHeight:"100vh",background:"linear-gradient(170deg,#1A1710 0%,#1A1710 40%,#1A1710 100%)",color:"var(--text)",display:"flex",flexDirection:"column",alignItems:"center",padding:"32px 16px",overflow:"auto"}}>
-        <div style={{width:80,height:1,background:"linear-gradient(90deg,transparent,var(--gold),transparent)",marginBottom:16}}/>
-        <h1 style={{fontSize:24,fontWeight:900,letterSpacing:8,textTransform:"uppercase",color:"var(--gold)",marginBottom:4,textAlign:"center"}}>Fin de Partie</h1>
-        <div style={{width:140,height:1,background:"linear-gradient(90deg,transparent,var(--gold-dim),transparent)",marginBottom:24}}/>
+        <div style={{width:80,height:1,background:"linear-gradient(90deg,transparent,var(--rust),transparent)",marginBottom:16}}/>
+        <h1 style={{fontSize:24,fontWeight:900,letterSpacing:8,textTransform:"uppercase",color:"var(--rust)",marginBottom:4,textAlign:"center"}}>Fin de Partie</h1>
+        <div style={{width:140,height:1,background:"linear-gradient(90deg,transparent,var(--rust-dark),transparent)",marginBottom:24}}/>
 
         {/* Rankings */}
         <div style={{width:"100%",maxWidth:560}}>
           {scores.map((s,i)=>(
             <div key={s.faction} className="fade-in" style={{
-              background:i===0?"rgba(201,168,76,0.08)":"rgba(20,18,12,0.6)",
-              border:i===0?`2px solid var(--gold)`:`1px solid var(--border)`,
+              background:i===0?"rgba(200,112,64,0.08)":"rgba(20,18,12,0.6)",
+              border:i===0?`2px solid var(--rust)`:`1px solid var(--border)`,
               borderRadius:8,padding:"16px 20px",marginBottom:8,
-              boxShadow:i===0?"0 0 30px rgba(201,168,76,0.12)":"none",
+              boxShadow:i===0?"0 0 30px rgba(200,112,64,0.15)":"none",
               animationDelay:`${i*0.1}s`,
             }}>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
-                <span style={{fontSize:24,fontWeight:900,color:i===0?"var(--gold)":"var(--text-muted)",fontFamily:"var(--font-title)",width:32}}>
+                <span style={{fontSize:24,fontWeight:900,color:i===0?"var(--rust)":"var(--text-muted)",fontFamily:"var(--font-title)",width:32}}>
                   {i===0?"🏆":i+1+"."}
                 </span>
                 <div style={{flex:1}}>
                   <div style={{fontFamily:"var(--font-title)",fontSize:16,fontWeight:700,color:s.color}}>{s.name}</div>
                   <div style={{fontSize:10,color:"var(--text-dim)"}}>{s.hero} {s.isBot?"🤖":"👤"}</div>
                 </div>
-                <div style={{fontSize:22,fontWeight:900,color:i===0?"var(--gold)":"var(--text)",fontFamily:"var(--font-title)"}}>{s.total}$</div>
+                <div style={{fontSize:22,fontWeight:900,color:i===0?"var(--rust)":"var(--text)",fontFamily:"var(--font-title)"}}>{s.total}$</div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,fontSize:11,color:"var(--text-dim)"}}>
                 <div style={{background:"var(--bg3)",padding:"6px 8px",borderRadius:4,textAlign:"center"}}>
@@ -1206,7 +1326,7 @@ export default function App(){
             <div style={{fontSize:11,color:"var(--text-dim)",fontFamily:"var(--font-body)"}}>{myMat.name} · T{turn}</div>
           </div>
         </div>
-        {botRunning&&<span style={{color:"var(--gold)",fontSize:12,animation:"pulse 1s infinite",marginRight:4,display:"flex",alignItems:"center",gap:3}}>{React.createElement(RESOURCE_ICONS.metal,{size:12,color:"var(--gold)"})} IA…</span>}
+        {botRunning&&<span style={{color:"var(--rust)",fontSize:12,animation:"pulse 1s infinite",marginRight:4,display:"flex",alignItems:"center",gap:3}}>{React.createElement(RESOURCE_ICONS.metal,{size:12,color:"var(--rust)"})} IA…</span>}
         {/* Divider */}
         <div style={{width:1,height:28,background:"var(--border-light)",flexShrink:0}}/>
         {/* Resource counters — SVG icons */}
@@ -1246,7 +1366,7 @@ export default function App(){
       <div style={{display:"flex",gap:4,background:"linear-gradient(180deg,var(--bg-panel),#0a0906)",borderRight:"1px solid var(--border)",padding:"4px 4px",overflow:"hidden"}}>
         {/* Power track */}
         <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
-          <div style={{fontSize:8,color:"#cc9988",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pui</div>
+          <div style={{fontSize:8,color:"var(--rust)",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pui</div>
           <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,width:"100%"}}>
             {Array.from({length:17},(_,i)=>i).map(v=>(
               <div key={v} style={{
@@ -1260,15 +1380,15 @@ export default function App(){
               }}>{v%2===0?v:""}</div>
             ))}
           </div>
-          <div style={{fontSize:16,fontWeight:700,color:"#dd6644",marginTop:4,fontFamily:"var(--font-title)"}}>{me.power}</div>
+          <div style={{fontSize:16,fontWeight:700,color:"var(--rust-light)",marginTop:4,fontFamily:"var(--font-title)"}}>{me.power}</div>
         </div>
         {/* Popularity track */}
         <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
-          <div style={{fontSize:8,color:"#ccaa77",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pop</div>
+          <div style={{fontSize:8,color:"var(--brass)",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pop</div>
           <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,width:"100%"}}>
             {Array.from({length:19},(_,i)=>i).map(v=>{
               const tier=v<=6?0:v<=12?1:2;
-              const tierColors=["#8a6020","#b88030","#d0a040"];
+              const tierColors=["var(--oxide)","var(--brass)","var(--gold)"];
               return(
                 <div key={v} style={{
                   flex:1,minHeight:0,width:"100%",borderRadius:2,
@@ -1283,22 +1403,24 @@ export default function App(){
               );
             })}
           </div>
-          <div style={{fontSize:16,fontWeight:700,color:"#d0a040",marginTop:4,fontFamily:"var(--font-title)"}}>{me.pop}</div>
+          <div style={{fontSize:16,fontWeight:700,color:"var(--brass)",marginTop:4,fontFamily:"var(--font-title)"}}>{me.pop}</div>
         </div>
       </div>
 
       {/* ═══ CENTER: MAP + OVERLAYS ═══ */}
-      <div style={{position:"relative",overflow:"hidden",background:"radial-gradient(ellipse at 50% 45%,#16140e,var(--bg-map))",cursor:isPanning?"grabbing":"default"}}>
+      <div style={{position:"relative",overflow:"hidden",background:"radial-gradient(ellipse at 50% 45%,#16140e,var(--bg-map))",cursor:isPanning?"grabbing":"grab",touchAction:"none"}}>
         {/* Zoom controls */}
         <div style={{position:"absolute",top:8,right:8,zIndex:5,display:"flex",flexDirection:"column",gap:4}}>
-          <button onClick={()=>mapZoom(1/1.3)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--gold)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>+</button>
-          <button onClick={()=>mapZoom(1.3)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--gold)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>−</button>
+          <button onClick={()=>mapZoom(1/1.4)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--rust)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>+</button>
+          <button onClick={()=>mapZoom(1.4)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--rust)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>−</button>
+          <button onClick={mapCenterOnMe} title="Centrer sur mon héros" style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--rust)",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>⌖</button>
           <button onClick={mapReset} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--text-dim)",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>⟲</button>
         </div>
-        <div style={{position:"absolute",bottom:6,left:8,zIndex:5,fontSize:10,color:"var(--text-muted)",opacity:0.5,pointerEvents:"none"}}>Molette: zoom · Shift+clic: panoramique</div>
-        {/* SVG Map */}
-        <svg ref={mapRef} viewBox={`${mapView.x} ${mapView.y} ${mapView.w} ${mapView.h}`} style={{width:"100%",height:"100%",display:"block",minHeight:"100%"}}
-          onPointerDown={handleMapPointerDown} onPointerMove={handleMapPointerMove} onPointerUp={handleMapPointerUp} onPointerLeave={handleMapPointerUp}>
+        <div style={{position:"absolute",bottom:6,left:8,zIndex:5,fontSize:10,color:"var(--text-muted)",opacity:0.5,pointerEvents:"none"}}>Glisser: panoramique · Molette/pinch: zoom</div>
+        {/* SVG Map — perspective tilt */}
+        <svg ref={mapRef} viewBox={`${mapView.x} ${mapView.y} ${mapView.w} ${mapView.h}`} style={{width:"100%",height:"100%",display:"block",minHeight:"100%",transform:"perspective(1800px) rotateX(8deg)",transformOrigin:"center 60%"}}
+          onPointerDown={handleMapPointerDown} onPointerMove={handleMapPointerMove} onPointerUp={handleMapPointerUp} onPointerLeave={handleMapPointerUp}
+          onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           <defs>
             {Object.entries(TERRAINS).map(([key,t])=>(
               <radialGradient key={`tg-${key}`} id={`tg-${key}`} cx="38%" cy="30%" r="72%">
@@ -1384,7 +1506,7 @@ export default function App(){
               <text x={hex.rx} y={hex.ry+32} textAnchor="middle" fontSize={6.5} fill="#4a4030" opacity={0.2} style={{fontFamily:"var(--font-map)",pointerEvents:"none"}}>#{hex.id}</text>
               {units.length>0&&(()=>{const fc=units[0].factionId;const c=FACTIONS[fc]?.color||"#888";return <FactionHalo cx={hex.rx} cy={hex.ry+6} color={c} r={22}/>;})()}
               {units.map((u,ui)=>{
-                const ox=(ui-(units.length-1)/2)*24;
+                const ox=(ui-(units.length-1)/2)*48;
                 return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}/>;
               })}
               {(()=>{
@@ -1468,7 +1590,7 @@ export default function App(){
                 const enemy=!isPve?players[combat.enemyIdx]:null;
                 const ef=enemy?FACTIONS[enemy.faction]:null;
                 return(
-                  <div className="combat-panel" style={{padding:"24px",background:"linear-gradient(180deg,#1a0c08,var(--bg2))",borderRadius:12}}>
+                  <div className="combat-panel" style={{padding:"24px",background:"linear-gradient(180deg,#200e0a,var(--bg2))",borderRadius:12}}>
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
                       <div style={{width:50,height:50,borderRadius:"50%",background:isPve?"rgba(180,30,15,0.2)":"rgba(200,100,30,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,border:isPve?"2px solid #1A3A6A":"2px solid "+(ef?ef.color:"#888"),flexShrink:0}}>⚔</div>
                       <div>
@@ -1491,17 +1613,17 @@ export default function App(){
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16,padding:"12px 16px",background:"rgba(0,0,0,0.4)",borderRadius:10,border:"1px solid var(--border)"}}>
                       <span style={{fontSize:22,fontWeight:900,color:"var(--gold)",fontFamily:"var(--font-title)"}}>{total}</span>
                       <span style={{fontSize:12,color:"var(--text-muted)"}}>{combat.powerSpend}{cBonus.powerBonus>0?`+${cBonus.powerBonus}`:""}⚡ + {combat.cardsSpend}×2🃏</span>
-                      {cBonus.name&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:"rgba(200,160,60,0.15)",border:"1px solid var(--gold-dim)",color:"var(--gold)"}}>{cBonus.name}{cBonus.powerBonus>0?` +${cBonus.powerBonus}⚡`:""}{cBonus.cardBonus>0?` +${cBonus.cardBonus}🃏`:""}</span>}
+                      {cBonus.name&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:"rgba(200,112,64,0.12)",border:"1px solid var(--rust)",color:"var(--rust)"}}>{cBonus.name}{cBonus.powerBonus>0?` +${cBonus.powerBonus}⚡`:""}{cBonus.cardBonus>0?` +${cBonus.cardBonus}🃏`:""}</span>}
                       {isPve&&<span style={{fontSize:16,fontWeight:700,marginLeft:"auto",color:total>=combat.empireCard.power?"var(--success)":"#ff4444"}}>{total>=combat.empireCard.power?"✓":"✗"} vs {combat.empireCard.power}</span>}
                     </div>
-                    <button onClick={resolveCombat} style={{width:"100%",padding:"14px",fontSize:15,fontWeight:700,fontFamily:"var(--font-title)",letterSpacing:3,textTransform:"uppercase",background:"linear-gradient(135deg,#8b2020,#6b1515)",color:"#fff",border:"none",borderRadius:10,boxShadow:"0 3px 20px rgba(140,30,20,0.5)"}}>⚔ Combattre</button>
+                    <button onClick={resolveCombat} style={{width:"100%",padding:"14px",fontSize:15,fontWeight:700,fontFamily:"var(--font-title)",letterSpacing:3,textTransform:"uppercase",background:"linear-gradient(135deg,var(--danger),#8b1515)",color:"#fff",border:"none",borderRadius:10,boxShadow:"0 3px 20px rgba(200,56,40,0.4)"}}>⚔ Combattre</button>
                   </div>
                 );
               })()}
 
               {/* COMBAT REWARD */}
               {combat&&combat.phase==="reward"&&(
-                <div className="reward-panel" style={{padding:"24px",background:"linear-gradient(180deg,#0c1a0c,var(--bg2))",borderRadius:12}}>
+                <div className="reward-panel" style={{padding:"24px",background:"linear-gradient(180deg,#0e200e,var(--bg2))",borderRadius:12}}>
                   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
                     <span style={{fontSize:32}}>🏆</span>
                     <div><div style={{fontFamily:"var(--font-title)",color:"var(--success)",fontSize:20,fontWeight:700}}>Victoire !</div><div style={{fontSize:12,color:"var(--text-dim)"}}>Choisissez votre butin</div></div>
@@ -1520,7 +1642,7 @@ export default function App(){
 
               {/* ENCOUNTER */}
               {encounter&&(
-                <div style={{padding:"20px",background:"linear-gradient(180deg,#1a1608,var(--bg2))",borderRadius:10,border:"1px solid var(--gold-dim)",animation:"slideUp 0.35s ease"}}>
+                <div style={{padding:"20px",background:"linear-gradient(180deg,#1a1608,var(--bg2))",borderRadius:10,border:"1px solid var(--rust)",animation:"slideUp 0.35s ease"}}>
                   <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:16}}>
                     <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(201,168,76,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:"2px solid var(--gold)",flexShrink:0}}>📜</div>
                     <div>
@@ -1547,7 +1669,7 @@ export default function App(){
 
               {/* ROUGE RIVER */}
               {rougeRiver&&(
-                <div style={{padding:"20px",background:"linear-gradient(180deg,#1a0a08,var(--bg2))",borderRadius:10,border:"1px solid #6b1010",animation:"slideUp 0.35s ease"}}>
+                <div style={{padding:"20px",background:"linear-gradient(180deg,#1a0a08,var(--bg2))",borderRadius:10,border:"1px solid var(--danger)",animation:"slideUp 0.35s ease"}}>
                   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
                     <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(139,32,32,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:"2px solid #8b2020",flexShrink:0}}>⚙</div>
                     <div>
@@ -1573,6 +1695,39 @@ export default function App(){
             </div>
           </div>
         )}
+
+        {/* ═══ ABILITY PICKER MODAL ═══ */}
+        {pendingAbility&&(
+          <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:12}}>
+            <div style={{maxWidth:420,width:"90%",borderRadius:12,border:"1px solid var(--rust)",boxShadow:"0 10px 50px rgba(0,0,0,0.8)",background:"linear-gradient(180deg,#1a1510,var(--bg2))",padding:24,animation:"slideUp 0.25s ease"}}>
+              <div style={{textAlign:"center",marginBottom:16}}>
+                <div style={{fontSize:22,fontWeight:900,fontFamily:"var(--font-title)",color:"var(--rust)",letterSpacing:2,textTransform:"uppercase"}}>Choisir une Ability</div>
+                <div style={{fontSize:12,color:"var(--text-dim)",marginTop:4}}>Mecha déployé — débloque une capacité</div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                {ABILITY_NAMES.map((name,idx)=>{
+                  const already=(me.unlockedAbilities||[]).includes(idx);
+                  return(
+                    <button key={idx} onClick={()=>{if(!already)confirmAbility(idx);}} disabled={already}
+                      style={{
+                        padding:"14px 12px",borderRadius:8,cursor:already?"not-allowed":"pointer",
+                        background:already?"rgba(0,0,0,0.3)":"var(--bg3)",
+                        border:already?"1px solid var(--border)":"1px solid var(--rust-dark)",
+                        opacity:already?0.3:1,transition:"all 0.15s",textAlign:"center",
+                      }}
+                      onMouseEnter={e=>{if(!already)e.currentTarget.style.borderColor="var(--rust)";e.currentTarget.style.background="rgba(200,112,64,0.1)";}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor=already?"var(--border)":"var(--rust-dark)";e.currentTarget.style.background=already?"rgba(0,0,0,0.3)":"var(--bg3)";}}
+                    >
+                      <div style={{fontSize:28,marginBottom:6}}>{ABILITY_ICONS[idx]}</div>
+                      <div style={{fontSize:14,fontWeight:700,fontFamily:"var(--font-title)",color:already?"var(--text-muted)":"var(--rust)",letterSpacing:1}}>{name}</div>
+                      <div style={{fontSize:11,color:already?"var(--text-muted)":"var(--text-dim)",marginTop:4}}>{already?"Déjà débloqué":ABILITY_DESC[idx]}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ═══ RIGHT PANEL: SCOREBOARD + ACTIONS + DROPDOWNS ═══ */}
@@ -1582,7 +1737,7 @@ export default function App(){
         <div style={{padding:"6px 8px",borderBottom:"1px solid var(--border)",flexShrink:0}}>
           {players.map((p,i)=>{const fc=FACTIONS[p.faction];const isActive=i===currentP;return(
             <div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 6px",borderRadius:4,
-              background:isActive?"rgba(201,168,76,0.06)":"transparent",
+              background:isActive?"rgba(200,112,64,0.06)":"transparent",
               borderLeft:isActive?`3px solid ${fc.color}`:"3px solid transparent",
               animation:isActive&&i>0?"botPulse 1.5s ease infinite":"none",
               marginBottom:2,
@@ -1659,7 +1814,7 @@ export default function App(){
                 return(
                   <React.Fragment key={action}>
                   <button onClick={()=>{if(!disabled){setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
-                    onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background="rgba(201,168,76,0.06)";}}
+                    onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background="rgba(200,112,64,0.06)";}}
                     onMouseLeave={e=>{e.currentTarget.style.background=disabled?"rgba(0,0,0,0.3)":"transparent";}}
                     style={{
                     padding:0,background:disabled?"rgba(0,0,0,0.3)":"transparent",
@@ -1672,7 +1827,7 @@ export default function App(){
                     {/* TOP ACTION */}
                     <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(30,27,20,0.8),rgba(22,20,14,0.6))"}}>
                       <div style={{minWidth:0,flex:1}}>
-                        <div style={{fontSize:11,fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",color:"var(--gold-dim)",marginBottom:4,fontFamily:"var(--font-title)"}}>{action}</div>
+                        <div style={{fontSize:11,fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",color:"var(--rust)",marginBottom:4,fontFamily:"var(--font-title)"}}>{action}</div>
                         <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact />
                       </div>
                       <CubeSlots total={cubesTop} filled={cubesTop} />
@@ -1693,7 +1848,7 @@ export default function App(){
                   </button>
                   {/* GROUP SEPARATOR: strong between action pairs, light within pair */}
                   {!isLastAction&&(isGroupEnd
-                    ?<div style={{height:6,background:"var(--bg)",borderTop:"2px solid var(--gold-dim)",borderBottom:"1px solid var(--border)",opacity:0.7}}/>
+                    ?<div style={{height:6,background:"var(--bg)",borderTop:"2px solid var(--rust-dark)",borderBottom:"1px solid var(--border)",opacity:0.7}}/>
                     :<div style={{height:1,background:"var(--border)"}}/>
                   )}
                   </React.Fragment>
@@ -1959,15 +2114,41 @@ export default function App(){
           </div>
         )}
 
-        {/* ── Dropdown: Journal ── */}
+        {/* ── Dropdown: Journal enrichi ── */}
         <div style={{borderTop:"1px solid var(--border)",flexShrink:0,marginTop:"auto"}}>
-          <button onClick={()=>setShowLog(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
-            <span>📜 Journal</span>
+          <button onClick={()=>setShowLog(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(200,112,64,0.04)",border:"none",color:"var(--rust)",fontSize:11,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
+            <span>📜 Journal ({log.length})</span>
             <span style={{fontSize:9,color:"var(--text-dim)",transform:showLog?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
           </button>
-          {showLog&&<div ref={logRef} style={{maxHeight:120,overflow:"auto",padding:"4px 8px",fontSize:10}}>
-            {log.slice(-20).map((msg,i)=><div key={i} className="log-line">{msg}</div>)}
-          </div>}
+          {showLog&&<>
+            {/* Filter bar + copy */}
+            <div style={{display:"flex",gap:2,padding:"3px 6px",flexWrap:"wrap",alignItems:"center",borderBottom:"1px solid var(--border)"}}>
+              {[["all","Tout"],["combat","⚔"],["move","🚶"],["bot","🤖"],["resource","💰"],["deploy","⬡"],["encounter","📜"],["warn","⚠"],["star","⭐"]].map(([k,label])=>(
+                <button key={k} onClick={()=>setLogFilter(k)} style={{
+                  padding:"1px 5px",fontSize:9,borderRadius:3,cursor:"pointer",
+                  background:logFilter===k?"var(--rust)":"transparent",
+                  color:logFilter===k?"#fff":"var(--text-muted)",
+                  border:logFilter===k?"1px solid var(--rust)":"1px solid transparent",
+                }}>{label}</button>
+              ))}
+              <button onClick={()=>{
+                const txt=log.map(e=>`[T${e.turn}#${e.step}] ${e.msg}`).join("\n");
+                navigator.clipboard.writeText(txt);
+              }} style={{marginLeft:"auto",padding:"1px 5px",fontSize:9,borderRadius:3,cursor:"pointer",background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)"}} title="Copier tout le log">📋</button>
+            </div>
+            <div ref={logRef} style={{maxHeight:200,overflow:"auto",padding:"4px 6px",fontSize:10}}>
+              {(()=>{
+                const CAT_COLORS={combat:"#e04838",bot:"#a89878",star:"#d4b254",warn:"#e08850",encounter:"#b08060",rr:"#c87040",move:"#5a9aca",deploy:"#7aaa55",build:"#7aaa55",enlist:"#5a7a6a",upgrade:"#c4a060",resource:"#d4b254",ability:"#e08850",turn:"var(--rust)",info:"var(--text-dim)"};
+                const filtered=logFilter==="all"?log:log.filter(e=>e.cat===logFilter);
+                return filtered.slice(-60).map((e,i)=>(
+                  <div key={i} className="log-line" style={{display:"flex",gap:5,alignItems:"baseline"}}>
+                    <span style={{fontSize:8,color:"var(--text-muted)",fontFamily:"var(--font-mono)",flexShrink:0,minWidth:36,textAlign:"right"}}>T{e.turn}.{e.step}</span>
+                    <span style={{color:CAT_COLORS[e.cat]||"var(--text-dim)",fontWeight:e.cat==="turn"||e.cat==="star"?700:400}}>{e.msg}</span>
+                  </div>
+                ));
+              })()}
+            </div>
+          </>}
         </div>
       </div>
       <AmbientSound />

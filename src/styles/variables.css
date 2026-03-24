@@ -1,30 +1,48 @@
 :root {
-  /* === Palette === */
-  --bg: #1A1710;
-  --bg2: #1E1A12;
-  --bg3: #2A2418;
-  --panel: #1E1A12;
-  --panel-elevated: #2A2418;
+  /* ── BACKGROUNDS (dark mode from style guide) ── */
+  --bg:        #0d0c08;   /* fond principal — quasi noir chaud */
+  --bg2:       #161410;   /* fond secondaire */
+  --bg3:       #1e1b15;   /* fond tertiaire */
+  --panel:     #1a1812;   /* panneau standard */
+  --panel-elevated: #2a2418;
 
-  /* Or / Accent */
-  --gold: #C9A84C;
-  --gold-dim: #8A7A3A;
-  --gold-light: #E8DCC8;
+  /* ── ROUILLE & PATINE ── */
+  --rust:       #c87040;   /* rouille principale */
+  --rust-light: #e08850;   /* rouille claire */
+  --rust-dark:  #a05830;   /* rouille profonde */
+  --oxide:      #7a5c3a;   /* oxide cuivre brun */
+  --patina:     #5a7a6a;   /* patine verte cuivre */
+  --iron:       #4a4a48;   /* fer forgé */
 
-  /* Texte */
-  --text: #E8DCC8;
-  --text-dim: #A09080;
-  --text-muted: #6A5A48;
+  /* ── OR / ACCENT ── */
+  --gold:       #d4b254;   /* or patiné — plus chaud */
+  --gold-dim:   #8A7A3A;
+  --gold-light: #ecd080;   /* or lumineux */
+  --brass:      #c4a060;   /* laiton terni */
+  --copper:     #b08060;   /* cuivre */
 
-  /* Bordures */
-  --border: #2A2418;
-  --border-light: #1E1A14;
-  --grid: #2A2518;
+  /* ── TEXTE ── */
+  --text:       #e8dcc4;   /* encre claire */
+  --text2:      #c8b898;   /* encre secondaire */
+  --text-dim:   #a89878;   /* atténué */
+  --text-muted: #6a5c44;   /* discret */
+  --text-ghost: #4a3e2e;   /* fantôme */
 
-  /* Fonctionnel */
-  --danger: #8A3030;
+  /* ── BORDURES ── */
+  --border:       #322a1e;
+  --border-dark:  #4a3e2e;
+  --border-light: #2a2218;
+  --grid:         #2a2518;
+
+  /* ── FONCTIONNEL ── */
+  --danger:  #c83828;   /* rouge Empire — plus vif */
   --success: #4A8A4A;
-  --info: #3A6A9A;
+  --info:    #3A6A9A;
+  --red:     #c83828;
+  --red-light: #e04838;
+
+  /* ── ACCENTS COULEUR ── */
+  --ink-blue: #2a3a5a;
 
   /* === Typographie — 1920s Ameriques === */
   --font-title: 'Playfair Display', 'Bitter', serif;
@@ -72,11 +90,29 @@
   --bg-panel: #12110B;
   --bg-topbar: #1A1812;
 
-  /* Action cost/gain */
+  /* Action cost/gain — PRESERVED */
   --cost-bg: #8B2E2E;
   --cost-border: #A03030;
   --gain-bg: #2E6B2E;
   --gain-border: #308030;
   --cube-active: #4CAF50;
   --cube-border: #2E7D32;
+
+  /* ── FACTIONS ── */
+  --fc-conf:    #5a5a58;
+  --fc-frente:  #b85a28;
+  --fc-nations: #1a8a82;
+  --fc-acadiane:#2a7a2a;
+  --fc-bayou:   #7a2d8b;
+  --fc-empire:  #8b2020;
+
+  /* ── TERRAINS ── */
+  --tr-sierra:  #8b7050;
+  --tr-plaine:  #6a8a48;
+  --tr-foret:   #2a5a2a;
+  --tr-village:  #a84a28;
+  --tr-desert:  #c49040;
+  --tr-lac:     #1e5a8a;
+  --tr-marecage:#3a6b55;
+  --tr-factory: #7a1818;
 }
