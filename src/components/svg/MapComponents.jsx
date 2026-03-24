@@ -20,13 +20,13 @@ const TERRAIN_LISERÉ = {
 const HexResIcon = React.memo(({ cx, cy, resType }) => {
   const s = 40; // icon size on hex — ×2 for readability
   const x = cx - s / 2, y = cy - s / 2;
-  const col = "rgba(0,0,0,0.35)";
-  const sw = "1.6";
+  const col = "rgba(0,0,0,0.9)";
+  const sw = "2";
   if (resType === "metal") return (
     <g transform={`translate(${x},${y})`} style={{ pointerEvents: "none" }}>
       <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke={col} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" overflow="visible">
         <polygon points="8,1 14,4.5 14,11.5 8,15 2,11.5 2,4.5" />
-        <circle cx="8" cy="8" r="2" fill={col} stroke="none" opacity="0.5" />
+        <circle cx="8" cy="8" r="2" fill={col} stroke="none" opacity="0.9" />
       </svg>
     </g>
   );
