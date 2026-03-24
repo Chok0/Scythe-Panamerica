@@ -70,67 +70,129 @@ export default function App(){
 
   useEffect(()=>{if(logRef.current)logRef.current.scrollTop=logRef.current.scrollHeight;},[log]);
 
-  // Map zoom (wheel) — zoom toward cursor
+  // ── MAP INTERACTION: wheel zoom, drag pan, touch pinch+pan ──
+  const ZOOM_MIN=80,ZOOM_MAX=MAP_BASE.w*2.5; // deep zoom allowed
+  const dragThreshold=5; // px to distinguish click from drag
+  const touchRef=useRef(null); // for pinch tracking
+  const wasDragging=useRef(false); // suppress hex click after drag
+
+  // Wheel zoom toward cursor
   const handleMapWheel=useCallback((e)=>{
     e.preventDefault();
     const factor=e.deltaY>0?1.12:1/1.12;
     setMapView(prev=>{
-      const newW=Math.min(MAP_BASE.w*2,Math.max(200,prev.w*factor));
-      const newH=Math.min(MAP_BASE.h*2,Math.max(200,prev.h*factor));
-      // Zoom toward mouse position
+      const newW=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,prev.w*factor));
+      const newH=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,prev.h*factor));
       const svg=mapRef.current;
       if(svg){
         const rect=svg.getBoundingClientRect();
         const mx=(e.clientX-rect.left)/rect.width;
         const my=(e.clientY-rect.top)/rect.height;
-        const newX=prev.x+prev.w*mx-newW*mx;
-        const newY=prev.y+prev.h*my-newH*my;
-        return{x:newX,y:newY,w:newW,h:newH};
+        return{x:prev.x+prev.w*mx-newW*mx,y:prev.y+prev.h*my-newH*my,w:newW,h:newH};
       }
       const cx=prev.x+prev.w/2,cy=prev.y+prev.h/2;
       return{x:cx-newW/2,y:cy-newH/2,w:newW,h:newH};
     });
   },[]);
 
-  // Map pan (mouse drag)
+  // Drag pan — left-click drag, no modifier needed. Click vs drag detected on up.
   const handleMapPointerDown=useCallback((e)=>{
-    if(e.button!==1&&!e.shiftKey)return; // middle-click or shift+left-click to pan
-    e.preventDefault();
-    setIsPanning(true);
-    panStart.current={cx:e.clientX,cy:e.clientY,vx:mapView.x,vy:mapView.y};
+    if(e.button>1)return;
+    panStart.current={cx:e.clientX,cy:e.clientY,vx:mapView.x,vy:mapView.y,moved:false};
   },[mapView.x,mapView.y]);
 
   const handleMapPointerMove=useCallback((e)=>{
-    if(!isPanning||!panStart.current)return;
+    if(!panStart.current)return;
+    const dx0=e.clientX-panStart.current.cx,dy0=e.clientY-panStart.current.cy;
+    if(!panStart.current.moved&&Math.abs(dx0)<dragThreshold&&Math.abs(dy0)<dragThreshold)return;
+    panStart.current.moved=true;
+    if(!isPanning)setIsPanning(true);
     const svg=mapRef.current;if(!svg)return;
     const rect=svg.getBoundingClientRect();
     const scaleX=mapView.w/rect.width,scaleY=mapView.h/rect.height;
-    const dx=(e.clientX-panStart.current.cx)*scaleX;
-    const dy=(e.clientY-panStart.current.cy)*scaleY;
-    setMapView(prev=>({...prev,x:panStart.current.vx-dx,y:panStart.current.vy-dy}));
+    setMapView(prev=>({...prev,x:panStart.current.vx-dx0*scaleX,y:panStart.current.vy-dy0*scaleY}));
   },[isPanning,mapView.w,mapView.h]);
 
   const handleMapPointerUp=useCallback(()=>{
+    wasDragging.current=!!(panStart.current&&panStart.current.moved);
     setIsPanning(false);panStart.current=null;
   },[]);
 
-  // Attach wheel listener with passive:false for preventDefault
+  // Touch: pinch zoom + two-finger pan
+  const handleTouchStart=useCallback((e)=>{
+    if(e.touches.length===2){
+      const t=e.touches;
+      const dist=Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+      const mx=(t[0].clientX+t[1].clientX)/2,my=(t[0].clientY+t[1].clientY)/2;
+      touchRef.current={dist,mx,my,vx:mapView.x,vy:mapView.y,vw:mapView.w,vh:mapView.h};
+    } else if(e.touches.length===1){
+      const t=e.touches[0];
+      panStart.current={cx:t.clientX,cy:t.clientY,vx:mapView.x,vy:mapView.y,moved:false};
+    }
+  },[mapView]);
+
+  const handleTouchMove=useCallback((e)=>{
+    if(e.touches.length===2&&touchRef.current){
+      e.preventDefault();
+      const t=e.touches;
+      const dist=Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY);
+      const scale=touchRef.current.dist/dist;
+      const newW=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,touchRef.current.vw*scale));
+      const newH=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,touchRef.current.vh*scale));
+      // Pan component
+      const svg=mapRef.current;if(!svg)return;
+      const rect=svg.getBoundingClientRect();
+      const mx2=(t[0].clientX+t[1].clientX)/2,my2=(t[0].clientY+t[1].clientY)/2;
+      const panScaleX=touchRef.current.vw/rect.width,panScaleY=touchRef.current.vh/rect.height;
+      const panDx=(mx2-touchRef.current.mx)*panScaleX;
+      const panDy=(my2-touchRef.current.my)*panScaleY;
+      // Zoom toward pinch center
+      const mxN=(touchRef.current.mx-rect.left)/rect.width;
+      const myN=(touchRef.current.my-rect.top)/rect.height;
+      const newX=touchRef.current.vx+touchRef.current.vw*mxN-newW*mxN-panDx;
+      const newY=touchRef.current.vy+touchRef.current.vh*myN-newH*myN-panDy;
+      setMapView({x:newX,y:newY,w:newW,h:newH});
+    } else if(e.touches.length===1&&panStart.current){
+      const t=e.touches[0];
+      const dx0=t.clientX-panStart.current.cx,dy0=t.clientY-panStart.current.cy;
+      if(!panStart.current.moved&&Math.abs(dx0)<dragThreshold&&Math.abs(dy0)<dragThreshold)return;
+      panStart.current.moved=true;
+      const svg=mapRef.current;if(!svg)return;
+      const rect=svg.getBoundingClientRect();
+      setMapView(prev=>({...prev,x:panStart.current.vx-(dx0*prev.w/rect.width),y:panStart.current.vy-(dy0*prev.h/rect.height)}));
+    }
+  },[]);
+
+  const handleTouchEnd=useCallback(()=>{
+    touchRef.current=null;panStart.current=null;setIsPanning(false);
+  },[]);
+
+  // Attach wheel + touch listeners with passive:false
   useEffect(()=>{
     const el=mapRef.current;if(!el)return;
     el.addEventListener("wheel",handleMapWheel,{passive:false});
-    return()=>el.removeEventListener("wheel",handleMapWheel);
-  },[handleMapWheel]);
+    el.addEventListener("touchmove",handleTouchMove,{passive:false});
+    return()=>{el.removeEventListener("wheel",handleMapWheel);el.removeEventListener("touchmove",handleTouchMove);};
+  },[handleMapWheel,handleTouchMove]);
 
   const mapZoom=useCallback((factor)=>{
     setMapView(prev=>{
       const cx=prev.x+prev.w/2,cy=prev.y+prev.h/2;
-      const newW=Math.min(MAP_BASE.w*2,Math.max(200,prev.w*factor));
-      const newH=Math.min(MAP_BASE.h*2,Math.max(200,prev.h*factor));
+      const newW=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,prev.w*factor));
+      const newH=Math.min(ZOOM_MAX,Math.max(ZOOM_MIN,prev.h*factor));
       return{x:cx-newW/2,y:cy-newH/2,w:newW,h:newH};
     });
   },[]);
 
   const mapReset=useCallback(()=>setMapView({...MAP_BASE}),[]);
+
+  // Center on player's hero
+  const mapCenterOnMe=useCallback(()=>{
+    if(!me)return;
+    const heroHex=hMap[me.hero];if(!heroHex)return;
+    const zoomW=400,zoomH=400; // tight view around hero
+    setMapView({x:heroHex.rx-zoomW/2,y:heroHex.ry-zoomH/2,w:zoomW,h:zoomH});
+  },[me]);
   // ── Structured log: auto-categorize from emoji/content ──
   const turnRef=useRef(0);
   const stepRef=useRef(0);
@@ -178,9 +240,12 @@ export default function App(){
       p.objectives=[o1,o2];
       if(p.isBot){p.objective=Math.random()>0.5?o1:o2;}
     });
-    setPlayers(ps);setPhase("playing");setCurrentP(0);setTurn(1);
+    setPlayers(ps);setPhase("playing");setCurrentP(0);setTurn(1);turnRef.current=1;
     addLog(`⚔ ${ps.length} joueurs`);
     ps.forEach(p=>{const f=FACTIONS[p.faction];addLog(`${p.isBot?"🤖":"👤"} ${f.name} (${p.matName})  ⚡${p.power} 🃏${p.combatCards} ♥${p.pop} 💰${p.coins}`);});
+    // Auto-center on player's hero
+    const heroHex=hMap[ps[0].hero];
+    if(heroHex){const zw=500,zh=500;setMapView({x:heroHex.rx-zw/2,y:heroHex.ry-zh/2,w:zw,h:zh});}
   },[selFaction,selMat,numBots,addLog]);
 
   const revealObjective=useCallback((objIdx)=>{
@@ -548,6 +613,7 @@ export default function App(){
   },[players,phase,addLog]);
 
   const handleHexClick=useCallback((hexId)=>{
+    if(wasDragging.current){wasDragging.current=false;return;} // suppress click after drag
     if(phase!=="playing"||botRunning||combat)return;
     // Ripple effect on click
     setClickRipple({hexId,key:Date.now()});
@@ -1342,17 +1408,19 @@ export default function App(){
       </div>
 
       {/* ═══ CENTER: MAP + OVERLAYS ═══ */}
-      <div style={{position:"relative",overflow:"hidden",background:"radial-gradient(ellipse at 50% 45%,#16140e,var(--bg-map))",cursor:isPanning?"grabbing":"default"}}>
+      <div style={{position:"relative",overflow:"hidden",background:"radial-gradient(ellipse at 50% 45%,#16140e,var(--bg-map))",cursor:isPanning?"grabbing":"grab",touchAction:"none"}}>
         {/* Zoom controls */}
         <div style={{position:"absolute",top:8,right:8,zIndex:5,display:"flex",flexDirection:"column",gap:4}}>
-          <button onClick={()=>mapZoom(1/1.3)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--gold)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>+</button>
-          <button onClick={()=>mapZoom(1.3)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--gold)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>−</button>
+          <button onClick={()=>mapZoom(1/1.4)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--rust)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>+</button>
+          <button onClick={()=>mapZoom(1.4)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--rust)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>−</button>
+          <button onClick={mapCenterOnMe} title="Centrer sur mon héros" style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--rust)",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>⌖</button>
           <button onClick={mapReset} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--text-dim)",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>⟲</button>
         </div>
-        <div style={{position:"absolute",bottom:6,left:8,zIndex:5,fontSize:10,color:"var(--text-muted)",opacity:0.5,pointerEvents:"none"}}>Molette: zoom · Shift+clic: panoramique</div>
-        {/* SVG Map */}
-        <svg ref={mapRef} viewBox={`${mapView.x} ${mapView.y} ${mapView.w} ${mapView.h}`} style={{width:"100%",height:"100%",display:"block",minHeight:"100%"}}
-          onPointerDown={handleMapPointerDown} onPointerMove={handleMapPointerMove} onPointerUp={handleMapPointerUp} onPointerLeave={handleMapPointerUp}>
+        <div style={{position:"absolute",bottom:6,left:8,zIndex:5,fontSize:10,color:"var(--text-muted)",opacity:0.5,pointerEvents:"none"}}>Glisser: panoramique · Molette/pinch: zoom</div>
+        {/* SVG Map — perspective tilt */}
+        <svg ref={mapRef} viewBox={`${mapView.x} ${mapView.y} ${mapView.w} ${mapView.h}`} style={{width:"100%",height:"100%",display:"block",minHeight:"100%",transform:"perspective(1800px) rotateX(8deg)",transformOrigin:"center 60%"}}
+          onPointerDown={handleMapPointerDown} onPointerMove={handleMapPointerMove} onPointerUp={handleMapPointerUp} onPointerLeave={handleMapPointerUp}
+          onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           <defs>
             {Object.entries(TERRAINS).map(([key,t])=>(
               <radialGradient key={`tg-${key}`} id={`tg-${key}`} cx="38%" cy="30%" r="72%">
