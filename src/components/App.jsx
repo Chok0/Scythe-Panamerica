@@ -625,11 +625,11 @@ export default function App(){
     setPlayers(prev=>{
       const n=[...prev];let p=spendRes(n[0],resType,1);
       p.commerceUsed=true;
-      if(reward==="coins"){p.coins+=2;p.imperialCoins=(p.imperialCoins||0)+2;}
+      if(reward==="coins"){p.coins+=1;p.imperialCoins=(p.imperialCoins||0)+1;}
       else{p.combatCards++;}
       n[0]=p;return n;
     });
-    addLog(`🏛 Commerce Impérial : -1 ${resType} → ${reward==="coins"?"+2💰":"+1🃏"}`);
+    addLog(`🏛 Commerce Impérial : -1 ${resType} → ${reward==="coins"?"+1💰":"+1🃏"}`);
   },[me,addLog]);
 
   const validMoves=useMemo(()=>{
@@ -2095,7 +2095,7 @@ export default function App(){
                 <div style={{color:"#cc3030",fontWeight:600,marginBottom:6,fontSize:12}}>🏛 Commerce Impérial (1×/tour) — envoyer 1 ressource :</div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                   {available.map(r=><div key={r} style={{display:"flex",gap:4}}>
-                    <button onClick={()=>doCommerceImperial(r,"coins")} className="act-btn" style={{fontSize:12,padding:"8px 12px",borderColor:"#882020"}}>-1{r.slice(0,3)} →2💰</button>
+                    <button onClick={()=>doCommerceImperial(r,"coins")} className="act-btn" style={{fontSize:12,padding:"8px 12px",borderColor:"#882020"}}>-1{r.slice(0,3)} →1💰</button>
                     <button onClick={()=>doCommerceImperial(r,"cards")} className="act-btn" style={{fontSize:12,padding:"8px 12px",borderColor:"#882020"}}>-1{r.slice(0,3)} →1🃏</button>
                   </div>)}
                 </div>
