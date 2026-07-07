@@ -18,6 +18,9 @@
  */
 import { writeFileSync } from 'node:fs';
 import { botTurn } from '../src/logic/bot.js';
+import { applyBotPvpAfterMove } from '../src/logic/pvpBots.js';
+import { resolveBotEncounter } from '../src/logic/botEncounters.js';
+import { ENCOUNTER_HEXES } from '../src/data/encounters.js';
 import { createPlayer } from '../src/logic/player.js';
 import { FACTIONS, FACTION_IDS } from '../src/data/factions.js';
 import { MATS, applyEnlistOngoing, BOTTOM } from '../src/data/mats.js';
@@ -74,8 +77,11 @@ const scorePlayer = (p) => {
   });
   const territories = unitHexes.size;
   const factoryBonus = unitHexes.has(22) ? 3 : 0;
+  // Règle : seules les ressources sur des territoires contrôlés comptent au scoring
   let totalRes = 0;
-  Object.values(p.resources).forEach(r => Object.values(r).forEach(n => totalRes += n));
+  Object.entries(p.resources).forEach(([hid, r]) => {
+    if (unitHexes.has(parseInt(hid))) Object.values(r).forEach(n => totalRes += n);
+  });
   const resPairs = Math.floor(totalRes / 2);
   const starScore = p.stars * starMult;
   const terScore = (territories + factoryBonus + flagBonus) * terMult;
@@ -88,7 +94,7 @@ const STAR_FLAGS = [
   ['starUpgrades', 'upgrades'], ['starMechs', 'mechs'], ['starBuildings', 'buildings'],
   ['starRecruits', 'recruits'], ['starWorkers', 'workers8'], ['starPower', 'power16'],
   ['starPop', 'pop18'], ['objectiveRevealed', 'objectif'], ['fObjRevealed', 'obj_faction'],
-  ['starLiberator', 'liberateur'],
+  ['starLiberator', 'liberateur'], ['starCombat1', 'combat1'], ['starCombat2', 'combat2'],
 ];
 
 // ── Invariants — détection de bugs d'état ──
@@ -98,7 +104,7 @@ const checkInvariants = (p, round, issues) => {
   if (p.pop < 0 || p.pop > 18) flag(`pop hors bornes: ${p.pop}`);
   if (p.coins < 0) flag(`coins négatif: ${p.coins}`);
   if (p.combatCards < 0) flag(`cartes combat négatives: ${p.combatCards}`);
-  if (p.workers.length > 8) flag(`${p.workers.length} ouvriers > 8`);
+  if (p.workers.length > 8 + (p.capturedWorkers || 0)) flag(`${p.workers.length} ouvriers > 8+captures`);
   if (p.mechs.length > 5) flag(`${p.mechs.length} mechas > 5`);
   if ((p.upgrades || 0) > 6) flag(`${p.upgrades} upgrades > 6`);
   if ((p.recruits || 0) > 4) flag(`${p.recruits} recrues > 4`);
@@ -130,8 +136,9 @@ const playGame = (gameIdx, log) => {
   });
   let empire = Object.fromEntries(EMPIRE_START.map(e => [e.id, e.hexId]));
   let rails = [...EMPIRE_RAILS];
+  let encounterTokens = new Set(ENCOUNTER_HEXES);
   const issues = [];
-  const combatStats = { pveAttacks: 0, pveWins: 0, defenses: 0, defWins: 0 };
+  const combatStats = { pveAttacks: 0, pveWins: 0, defenses: 0, defWins: 0, pvp: 0, encounters: 0 };
   let round = 0, endedBy = 'cap';
 
   const someoneWon = () => players.some(p => p.stars >= 6);
@@ -148,7 +155,14 @@ const playGame = (gameIdx, log) => {
         op.workers.forEach(w => enemyHexes.add(w.hexId));
       });
 
-      const result = botTurn(players[cp], empire, enemyHexes, rails);
+      // Tous les joueurs sont des bots : tout hex combattant adverse est attaquable
+      const attackable = new Set();
+      players.forEach((op, oi) => {
+        if (oi === cp) return;
+        attackable.add(op.hero);
+        op.mechs.forEach(m => attackable.add(m.hexId));
+      });
+      const result = botTurn(players[cp], empire, enemyHexes, rails, { attackable, forbidden: new Set(), encounterHexes: encounterTokens });
       let p = result.player;
       if (log) result.logs.forEach(l => log(`  ${l}`));
 
@@ -204,6 +218,23 @@ const playGame = (gameIdx, log) => {
             }
           });
         }
+      }
+
+      // ── PVP entre bots : combats à la fin de l'action Move (règle p.22) ──
+      const pvpRes = applyBotPvpAfterMove(players, cp, () => true);
+      if (pvpRes.logs.length > 0) {
+        combatStats.pvp += pvpRes.logs.filter(l => l.includes('⚔🤖') || l.includes('🏳')).length;
+        for (let ei = 0; ei < pvpRes.players.length; ei++) players[ei] = pvpRes.players[ei];
+        if (log) pvpRes.logs.forEach(l => log(`  ${l}`));
+      }
+
+      // ── Rencontre bot : héros sur un jeton, après les combats (règle p.24) ──
+      if (encounterTokens.has(players[cp].hero)) {
+        combatStats.encounters++;
+        encounterTokens.delete(players[cp].hero);
+        const er = resolveBotEncounter(players[cp]);
+        players[cp] = er.player;
+        if (log) log(`  ${er.log}`);
       }
 
       // ── Enlist ongoing (soi + voisins) ──
@@ -298,7 +329,7 @@ FACTION_IDS.forEach(f => { byFaction[f] = { games: 0, wins: 0, triggers: 0, scor
 MATS.forEach(m => { byMat[m.name] = { games: 0, wins: 0, scores: [] }; });
 const starCounts = {}; STAR_FLAGS.forEach(([, l]) => { starCounts[l] = { all: 0, winners: 0 }; });
 let stalemates = 0; const allIssues = []; const roundsArr = [];
-let pveAttacks = 0, pveWins = 0, defenses = 0, defWins = 0;
+let pveAttacks = 0, pveWins = 0, defenses = 0, defWins = 0, pvpTotal = 0, encountersTotal = 0;
 
 games.forEach(g => {
   roundsArr.push(g.rounds);
@@ -306,6 +337,7 @@ games.forEach(g => {
   g.issues.forEach(i => allIssues.push(`[G${g.gameIdx}] ${i}`));
   pveAttacks += g.combatStats.pveAttacks; pveWins += g.combatStats.pveWins;
   defenses += g.combatStats.defenses; defWins += g.combatStats.defWins;
+  pvpTotal += g.combatStats.pvp || 0; encountersTotal += g.combatStats.encounters || 0;
   g.scored.forEach((s, rank) => {
     byFaction[s.faction].games++; byMat[s.mat].games++;
     byFaction[s.faction].scores.push(s.total); byMat[s.mat].scores.push(s.total);
@@ -325,6 +357,8 @@ P(`Durée: moyenne ${avg(roundsArr).toFixed(1)} rounds, min ${Math.min(...rounds
 P(`Fins de partie: ${games.length - stalemates} à 6 étoiles (${pct(games.length - stalemates, games.length)}), ${stalemates} au cap (${pct(stalemates, games.length)})`);
 P(`Combats PvE (bot attaque Empire): ${pveAttacks}, gagnés ${pct(pveWins, pveAttacks)}`);
 P(`Défenses vs Empire: ${defenses}, gagnées ${pct(defWins, defenses)}`);
+P(`Combats PvP entre bots: ${pvpTotal} (${(pvpTotal / games.length).toFixed(1)}/partie)`);
+P(`Rencontres résolues par les bots: ${encountersTotal} (${(encountersTotal / games.length).toFixed(1)}/partie, 9 jetons max)`);
 P(`Crashs: ${crashes.length}`);
 crashes.slice(0, 5).forEach(c => P(`  💥 G${c.game}: ${c.error}\n     ${c.stack}`));
 P(`Violations d'invariants: ${allIssues.length}`);

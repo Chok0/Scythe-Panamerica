@@ -21,6 +21,8 @@ import { getValidMoves } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer } from '../logic/player.js';
 import { botTurn } from '../logic/bot.js';
+import { applyBotPvpAfterMove } from '../logic/pvpBots.js';
+import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { applyPlanTop, getPlanBottomBonus } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
 import { ActionRow, CubeSlots, RESOURCE_ICONS } from './svg/ActionIcons.jsx';
@@ -339,13 +341,21 @@ export default function App(){
     const timer=setTimeout(()=>{
       // Build enemy hexes set for this bot (all hexes with other factions' units)
       const botEnemyHexes=new Set();
+      // PvP entre IA : hex des unités combattantes des AUTRES BOTS (attaquables)
+      const attackable=new Set();
+      // Hex des unités combattantes du joueur humain : interdits aux bots
+      const forbidden=new Set();
       players.forEach((op,oi)=>{
         if(oi===cp)return;
         botEnemyHexes.add(op.hero);
         op.mechs.forEach(m=>botEnemyHexes.add(m.hexId));
         op.workers.forEach(w=>botEnemyHexes.add(w.hexId));
+        const combatSet=op.isBot?attackable:forbidden;
+        combatSet.add(op.hero);
+        op.mechs.forEach(m=>combatSet.add(m.hexId));
       });
-      let result=botTurn(players[cp],empire,botEnemyHexes,rails);
+      const botCtx={attackable,forbidden,encounterHexes:encounterTokens};
+      let result=botTurn(players[cp],empire,botEnemyHexes,rails,botCtx);
       let p=result.player;const logs=[...result.logs];
       // ── BOT COMBAT: check if bot moved onto Empire mecha ──
       const botHeroHex=p.hero;
@@ -389,53 +399,62 @@ export default function App(){
           p.hero=bhbHex.id;
         }
       }
-      setPlayers(prev=>{
-        const n=[...prev];n[cp]=p;
-        // ── SCYTHE RULE: bot hero/mech displaces other players' workers ──
-        const botHexes=new Set([p.hero,...p.mechs.map(m=>m.hexId)]);
-        for(let oi=0;oi<n.length;oi++){
-          if(oi===cp)continue;
-          const displaced=n[oi].workers.filter(w=>botHexes.has(w.hexId));
-          if(displaced.length>0){
-            const ohb=HOME_BASES[n[oi].faction];
-            const ohbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ohb.rx)**2+(h.ry-ohb.ry)**2);const db=best?Math.sqrt((best.rx-ohb.rx)**2+(best.ry-ohb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
-            n[oi]={...n[oi],workers:n[oi].workers.map(w=>botHexes.has(w.hexId)?{...w,hexId:ohbHex.id}:w)};
-            // Bot loses pop for displacing workers
-            n[cp]={...n[cp],pop:Math.max(0,(n[cp].pop||0)-displaced.length)};
-            logs.push(`🏃 ${displaced.length} ouvrier(s) ${FACTIONS[n[oi].faction].name} renvoyé(s) ! (-${displaced.length} Pop ${FACTIONS[n[cp].faction].name})`);
-          }
-          // ── TRAP TRIGGER: bot hero/mech lands on enemy Frente trap ──
-          if(n[oi].faction==="frente"){
-            (n[oi].trapTokens||[]).forEach((trap,ti)=>{
-              if(botHexes.has(trap.hexId)&&!trap.disarmed){
-                const penalty=Math.min(n[cp].power||0,3);
-                n[cp]={...n[cp],power:Math.max(0,(n[cp].power||0)-penalty)};
-                n[oi]={...n[oi],trapTokens:[...n[oi].trapTokens]};
-                n[oi].trapTokens[ti]={...n[oi].trapTokens[ti],disarmed:true};
-                logs.push(`💥 Trap Frente sur #${trap.hexId} ! ${FACTIONS[n[cp].faction].name} -${penalty}⚡`);
-              }
-            });
-          }
+      // Copie locale des joueurs : déplacements, pièges, PvP bot↔bot, rencontre, enlist
+      let n=[...players];n[cp]=p;
+      // ── SCYTHE RULE: bot hero/mech displaces other players' workers ──
+      const botHexes=new Set([p.hero,...p.mechs.map(m=>m.hexId)]);
+      for(let oi=0;oi<n.length;oi++){
+        if(oi===cp)continue;
+        const displaced=n[oi].workers.filter(w=>botHexes.has(w.hexId));
+        if(displaced.length>0){
+          const ohb=HOME_BASES[n[oi].faction];
+          const ohbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ohb.rx)**2+(h.ry-ohb.ry)**2);const db=best?Math.sqrt((best.rx-ohb.rx)**2+(best.ry-ohb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+          n[oi]={...n[oi],workers:n[oi].workers.map(w=>botHexes.has(w.hexId)?{...w,hexId:ohbHex.id}:w)};
+          // Bot loses pop for displacing workers
+          n[cp]={...n[cp],pop:Math.max(0,(n[cp].pop||0)-displaced.length)};
+          logs.push(`🏃 ${displaced.length} ouvrier(s) ${FACTIONS[n[oi].faction].name} renvoyé(s) ! (-${displaced.length} Pop ${FACTIONS[n[cp].faction].name})`);
         }
-        // ── ENLIST ONGOING: bot did a bottom action → trigger for self + neighbors ──
-        if(result.bottomCol>=0){
-          const enlistResult=applyEnlistOngoing(n,cp,result.bottomCol,FACTIONS);
-          enlistResult.logs.forEach(l=>logs.push(l));
-          for(let ei=0;ei<enlistResult.players.length;ei++){n[ei]=enlistResult.players[ei];}
+        // ── TRAP TRIGGER: bot hero/mech lands on enemy Frente trap ──
+        if(n[oi].faction==="frente"){
+          (n[oi].trapTokens||[]).forEach((trap,ti)=>{
+            if(botHexes.has(trap.hexId)&&!trap.disarmed){
+              const penalty=Math.min(n[cp].power||0,3);
+              n[cp]={...n[cp],power:Math.max(0,(n[cp].power||0)-penalty)};
+              n[oi]={...n[oi],trapTokens:[...n[oi].trapTokens]};
+              n[oi].trapTokens[ti]={...n[oi].trapTokens[ti],disarmed:true};
+              logs.push(`💥 Trap Frente sur #${trap.hexId} ! ${FACTIONS[n[cp].faction].name} -${penalty}⚡`);
+            }
+          });
         }
-        return n;
-      });
+      }
+      // ── PVP ENTRE BOTS : combats résolus à la fin de l'action Move (règle p.22) ──
+      const pvp=applyBotPvpAfterMove(n,cp,(oi)=>n[oi].isBot);
+      n=pvp.players;pvp.logs.forEach(l=>logs.push(l));
+      // ── RENCONTRE BOT : héros sur un jeton, après les combats (règle p.24) ──
+      if(encounterTokens.has(n[cp].hero)){
+        const encHex=n[cp].hero;
+        const er=resolveBotEncounter(n[cp]);
+        n[cp]=er.player;logs.push(er.log);
+        setEncounterTokens(prev=>{const s=new Set(prev);s.delete(encHex);return s;});
+      }
+      // ── ENLIST ONGOING: bot did a bottom action → trigger for self + neighbors ──
+      if(result.bottomCol>=0){
+        const enlistResult=applyEnlistOngoing(n,cp,result.bottomCol,FACTIONS);
+        enlistResult.logs.forEach(l=>logs.push(l));
+        for(let ei=0;ei<enlistResult.players.length;ei++){n[ei]=enlistResult.players[ei];}
+      }
       // Apply bot-placed rails (from Gare build)
       // Capture the array before deleting: the setRails updater runs after this code
-      if(p._pendingRails&&p._pendingRails.length>0){
-        const newRails=[...p._pendingRails];
-        delete p._pendingRails;
+      if(n[cp]._pendingRails&&n[cp]._pendingRails.length>0){
+        const newRails=[...n[cp]._pendingRails];
+        n[cp]={...n[cp]};delete n[cp]._pendingRails;
         setRails(prev=>[...prev,...newRails]);
       }
+      setPlayers(n);
       addLogs(logs);setCurrentP(cp+1);
     },350);
     return()=>clearTimeout(timer);
-  },[botRunning,currentP,players,phase,empire,turn,addLog,addLogs]);
+  },[botRunning,currentP,players,phase,empire,turn,rails,encounterTokens,addLog,addLogs]);
 
   // After top-row → show bottom-row option
   const endHumanTurn=useCallback((col)=>{
@@ -1078,12 +1097,27 @@ export default function App(){
           if(n[combat.enemyIdx].hero===combat.hexId)n[combat.enemyIdx].hero=ehbHex.id;
           n[combat.enemyIdx].mechs=n[combat.enemyIdx].mechs.map(m=>m.hexId===combat.hexId?{...m,hexId:ehbHex.id}:m);
           n[combat.enemyIdx].workers=n[combat.enemyIdx].workers.map(w=>w.hexId===combat.hexId?{...w,hexId:ehbHex.id}:w);
-          // Loser loses resources on hex
-          delete n[combat.enemyIdx].resources[String(combat.hexId)];
+          // Rule: the winner takes control of the resources on the hex
+          const lostRes=n[combat.enemyIdx].resources[String(combat.hexId)];
+          if(lostRes){
+            const key=String(combat.hexId);
+            if(!n[0].resources[key])n[0].resources[key]={};
+            Object.entries(lostRes).forEach(([rt,q])=>{n[0].resources[key][rt]=(n[0].resources[key][rt]||0)+q;});
+            delete n[combat.enemyIdx].resources[key];
+          }
+          // Rule: the loser draws 1 combat card if they revealed at least 1 power
+          if(enemyTotal>=1)n[combat.enemyIdx].combatCards++;
         } else {
           // Attacker loses: retreat to HB
           if(combat.moveData.unitType==="hero")n[0].hero=hbHex.id;
           else if(combat.moveData.unitType==="mech")n[0].mechs=n[0].mechs.map(m=>m.id===combat.moveData.unitId?{...m,hexId:hbHex.id}:m);
+          // Rule: the loser (player) draws 1 combat card if they revealed at least 1 power
+          if(playerTotal>=1)n[0].combatCards++;
+          // Rule: the winner — even defending — gains a combat star (max 2)
+          const db={...n[combat.enemyIdx]};
+          db.combatWins=(db.combatWins||0)+1;
+          if(db.combatWins<=2&&!db[`starCombat${db.combatWins}`]){db.stars++;db[`starCombat${db.combatWins}`]=true;}
+          n[combat.enemyIdx]=db;
         }
         n[0].movesLeft=(me.movesLeft||2)-1;n[0].movedUnits=[...(me.movedUnits||[]),combat.moveData.unitId];
         return n;
@@ -1331,8 +1365,8 @@ export default function App(){
       const territories=unitHexes.size;
       // Factory = 3 extra territories if controlled
       const factoryBonus=unitHexes.has(22)?3:0;
-      // Resources
-      let totalRes=0;Object.values(p.resources).forEach(r=>Object.values(r).forEach(n=>totalRes+=n));
+      // Resources — rule: only resources on territories you control are scored
+      let totalRes=0;Object.entries(p.resources).forEach(([hid,r])=>{if(unitHexes.has(parseInt(hid)))Object.values(r).forEach(n=>totalRes+=n);});
       const resPairs=Math.floor(totalRes/2);
       const starScore=p.stars*starMult;
       const terScore=(territories+factoryBonus+flagBonus)*terMult;

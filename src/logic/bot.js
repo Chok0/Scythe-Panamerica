@@ -90,8 +90,14 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
 };
 
 // Choose best hex to move toward (strategic targeting)
-const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose) => {
+// ctx: { attackable:Set (hex des unités combattantes d'autres BOTS), forbidden:Set
+// (hex des unités combattantes du joueur humain — jamais ciblées), encounterHexes:Set }
+const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx) => {
   if (validMoves.length === 0) return null;
+
+  // Estimation de notre force de combat pour décider d'attaquer
+  const myStrength = p.power + (p.combatCards || 0) * 3;
+  const wantCombatStar = (p.combatWins || 0) < 2;
 
   let bestHex = null, bestScore = -999;
   for (const hexId of validMoves) {
@@ -106,15 +112,23 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose) => {
 
     // Avoid enemy hexes for workers (displacement risk)
     if (purpose === "worker" && enemyHexes && enemyHexes.has(hexId)) s -= 15;
-    // Heroes/mechs also avoid enemy hexes (no bot-initiated combat implemented)
-    if ((purpose === "hero" || purpose === "mech") && enemyHexes && enemyHexes.has(hexId)) s -= 10;
+    if (purpose === "hero" || purpose === "mech") {
+      if (ctx && ctx.attackable && ctx.attackable.has(hexId)) {
+        // Combat PvP possible : attaque si on est fort et qu'une étoile est en jeu
+        if (myStrength >= 8 && wantCombatStar && getPhase(p) !== "early") s += 9;
+        else s -= 12;
+      } else if (enemyHexes && enemyHexes.has(hexId)) {
+        // Hex avec seulement des ouvriers ennemis : déplacement possible mais coûte de la pop
+        s -= 4;
+      }
+    }
 
     // Move toward uncontrolled resource hexes
     const myHexes = new Set([p.hero, ...p.workers.map(w => w.hexId), ...p.mechs.map(m => m.hexId)]);
     if (!myHexes.has(hexId)) s += 2; // new territory
 
-    // Move toward encounters
-    if (purpose === "hero" && hex.encounter && !p.encDone) s += 5;
+    // Move toward encounter tokens (hero only — rule: seuls les personnages font des rencontres)
+    if (purpose === "hero" && ctx && ctx.encounterHexes && ctx.encounterHexes.has(hexId)) s += 7;
 
     // Move toward Rouge River if haven't visited
     if (purpose === "hero" && hexId === 22 && !p.rrVisited) s += 4;
@@ -155,8 +169,11 @@ const pickUpgradeDest = (p, validBottoms, mat) => {
   return validBottoms.sort((a, b) => (priority[a] ?? 2) - (priority[b] ?? 2))[0];
 };
 
-export const botTurn = (player, empire, enemyHexes, rails) => {
+export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const f = FACTIONS[player.faction];
+  // Hex des unités combattantes du joueur humain : jamais ciblés (le PvP bot↔humain
+  // nécessiterait une défense interactive — seul le PvP bot↔bot est auto-résolu)
+  const forbidden = (ctx && ctx.forbidden) || new Set();
   const p = { ...player, workers: [...player.workers], mechs: [...player.mechs], resources: { ...player.resources } };
   const logs = [];
 
@@ -192,10 +209,10 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
     }
 
     // Move hero strategically
-    const validHero = getValidMoves(p.hero, p.faction, p.unlockedAbilities || [], p, rails);
+    const validHero = getValidMoves(p.hero, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
     if (validHero.length > 0) {
       const fromHex = p.hero;
-      const target = pickMoveTarget(validHero, p, empire, enemyHexes, "hero");
+      const target = pickMoveTarget(validHero, p, empire, enemyHexes, "hero", ctx);
       p.hero = target;
       const tr = transportUnits(p, fromHex, target, "hero");
       Object.assign(p, { resources: tr.player.resources });
@@ -221,16 +238,16 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
       // Workers avoid enemies
       if (enemyHexes) wv = wv.filter(id => !enemyHexes.has(id));
       if (wv.length > 0) {
-        const wt = pickMoveTarget(wv, p, empire, enemyHexes, "worker");
+        const wt = pickMoveTarget(wv, p, empire, enemyHexes, "worker", ctx);
         p.workers[wi] = { ...p.workers[wi], hexId: wt };
         logs.push(`🤖 ${f.name}: Ouv. → #${wt}`);
       }
     } else if (p.mechs.length > 0) {
       const mi = Math.floor(Math.random() * p.mechs.length);
       const fromHex = p.mechs[mi].hexId;
-      const mv = getValidMoves(fromHex, p.faction, p.unlockedAbilities || [], p, rails);
+      const mv = getValidMoves(fromHex, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
       if (mv.length > 0) {
-        const mt = pickMoveTarget(mv, p, empire, enemyHexes, "mech");
+        const mt = pickMoveTarget(mv, p, empire, enemyHexes, "mech", ctx);
         p.mechs[mi] = { ...p.mechs[mi], hexId: mt };
         const tr = transportUnits(p, fromHex, mt, "mech");
         Object.assign(p, { workers: tr.player.workers, resources: tr.player.resources });
