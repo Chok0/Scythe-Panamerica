@@ -1,0 +1,1972 @@
+Stonemaier Games
+BUT DU JEU
+Le but du jeu est de posséder la plus grande fortune à la fin
+de la partie. La victoire s’obtient généralement autour de 75$.
+Vous pouvez accumuler des pièces tout au long de la partie,
+mais la majorité sera gagnée lors du décompte en fin de
+partie dans les trois catégories suivantes :
+Nombre de pions Étoile placés
+Nombre de territoires contrôlés
+Nombre de lots de 2 ressources contrôlées
+La somme des pièces que vous pouvez gagner dépend de votre
+niveau sur la Piste de Popularité. Plus votre Popularité est
+élevée, plus vous gagnerez de pièces. Vous pouvez également
+gagner quelques pièces supplémentaires selon l’endroit où
+vous construisez vos bâtiments.
+UN JEU DE JAMEY STEGMAIER
+ILLUSTRATIONS ET UNIVERS ORIGINAL DE JAKUB ROZALSKI
+1-5 JOUEURS • 115 MINUTES
+Scythe est un jeu se déroulant dans une réalité alter native au cours des
+années 1920.C’est une époque où la paysannerie se mêle à la guerre, les
+coeurs brisés aux engrenages rouillés, l’innovation au courage.
+CONTEXTE HISTORIQUE
+En ces années 1920, les cendres de la Première Guerre mondiale noircissent encore les neiges d’Europe. La grande cité-état capitaliste
+communément appelée “L’Usine”, qui produisait des mechs lourdement blindés durant la guerre, est désormais désaffectée et attire
+l’attention des nations environnantes.
+Cinq héros convergent à la tête de leur faction respective vers ce territoire tant convoité. Lequel finira couvert d’or et de
+gloire en étendant le pouvoir de sa nation sur toute l’Europe de l’Est ?
+PRÉSENTATION
+Dans Scythe, chaque joueur est représenté par un
+personnage tentant de rendre sa faction la plus riche et
+la plus puissante de toute l’Europe de l’Est. Les joueurs
+explorent et conquièrent de nouveaux territoires, enrôlent
+de nouvelles recrues et des ouvriers, produisent des
+ressources, construisent des bâtiments et déploient
+de terrifiants mechs de combat. Les joueurs débutent
+généralement une partie de Scythe en développant leurs
+infrastructures et en explorant les différents territoires
+avant de se livrer bataille.
+La partie progresse au fur et à mesure que les joueurs
+placent leurs étoiles (réussites) sur le plateau de jeu, et
+s’achève dès que l’un d’entre eux place sa 6ème étoile sur la
+Piste des Triomphes. Vous pouvez remporter une étoile en
+remplissant une des conditions suivantes :
+Achever ses 6
+améliorations
+Déployer ses 4 mechs
+Construire ses 4
+bâtiments
+Enroler ses 4 recrues
+Placer ses 8 ouvriers
+sur le plateau
+Révéler une carte
+Objectif accomplie
+Remporter un combat
+(jusqu’à 2 fois maximum)
+Avoir 18 points de
+Popularité
+Avoir 16 points de
+Puissance
+QUICK REFERENCE GUIDE
+GAME BOARD
+1. Shuffle and place the encounter, combat, and objective cards on
+their board spaces.
+2. Shuffle factory cards and place as many as the number of players
++1 on the board face-down. Remove the rest from the game.
+3. Randomly draw and place face-up one structure bonus tile at the
+bottom of the Popularity Track.
+4. Place an encounter token on each encounter space ().
+5. Separate the resource tokens and coins into the supply.
+6. Randomly deal a Faction Mat and a Player Mat to each player.
+FACTION MATS
+7. Start with the power position () and number of combat cards
+( ) shown on your mat.
+8. Place your faction character on your faction home base.
+9. Place 1 worker on each of the two land-adjoined territories
+adjacent to the home base.
+10. Place 4 mechs on the mech spaces.
+11. Place your 6 star tokens on your Faction Mat.
+PLAYER MATS
+12. Start with the popularity position () and gain the number of
+objective cards () and coins () shown on your mat.
+13. Place the 6 technology cubes on the green boxes with black
+squares ().
+14. Place the 4 structures on their corresponding boxes.
+15. Place the 4 recruit tokens on the circle bonus spaces.
+16. Place the 6 workers on the red Produce action rectangles.
+17. Place your action token next to your Player Mat.
+18. The start player is the one with the lowest numbered Player Mat.
+Play then proceeds clockwise.
+TURN ORDER
+Each player takes a turn by placing the action token on the
+corresponding section of the Player Mat. You may take the
+top and/or bottom action (in that order). You must choose a
+different section of your Player Mat from your previous turn.
+TRIUMPH TRACK
+Place a star on the Triumph Track as soon as you complete one
+of the requirements. Each achievement may only be awarded
+once (note: there are two combat victory achievements). Once
+you place a star, it cannot be lost. When a player places a sixth
+star, the game immediately ends.
+END GAME SCORING
+Gain coins for each star on the Triumph Track, each territory
+controlled, and every two resources. The amount of coins for
+each is based on your position on the popularity track. The
+Factory counts as three territories.
+Then gain coins based on the structure bonus tile (even if you
+do not control the territory). For adjacent territory bonuses,
+only count each adjacent territory once.
+The player with the most coins wins. Break ties (in order) by:
+number of units and structures, power, popularity, resources
+owned, territories controlled, and stars placed.
+TURN ORDER, TRIUMPH TRACK, AND END OF GAME
+CONTROL
+A territory is controlled by a player if it has only that player’s
+units on it or if it has its structure but no enemy units.
+A territory with a structure and enemy units is controlled by
+the enemy units’ player. The enemy units’ player does not
+gain the structure’s abilities.
+Resources on a territory are controlled by the player who
+controls that territory.
+FACTORY ACTION SPACES
+Factory card action spaces do not give bonuses (Recruit,
+Structure, etc.) that Player Mat spaces do. The factory Move
+action allows one unit to move twice.
+OBJECTIVES
+At any time, if you complete an objective on one of your cards,
+place a star on the objective space of the Triumph Track and
+discard the other objective(s).
+CLARIFICATIONS
+RESOURCE: Food, wood, metal, or oil (not workers). You may only
+use resources on territories you control to pay costs.
+TERRITORY: A non-Home Base hex. The Home Base does not cont
+as a territory for any game effects.
+UNIT: A character, mech, or worker.
+IMPORTANT CONCEPTS
+SETUP
+Quick reference guide created by Nersi Nikakhtar
+2
+SOMMAIRE
+MATÉRIEL DE JEU
+CONCEPTS IMPORTANTS
+TYPES D’UNITÉS
+MISE EN PLACE
+TOUR DE JEU
+ACTIONS DE LA PARTIE SUPÉRIEURE
+ACTIONS DE LA PARTIE INFÉRIEURE
+CAPACITÉS SPÉCIALES DES FACTIONS
+COMBATS
+RENCONTRES
+L’USINE
+OBJECTIFS
+ALLIANCES ET POTS-DE-VIN
+PLACER DES ÉTOILES
+FIN DE PARTIE/DÉCOMPTE DES POINTS
+PERSONNAGES
+POINTS DE RÈGLES IMPORTANTS
+2 –3
+4
+5
+6 – 9
+10
+11 – 13
+14 – 20
+21
+22 – 23
+24
+25
+26
+26
+27
+28 – 29
+30
+31
+MATÉRIEL DE JEU GÉNÉRAL
+1 guide de démarrage rapide
+5 plateaux joueur
+1 plateau de jeu
+80 pions Ressource
+(20 de chaque : nourriture, métal, bois
+et pétrole)
+80 pièces de monnaie en carton
+12 jetons Multiplicateur
+12 jetons Rencontre
+6 tuiles bonus Bâtiment
+42 cartes Combat (jaunes)
+23 cartes Objectif (beiges)
+28 cartes Rencontre (vertes)
+12 cartes Usine (violettes)
+2 roues de Puissance
+5 cartes Traversée
+5 cartes démarrage rapide
+Cartes promotionnelles
+voir note en page 32
+NOTE DE L’AUTEUR : pourquoi avoir choisi “Scythe” comme
+nom de jeu ? Scythe désigne une faux, à la fois un
+outil utilisé en agriculture mais aussi une arme de
+guerre. Elle représente à la perfection la combinaison
+des deux éléments forts du jeu. Vos ouvriers
+dépendent de la protection de vos forces militaires,
+tout comme votre empire dépend des ressources
+que vos ouvriers produisent. “Scythe” se prononce
+“saille-th”, avec “th” prononcé comme dans le mot
+anglais “the”.
++3 +7
++7 +3
+BLEUE NOIRE BL ANCHE JAUNE ROUGE
+3
+MATÉRIEL DE FACTION
+FACTION NORDIQUE SAXONIE POLONIA CRIMÉE RUSVIET
+COULEUR
+1 plateau faction
+1 pion Action
+1 pion Popularité
+1 pion Puissance
+6 pions Étoile
+4 pions Bâtiment
+4 pions Recrue
+4 figurines Mech
+1 figurine Personnage
+8 ouvriers
+6 cubes Technologie
+8 x
+6 x
+4 x
+4 x
+6 x 6 x 6 x 6 x 6 x
+4 x 4 x 4 x 4 x
+4 x 4 x 4 x 4 x
+6 x 6 x 6 x 6 x
+8 x 8 x 8 x 8 x
+4
+CONCEPTS IMPORTANTS
+BASE PRINCIPALE
+Chaque joueur possède une base qui lui sert de point de départ et de point de retraite en
+cas de défaite au combat.
+IL NE S’AGIT PAS D’UN TERRITOIRE: Une base principale n’est pas un territoire. Vous ne pouvez donc
+pas y déplacer d’unités ou y construire de bâtiments, même sur la vôtre.
+FACTIONS SUPPLÉMENTAIRES: Il y a sur le plateau de jeu deux bases principales qui ne
+correspondent à aucune faction. Ce sont des emplacements réservés pour les factions
+d’une future extension du jeu.
+CONTRÔLE
+Vous contrôlez un territoire si au moins une de vos unités y est présente (un personnage,
+ouvrier ou mech) OU si un de vos bâtiments s’y trouve seul sans aucun personnage, ouvrier
+ou mech adverse. Le contrôle d’un territoire ne revient qu’à un seul joueur, il ne peut pas
+être partagé.
+RESSOURCES
+Les pions Ressource (bois, nourriture, métal et pétrole) restent sur le plateau une fois produits. Vous ne pouvez dépenser
+que les ressources présentes sur les territoires que vous contrôlez.
+DÉPENSER DES RESSOURCES DE N’IMPORTE QUEL TERRITOIRE QUE VOUS CONTRÔLEZ: Vous pouvez dépenser des ressources présentes sur les
+territoires que vous contrôlez pour des actions ayant lieu sur n’importe quel territoire du plateau. Par exemple, vous
+pouvez dépenser 3 pions métal présents sur un ou plusieurs territoires que vous contrôlez pour déployer un mech sur
+n’importe quel territoire où vous disposez d’un ouvrier.
+RÉSERVE: Lorsque vous dépensez une ressource, retirez-la du plateau et placez-la dans la réserve générale à côté de celuici.
+Lorsque vous produisez ou gagnez une ressource grâce au commerce (voir section Actions de la partie supérieure,
+pages 12-13), prenez-la de la réserve et placez-la sur le territoire où elle a été produite ou achetée. Le nombre de pions
+Ressource présents dans le jeu n’est pas limitatif. Utilisez les jetons Multiplicateur au besoin.
+LES OUVRIERS NE SONT PAS DES RESSOURCES. Seuls le bois, la nourriture, le métal et le pétrole sont des ressources. Les ouvriers ne
+sont pas des ressources.
+TERRITOIRE
+Un territoire est représenté
+sur le plateau de jeu par un
+hexagone figurant une des
+icônes de terrain suivantes : FERME FORÊT MONTAGNE TOUNDRA VILLAGE LAC USINE
+EXEMPLE DE CONTRÔLE DE RESSOURCES: Sur cette illustration,
+la faction Nordique contrôle chacun des territoires
+sur lesquels se trouve une de ses unités ou bâtiments
+(pions bleus, ainsi que la figurine personnage
+au socle bleu). Elle peut dépenser chacune des
+ressources présentes sur ces territoires. Elle ne peut
+en revanche pas dépenser les pions métal présents
+sur le territoire en bas à gauche car elle ne dispose
+pas d’unité ou de bâtiment à cet endroit
+5
+Chaque type d’unité possède également une caractéristique
+qui lui est propre. Ces concepts seront détaillés plus loin
+dans les règles.
+PLASTIQUE BOIS
+Dans Scythe, les pions qui participent aux combats sont aisément identifiables, ce sont
+ceux en plastique. Tous les autres pions sont en bois afin d’indiquer qu’ils ne prennent pas
+part aux combats (ouvriers, ressources et bâtiments).
+Les Personnages peuvent
+combattre, faire des
+rencontres, et (une fois par
+partie) gagner une carte
+Usine s’ils terminent leur
+déplacement sur l’Usine.
+Vous êtes représenté sur le
+plateau par votre personnage.
+Le chef de votre faction vous a
+assigné la tâche de faire main
+basse sur les terres inexplorées
+entourant l’ancienne Usine.
+Les Mechs peuvent
+combattre et, lorsqu’ils
+se déplacent, transporter
+n’importe quel nombre
+d’ouvriers. Les mechs ne
+peuvent pas transporter
+votre personnage. Les
+mechs sont conçus pour la
+guerre (et pour décourager
+les autres factions de vous
+déclarer la guerre), et sont
+suffisamment volumineux
+pour transporter des ouvriers à
+l’abri de leur épais blindage.
+Les ouvriers peuvent
+produire des ressources,
+former d’autres ouvriers,
+déployer des mechs et
+construire des bâtiments.
+Ils représentent la masse
+laborieuse qui a décidé
+d’embrasser votre cause afin
+de vous aider à bâtir votre
+empire.
+Les trois types d’unités du jeu (personnages, mechs et
+ouvriers) partagent les deux caractéristiques suivantes :
+Elles peuvent se déplacer sur le plateau (sauf à travers les
+rivières et sur les lacs, par défaut).
+Elles peuvent transporter n’importe quel nombre de
+ressources.
+TYPES D’UNITÉS
+6
+LE PLATEAU DE JEU
+MISE EN PLACE
+CARTES OBJECTIF (BEIGES):
+Mélangez les cartes Objectif
+et placez-les sur le plateau.
+CARTES RENCONTRE (VERTES):
+Mélangez les cartes
+Rencontre et placez-les
+sur le plateau.
+CARTES COMBAT (JAUNES):
+Mélangez les cartes Combat
+et placez-les sur le plateau.
+Si la pioche venait à être
+épuisée, mélangez la pile
+de défausse afin de créer
+une nouvelle pioche. Si à
+la fois la pioche et la pile
+de défausse sont épuisées,
+aucune carte ne peut être
+piochée.
+CARTES USINE (VIOLETTES):
+Mélangez les cartes Usine et
+piochez-en X face cachée,
+où X correspond au nombre
+de joueurs plus 1. Placez ces
+cartes sur le plateau face
+cachée et remettez les cartes
+restantes dans la boite, sans
+les regarder.
+TUILES BONUS BÂTIMENT: Prenez au hasard une des tuiles
+bonus Bâtiment et placez-la face visible en bas de la
+Piste de Popularité.
+JETONS RENCONTRE (BOUSSOLE SUR FOND VERT):
+Placez 1 jeton Rencontre sur chaque
+territoire du plateau figurant une
+icône Rencontre (11 jetons au total).
+RESSOURCES ET PIÈCES : Placez les pions Ressource (bois, pétrole,
+nourriture et métal), les pièces ainsi que les jetons
+Multiplicateur en une réserve à proximité du plateau de jeu.
+CHOIX DES FACTIONS:
+Mélangez les plateaux Faction et Joueur et distribuez-en un
+de chaque à chaque joueur. Chacun doit s’asseoir en face de
+la base principale de sa faction, avec ses plateaux Faction et
+Joueur posés face à lui. Le placement devrait être le suivant
+: Nordique, Rusviet, Crimée, Saxonie, Polonia (en partant
+du haut et dans le sens horaire).
+PISTE DES TRIOMPHES
+PISTE DE POPULARITÉ
+PISTE DE PUISSANCE
+7
+CARTES DE DÉPART ET POSITION SUR LES PISTES:
+Vos Plateaux Faction et Joueur indiquent tous deux dans leur case tout à droite votre
+nombre de cartes de départ ainsi que vos positions initiales sur les différentes pistes.
+PION PUISSANCE : Placez votre
+pion Puissance ( ) sur
+le niveau indiqué de la Piste
+de Puissance du plateau de
+jeu. Vous dépenserez votre
+Puissance lors des combats.
+PIÈCES: Prenez le nombre de
+pièces indiqué et placez-les
+sur votre Plateau Faction.
+Bien que le nombre de
+pièces en votre possession
+ne soit pas une information
+secrète, vous n’êtes jamais
+obligé de révéler à vos
+adversaires leur valeur
+totale. Les décisions que
+vous aurez à prendre
+durant la partie ne sont pas
+impactées par le nombre de
+pièces de vos adversaires.
+PERSONNAGES
+Placez votre Personnage (figurine représentant une
+personne accompagnée d’un animal) sur la base principale
+de votre faction.
+OUVRIERS
+Placez 1 ouvrier sur chaque territoire jouxtant votre base
+principale par la terre (soit 2 ouvriers au total).
+PLATEAU FACTION
+PLATEAU JOUEUR
+CARTES COMBAT: Piochez le
+nombre de cartes Combat
+indiqué. Ce nombre est
+connu de tous, mais le
+contenu de ces cartes ne
+doit l’être que de vous seul.
+CARTES OBJECTIF: Piochez
+secrètement le nombre de
+cartes Objectif indiqué.
+Une fois que tous les
+joueurs ont pioché leurs
+cartes Objectif, remettez le
+paquet de cartes Objectif
+sur le plateau.
+PION POPULARITÉ: Placez votre pion Popularité (coeur) sur le
+niveau indiqué de la Piste de Popularité du plateau de jeu.
+8
+MISE EN PLACE suite
+PION ACTION: Placez
+votre pion Action à
+proximité de votre
+Plateau Joueur.
+NOTE DE L’AUTEUR: Les Plateaux Joueur dont les chiffres sont
+plus élevés offrent des positions de départ sur les pistes
+légèrement plus favorables car ces joueurs sont susceptibles
+de jouer 1 tour de moins que le premier joueur.
+PREMIER JOUEUR:
+Le joueur ayant le chiffre le plus faible dans le cadre de son
+Plateau Joueur commence la partie. Les tours s’enchaînent
+ensuite dans le sens horaire.
+PLATEAU JOUEUR
+C’est sur votre Plateau Joueur que vous choisirez vos actions durant la partie.
+CUBES TECHNOLOGIE: Placez les 6 cubes Technologie sur
+les cases vertes comportant un carré noir dans leur
+coin inférieur droit.
+EXEMPLE
+PIONS BÂTIMENT: Vos 4 pions
+Bâtiment (pions en bois :
+Arsenal, Monument, Mine
+et Moulin) sont placés sur
+les cases correspondantes.
+Chaque joueur possède les 4
+mêmes bâtiments.
+PIONS RECRUE: Placez vos 4
+pions Recrue (cylindres)
+sur les cases circulaires
+en bas de votre Plateau
+Joueur.
+OUVRIERS: Placez vos 6 ouvriers
+restants (figurines en bois)
+sur les rectangles au-dessus
+de l’action Production.
+9
+PLATEAU FACTION
+C’est sur votre Plateau Faction que vous conserverez vos mechs, étoiles et pièces. Chaque Plateau Faction comporte une
+capacité spéciale dans son coin supérieur droit.
+ÉTOILES: Placez vos 6 pions Étoile en haut à
+gauche, à côté de l’emblème de faction.
+MECHS: Placez vos 4 figurines
+Mech sur les 4 capacités
+Mech/Personnage.
+Ne placez pas de pions
+sur les Bonus Recrue
+Immédiats (coin inférieur
+gauche). Vous gagnerez
+ces avantages lorsque vous
+enrôlerez des recrues lors
+de la partie.
+CARTE DE DÉMARRAGE RAPIDE
+Nous vous recommandons de ne pas expliquer
+chaque point de règle à des joueurs débutants. A la
+place, donnez à tous une carte de démarrage rapide.
+Cette carte référence sur une face les informations
+essentielles concernant les unités, et sur l’autre les
+concepts généraux du jeu ainsi que des suggestions sur
+quoi faire lors de leurs cinq premiers tours
+Votre première partie de Scythe ne consistera pas
+à élaborer un plan infaillible ou à assimiler chaque
+petit point de règle. Lancez-vous, prenez en main les
+différents mécanismes et voyez ce qui se passe. Ne
+vous référez à ce livret de règles qu’en cas de besoin.
+CARTE TRAVERSÉE
+Les cartes Traversée (une par joueur) servent d’aidemémoire
+sur la façon dont chaque faction peut
+traverser ses territoires de départ si elle débloque la
+capacité spéciale des mechs Traversée. Chacune est
+légèrement différente des autres et est expliquée en
+pages 15 - 17.
+10
+DÉROULEMENT DU JEU
+Scythe utilise un système de sélection d’actions continu (pas de manche ou de phase).
+Les joueurs jouent à tour de rôle jusqu’à ce que l’un d’entre eux place sa 6ème étoile sur le
+plateau, mettant ainsi immédiatement fin à la partie.
+Ainsi, vous pouvez effectuer une seule action, les deux
+actions (en commençant toujours par celle du haut), ou
+aucune action (vous devez quand même déplacer votre pion
+Action). Vous pouvez utiliser les ressources gagnées grâce à
+l’action de la partie supérieure pour payer le coût de l’action
+de la partie inférieure. Vous pouvez également remplir un
+objectif à n’importe quel moment de votre tour (voir la
+section Objectifs, page 26).
+Les coûts (cases rouges) et les bénéfices (cases vertes) des
+actions sont symbolisés sur votre Plateau Joueur par les
+cases vides avant que l’action ne soit effectuée. Lorsque
+vous effectuez une action, payez d’abord son coût, puis
+recevez son bénéfice (ou une partie seulement, pour les
+rares cas où votre stratégie dépend d’un bénéfice partiel).
+À la fin de votre tour, (ou une fois prise votre décision
+concernant votre action de la partie inférieure), le joueur à
+votre gauche peut commencer son tour.
+À votre tour, faites ce qui suit, dans l’ordre :
+1. Placez votre pion Action sur une section de votre Plateau Joueur
+différente de celle sur laquelle il se trouvait jusqu’à présent. Vous ne
+pouvez pas le laisser sur la même section.
+2. Effectuez l’action de la partie supérieure de cette section (facultatif).
+3. Effectuez l’action de la partie inférieure de cette section (facultatif).
+ACTIONS DE LA PARTIE SUPÉRIEURE
+ACTION SOUTIEN ACTION PRODUCTION ACTION DÉPLACEMENT ACTION COMMERCE
+ACTION SOUTIEN
+(Avec le bâtiment en dessous)
+ACTION AMÉLIORATION
+(Avec le bonus Recrue à droite)
+ACTION AMÉLIORATION ACTION DÉPLOIEMENT ACTION CONSTRUCTION ACTION ENRÔLEMENT
+ACTIONS DE LA PARTIE INFÉRIEURE
+11
+ACTIONS DE LA PARTIE SUPÉRIEURE
+Les actions de la partie supérieure apparaissent dans des ordres différents sur chaque Plateau Joueur, bien qu’elles soient
+toutes identiques. Les illustrations des plateaux ainsi que les coûts et bénéfices détaillés dans cette section sont basés sur
+la situation de départ de chaque Plateau Joueur.
+DÉPLACEMENT
+Effectuez une des actions suivantes (“/”
+signifie “ou”) :
+DÉPLACEMENT: Déplacez jusqu’à 2 unités
+distinctes que vous contrôlez (personnage,
+ouvrier ou mech) d’un territoire vers un
+territoire adjacent. Vous ne pouvez pas
+déplacer la même unité plusieurs fois lors
+d’une même action (sauf bonus).
+GAINS: Recevez 1$.
+Voici quelques points importants concernant les déplacements :
+RESSOURCES ET UNITÉS: Les unités peuvent prendre et déposer
+autant de pions Ressource que voulu lors d’une action
+Déplacement.
+MECHS: Les mechs peuvent transporter autant de pions
+Ressource et ouvriers que voulu (mais pas votre
+personnage). Avoir un mech qui transporte des ouvriers
+lors d’une action Déplacement ne compte pas comme
+un déplacement pour les ouvriers, juste pour le mech.
+Vous pouvez ainsi transporter des ouvriers dans un mech
+et ensuite, un de ces ouvriers peut effectuer son propre
+déplacement. Vous pouvez également utiliser une partie de
+votre action Déplacement pour déplacer un ouvrier sur un
+territoire contenant un mech et ensuite déplacer le mech
+transportant cet ouvrier
+RIVIÈRES ET LACS: Par défaut, les unités ne peuvent pas
+traverser les rivières ou se déplacer sur les lacs. Cette règle
+peut être enfreinte par certaines capacités spéciales des
+personnages/mechs (voir Capacités des mechs de Polonia
+et de ceux des Nordiques, pages 16 - 17).
+RIVIÈRE: Une rivière est une étendue d’eau à la frontière entre
+deux territoires terrestres.
+LAC: Un lac est une étendue d’eau remplissant tout l’hexagone
+d’un territoire. Il s’étend de l’hexagone vers toutes les berges
+des territoires adjacents. Ainsi, dans l’exemple ci-dessus,
+si un joueur possède la capacité spéciale lui permettant de
+traverser les lacs, il peut se déplacer sur le lac à partir de
+n’importe quel territoire le bordant.
+RIVIÈRE
+TUNNEL LAC
+TUNNELS: Pour tout ce qui concerne les actions Déplacement
+de toutes les unités, tous les territoires comportant une
+icône tunnel ( ) sont considérés comme étant adjacents
+les uns aux autres.
+SE DÉPLACER SUR DES TERRITOIRES CONTRÔLÉS PAR UN ADVERSAIRE:
+CONTRÔLÉS PAR DES OUVRIERS
+» Si votre personnage et/ou mech pénètre sur un territoire
+contrôlé par un ou plusieurs ouvriers adverses (et aucune
+autre unité), leur déplacement s’achève et ils ne peuvent
+plus se déplacer à nouveau ce tour-ci (même si vous
+disposez de la capacité spéciale mech vous permettant
+de vous déplacer davantage). Chaque ouvrier adverse
+présent sur ce territoire bat en retraite immédiatement sur
+sa base principale, laissant sur place les éventuelles
+ressources. Vous perdez 1 point de Popularité pour chaque
+ouvrier que vous avez forcé à battre en retraite. Ils ne sont
+pas particulièrement heureux d’avoir été chassés de leurs
+terres (au cas où vous ne pourriez réduire davantage votre
+Popularité, les ouvriers sont quand même obligés de battre
+e n retraite).
+» Vos ouvriers ne peuvent pas se déplacer d’eux-mêmes sur
+des territoires contrôlés par des ouvriers adverses.
+CONTRÔLÉS PAR DES BÂTIMENTS
+» N’importe quelle unité peut pénétrer dans un territoire
+seulement contrôlé par un bâtiment. Le joueur contrôlant
+l’unité contrôle désormais le territoire.
+CONTRÔLÉS PAR UN PERSONNAGE ET/OU DES MECHS
+» Si votre personnage et/ou mech pénètre dans un territoire
+contrôlé par un personnage et/ou un mech adverse, le
+déplacement s’achève (même si vous disposez de la capacité
+spéciale mech vous permettant de vous déplacer davantage).
+L’adversaire contrôle encore temporairement le territoire.
+Une fois toutes vos actions Déplacement effectuées, si un
+ou plusieurs de vos mechs ou votre personnage partage(nt)
+un territoire avec un personnage ou des mechs adverses, un
+combat a lieu. (voir la section Combats, pages 22 - 23).
+» Vos ouvriers ne peuvent pas se déplacer d’eux-mêmes sur
+des territoires contrôlés par un personnage et/ou des mechs
+adverses.
+BASE PRINCIPALE: Par défaut, vous ne pouvez pas utiliser
+l’action Déplacement pour déplacer des unités du plateau
+sur une base principale (même la vôtre).
+RENCONTRES: Si vous déplacez votre personnage sur
+un territoire où se trouve un jeton Rencontre, son
+déplacement s’achève et il ne peut plus se déplacer à
+nouveau ce tour-ci. Après avoir résolu tous les combats
+du tour, si votre personnage se trouve toujours sur un tel
+territoire, défaussez le jeton et résolvez la rencontre (voir
+Rencontres, page 24).
+LIMITATION: Il n’y a pas de limitation au nombre d’unités
+d’une même faction qui peuvent être présentes sur un
+même territoire.
+12
+CONSEIL STRATÉGIQUE: Bien que la production de ressources grâce aux ouvriers fasse l’affaire de la plupart des
+joueurs, le commerce offre des bénéfices qui ne doivent pas être sous-estimés. Par exemple, faire du
+commerce pour obtenir une ressource particulière est parfois plus intéressant que de déplacer un ouvrier
+sur un territoire dont elle peut être extraite. L’action que vous auriez dépensée en déplacement peut être
+utilisée de façon plus rentable. Le commerce permet également aux joueurs d’accéder à des ressources qui
+ne sont pas disponibles dans leur contrée d’origine.
+ACTIONS DE LA PARTIE SUPÉRIEURE suite
+SOUTIEN
+Payez le coût indiqué (1$) et recevez l’un de ces deux bénéfices :
+PUISSANCE: Augmentez de 2 points votre Puissance sur la piste du même nom. Vous
+dépenserez votre Puissance lors des combats.
+CARTE(S) COMBAT: Piochez 1 carte Combat. Les cartes Combat sont utilisées pour augmenter la
+Puissance que vous dépensez lors des combats (vous pouvez jouer jusqu’à 1 carte Combat
+par personnage/mech impliqué dans le combat). Si la pioche de cartes Combat venait à
+être épuisée, mélangez la pile de défausse afin de créer une nouvelle pioche. Si à la fois la
+pioche et la pile de défausse sont épuisées, aucune carte ne peut être piochée.
+COMMERCE
+Payez le coût indiqué (1$) et recevez l’un de ces deux bénéfices :
+RESSOURCES: Recevez deux pions Ressource au choix (n’importe quelle combinaison de
+pétrole, métal, nourriture et/ou bois) et placez-les sur n’importe quel territoire que
+vous contrôlez avec au moins un ouvrier. De ce fait, vous ne pouvez pas choisir l’action
+commerce si tous vos ouvriers se trouvent sur votre base principale.
+POPULARITÉ: Augmentez de 1 point votre Popularité sur sa piste. La Popularité est utilisée lors
+des rencontres et détermine votre multiplicateur de score en fin de partie.
+13
+PRODUCTION
+Payez le coût indiqué (selon ce que contiennent les cases rouges visibles avant
+d’effectuer l’action Production), choisissez jusqu’à 2 territoires différents que
+vous contrôlez : tous les ouvriers sur ces territoires peuvent produire.
+Sur les territoires qui produisent, chaque ouvrier peut produire 1 pion Ressource
+ou former 1 nouvel ouvrier. Le pion Ressource est placé sur le territoire où il a été
+produit. Si un ouvrier forme un nouvel ouvrier, (en produisant sur un village),
+après avoir payé le coût de Production, prenez l’ouvrier le plus à gauche sur
+l’action Production de votre Plateau Joueur et placez-le sur le village.
+Il est possible, bien que très rare, que les joueurs se retrouvent dans une position où ils ne peuvent choisir aucune action (s’ils ont
+précédemment effectué un Déplacement et qu’ils n’ont plus de pièce, de Puissance ou de Popularité). Si cela arrive, ce joueur doit
+effectuer un “tour mort” en choisissant une autre action de son Plateau Joueur mais sans l’effectuer. Nous vous recommandons de
+dépenser vos pièces avec parcimonie en début de partie afin d’éviter ce type de désagrément.
+EXEMPLE: Si vous
+choisissez de
+produire sur
+deux territoires
+(une ferme avec
+1 ouvrier et une
+montagne avec 2
+ouvriers), vous
+produirez 0 ou 1
+pion nourriture
+sur la ferme et 0,
+1 ou 2 pions métal
+sur la montagne.
+TYPE DE TERRAIN CE QUI EST PRODUIT
+MONTAGNE MÉTAL
+TOUNDRA PÉTROLE
+FERME NOURRITURE
+FORÊT BOIS
+LAC
+VILLAGE OUVRIER
+USINE
+PAIEMENT OBLIGATOIRE: Comme pour toutes les autres actions, vous devez pouvoir vous acquitter
+du coût total pour effectuer l’action Production. Si vous n’avez pas les fonds, la Popularité
+et/ou la Puissance nécessaires, vous devez choisir une autre action.
+LIMITATION: N’importe quel nombre de ressources ou d’ouvriers peut se trouver sur un
+territoire. Il n’y a pas limite au nombre de ressources en jeu. Si besoin, placez les jetons
+Multiplicateur sur le plateau à proximité des ressources.
+LES OUVRIERS SONT PERMANENTS: Une fois sur le plateau, un ouvrier ne peut plus retourner sur
+votre Plateau Joueur.
+14
+Les actions de la partie inférieure se trouvent dans le même ordre sur tous les Plateaux Joueur, mais les coûts et bénéfices
+varient. Les illustrations des plateaux ainsi que les coûts et bénéfices détaillés dans cette section sont basés sur la situation
+de départ de chaque Plateau Joueur.
+ENCHAÎNEMENT DES TOURS: Généralement, lorsqu’un joueur
+commence à effectuer son action de la partie inférieure
+(qui est sans incidence sur les autres joueurs, mais prend
+quand même quelques secondes), le prochain joueur peut
+commencer son tour.
+PIÈCES: La plupart des actions de la partie inférieure vous
+donnent au moins 1 pièce lorsque vous payez pour les
+effectuer. Nous vous recommandons de prendre les pièces
+avant d’effectuer la suite de l’action afin d’être sûr de ne pas
+avoir oublié de les prendre. Un joueur peut choisir de ne pas
+prendre ces pièces (notamment si les pièces interfèrent avec
+son objectif).
+ÉPUISER DES ACTIONS: À la longue, vous pouvez avoir “épuisé” une
+action de la partie inférieure, comme par exemple l’action
+Amélioration si vous n’avez plus rien à améliorer. Malgré
+tout, vous pouvez continuer à payer son coût pour recevoir
+les pièces associées (ainsi que le bonus d’enrôlement, s’il
+s’applique).
+RECRUES: À chaque action de la partie inférieure est associé
+un Bonus Recrue Permanent (cercle vert). S’il est révélé, il
+rétribue le joueur si lui ou un adversaire adjacent effectue
+cette action. Voir la section Enrôlement (page 20).
+AMÉLIORATION
+Cette action vous permet d’améliorer l’efficacité des
+infrastructures de votre empire. La ressource utilisée pour
+cela est le pétrole.
+Pour réaliser une Amélioration, payez son coût, prenez un
+cube Technologie de n’importe quelle case verte sur votre
+Plateau Joueur et placez-le sur n’importe quelle case rouge
+libre dont le contour est entre crochets. Les cases rouges
+dont le contour est en trait plein ne sont pas améliorables.
+EXEMPLE: Vous souhaitez pouvoir produire sur 3
+territoires au lieu de 2 (ignorez le Moulin dans cet
+exemple), et diminuer le coût d’enrôlement des
+recrues de 1 nourriture. En choisissant l’action
+Amélioration, en plus de payer le coût en pétrole et
+de recevoir des pièces, prenez n’importe quel cube
+Technologie d’une case verte (dans le cas présent, le
+bénéfice de l’action Production) et déplacez-le sur
+n’importe quelle case rouge dont le contour est entre
+crochets (dans le cas présent, le coût de l’action
+Enrôlement).
+ACTIONS DE LA PARTIE INFÉRIEURE
+15
+DÉPLOIEMENT
+Vous pouvez déployer des mechs (figurines) pour protéger vos
+ouvriers, étendre votre empire et développer les capacités de
+votre personnage et de tous vos mechs. La ressource utilisée
+pour cela est le métal.
+Pour déployer un mech, payez le coût indiqué, choisissez
+n’importe quel mech de votre Plateau Faction et placez-le
+sur un territoire que vous contrôlez avec au moins un de vos
+ouvriers. Vous ne pouvez pas déployer des mechs sur les lacs
+(même si votre faction possède la capacité spéciale permettant
+aux mechs de se déplacer sur les lacs).
+Dorénavant, votre personnage et tous vos mechs (mais pas vos
+ouvriers) gagnent la capacité spéciale de votre Plateau Faction
+qui était sous la figurine du mech déployé. Ces capacités
+varient d’une faction à l’autre.
+VITESSE: Votre personnage et vos mechs peuvent se déplacer
+d’un territoire supplémentaire par action Déplacement.
+Si une de ces unités pénètre dans un territoire dans lequel
+se trouve un personnage, un mech ou un ouvrier adverse,
+son déplacement s’arrête immédiatement et elle ne pourra
+plus se déplacer ce tour-ci. Se déplacer d’un tunnel à
+un autre compte toujours comme 1 déplacement. Avec
+cette capacité, vous pouvez vous déplacer d’un territoire
+supplémentaire avant ou après être passé par un tunnel.
+Vos mechs peuvent prendre ou déposer des ressources et
+des ouvriers au milieu d’une action Déplacement lorsqu’ils
+utilisent cette capacité.
+SAXONIE
+TRAVERSÉE: Votre personnage et vos mechs peuvent traverser
+les rivières pour se rendre dans les forêts et les montagnes.
+PASSAGES SOUTERRAINS: Pour tout ce qui touche aux actions
+Déplacement de votre personnage et de vos mechs, les
+montagnes que vous contrôlez et tous les tunnels (dont
+votre Mine si vous en possédez une) sont considérés
+comme adjacents les uns aux autres.
+DÉSARMEMENT: Avant d’engager un combat sur un territoire
+possédant un tunnel, votre adversaire perd 2 points de
+Puissance. Cette perte de Puissance doit être représentée
+sur la Piste de Puissance. Vous pouvez le faire une fois par
+combat et non une fois par unité.
+16
+TRAVERSÉE: Votre personnage et vos mechs peuvent traverser
+les rivières pour se rendre dans les forêts et les montagnes.
+NAVIGATION: Votre personnage et vos mechs peuvent se déplacer
+sur et à partir des lacs. Ils peuvent également battre en
+retraite sur un lac adjacent (vous pouvez toujours faire battre
+en retraite ces unités sur votre base principale). Ceci vous
+permet de traiter les hexagones lac comme n’importe quel
+territoire pour tout ce qui concerne les déplacements. Si un
+mech transporte des ouvriers sur un lac (lors d’une action
+Déplacement ou lors d’une retraite) ou si un personnage
+ou un mech transporte des ressources sur un lac, vous
+ne pouvez pas laisser ces ouvriers ou ressources sur le
+lac après l’avoir quitté. De même, un ouvrier ne peut pas
+quitter un lac sans l’assistance d’un mech. Les lacs sont des
+territoires. Ainsi, si deux factions possèdent une capacité
+leur permettant de se déplacer sur les lacs, des combats
+peuvent avoir lieu sur les lacs. Vous ne pouvez pas construire
+de bâtiment ou déployer un mech sur un lac.
+ARTILLERIE: Avant d’engager un combat, vous pouvez perdre 1
+point de Puissance pour forcer votre adversaire à en perdre
+2. Ces pertes de Puissance sont représentées sur la Piste de
+Puissance. Vous pouvez le faire une fois par combat et non
+une fois par unité.
+VITESSE: Votre personnage et vos mechs peuvent se déplacer
+d’un territoire supplémentaire par action Déplacement.
+Voir page 15 pour plus de détails.
+NORDIQUE
+ARMÉE DU PEUPLE: Lors des combats où vous avez au
+moins 1 ouvrier, vous pouvez jouer une carte Combat
+supplémentaire. Un de vos mechs ou votre personnage doit
+quand même prendre part au combat. Par exemple, si vous
+avez 2 mechs et 3 ouvriers impliqués dans le combat, vous
+pouvez jouer jusqu’à 3 cartes Combat (1 pour chaque mech
+et 1 car vous avez au moins 1 ouvrier).
+VITESSE: Votre personnage et vos mechs peuvent se déplacer
+d’un territoire supplémentaire par action Déplacement.
+Voir page 15 pour plus de détails.
+RUSVIET
+TRAVERSÉE: Votre personnage et vos mechs peuvent traverser
+les rivières pour se rendre dans les fermes et les villages.
+CANTON: Pour tout ce qui touche aux actions Déplacement
+de votre personnage et de vos mechs, les villages que vous
+contrôlez et l’Usine sont considérés comme adjacents les
+uns aux autres. Par exemple, si votre mech se trouve sur un
+village, il peut se déplacer de ce village (a) dans n’importe
+quel village sous votre contrôle ou (b) dans l’Usine.
+ACTIONS DE LA PARTIE INFÉRIEURE suite
+17
+TRAVERSÉE: Votre personnage et vos mechs peuvent traverser
+les rivières pour se rendre dans les fermes et la toundra.
+VOYAGEUR: Votre personnage et vos mechs peuvent se
+déplacer à partir d’un territoire ou de votre base principale
+vers n’importe quelle base principale d’une faction inactive
+ou vers la vôtre, quelle que soit la distance. Une “faction
+inactive” correspond à une faction qui n’est pas en jeu, dont
+celles de l’extension. Les joueurs ne peuvent normalement
+se déplacer sur aucune base principale, mais ceci est une
+exception à la règle.
+ÉCLAIREUR: Avant d’engager un combat, prenez aléatoirement
+une carte Combat de la main de votre adversaire et ajoutezla
+à la vôtre. Vous pouvez le faire une fois par combat et non
+une fois par unité.
+VITESSE: Votre personnage et vos mechs peuvent se déplacer
+d’un territoire supplémentaire par action Déplacement.
+Voir page 15 pour plus de détails.
+TRAVERSÉE: Votre personnage et vos mechs peuvent
+traverser les rivières pour se rendre dans les villages et les
+montagnes.
+SUBMERSIBLE: Votre personnage et vos mechs peuvent se déplacer
+depuis et vers les lacs et se déplacer de n’importe quel lac vers
+n’importe quel autre lac (comme pour les déplacements par les
+tunnels, mais avec les lacs). Si un mech transporte des ouvriers
+sur un lac ou si un personnage ou un mech transporte des
+ressources sur un lac, vous ne pouvez pas laisser ces ouvriers ou
+ressources sur le lac après l’avoir quitté. De même, un ouvrier ne
+peut pas quitter un lac sans l’assistance d’un mech. Les lacs sont
+des territoires. Ainsi, si deux factions possèdent une capacité
+leur permettant de se déplacer sur les lacs, des combats peuvent
+CRIMÉE
+POLONIA
+avoir lieu sur les lacs. Vous ne pouvez pas construire de bâtiment
+ou déployer un mech sur un lac.
+CAMARADERIE: Vous ne perdez pas de Popularité lorsque vous
+forcez les ouvriers de vos adversaires à battre en retraite
+après avoir remporté un combat en tant qu’attaquant. Ceci
+s’applique durant tout votre tour lorsque votre personnage
+ou vos mechs forcent des ouvriers adverses à battre en
+retraite après un combat.
+VITESSE: Votre personnage et vos mechs peuvent se déplacer
+d’un territoire supplémentaire par action Déplacement.
+Voir page 15 pour plus de détails.
+18
+CONSTRUCTION
+Vous pouvez construire des bâtiments (pions Bâtiment) afin d’améliorer vos actions,
+contrôler des territoires et recevoir des bonus en fin de partie. La ressource utilisée pour
+cela est le bois.
+Pour construire un bâtiment, payez le coût indiqué, prenez n’importe quel bâtiment de
+votre Plateau Joueur et placez-le sur un territoire que vous contrôlez avec au moins 1
+ouvrier.
+LIMITE DE 1 PAR TERRITOIRE: Un seul bâtiment peut être construit sur chaque territoire. Ainsi,
+si vous êtes le premier joueur à construire un bâtiment sur un territoire particulier, ni
+vous ni aucun autre joueur ne peut en construire un autre ici.
+CONTRÔLE DES BÂTIMENTS: Vos adversaires ne peuvent pas utiliser les capacités spéciales de
+vos bâtiments. Vous bénéficiez toujours des capacités spéciales de vos bâtiments, même
+si vous ne contrôlez plus le territoire sur lequel ils sont construits.
+CONTRÔLE DU TERRITOIRE: Un territoire sur lequel est construit l’un de vos bâtiments est sous
+votre contrôle, même si vous n’y avez plus d’unités. Néanmoins, si une unité adverse se
+rend sur ce territoire, vous en perdez le contrôle au profit de votre adversaire.
+PERMANENCE: Les bâtiments ne peuvent pas être détruits ou déplacés.
+USINE: Vous pouvez construire sur le territoire de l’Usine.
+ZONES INCONSTRUCTIBLES: Votre base principale n’est pas un territoire. Vous ne pouvez donc
+pas construire dessus. Vous ne pouvez pas non plus construire sur les lacs.
+BONUS PERMANENTS: Les bénéfices révélés en retirant les bâtiments de votre Plateau Joueur
+sont des bénéfices supplémentaires dont vous profitez lorsque, lors de vos prochains
+tours, vous effectuez l’action de la partie supérieure directement au-dessus de lui.
+ARSENAL: Lorsque vous
+effectuez l’action
+Commerce, gagnez
+également 1 point de
+Puissance.
+MONUMENT: Lorsque vous
+effectuez l’action Soutien,
+gagnez également 1 point de
+Popularité.
+MOULIN: Lorsque vous
+effectuez l’action
+Production, le Moulin
+peut produire comme s’il
+s’agissait d’un ouvrier.
+Le territoire du Moulin
+participe à la production.
+Ainsi, s’il y a des ouvriers
+sur ce territoire, ils peuvent
+également produire.
+MINE: La Mine fonctionne
+comme un tunnel que
+vous seul pouvez utiliser.
+Vous pouvez déplacer
+des unités depuis et vers
+votre mine comme s’il
+s’agissait d’un tunnel
+(même si un adversaire
+contrôle le territoire sur
+lequel se trouve la Mine).
+Contrairement à celles des
+autres bâtiments, il s’agit
+d’une capacité permanente
+associée au déplacement de
+toutes les unités.
+BONUS DE FIN DE PARTIE: En fin de partie, les joueurs gagneront des pièces pour
+avoir rempli les objectifs figurant sur la tuile bonus Bâtiment sélectionnée
+aléatoirement lors de la mise en place du jeu. Vous remportez ce bonus même si
+vous ne contrôlez pas les territoires sur lesquels se trouvent vos bâtiments. Ce
+bonus récompense ceux qui auront su étendre leur empire en valorisant leurs
+propriétés.
+ACTIONS DE LA PARTIE INFÉRIEURE suite
+19
+Les 6 tuiles bonus Bâtiment sont les suivantes :
+Nombre de lacs adjacents à
+vos bâtiments. Ne comptez
+chaque lac qu’une seule
+fois.
+Nombre de territoires
+comportant un tunnel
+adjacent à vos bâtiments.
+Ne comptez chaque tunnel
+qu’une seule fois. Une mine
+ne compte pas comme un
+tunnel dans le cas présent et
+les rivières ne bloquent pas
+les adjacences.
+Nombre de rencontres
+adjacentes à vos bâtiments.
+Ne comptez chaque
+rencontre qu’une seule fois.
+Elles sont prises en compte,
+que les jetons soient encore
+présents ou non. Les
+rivières ne bloquent pas les
+adjacences.
+Nombre de territoires
+comportant un tunnel où
+vous avez un bâtiment.
+Une mine ne compte pas
+comme un tunnel dans le
+cas présent.
+Nombre de vos bâtiments
+alignés (n’importe quelle
+ligne droite continue est
+valide, ne comptez que
+votre plus longue ligne
+de bâtiments, les rivières
+ne bloquent pas les
+adjacences).
+Nombre de fermes ou de
+toundras sur lesquels vous
+avez des bâtiments.
+EXEMPLE: Le bonus
+Bâtiment pour cette
+partie dépend du
+nombre de lacs
+adjacents à vos
+bâtiments. Si vous
+disposiez des deux
+bâtiments positionnés
+comme indiqué sur
+l’illustration ci-contre,
+vous gagneriez des
+pièces pour les 4
+lacs (soit 6$). Vous
+remportez ces pièces
+même si vous ne
+contrôlez plus les
+territoires sur lesquels
+vos bâtiments se
+trouvent.
+20
+BONUS IMMÉDIAT: Pour enrôler une recrue, payez le coût
+indiqué, prenez n’importe quel pion Recrue de votre
+Plateau Joueur, placez-le sur n’importe quelle case Bonus
+Recrue Immédiat de votre Plateau Faction et recevez
+immédiatement le bonus associé. Ceci représente la
+contribution de cette recrue à votre cause. Le pion reste de
+façon permanente, il ne peut être déplacé.
+Les quatre bonus immédiats sont:
+Gagnez 2 points de Puissance
+Gagnez 2 pièces
+Gagnez 2 points de Popularité
+Piochez 2 cartes Combat
+ENRÔLEMENT
+Vous pouvez enrôler de nouvelles recrues (pions
+cylindriques) pour rejoindre vos forces. La ressource
+utilisée pour cela est la nourriture.
+BONUS PERMANENT: En plus des bonus immédiats, chaque
+recrue vous offre un bonus permanent lié à l’action
+d’où son pion a été pris (le bonus dans le cercle). Ceci
+représente une compétence que la recrue met à votre
+service.
+Pour le reste de la partie, si vous ou l’un des joueurs
+directement adjacents (ces joueurs sont représentés dans
+le cercle rouge) utilise l’action de la partie inférieure du
+Plateau Joueur d’où provient la recrue, vous profitez du
+bonus indiqué. Les actions de la partie supérieure ou
+une action similaire effectuée grâce à une carte Usine ne
+comptent pas (voir la section Usine, page 25).
+ORDRE DES JOUEURS: Si plus d’un joueur devait recevoir un
+Bonus Recrue Permanent, commencez par le joueur
+actif, suivi du joueur à sa gauche puis celui à sa droite. Si
+un de ces joueurs place sa 6ème étoile, la partie prend
+fin immédiatement (voir Fin de partie et décompte des
+points, page 28).
+ANNONCE: Vous devez annoncer lorsque vous effectuez une
+action de la partie inférieure afin que les joueurs voisins
+puissent vérifier leurs Bonus Recrue Permanents.
+RÈGLE POUR DEUX JOUEURS: Lors d’une partie à 2 joueurs, si
+votre adversaire effectue une action qui vous donnerait
+un Bonus Recrue Permanent, vous ne le recevez qu’une
+seule fois.
+EXEMPLE: Lorsque le joueur bleu
+(Nordique) OU le joueur à sa gauche
+ou à sa droite effectue l’action
+Construction, le joueur Nordique
+gagne 1 point de Popularité, comme
+indiqué dans le cercle vert.
+21
+Chaque faction possède une capacité spéciale indiquée dans le coin supérieur droit de son
+Plateau Faction.
+RUSVIET (IMPLACABLE): Vous pouvez choisir la même section sur votre Plateau Joueur que les
+tours précédents.
+Les Rusviets ne ménagent jamais leur peuple lorsqu’il s’agit de s’approcher de leur but
+ultime. Tandis que les autres factions laissent leurs infrastructures récupérer d’un
+tour sur l’autre, les Rusviets peuvent choisir la même section sur leur Plateau Joueur
+que les tours précédents. Cette capacité s’applique également à une carte Usine si vous
+en possédez une (voir la section Usine).
+CRIMÉE (COERCITION): Une fois par tour, vous pouvez dépenser 1 carte Combat comme s’il
+s’agissait d’un pion Ressource.
+La Crimée a une longue tradition de revente d’informations au plus offrant. Elle peut
+dépenser 1 carte Combat par tour comme s’il s’agissait d’une ressource à dépenser (1
+carte Combat = n’importe quelle ressource, quelle que soit la valeur de la carte Combat).
+Les cartes Combat ne rapportent jamais de point en fin de partie.
+NORDIQUE (NAGE): Vos ouvriers peuvent traverser les rivières.
+Les ouvriers Nordiques sont des nageurs accomplis qui refusent de se plaindre même
+lorsqu’ils pataugent dans les eaux les plus froides. Ils peuvent se déplacer à travers
+les rivières vers n’importe quel type de terrain (à l’exception des lacs). Cette capacité ne
+s’applique qu’aux ouvriers et non à votre personnage ou à vos mechs.
+POLONIA (ERRANCE): Choisissez jusqu’à 2 options par carte Rencontre.
+SAXONIE (DOMINATION): il n’y a pas de limite au nombre d’étoiles que vous pouvez placer lorsque
+vous remplissez un objectif ou lorsque vous remportez un combat.
+CAPACITÉS SPÉCIALES DES FACTIONS
+NOTE DE L’AUTEUR: Un des subtils intérêts de ces capacités spéciales est de rappeler aux
+joueurs les règles générales de Scythe… en brisant justement ces mêmes règles. Par
+exemple, lorsque vous lisez que la faction Rusviet peut choisir la même section sur son
+Plateau Joueur d’un tour sur l’autre, cela vous rappelle qu’en temps normal vous ne
+pouvez pas choisir deux fois de suite la même section. Dans un jeu où les règles sont
+nombreuses, ces subtils aide-mémoires peuvent s’avérer très utiles.
+Grâce au charismatique compagnon d’Anna, l’ours Wojtek, le duo sait rendre chaque
+rencontre exceptionnelle. Au lieu de ne choisir qu’une option par carte Rencontre,
+la Polonia peut en choisir jusqu’à 2, dans l’ordre de son choix. Le bénéfice tiré de la
+première option choisie peut être utilisé pour payer le coût de la seconde. Une seule
+carte Rencontre peut être piochée.
+L’approche méthodique de la Saxonie dans la conquête des terres de l’Est autour de
+l’Usine repose sur l’usage de la force et la réussite de missions ciblées. Les Saxons
+peuvent remplir leurs deux cartes Objectif (ils ne défaussent pas leur seconde carte
+Objectif une fois le premier rempli), et ils ne sont pas limités à 2 étoiles remportées
+grâce aux combats.
+22
+Un combat peut avoir lieu à la fin de l’action Déplacement d’un joueur (une fois que toutes
+les unités se sont déplacées, mais avant qu’il n’effectue l’action de la partie inférieure). Si
+le personnage et/ou des mechs de ce joueur partagent un territoire avec un personnage et/
+ou des mechs adverses, un combat a lieu. Il est possible que cela survienne sur plusieurs
+territoires en même temps. Dans ce cas, le joueur actif (l’attaquant) choisit l’ordre de
+résolution des combats.
+Les combats impliquent uniquement les deux joueurs dont les unités partagent un
+territoire. Chacun d’eux peut gagner une étoile s’il remporte le combat. Les autres joueurs
+peuvent tenter de soudoyer les combattants en leur proposant des pièces (voir Alliances
+et pots-de-vin, page 26).
+AVANTAGE DE L’ATTAQUANT: Si le joueur attaquant possède une
+capacité spéciale de mech qui influe sur les combats, il
+l’utilise en premier, suivi par le joueur défenseur. De plus,
+si l‘issue du combat débouche sur une égalité, le joueur
+attaquant l’emporte.
+SELECTION DE LA PUISSANCE
+Les joueurs choisissent simultanément et secrètement un
+chiffre sur leur Roue de Puissance (alignez le chiffre avec
+l’icône dans le coin supérieur droit). Ceci correspond à
+la quantité de Puissance que vous allez dépenser. Vous ne
+pouvez donc pas sélectionner un chiffre qui soit supérieur
+à votre valeur actuelle sur la Piste de Puissance. La Piste
+monte jusqu’à 16, mais vous ne pouvez en dépenser plus de
+7 sur votre Roue de Puissance.
+AJOUTER DES CARTES COMBATS (FACULTATIF):
+COMBAT
+PUISSANCE QUANTITÉ
+2
+3
+4
+5
+16
+12
+8
+6
+NOTE DE L’AUTEUR: Vous pourriez être surpris par le faible nombre de combats
+dans une partie de Scythe, notamment à cause de l’omniprésence des
+mechs dans les illustrations de Jakub. Cela dit, si vous observez toutes ces
+illustrations, vous remarquerez que très peu sont dans des situations de
+combat. Dans ce sens, Scythe est tout autant porté sur la menace d’un
+combat que sur le combat en tant que tel. Si votre voisin a rassemblé
+une grande quantité de Puissance et de cartes Combat, vous êtes moins
+enclin à l’attaquer. De même, vous pouvez positionner des ouvriers sur
+des territoires stratégiques pour dissuader les joueurs les plus agressifs
+de vous attaquer (de par la perte de Popularité que cela peut occasionner
+s’ils gagnent). Cette tension est au coeur même de l’univers de Scythe,
+l’interaction entre le travail de la terre et la guerre.
+ASSEMBLAGE DE LA ROUE
+DE PUISSANCE
+Assemblez les
+roues de Puissance
+en insérant les
+rivets en plastique
+dans les trous
+pré-percés.
+Par défaut, pour chacune
+de vos unités impliquées dans ce combat (personnage et/
+ou mechs), vous pouvez glisser 1 carte Combat de votre
+main sous votre Roue de Puissance. Vous pouvez le faire
+même si vous avez choisi O sur la Roue.
+Le nombre de cartes Combat que vous avez en main est une
+information connue, mais durant un combat, vous pouvez
+cacher le fait que vous avez joué une de ces cartes. La pioche
+de cartes Combat contient les cartes suivantes :
+23
+RÉVÉLATION
+Les deux joueurs révèlent simultanément leur Roue de Puissance ainsi que les cartes Combat sélectionnées. La valeur
+de chaque carte Combat s’ajoute à la Puissance dépensée sur la Piste de Puissance comme indiqué sur votre Roue de
+Puissance.
+Le joueur ayant le score le plus élevé remporte le combat (les égalités sont remportées par le joueur attaquant). Les deux
+joueurs payent ensuite la quantité de Puissance qu’ils ont sélectionnée sur leur Roue de Puissance et défaussent face
+visible toutes les cartes Combat utilisées (n’ajustez pas la Piste de Puissance pour les cartes Combat, elles ne sont que des
+bonus temporaires).
+VAINQUEUR: Le vainqueur prend (ou conserve) le contrôle du
+territoire et de toutes les ressources qui s’y trouvent. Le
+vainqueur place également 1 pion Étoile sur l’emplacement
+combat de la Piste des Triomphes (voir Placer des étoiles,
+page 27) s’il n’en a pas déjà placé 2 pour ses précédentes
+victoires. Si le vainqueur était l’attaquant, il perd 1 point
+de Popularité pour chaque ouvrier qu’il a forcé à battre en
+retraite en remportant le combat. De plus, s’il y a un jeton
+Rencontre sur le territoire et que l’attaquant y amène son
+personnage, il résout la rencontre.
+VAINCU: Le vaincu doit faire battre en retraite vers sa base
+principale toutes ses unités (mechs, personnage et
+ouvriers) présentes sur le territoire (prenez ces unités et
+placez-les sur votre base principale). Toutes les ressources
+que transportaient ces unités restent sur le territoire et
+sont désormais sous le contrôle du vainqueur. Si le vaincu
+avait révélé au moins 1 point de Puissance sur sa Roue ou
+grâce à des cartes Combat, il peut piocher 1 carte Combat
+lorsqu’il bat en retraite.
+LIMITE D’ÉTOILES ET FIN DE PARTIE: Chaque joueur peut gagner
+un maximum de 2 étoiles pour ses victoires au combat (à
+l’exception des Saxons, qui peuvent en gagner un nombre
+illimité), mais peut toujours être engagé dans de futurs
+combats après avoir obtenu ces 2 étoiles. Si vous placez
+votre 6ème étoile et que vous avez encore un combat à
+résoudre lors de ce tour, la partie prend fin et toutes les
+unités que vous avez déplacées pour initier ce combat
+reviennent sur le territoire d’où elles venaient.
+BATAILLE SUR UN LAC: Les batailles sur un lac peuvent survenir
+entre deux factions, comme Polonia et Nordique, qui
+ont activé leur capacité de mech liée aux lacs. Si un mech
+transportant des ouvriers est attaqué lorsqu’il est sur un
+lac et que l’attaquant remporte le combat, l’attaquant perd
+1 point de Popularité pour chacun de ces ouvriers (ils sont
+forcés de battre en retraite avec le mech sur leur base
+principale).
+EXEMPLE: Antoine effectue une action
+Déplacement, en commençant par son
+personnage qu’il déplace sur une ferme
+inoccupée. Il déplace ensuite un de ses mechs
+transportant 2 ouvriers sur un territoire contrôlé
+par Valérie. Valérie y a son personnage, un mech,
+un ouvrier et 3 pions nourriture.
+Antoine dispose d’une Puissance de 10 et
+Valérie de 4 (ceci est représenté sur la Piste de
+Puissance du plateau). Antoine tourne sa Roue
+de Puissance sur le chiffre 7. Il dispose d’une
+unité combattante (son mech), il peut donc
+ajouter 1 carte Combat de sa main, mais choisit
+de ne pas le faire.
+Valérie décide de dépenser ses 4 points de
+Puissance grâce à sa Roue. Elle dispose à la fois
+de son personnage et d’un mech sur le territoire
+et peut donc jouer jusqu’à 2 cartes Combat si elle
+le désire. Elle choisit de ne jouer qu’une carte de
+valeur 3 et la place sous sa Roue de Puissance.
+Lorsque les deux adversaires ont arrêté leurs
+choix, ils révèlent leur Roue de Puissance
+en même temps. Valérie grogne car elle ne
+fait qu’égaliser la valeur d’Antoine (7 à 7), et
+l’attaquant remporte les égalités !
+Antoine prend donc le contrôle du territoire
+ainsi que des 3 pions nourriture et Valérie doit
+faire battre en retraite ses unités sur sa base
+principale. Antoine perd 1 point de Popularité
+car Valérie a fait battre en retraite un ouvrier.
+Antoine place également une étoile sur le plateau
+pour sa victoire. Pour finir, tous deux dépensent
+la Puissance qu’ils ont engagée sur leur Roue de
+Puissance.
+La seule compensation pour Valérie est qu’elle
+peut piocher une carte Combat puisqu’elle a
+révélé au moins 1 point de Puissance entre sa
+roue et sa carte Combat.
+CONSEIL STRATÉGIQUE: Ce n’est pas parce qu’un adversaire a une Puissance bien supérieure à la vôtre qu’il
+remportera automatiquement un combat contre vous. Il ignore quelle Puissance vous allez dépenser
+ou la valeur des cartes Combat que vous allez jouer (les cartes Combat ne rapportent rien en fin de
+partie, dépensez-les donc tôt et souvent). Toute la subtilité des combats est de réussir à déjouer les
+plans de votre adversaire, notamment lorsqu’il pense qu’il va l’emporter.
+24
+Tandis que votre personnage parcourt l’Est de l’Europe,
+il croise le chemin de bon nombre d’individus et devra
+faire face à diverses situations. Chaque rencontre
+vous proposera trois options déterminant votre façon
+d’interagir avec le peuple. Vos choix impacteront souvent la
+façon dont le peuple vous perçoit. Ceci est représenté dans
+le jeu par votre Popularité.
+Lorsque vous déplacez votre personnage sur un territoire
+comportant un jeton ( ), son mouvement prend fin et
+il ne peut donc plus se déplacer ce tour-ci. Lorsque votre
+action Déplacement est complètement terminée et que tous
+vos combats sont résolus (mais avant d’effectuer l’action
+de la partie inférieure, s’il y a lieu), défaussez le jeton
+et piochez une carte Rencontre. Seuls les personnages
+peuvent déclencher une rencontre.
+RENCONTRES
+Montrez l’illustration aux autres joueurs et lisez le texte d’ambiance (en majuscule)
+à haute voix. Puis, lisez les différents coûts et bénéfices de chaque option et choisissezen
+une (vous devez en choisir une et payer le coût éventuel, bien que vous puissiez
+volontairement choisir de ne profiter que d’une partie des bénéfices). Après avoir pris
+votre décision, remettez la carte face cachée en dessous du paquet Rencontre.
+COÛT OBLIGATOIRE ET BÉNÉFICES FACULTATIFS: Si vous n’avez pas la Popularité ou le nombre de pièces
+nécessaire pour payer le coût de certaines options, ces options ne sont pas disponibles.
+Vous pouvez choisir de ne bénéficier que d’une partie des bénéfices, c’est à dire que si un
+bénéfice vous octroie 2 pions métal et 1 ouvrier mais que vous n’avez que faire de l’ouvrier,
+vous pouvez tout à fait ne prendre que les 2 pions métal.
+LOCALISATION DES BÉNÉFICES: Toutes les ressources, bâtiments, mechs ou ouvriers que
+vous gagnez grâce à une carte Rencontre sont placés sur le même territoire que votre
+personnage, c’est à dire là où a lieu la rencontre.
+COÛT ISOLÉ ET BÉNÉFICE: Si une carte Rencontre vous fait gagner quelque chose ou vous fait
+réaliser une action, vous ne payez aucun coût supplémentaire ni ne gagnez d’autres
+bénéfices que ceux inscrits sur la carte. Vous ne déclenchez pas non plus les Bonus Recrue
+Permanents.
+COMBAT: Si un personnage se déplace sur un territoire contenant un jeton et un mech
+adverse, initiant ainsi un combat, la rencontre n’aura lieu que si le personnage remporte le
+combat. Dans le cas contraire, le jeton Rencontre reste sur le territoire.
+NOMBRE: Le nombre dans le coin supérieur gauche ne sert qu’à identifier la carte afin de
+pouvoir poser des questions spécifiques sur des sites internet comme BoardGameGeek.
+com ou stonemaiergames.com.
+NOTE DE L’AUTEUR: Nous avons fait un choix de conception relatif aux cartes Rencontre
+magnifiquement illustrées. Plutôt que de dire directement aux joueurs ce qu’ils voient
+au moyen d’un pictogramme ou d’un texte d’ambiance, nous vous laissons vous
+imprégner des scènes qui se révèlent à vous. Il se passe souvent beaucoup de choses
+dans ces scènes, généralement plus d’une, et les trois options dépeignent les différentes
+façons dont vous pouvez réagir. Les cartes Rencontre sont révélées à tous les joueurs
+lorsqu’elles sont piochées afin que chacun puisse s’imprégner autant qu’il le souhaite
+de l’histoire de Scythe. Nous vous offrons la même liberté visuelle que vous auriez si
+vous étiez confronté à ces scènes dans la vraie vie plutôt que de vous limiter à des textes
+d’ambiance. Après tout, une image vaut souvent bien plus que des mots.
+25
+L’Usine occupe le point central du plateau de Scythe. C’est un haut lieu de l’innovation
+technologique qui ne demande qu’à être exploité. Contrairement aux autres territoires,
+l’Usine ne produit aucune ressource. En fin de partie, l’Usine équivaut à 3 territoires (au
+lieu d’un seul) pour le joueur qui la contrôle.
+Lorsque votre action Déplacement est totalement terminée (après avoir remporté un
+combat si nécessaire), si votre personnage se trouve dans l’Usine pour la première fois,
+prenez connaissance des cartes Usine présentes sur le plateau de jeu. Vous devez en
+choisir une et remettre les autres sur le plateau.
+Le premier joueur à prendre connaissance de ces cartes en verra autant qu’il y a de joueurs
++1. Chaque joueur suivant qui prendra possession de l’Usine en verra une de moins.
+Autant être le premier…
+CARTES USINE
+Chaque carte Usine est équivalente à une cinquième section de votre Plateau Joueur
+(placez-la à côté de ce plateau).
+UTILISER LES ACTIONS DE L’USINE: La carte Usine est traitée de la même façon que les autres
+sections de votre Plateau Joueur. À votre tour, vous pouvez placer votre pion Action sur
+la carte Usine et effectuer une ou les deux actions (en commençant par celle de la partie
+supérieure si vous décidez d’effectuer les deux).
+INDÉPENDANTE DES BONUS DU PLATEAU JOUEUR: Même si la carte Usine permet d’effectuer une action
+similaire à une du Plateau Joueur, elles sont totalement indépendantes l’une de l’autre.
+Vous ne bénéficiez donc pas des Bonus Recrue Permanents, des bonus liés aux bâtiments,
+ni des pièces pour les actions similaires de votre Plateau Joueur.
+DÉPLACEMENT: Toutes les cartes Usine possèdent une action Déplacement dans leur partie
+inférieure. Elle diffère légèrement de l’action Déplacement standard car elle permet de
+“Déplacer une unité jusqu’à deux fois lors de la même action Déplacement”.
+LES AUTRES RÈGLES S’APPLIQUENT: Toutes les autres règles de déplacement s’appliquent,
+notamment celle stipulant que toute l’action Déplacement du personnage s’achève s’il
+se déplace sur un territoire comportant un jeton Rencontre ou si un personnage et/ou
+mech se déplacent sur un territoire occupé par une ou des unités adverses.
+MINE: Si vous possédez une Mine, vous pouvez vous déplacer à travers la Mine grâce à
+cette action.
+VITESSE: Si vous avez débloqué la capacité de mech Vitesse, un de vos mechs ou votre
+personnage peut se déplacer jusqu’à 3 territoires grâce à cette action.
+LIMITÉ À UNE CARTE: Vous ne pouvez avoir qu’une seule carte Usine en votre possession (celle
+que vous avez choisie la première fois où votre personnage s’est rendu dans l’Usine).
+SÉLECTION DÉFINITIVE: Votre sélection est définitive. Vous ne pouvez pas échanger votre carte
+Usine avec une autre carte si votre personnage pénètre à nouveau dans l’Usine lors d’une
+future action Déplacement.
+L’USINE
+CONSEIL STRATÉGIQUE: Ne sous-estimez pas l’importance de pouvoir se déplacer à chaque
+tour. Sans carte Usine, vous ne pouvez vous déplacer que tous les deux tours, mais une
+fois en votre possession, vous serez beaucoup plus agile et réactif que les joueurs n’en
+ayant pas.
+EXEMPLE: Cette
+carte Usine vous
+permet d’Enrôler
+une recrue OU
+de réaliser une
+Amélioration (ou de
+passer l’action de la
+partie supérieure).
+Ensuite, vous
+pouvez déplacer une
+unité jusqu’à deux
+fois.
+26
+Chaque joueur débute la partie avec 2 cartes Objectif qu’il garde secrètes.
+À n’importe quel moment durant votre tour, vous pouvez révéler aux autres
+joueurs une carte Objectif une fois celui-ci rempli. Placez alors 1 pion Étoile
+sur l’emplacement objectif de la Piste des Triomphes et remettez les deux
+cartes Objectif face cachée en dessous du paquet Objectif.
+Vous ne pouvez gagner qu’une seule étoile grâce aux objectifs, à l’exception
+du joueur Saxon qui peut poser une étoile pour chacune de ses deux cartes
+Objectif.
+Vous pouvez tout à fait ne pas révéler immédiatement un objectif rempli,
+mais vous devez toujours remplir toutes ses conditions au moment où vous le
+révélez.
+OBJECTIFS
+ALLIANCES ET POTS-DE-VIN
+NOTE DE L’AUTEUR: Il peut paraître un peu étrange qu’un joueur dispose de deux objectifs
+mais ne puisse en remplir qu’un seul. Il y a plusieurs raisons à cela. En premier lieu,
+une alternative aurait été que chaque joueur pioche deux cartes Objectif et n’en conserve
+qu’une. Nous préférons ne pas avoir à demander aux joueurs de faire ce choix en début
+de partie afin de rendre le jeu plus accessible aux débutants et de donner plus de liberté
+aux joueurs expérimentés à mesure que le jeu évolue. De plus, cela apporte une certaine
+flexibilité aux joueurs en leur permettant de changer de stratégie en milieu de partie.
+Peut-être étiez-vous parti sur une stratégie qui s’est révélée être une impasse. Aucun
+problème, vous avez toujours une seconde carte Objectif que vous pouvez utiliser.
+Les joueurs sont libres de conclure tous les accords informels qu’ils souhaitent, comme
+“je ne t’attaque pas ce tour-ci si tu ne m’attaques pas le tour prochain”. Les seuls éléments
+tangibles qu’ils peuvent échanger sont les pièces. Si vous jouez dans le cadre d’un tournoi,
+les pièces ne peuvent pas être échangées pour conclure des accords ou des alliances.
+Vous ne pouvez plus tenter d’éviter un combat s’il a déjà débuté. Ce qui veut dire que si un
+joueur déplace son personnage et/ou ses mechs sur un territoire que vous contrôlez grâce
+à votre personnage et/ou des mechs, à la fin de son action Déplacement, vous devez tous
+deux engager le combat. Vous ne pouvez plus le soudoyer à partir de cet instant, bien que
+vous puissiez essayer d’en influencer l’issue. Les accords qui lient les joueurs n’ont pas à
+être scrupuleusement respectés.
+27
+Lorsque vous faites preuve d’excellence dans un domaine, votre faction vous récompense au moyen
+d’étoiles. À chaque étoile correspondront des pièces en fin de partie.
+Voici les différentes manières de placer ses étoiles, comme indiqué sur la Piste des Triomphes :
+Achever les 6 améliorations
+Deployer ses 4 mechs
+Construire ses 4 bâtiments
+Enrôler ses 4 recrues
+Placer ses 8 ouvriers sur le
+plateau
+Révéler une carte Objectif
+accomplie
+Remporter un combat
+(jusqu’à 2 fois maximum)
+Avoir 18 points de Popularité
+Avoir 16 points de Puissance
+Lorsque vous remplissez une de ces conditions, vous devez placer une étoile sur l’emplacement
+approprié de la Piste des Triomphes. Une fois posée, une étoile ne peut jamais être perdue. Par
+exemple, si vous placez une étoile pour avoir atteint les 18 points de Popularité et que plus tard votre
+total chute en dessous de 18, votre étoile reste sur la piste.
+Par défaut, chaque joueur ne peut remplir chaque condition qu’une seule fois. Avoir une étoile sur
+un emplacement n’empêche pas les autres joueurs de placer les leurs sur ce même emplacement.
+PL ACER DES ÉTOILES
+CONSEIL STRATÉGIQUE: Vous ne pouvez pas placer plus de 6
+étoiles. Il est donc généralement préférable de vous
+focaliser sur 6 conditions particulières plutôt que de
+vous disperser.
+EXEMPLE: Si vous avez une Popularité de 10, vous
+gagnerez 4$ pour chaque étoile que vous avez
+placée, 3$ pour chaque territoire que vous
+contrôlez et 2$ pour chaque lot de 2 ressources
+que vous contrôlez. Si vous aviez une Popularité
+de 18, vous marqueriez des points dans la tranche
+de Popularité allant de 13 à 18.
+28
+La partie se termine immédiatement lorsqu’un joueur place son 6ème pion Étoile, même s’il pouvait faire d’autres choses
+ce tour-ci ou que d’autres évènements devaient survenir.
+VARIANTE
+DURÉE DE LA PARTIE: De par les différentes catégories
+permettant de marquer des points en fin de partie et de par
+leur lien avec la Popularité, il est difficile de déterminer à
+chaque instant quel joueur est en tête (c’est intentionnel).
+Il peut arriver qu’un joueur interrompe le jeu pour calculer
+le score de chacun avant de planifier ses prochaines
+actions. Ceci n’est amusant pour personne. La variante que
+nous proposons implique que tout joueur qui ralentit le jeu
+plus de 10 secondes pour calculer les scores de chacun (en
+dehors du décompte final) perde 2 points de Popularité.
+FIN DE PARTIE ET DÉCOMPTE DES POINTS
+NOTE DE L’AUTEUR: Scythe incite les joueurs à faire terminer
+la partie en posant des étoiles qui rapportent des pièces
+et en empêchant leurs adversaires de faire des tours
+supplémentaires. Ceci peut faire que certains adversaires
+joueront un tour de moins que le joueur qui aura placé la
+dernière étoile.
+DÉCOMPTE DES POINTS
+Chaque joueur calcule le montant de sa fortune
+personnelle. Additionnez les pièces que vous avez
+accumulées avant que la fin de partie ne soit déclenchée
+ainsi que celles de fin de partie pour déterminer le
+vainqueur. Vous devez avoir un tas de pièces devant vous
+avant d’annoncer votre total aux autres joueurs.
+Pour déterminer le nombre de pièces que vous allez
+recevoir dans chacune des trois catégories de score,
+regardez votre niveau sur la Piste de Popularité et prenez
+des pièces pour chaque catégorie (faites-le vous-même,
+personne n’a à tenir le rôle de “banquier”).
+DÉCOMPTE DE POINTS POUR L’EXEMPLE
+Pour votre première partie de Scythe, nous vous
+recommandons de faire un premier décompte de points
+durant la partie afin que chacun comprenne bien comment
+cela va se passer en fin de partie. Dès qu’un joueur
+place sa première étoile, interrompez la partie afin que
+chaque joueur puisse calculer son score. Ceci ne sert que
+d’exemple, le calcul définitif n’aura pas lieu avant la fin de
+la partie.
+CAS PARTICULIERS
+Si la 6ème étoile a été posée grâce à une action de la partie
+inférieure, gagnez le premier bénéfice, les pièces ainsi que
+le Bonus Recrue Permanent avant de placer l’étoile.
+Si vous avez des unités (personnage, mechs ou ouvriers)
+partageant encore un territoire avec des unités adverses
+(suite à une action Déplacement), vous devez annuler cette
+partie de votre action Déplacement en ramenant votre ou
+vos unité(s) sur leur territoire initial.
+Si vous placez une étoile pour votre total de Popularité
+ou de Puissance grâce à un bonus Recrue lors du tour
+d’un adversaire, le placement de cette étoile intervient
+après que votre adversaire a effectué son action (comme
+construire un bâtiment), dans le sens horaire et seulement
+si cet adversaire n’a pas placé sa 6ème étoile en ayant
+effectué cette action.
+29
+CATÉGORIES DE SCORE
+PIÈCES EN MAIN: Les pièces que vous avez accumulées durant la
+partie comptent pour le décompte final.
+CHAQUE ÉTOILE PLACÉE: Gagnez des pièces pour chaque étoile
+placée durant la partie.
+CHAQUE TERRITOIRE CONTRÔLÉ: Gagnez des pièces pour chaque
+territoire que vous contrôlez (dont les lacs). Les bases de
+départ ne sont pas des territoires. Vous contrôlez chaque
+territoire sur lequel vous avez votre personnage, un ouvrier,
+un mech ou un bâtiment non occupé par une unité adverse.
+USINE: En fin de partie, l’Usine équivaut à 3 territoires
+pour le joueur qui la contrôle.
+CHAQUE LOT DE DEUX RESSOURCES CONTRÔLÉES: Gagnez des pièces
+pour chaque lot de 2 ressources que vous contrôlez. Par
+exemple, si vous contrôlez 13 ressources et que vous avez
+une Popularité de 10, vous gagnerez 12 pièces. Les ouvriers
+ne sont pas des ressources. Vous contrôlez toutes les
+ressources présentes sur les territoires où vous avez votre
+personnage, un ouvrier, un mech ou un bâtiment non
+occupé par une unité adverse.
+TUILE BONUS BÂTIMENT: Gagnez des pièces selon le bonus
+Bâtiment que vous avez atteint. Vous gagnez ce bonus
+même si vous ne contrôlez plus les territoires où ces
+bâtiments sont construits.
+DÉCLARATION DU VAINQUEUR
+Annoncez votre total de pièces et le joueur qui en possède
+le plus remporte la victoire ! En cas d’égalité, départagez les
+joueurs ex-aequo selon la méthode suivante (dans l’ordre) :
+1. Nombre d’ouvriers, mechs et bâtiments
+2. Puissance
+3. Popularité
+4. Nombre de pions Ressource contrôlés
+5. Nombre de territoires contrôlés
+6. Nombre d’étoiles placées sur le plateau
+Le vainqueur peut inscrire son nom sur la Fiche de
+réussites jusqu’à deux fois par partie.
+30
+Vous êtes représenté sur le plateau de jeu par votre personnage qui a été missionné pour réclamer au nom de votre faction
+les territoires inexplorés autour de la défunte Usine. Chaque personnage est formé d’un duo : un humain et son compagnon
+animal.
+Chaque personnage fonctionne de la même façon que les autres. Toutefois, ils disposent de pouvoirs uniques reflétés dans
+les capacités spéciales de leur faction et de leurs mechs. Une biographie complète de chacun d’entre eux se trouve sur le site
+internet de Stonemaier Games, mais en voici un bref résumé :
+ANNA & WOJTEK (RÉPUBLIQUE DE POLONIA): Une tireuse d’élite alliée à un ours serviable, Anna et
+Wojtek traçaient leur chemin à travers la campagne durant la Grande Guerre, devenant des
+légendes vivantes à mesure qu’ils se distinguaient au combat, tout en faisant preuve d’une
+immense compassion, même pour le plus humble des fermiers. Avec l’Usine à l’arrêt et les
+rumeurs à propos de la montée en puissance des Rusviets, Anna et Wojtek ont accepté la
+mission d’assurer l’unité et l’indépendance de la République de Polonia en sécurisant sa
+frontière est et en organisant des patrouilles sur les terres entourant l’Usine.
+GUNTER VON DUISBURG ACCOMPAGNÉ DE NACHT & TAG (EMPIRE DE SAXONIE): Durant la guerre, Gunter et ses
+loups menaient des escadrons de mechs d’élite à travers les forêts et montagnes de toute
+la Saxonie et de l’Europe. Son nom était à la fois craint et respecté, et sa veste alourdie
+de nombreuses médailles militaires. Maintenant que la guerre est terminée, l’Empereur
+a demandé à Gunter de reprendre du service à l’Est sur les terres entourant l’Usine, où
+de nouvelles opportunités d’expansion s’offrent à la Saxonie. Tag est représenté sur de
+nombreuses cartes Rencontre mais ne figure pas sur la figurine.
+ZEHRA & KAR (KHANAT DE CRIMÉE): La fille aînée du Khan des Tartares de Crimée, Zehra, est capable
+de voir à travers les yeux de son aigle, sans compter son incroyable adresse au tir à l’arc.
+Bien que son père répugnât auparavant à adopter les avancées technologiques offertes par
+l’Usine, il finit par réaliser que le monde était en plein bouleversement et qu’il ne pouvait
+laisser le Khanat à la merci de ses rivaux. C’est avec réticence qu’il envoya sa fille vers le
+nord afin de s’emparer au nom de son peuple de ces avancées technologiques et de lui
+assurer une paix durable.
+OLGA ROMANOVA & CHANGA (UNION RUSVIET): Lorsque le premier amour d’Olga, Viktor, fut porté
+disparu durant la Grande Guerre, elle fit voeu de le retrouver. Elle rejoignit les services
+secrets de l’armée Rusviet accompagnée de Changa, son tigre sibérien. Grâce à son
+intelligence et son ambition, elle a su rapidement gravir les échelons et elle utilise sa
+toute nouvelle position pour lancer une invasion à grande échelle sur les terres de l’Ouest.
+Ceci est son ultime tentative pour retrouver son bien-aimé Viktor, avec toute la puissance
+militaire Rusviet derrière elle!
+BJORN & MOX (ROYAUME NORDIQUE): Bjorn, descendant d’une illustre famille viking, a été sauvé
+d’un mortel blizzard par un muskox s’étant porté à son secours. Une fois remis sur pied,
+Bjorn pris la créature comme monture et la nomma Mox. Ensemble, ils prirent part à
+de nombreuses aventures. Quand ils ne servaient pas d’ambassadeurs auprès des autres
+tribus, tantôt ils prenaient part à des opérations militaires, tantôt ils partaient à la
+recherche de nouvelles réserves de pétrole. Le Roi les a désormais envoyés vers le sud afin
+de rallier de nouveaux villages et fermes au royaume, que ce soit par la diplomatie ou par
+la force, et d’explorer le site de l’Usine dans l’espoir de prendre un avantage technologique
+décisif pour les guerres à venir.
+PERSONNAGES
+31
+RESSOURCES: Toutes les unités (personnages, mechs et ouvriers)
+peuvent transporter et déplacer n’importe quel nombre de
+ressources.
+TOURS ET PLATEAUX JOUEUR: À votre tour, vous devez choisir sur
+votre Plateau Joueur une section différente de celle du tour
+précédent. Effectuez l’action de la partie supérieure, celle
+de la partie inférieure, ou les deux (en commençant par la
+supérieure). Payez tout d’abord le coût total de l’action (toutes
+les icônes dans les cases rouges découvertes), puis recevez
+le bénéfice (cases vertes découvertes). Si vous sélectionnez
+une action de la partie inférieure, le joueur à votre gauche
+peut commencer son tour pendant que vous décidez quelle
+amélioration, mech, bâtiment ou recrue vous souhaitez
+recevoir. N'oubliez pas de prendre les pièces allouées par les
+actions de la partie inférieure !
+ACTION DE DÉPLACEMENT : Vous devez déplacer des unités distinctes
+(pas la même unité plusieurs fois). Vous pouvez choisir
+de n’utiliser qu’une partie de l’action Déplacement si vous
+ne souhaitez déplacer qu’une seule unité. Un mech peut
+transporter des ouvriers durant son déplacement, puis un de
+ces ouvriers peut également se déplacer.
+ACTION PRODUCTION : Produisez sur 2 territoires différents. Chaque
+ouvrier sur ces territoires peut produire 1 pion Ressource.
+Ainsi, si vous avez 3 ouvriers sur une forêt et 2 ouvriers sur
+une ferme, une action Production génère 3 bois sur la forêt et
+2 nourritures sur la ferme.
+OUVRIERS: Les ouvriers ne sont pas des ressources, mais sont
+formés dans les villages, au même titre que les ressources
+sont produites sur les autres types de terrain. Comme pour
+n’importe quelle action Production, payez le coût total
+figurant sur les cases rouges visibles de l’action Production,
+puis formez le ou les ouvriers en prenant celui se trouvant le
+plus à gauche de votre Plateau Joueur. Vous pouvez choisir de
+ne pas former d’ouvrier puisque cela peut augmenter le coût
+des futures actions Production. Une fois formé, un ouvrier ne
+peut jamais retourner sur votre Plateau Joueur.
+COMMERCE: Lorsque vous effectuez l’action Commerce, choisissez
+2 pions Ressource de votre choix (d’un même type ou d’un
+type différent) et placez-les sur un territoire que vous
+contrôlez avec un ouvrier.
+SOUTIEN: Augmentez votre niveau sur la Piste de Puissance ou
+piochez une ou plusieurs cartes Combat. Si la pioche de cartes
+Combat est épuisée, mélangez sa défausse pour former une
+nouvelle pioche.
+ACTIONS DE LA PARTIE INFÉRIEURE: Vous pouvez continuer à payer pour
+effectuer une action de la partie inférieure et toucher la
+ou les pièces, même si vous avez déjà posé une étoile pour
+cette action. Ceci continuera à déclencher les Bonus Recrue
+Permanents.
+AMÉLIORATION: Prenez un cube Technologie de n’importe quelle
+case verte de votre Plateau Joueur et placez-le sur n’importe
+quelle case rouge entre crochets de votre Plateau Joueur.
+MECHS: Seuls les mechs peuvent transporter des ouvriers
+(n’importe quel nombre), les personnages ne peuvent pas.
+Les capacités spéciales des mechs s’appliquent à tous les
+mechs et à votre personnage. La capacité des mechs Traversée
+de chaque faction est légèrement différente. Si un mech
+possède la capacité Vitesse, il peut prendre et déposer des
+ouvriers/ressources en cours de déplacement.
+TRAVERSÉE: Chaque faction possède une version de cette capacité
+légèrement différente, leur permettant de traverser les
+rivières vers deux types de terrain spécifiques.
+BÂTIMENTS: Un seul bâtiment peut être construit sur chaque
+territoire. Les bâtiments ne peuvent pas être construits sur
+les lacs.
+RECRUES: Gagnez un Bonus Recrue Immédiat lorsque vous
+effectuez l’action Enrôler. À partir de maintenant, gagnez
+un Bonus Recrue Permanent lorsque vous ou le joueur à
+votre gauche ou à votre droite effectue l’action de la partie
+inférieure correspondant à ce bonus.
+COMBAT: Seuls les personnages et les mechs peuvent participer
+aux combats (déplacer un personnage ou un mech sur un
+territoire contenant des ouvriers adverses ne déclenche pas
+de combat). L’attaquant remporte les égalités. Si le vaincu
+révèle au moins 1 point de Puissance (que ce soit sur sa Roue
+ou sur ses cartes Combat), il peut piocher une carte Combat.
+Le vainqueur et le vaincu doivent tous deux payer la Puissance
+sélectionnée sur leur Roue de Puissance.
+OUVRIERS BATTANT EN RETRAITE (OBLIGATOIRE): Vous ne perdez en Popularité
+que lorsque vous forcez les ouvriers adverses à battre en
+retraite lors d’un de vos tours. Ce qui veut dire que si vous êtes
+attaqué par un mech transportant des ouvriers et que vous
+remportez le combat, vous ne perdez pas 1 point de Popularité
+par ouvrier qui bat en retraite. Lors de votre tour, vous pouvez
+forcer un ouvrier adverse à battre en retraite même si vous
+n’avez plus assez de Popularité.
+RENCONTRES: Seuls les personnages peuvent effectuer des
+rencontres. Pour pouvoir choisir une option sur la carte
+Rencontre, vous devez être capable de payer le coût éventuel
+indiqué. Toutes les ressources, unités ou bâtiments reçus
+grâce à une carte Rencontre apparaissent sur le territoire où
+la rencontre a eu lieu. Les bénéfices reçus lors des rencontres
+ne déclenchent pas les Bonus Recrue Permanents.
+USINE: Seuls les personnages peuvent revendiquer des cartes
+Usine (1 par joueur). Les actions effectuées grâce aux cartes
+Usine ne déclenchent pas les Bonus Recrue Permanents et les
+Bonus Bâtiment.
+OBJECTIFS: Lors de votre tour, vous pouvez révéler un objectif
+rempli. Défaussez l’autre carte Objectif (sauf si vous jouez la
+Saxonie).
+PLACEMENT DES ÉTOILES: Une fois qu’un joueur a placé une étoile sur la
+Piste des Triomphes, elle ne peut pas être enlevée. Avoir une
+étoile sur un emplacement n’empêche pas les autres joueurs
+de placer les leurs sur ce même emplacement. Si un joueur
+place sa 6ème étoile, la partie prend fin immédiatement.
+Rien d’autre n’a lieu en dehors de la phase de décompte de
+points de fin de partie.
+DÉCOMPTE DE POINTS: En fin de partie, n’oubliez pas d’ajouter à votre
+score final toutes les pièces gagnées durant la partie. Pour
+le décompte des territoires, vous contrôlez un territoire et
+toutes les ressources présentes dessus si vous y avez une unité
+ou si vous y possédez un bâtiment et qu’aucune unité adverse
+n’est présente. Assurez-vous de ne décompter que chaque
+paire de pions Ressource et non chaque pion Ressource.
+POINTS DE RÈGLES IMPORTANTS
+© 2015 Stonemaier LLC. Scythe is a trademark of Stonemaier LLC. All Rights Reserved.
+Traduction française : Thomas Million
+Relecture : Maël Brustlein, Bruno Larochette et Yannick Mescam.
+VOUS SOUHAITEZ REGARDER UNE VIDÉO EXPLICATIVE DES RÈGLES ?
+Allez sur stonemaiergames.com.games/scythe/videos
+VOUS SOUHAITEZ LIRE LES RÈGLES DANS UNE AUTRE LANGUE ?
+Téléchargez les règles et aides de jeu dans une douzaine de langues sur stonemaiergames.com.games/scythe/rules-and-print-play
+VOUS AVEZ UNE QUESTION PENDANT UNE PARTIE ?
+Tweetez-la à @stonemaiergames avec le hashtag #scythe
+VOUS AVEZ PERDU UNE PIÈCE DU JEU ?
+Demandez-la à www.morning-family.com/contact
+VOUS SOUHAITEZ RESTER AU COURANT DE NOS DERNIÈRES NOUVEAUTÉS ?
+Inscrivez-vous à notre lettre d’information sur stonemaiergames.com/e-newsletter et sur www.morning-family.com/news
+VOUS SOUHAITEZ JOUER SUR UN PLUS GRAND PLATEAU ?
+Achetez l’extension de plateau pour créer un plateau 50% plus grand sur stonemaier-games.myshopify.com
+VOUS ÊTES INTÉRESSÉ PAR DES ARTICLES PROMOTIONNELS ?
+Vous pouvez acheter les articles promotionnels de Scythe en ligne (stonemaier-games.myshopify.com.collections/all) voire lors des salons ou sur BoardGameGeek.com.
+
+
+1
+RÉALISÉ PAR JAMEY STEGMAIER
+ART ET UNIVERS DE JAKUB ROZALSKI
+CONTEXTE HISTORIQUE
+Europe de l’Est. Alors que l’empire est en déclin, le reste du monde
+est sur ses gardes. Deux factions éloignées, Albion et Togawa,
+envoient en éclaireur des émissaires afin d’établir la meilleure
+stratégie de conquête.
+Cette extension ajoute 2 nouvelles factions au jeu Scythe, passant ainsi
+le nombre maximum de joueurs à 7.
+ENVAHISSEURS LOINTAINS
+Stonemaier Games présente
+2
+POURPRE VERTE
+MATÉRIEL DE JEU GÉNÉRAL
+règles
+boite
+planche de jetons
+plateaux joueur
+2 sacs en plastique
+1 insert en plastique
+MATÉRIEL DE FACTION
+plateau Faction
+pion Action
+pion Popularité
+pion Puissance
+pions Étoile
+pions Bâtiment
+pions Recrue
+figurines Mech
+figurine Personnage
+ouvriers
+jetons
+ALBION TOGAWA
+6 x
+2 x
+4 x
+4 x 4 x
+4 x
+6 x
+8 x 8 x
+3
+JOUER AVEC 6 OU 7 JOUEURS
+Cette extension permet jusqu’à 7 joueurs de jouer à
+Scythe. Il n’y a aucune modification sur la carte : c’est
+juste qu’il y aura plus d’unités en présence et donc plus de
+factions sur le terrain. Mais il y a tout de même deux petites
+modifications au niveau des règles lors d’une partie
+à 6 ou 7 joueurs :
+CRIMEA : L’une des capacités des Mech de la Crimée (Wayfare/
+Voyageur) ne s’applique pas lors de partie à 6 ou 7
+joueurs. Dans ce cas, elle est remplacée par une nouvelle
+capacité (placez le jeton approprié sur le plateau
+Faction) : Déplacez-vous sur n’importe quelle ferme
+inoccupée.
+POLANIA: La capacité de la faction (Meander/Errance) perd
+son intérêt lors de partie à 6 ou 7 joueurs. Dans ce cas,
+elle est remplacée par une nouvelle capacité (placez le
+jeton approprié sur le plateau Faction) : Choisissez
+jusqu’à 2 options par carte Rencontre. A la fin de la
+partie, vous gagnez 3$ pour chaque territoire rencontré
+sous votre contrôle.
+Bien qu’il n’y a pas de règle additionnelle lors d’une
+partie à 6 ou 7 joueurs, prenez tout de même en compte
+les notions suivantes :
+DURÉE : Une partie de Scythe dure en général 25 minutes
+par joueur, donc elle prendra plus de temps si le nombre
+de joueurs est augmenté.
+NOUVEAUX JOUEURS : S’il y a de nouveaux joueurs lors d’une
+partie, nous leur recommandons de faire leur choix
+parmi les factions du jeu de base, et non celles de cette
+extension (Albion et Togawa).
+ENCHAÎNEMENT DES TOURS : En fonction du nombre de joueurs,
+vous pouvez commencer votre tour une fois que le joueur
+à votre droite est en entrain de réaliser l’action de la
+partie inférieure.
+PREMIER JOUEUR : Les nouveaux plateaux Joueur - qui sont
+également mélangés à ceux du jeu de base lors de la mise
+en place - sont numérotés 2a et 3a. Ces chiffres ne
+servent qu’à déterminer le premier joueur. Le nouvel
+ordre est : 1, 2, 2a, 3, 3a, 4, 5.
+4
+CLAN ALBION
+CAPACITÉ DE LA FACTION (EXALT/EXALTATION) : Après
+la fin du déplacement de votre personnage
+(après un éventuel combat et/ou rencontre),
+le joueur Albion peut placer un jeton Drapeau
+de la réserve sur le territoire du personnage.
+Un territoire ne peut avoir qu’un seul jeton
+faction (1 drapeau ou 1 piège). Une fois placée,
+les jetons Drapeau ne peuvent ni être
+déplacés ni retirés du jeu.
+Après avoir été confiné durant des
+siècles sur ses terres, le Clan Albion
+convoite le contrôle de nouveaux
+territoires. Ceci est
+illustré par les 4 jetons
+Drapeau de cette faction,
+chacun comptant comme
+un territoire additionnel
+lors du décompte de fin
+de partie à condition (a)
+qu'un personnage, Mech,
+ouvrier ou bâtiment
+inoccupé s’y trouve ; ET
+(b) que le jeton Drapeau
+ne soit pas sur un territoire adjacent à la base principale
+d’Albion.
+CAPACITÉS DU PERSONNAGE
+ET DES MECH
+BURROW (TERRIER) : Votre
+personnage et vos Mech
+peuvent traverser les
+rivières pour se rendre
+dans les tunnels adjacents.
+Un territoire contenant votre Mine compte comme
+un tunnel, mais ça ne fonctionne pas avec une Mine
+adverse.
+SWORD (ÉPÉE) : Avant de vous engager dans un combat en tant
+qu’attaquant, le défenseur perd 2 en Puissance. Cette
+perte est reportée sur la piste Puissance (les joueurs ne
+peuvent pas avoir moins de 0 en puissance). Applicable
+une fois par combat et non par unité.
+SHIELD (BOUCLIER) : Avant de vous engager dans un combat
+en tant que défenseur, vous gagnez 2 en Puissance. Ce
+EXEMPLE : A la fin du jeu,
+vous contrôlez 1 territoire
+Fôret et 1 territoire
+Toundra. Cette dernière
+possède un jeton Drapeau.
+Ainsi vous contrôlez 3
+territoires au lieu de 2.
+5
+bonus est reporté sur la piste Puissance. Applicable une
+fois par combat, et non par unité.
+RALLY (RALLIEMENT) : Lors d’une action Déplacement, votre
+personnage et vos Mech peuvent se déplacer sur
+n’importe quel territoire qui contient au moins l’un
+de vos ouvriers ou un jeton Drapeau, quelque soit la
+distance.
+CONTEXTE HISTORIQUE
+Connor est un highlander, un natif de la zone sud de
+l’île contrôlée par le Clan Albion. Il descend d’une
+longue lignée de soldats légendaires, tradition qu’il
+a perpétué, en se retranchant loin derrière les lignes
+ennemies durant la Première Guerre Mondiale. Il doit
+sa vie à son compagnon de fortune, un sanglier sauvage
+nommé Max, qui l’a sauvé d’une horde de loups près
+de contreforts en Saxonie. Le clan Albion craint que
+l’Usine puisse tomber entre les mains de l’une des plus
+puissantes factions, qui pourrait alors empiéter sur les
+terres d’Albion. Avec Max à ses côtés, Connor s’est vu
+confier la charge d’un groupe d’unités spéciales ayant
+pour but de construire une solide ligne de défense
+contre les opposants et détruire l’Usine avant qu’il ne
+soit trop tard.
+6
+TOGAWA SHOGUNATE
+CAPACITÉ DE LA FACTION (MAIFUKU) : Après la fin du
+déplacement de votre personnage (après
+un éventuel combat et/ou rencontre), le
+joueur Albion peut placer un jeton Piège
+armé de son choix de la réserve sur le
+territoire du personnage (même si ce
+territoire possède un bâtiment ennemi).
+Un territoire ne peut avoir qu’un seul
+jeton faction (1 drapeau ou 1 piège). Une fois placés, les
+jetons Drapeau ne peuvent ni être déplacés ni retirés du
+jeu.
+The Togawa Shogunate
+est uni derrière une cause
+commune consistant
+au contrôle, si possible,
+d’une bonne partie de
+l’Europe de l’Est. Elle
+décourage aux autres
+factions de faire de
+même. Ils ont ainsi
+4 jetons Piège à leur
+disposition, chacun
+ayant une face "armé"
+ou "désarmé". Ils ont
+pour but, en fin de
+partie, et s’ils sont
+armés, de garantir à
+Togawa le contrôle du territoire (aucune unité n’est
+nécessaire). Des unités ennemies empêchent le
+contrôle d’un territoire présentant un Piège armé.
+ENCLENCHER UN PIÈGE : Si un adversaire déplace l’une de ses
+unités sur un territoire possédant un Piège armé, le
+déplacement de cette unité prend fin. Retournez le jeton
+Piège, révélant uné pénalité que l’adversaire doit subir,
+si possible (ex. perdre 2 points de Popularité). Appliquez
+l’effet de ce piège en premier, avant même un combat ou
+une rencontre. Le jeton Piège reste sur le territoire. Il
+est désormais désarmé.
+INTERACTION AVEC UN BÂTIMENT : Un adversaire peut construire un
+bâtiment sur un territoire possédant un Piège. A la fin
+de la partie, si seuls un jeton Piège (armé ou désarmé)
+et un bâtiment sont présents sur un territoire, c’est le
+possesseur du bâtiment qui contrôle ce territoire.
+LISTE DE PÉNALITÉ : Perdre 2 en Popularité ; Perdre 3 en
+Puissance ; Perdre 4$ et défausser 2 cartes Combat
+ARMÉ DÉSARMÉ
+EXEMPLE : A la fin du jeu,
+vous contrôlez 1 territoire
+Village avec votre
+personnage, et 1 territoire
+Ferme contenant un Piège
+armé et pas d'unités. Ainsi
+vous contrôlez 2 territoires
+en fin de partie.
+7
+au hasard. Les adversaires peuvent être informés des
+diverses pénalités existantes avant le début de la partie.
+CAPACITÉS DU PERSONNAGE ET DES MECH
+TOKA : Une fois par tour, lors d’un déplacement, votre
+personnage ou l’un de vos Mech peut traverser une
+rivière. Un Mech peut utiliser cette capacité tout en
+transportant des ouvriers. Le personnage ou le Mech ne
+peut pas traverser plusieurs rivières grâce à une action
+Déplacement d’une carte Usine.
+SUITON : Votre personnage et vos Mech peuvent se déplacer
+depuis/vers des lacs. Si un combat se déroule sur un lac
+(certaines capacités de factions le permettent), vous
+pouvez jouer 1 carte Combat supplémentaire. Applicable
+une seule fois par combat et non par unité. Si un Mech
+transporte des ouvriers sur un lac ou si un personnage/
+Mech transporte des ressources sur un lac, vous ne
+pouvez pas les laisser ici après votre déplacement. Du
+moins sans l’assistance d’un autre Mech. Vous ne pouvez
+pas construire de bâtiment sur un lac, mais vous pouvez
+y placer un Piège.
+RONIN : Avant un combat où vous avez exactement 1 unité
+(0 ouvrier et soit 1 personnage soit 1 Mech), vous pouvez
+obtenir 2 en Puissance sur la piste correspondante.
+SHINOBI : Votre personnage et vos Mech peuvent se déplacer
+sur n’importe quel territoire ayant un jeton Piège, et ce
+quelque soit la distance. Lorsque vous utilisez la capacité
+Shinobi, si votre personnage ou vos Mech terminent
+leur déplacement sur la même case qu’un jeton Piège
+désarmé (mais pas au milieu d’un déplacement effectué par
+une carte Action d’Usine), vous pouvez choisir d’armer
+le Piège. Si en utilisant Shinobi un affrontement a lieu,
+vous ne pourrez armer le Piège que si vous gagner le
+combat.
+8
+CONTEXTE HISTORIQUE
+Dès son plus jeune âge, Akiko, la nièce du Shogun,
+lisait des histoires de guerriers et autres aventuriers se
+passant dans des contrées lointaines. Elle était vraiment
+fascinée par la beauté et l’art du combat à l’épée.
+ses 16 ans, Akiko supplia son oncle de la laisser suivre
+un entrainement auprès d’une académie réputée de
+samuras. Il accepta. Elle était l’étudiante parfaite, qui
+s’entrainait constamment jusqu’à exceller au combat, au
+tir, en stratégie et en tactique. Pour la récompenser, le
+Shogun lui offrit un singe spécial nommé Jiro.
+Lorsque Akiko entra dans sa deuxième année de
+formation, son frère, un proéminent ingénieur, disparut
+lors d’une mission dans une mystérieuse Usine, en
+Europe de l’Est. Les conseillers du Shogun suspectèrent
+qu’il avait été capturé par des agents de l’union Rusviet.
+Ayant foi des compétences de sa nièce en tant que
+samuraï, le Shogun autorisa Akiko a dirigé une
+importante expédition militaire afin de renverser les
+Rusviets, retrouver les ingénieurs de Togawa et d’en
+apprendre plus sur l’Usine.
+VOUS SOUHAITEZ REGARDER UNE VIDÉO EXPLICATIVE DES RÈGLES ?
+Allez sur stonemaiergames.com.games/scythe/videos
+VOUS SOUHAITEZ LIRE LES RÈGLES DANS UNE AUTRE LANGUE ?
+Téléchargez les règles et aides de jeu dans une douzaine de langues sur
+stonemaiergames.com.games/scythe/rules-and-print-play
+VOUS AVEZ UNE QUESTION PENDANT UNE PARTIE ?
+Tweetez-la à @stonemaiergames avec le hashtag #scythe
+VOUS AVEZ PERDU UNE PIÈCE DU JEU ?
+Demandez-la à stonemaiergames.com/replacement-parts
+VOUS SOUHAITEZ RESTER AU COURANT DE NOS DERNIÈRES NOUVEAUTÉS ?
+Inscrivez-vous à notre lettre d’information sur
+stonemaiergames.com/e-newsletter
+© 2016 Stonemaier LLC. Scythe is a trademark of Stonemaier LLC. All Rights Reserved.
+TRADUCTION FRANÇAISE : Julien Duprié
