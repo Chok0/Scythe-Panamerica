@@ -15,7 +15,9 @@ export const edgeGeo = (idA, idB, hMap) => {
   const dx = b.rx - a.rx, dy = b.ry - a.ry;
   const len = Math.sqrt(dx * dx + dy * dy);
   if (!len) return null;
-  const px = -dy / len, py = dx / len, half = HS * 0.52;
+  // 0.60: slightly longer than the shared edge so consecutive river segments
+  // meet at hex corners and read as one continuous stream
+  const px = -dy / len, py = dx / len, half = HS * 0.60;
   return { x1: mx + px * half, y1: my + py * half, x2: mx - px * half, y2: my - py * half, mx, my };
 };
 

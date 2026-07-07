@@ -196,8 +196,10 @@ export default function App(){
   const mapCenterOnMe=useCallback(()=>{
     if(!me)return;
     const heroHex=hMap[me.hero];if(!heroHex)return;
-    const zoomW=400,zoomH=400; // tight view around hero
-    setMapView({x:heroHex.rx-zoomW/2,y:heroHex.ry-zoomH/2,w:zoomW,h:zoomH});
+    const zoomW=400,zoomH=400; // tight view around hero, clamped to board bounds
+    const x=Math.max(MAP_BASE.x,Math.min(MAP_BASE.x+MAP_BASE.w-zoomW,heroHex.rx-zoomW/2));
+    const y=Math.max(MAP_BASE.y,Math.min(MAP_BASE.y+MAP_BASE.h-zoomH,heroHex.ry-zoomH/2));
+    setMapView({x,y,w:zoomW,h:zoomH});
   },[me]);
   // ── Structured log: auto-categorize from emoji/content ──
   const turnRef=useRef(0);
@@ -251,7 +253,12 @@ export default function App(){
     ps.forEach(p=>{const f=FACTIONS[p.faction];addLog(`${p.isBot?"🤖":"👤"} ${f.name} (${p.matName})  ⚡${p.power} 🃏${p.combatCards} ♥${p.pop} 💰${p.coins}`);});
     // Auto-center on player's hero
     const heroHex=hMap[ps[0].hero];
-    if(heroHex){const zw=700,zh=700;setMapView({x:heroHex.rx-zw/2,y:heroHex.ry-zh/2,w:zw,h:zh});}
+    if(heroHex){
+      const zw=700,zh=700;
+      const x=Math.max(MAP_BASE.x,Math.min(MAP_BASE.x+MAP_BASE.w-zw,heroHex.rx-zw/2));
+      const y=Math.max(MAP_BASE.y,Math.min(MAP_BASE.y+MAP_BASE.h-zh,heroHex.ry-zh/2));
+      setMapView({x,y,w:zw,h:zh});
+    }
   },[selFaction,selMat,numBots,addLog]);
 
   const revealObjective=useCallback((objIdx)=>{
@@ -1530,9 +1537,10 @@ export default function App(){
             <filter id="softglow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <radialGradient id="hero-aura"><stop offset="0%" stopColor="#C9A84C" stopOpacity="0.3"/><stop offset="60%" stopColor="#C9A84C" stopOpacity="0.05"/><stop offset="100%" stopColor="#C9A84C" stopOpacity="0"/></radialGradient>
             <radialGradient id="empire-aura"><stop offset="0%" stopColor="#1A3A6A" stopOpacity="0.4"/><stop offset="50%" stopColor="#ff0000" stopOpacity="0.1"/><stop offset="100%" stopColor="#ff0000" stopOpacity="0"/></radialGradient>
-            <radialGradient id="mapvig" cx="50%" cy="47%" r="56%"><stop offset="0%" stopColor="transparent"/><stop offset="75%" stopColor="rgba(10,8,4,1)" stopOpacity="0.2"/><stop offset="100%" stopColor="rgba(10,8,4,1)" stopOpacity="0.75"/></radialGradient>
+            <radialGradient id="mapvig" cx="50%" cy="47%" r="60%"><stop offset="0%" stopColor="transparent"/><stop offset="80%" stopColor="rgba(10,8,4,1)" stopOpacity="0.06"/><stop offset="100%" stopColor="rgba(10,8,4,1)" stopOpacity="0.3"/></radialGradient>
+            <radialGradient id="mapbg" cx="50%" cy="45%" r="75%"><stop offset="0%" stopColor="#26211a"/><stop offset="70%" stopColor="#1c1812"/><stop offset="100%" stopColor="#12100a"/></radialGradient>
           </defs>
-          <rect x="20" y="20" width="980" height="990" fill="#0b0a07"/>
+          <rect x="20" y="20" width="980" height="990" fill="url(#mapbg)"/>
           <rect x="20" y="20" width="980" height="990" fill="url(#mapvig)"/>
           {/* Compass */}
           <g transform="translate(920,90)" opacity={0.2}>
@@ -1540,13 +1548,13 @@ export default function App(){
             <polygon points="0,-22 -3,-6 0,-8 3,-6" fill="#c9a84c" opacity="0.9"/>
             <text y="-26" textAnchor="middle" fontSize="7" fill="#c9a84c" style={{fontFamily:"var(--font-title)"}}>N</text>
           </g>
-          {/* Rivers */}
+          {/* Rivers — painted water ribbons with light banks (no neon) */}
           {RIVERS.map(([a,b],i)=>{const g=edgeGeo(a,b,hMap);if(!g)return null;return(
             <React.Fragment key={`r${i}`}>
-              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#0a2a50" strokeWidth={10} strokeLinecap="round" opacity={0.5}/>
-              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#1a5590" strokeWidth={5} strokeLinecap="round" opacity={0.6}/>
-              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#4098d0" strokeWidth={2.5} strokeLinecap="round" opacity={0.5}/>
-              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#60b8f0" strokeWidth={1.2} strokeLinecap="round" opacity={0.2} strokeDasharray="4 12" style={{animation:"riverFlow 3s linear infinite"}}/>
+              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#d8c9a3" strokeWidth={11} strokeLinecap="round" opacity={0.35}/>
+              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#1e3f5e" strokeWidth={8.5} strokeLinecap="round" opacity={0.95}/>
+              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#3a688e" strokeWidth={5} strokeLinecap="round" opacity={0.9}/>
+              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#7fb3d6" strokeWidth={1.6} strokeLinecap="round" opacity={0.45} strokeDasharray="5 9" style={{animation:"riverFlow 4s linear infinite"}}/>
             </React.Fragment>
           );})}
           {/* Rails — center-to-center hex lines */}
@@ -1624,13 +1632,20 @@ export default function App(){
                   </g>)}
                 </React.Fragment>;
               })}
-              {encounterTokens.has(hex.id)&&(
-                <g style={{pointerEvents:"none"}}>
-                  <circle cx={hex.rx+26} cy={hex.ry+24} r={11} fill="rgba(6,5,3,0.6)"/>
-                  <circle cx={hex.rx+26} cy={hex.ry+24} r={10} fill="rgba(201,168,76,0.25)" stroke="#c9a84c" strokeWidth={1.5}/>
-                  <text x={hex.rx+26} y={hex.ry+29} textAnchor="middle" fontSize={14} fill="#c9a84c" fontWeight={700}>?</text>
-                </g>
-              )}
+              {encounterTokens.has(hex.id)&&(()=>{
+                const ex=hex.rx+26,ey=hex.ry+24;
+                const star=Array.from({length:8},(_,i)=>{
+                  const a=(Math.PI/4)*i-Math.PI/2;const r=i%2===0?6.5:2.6;
+                  return `${ex+r*Math.cos(a)},${ey+r*Math.sin(a)}`;
+                }).join(" ");
+                return(
+                  <g style={{pointerEvents:"none"}}>
+                    <circle cx={ex} cy={ey} r={11} fill="rgba(6,5,3,0.6)"/>
+                    <circle cx={ex} cy={ey} r={10} fill="#2e6b34" stroke="#d8c9a3" strokeWidth={1.5}/>
+                    <polygon points={star} fill="#e8e4d0" opacity={0.95}/>
+                  </g>
+                );
+              })()}
             </g>);
           })}
           {/* Hex click ripple */}
@@ -1645,11 +1660,11 @@ export default function App(){
           {/* Home Bases */}
           {Object.entries(HOME_BASES).map(([fid,hb])=>{
             const fc=FACTIONS[fid];if(!fc)return null;const isMe=fid===me.faction;
-            return(<g key={fid} opacity={isMe?1:0.2}>
-              <line x1={hb.rx} y1={hb.ry-16} x2={hb.rx} y2={hb.ry+16} stroke={fc.color} strokeWidth={isMe?1.5:0.5} opacity={0.5}/>
-              <path d={`M${hb.rx} ${hb.ry-14} L${hb.rx+30} ${hb.ry-8} L${hb.rx+28} ${hb.ry} L${hb.rx} ${hb.ry+6} Z`} fill={isMe?fc.color+"44":fc.color+"15"} stroke={fc.color} strokeWidth={isMe?1.5:0.6}/>
-              <text x={hb.rx+14} y={hb.ry-1} textAnchor="middle" fontSize={isMe?9:7} fill={fc.color} fontWeight={isMe?700:400} style={{fontFamily:"var(--font-title)"}}>{fc.name.slice(0,8)}</text>
-              <circle cx={hb.rx} cy={hb.ry-16} r={isMe?2.5:1.5} fill={fc.color}/>
+            return(<g key={fid} opacity={isMe?1:0.55}>
+              <line x1={hb.rx} y1={hb.ry-18} x2={hb.rx} y2={hb.ry+14} stroke="#d8c9a3" strokeWidth={1.2} opacity={0.6}/>
+              <path d={`M${hb.rx} ${hb.ry-17} L${hb.rx+34} ${hb.ry-10} L${hb.rx+32} ${hb.ry-1} L${hb.rx} ${hb.ry+5} Z`} fill={fc.color} opacity={isMe?0.9:0.55} stroke="#0e0c08" strokeWidth={1}/>
+              <text x={hb.rx+16} y={hb.ry-4} textAnchor="middle" fontSize={8} fill="#fff" fontWeight={700} stroke="rgba(0,0,0,0.5)" strokeWidth={2} paintOrder="stroke" style={{fontFamily:"var(--font-title)"}}>{fc.name.slice(0,8)}</text>
+              <circle cx={hb.rx} cy={hb.ry-18} r={2.5} fill="#d8c9a3"/>
             </g>);
           })}
           {/* Watermark */}

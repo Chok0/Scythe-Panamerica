@@ -4,24 +4,17 @@ import { hPts, HS } from '../../logic/hexMath.js';
 import { TerrainDecor } from './TerrainDecor.jsx';
 import { FACTION_ICON_MAP, HERO_ICON_MAP, WORKER_ICON_MAP } from './FactionIcons.jsx';
 
-// DA Doc: Hex rendering — cartographic military style
-// Stroke 0.5px, no rounded corners, flat (no drop-shadows on game elements)
-
-// Terrain-specific border colors for liseré
-const TERRAIN_LISERÉ = {
-  foret: "#1A5A1A", plaine: "#7A6B3A", sierra: "#5A6A7A", desert: "#8B6B35",
-  village: "#7A4A3A", lac: "#1A3A5A", marecage: "#2A4A2A", factory: "#5A1A1A",
-  montagne: "#4A4A4A", champs: "#7A6A20", toundra: "#4A5A6A",
-};
+// DA: painted-board hex rendering — bright terrain fills, dark gutter between
+// hexes with a thin cream separation line like the printed Scythe board
 
 // ═══════════════════════════════════════════════════════════════════
 // SVG resource icons for hex overlay — hard black/white, high contrast
 // ═══════════════════════════════════════════════════════════════════
 const HexResIcon = React.memo(({ cx, cy, resType }) => {
-  const s = 22; // icon size on hex — must stay small vs hex radius (54)
+  const s = 17; // icon size on hex — discreet marker, must not fight the art
   const x = cx - s / 2, y = cy - s / 2;
-  const col = "rgba(0,0,0,0.55)";
-  const sw = "1.6";
+  const col = "rgba(20,14,8,0.5)";
+  const sw = "1.7";
   if (resType === "metal") return (
     <g transform={`translate(${x},${y})`} style={{ pointerEvents: "none" }}>
       <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke={col} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" overflow="visible">
@@ -74,20 +67,25 @@ const HexResIcon = React.memo(({ cx, cy, resType }) => {
 export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory }) => {
   const t = TERRAINS[hex.t];
   const isWater = hex.t === "lac" || hex.t === "marecage";
-  const liseré = TERRAIN_LISERÉ[hex.t] || "#2A2518";
   return (
     <g>
-      {/* Base fill with gradient */}
+      {/* Base fill with gradient — painted-board look */}
       <polygon points={hPts(hex.rx, hex.ry)}
         fill={`url(#tg-${hex.t})`}
-        stroke={isV ? "#4A8A4A" : isSel ? "#C9A84C" : isHov ? t.stroke : liseré}
-        strokeWidth={isV ? 1.5 : isSel ? 2 : isHov ? 1.2 : 0.8}
-        opacity={isWater ? 0.75 : 1}
+        stroke="#171310"
+        strokeWidth={2.2}
       />
       {/* Texture pattern overlay */}
       <polygon points={hPts(hex.rx, hex.ry)} fill={`url(#tp-${hex.t})`} opacity={isWater ? 0.5 : 0.7} style={{ pointerEvents: "none" }} />
       {/* Terrain decorations */}
-      <g opacity={0.55}><TerrainDecor hex={hex} /></g>
+      <g opacity={0.85}><TerrainDecor hex={hex} /></g>
+      {/* Cream board line between hexes (printed-board separation) */}
+      <polygon points={hPts(hex.rx, hex.ry, HS - 1)} fill="none"
+        stroke={isSel ? "#e6c96a" : isHov ? "#e0d2a8" : "#d8c9a3"}
+        strokeWidth={isSel ? 2.2 : isHov ? 1.6 : 1}
+        opacity={isSel ? 0.95 : isHov ? 0.7 : 0.4}
+        style={{ pointerEvents: "none" }}
+      />
       {/* Resource SVG icon — top of hex so units don't cover it */}
       {t.res && <HexResIcon cx={hex.rx} cy={hex.ry - 24} resType={t.res} />}
       {/* Factory special: subtle pulsing ring */}
@@ -99,10 +97,13 @@ export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory }) => 
           <animate attributeName="opacity" values="0.05;0.15;0.05" dur="3s" repeatCount="indefinite" />
         </polygon>
       </>}
-      {/* Valid move overlay */}
+      {/* Valid move overlay — bright enough to read on the light painted hexes */}
       {isV && <>
-        <polygon points={hPts(hex.rx, hex.ry)} fill="rgba(74,138,74,0.15)" stroke="#4A8A4A" strokeWidth={1} opacity={0.8}>
-          <animate attributeName="opacity" values="0.4;0.8;0.4" dur="1.4s" repeatCount="indefinite" />
+        <polygon points={hPts(hex.rx, hex.ry)} fill="rgba(60,160,60,0.28)" stroke="none" style={{ pointerEvents: "none" }}>
+          <animate attributeName="opacity" values="0.5;1;0.5" dur="1.4s" repeatCount="indefinite" />
+        </polygon>
+        <polygon points={hPts(hex.rx, hex.ry, HS - 2)} fill="none" stroke="#b8f0a8" strokeWidth={2.5} opacity={0.9} style={{ pointerEvents: "none" }}>
+          <animate attributeName="opacity" values="0.55;0.95;0.55" dur="1.4s" repeatCount="indefinite" />
         </polygon>
       </>}
     </g>
