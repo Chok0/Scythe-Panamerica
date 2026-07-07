@@ -41,6 +41,8 @@ const SEED = parseInt(getArg('seed', '1'), 10);
 const MAX_ROUNDS = parseInt(getArg('maxRounds', '150'), 10);
 const VERBOSE = args.includes('--verbose');
 const DUMP = getArg('dump', null);
+// Expérience A/B : --ab noFlagBonus → les comptoirs Acadiane ne comptent plus au scoring
+const AB = getArg('ab', null);
 
 // ── RNG seedé (remplace Math.random pour la reproductibilité) ──
 const mulberry32 = (a) => () => {
@@ -75,6 +77,7 @@ const scorePlayer = (p) => {
     const isAdjHB = hbh && (ADJ[hbh.id] || []).includes(fl.hexId);
     if (!isAdjHB) flagBonus++;
   });
+  if (AB === 'noFlagBonus') flagBonus = 0;
   const territories = unitHexes.size;
   const factoryBonus = unitHexes.has(22) ? 3 : 0;
   // Règle : seules les ressources sur des territoires contrôlés comptent au scoring
@@ -86,7 +89,7 @@ const scorePlayer = (p) => {
   const starScore = p.stars * starMult;
   const terScore = (territories + factoryBonus + flagBonus) * terMult;
   const resScore = resPairs * resMult;
-  return { total: starScore + terScore + resScore + p.coins, starScore, terScore, resScore, coins: p.coins, territories, totalRes, popTier };
+  return { total: starScore + terScore + resScore + p.coins, starScore, terScore, resScore, coins: p.coins, territories, totalRes, popTier, flagBonus, flagBonusPts: flagBonus * terMult };
 };
 
 // Types d'étoiles pour l'analyse
@@ -202,10 +205,13 @@ const playGame = (gameIdx, log) => {
       const botHexes = new Set([p.hero, ...p.mechs.map(m => m.hexId)]);
       for (let oi = 0; oi < players.length; oi++) {
         if (oi === cp) continue;
-        const displaced = players[oi].workers.filter(w => botHexes.has(w.hexId));
+        // Règle : les ouvriers ne battent en retraite que s'ils sont SEULS —
+        // si héros/mechs défendent le hex, c'est le combat qui tranche
+        const defended = (hid) => players[oi].hero === hid || players[oi].mechs.some(m => m.hexId === hid);
+        const displaced = players[oi].workers.filter(w => botHexes.has(w.hexId) && !defended(w.hexId));
         if (displaced.length > 0) {
           const ohb = hbHexOf(players[oi].faction);
-          players[oi] = { ...players[oi], workers: players[oi].workers.map(w => botHexes.has(w.hexId) ? { ...w, hexId: ohb.id } : w) };
+          players[oi] = { ...players[oi], workers: players[oi].workers.map(w => botHexes.has(w.hexId) && !defended(w.hexId) ? { ...w, hexId: ohb.id } : w) };
           players[cp] = { ...players[cp], pop: Math.max(0, (players[cp].pop || 0) - displaced.length) };
         }
         if (players[oi].faction === 'frente') {
@@ -245,6 +251,7 @@ const playGame = (gameIdx, log) => {
 
       // ── Rails posés par une Gare ──
       if (players[cp]._pendingRails && players[cp]._pendingRails.length > 0) {
+        combatStats.railsBuilt = (combatStats.railsBuilt || 0) + players[cp]._pendingRails.length;
         rails = [...rails, ...players[cp]._pendingRails];
         delete players[cp]._pendingRails;
       }
@@ -301,10 +308,16 @@ const playGame = (gameIdx, log) => {
     empireKills: p.empireKills || 0,
     workers: p.workers.length, mechs: p.mechs.length,
     buildings: (p.buildings || []).length, upgrades: p.upgrades || 0, recruits: p.recruits || 0,
+    // Instrumentation : usage des capacités et infrastructures
+    abilities: (p.unlockedAbilities || []).length,
+    builtGare: (p.buildings || []).some(b => b.type === 'gare'),
+    traps: (p.trapTokens || []).length, flags: (p.flagTokens || []).length,
+    imperialCoins: p.imperialCoins || 0, chimere: !!p.chimereUsed, capturedWorkers: p.capturedWorkers || 0,
+    encounters: p.encounters || 0,
     ...scorePlayer(p),
   })).sort((a, b) => b.total - a.total);
 
-  return { gameIdx, nPlayers, rounds: Math.min(round, MAX_ROUNDS), endedBy, scored, issues, combatStats, empireLeft: Object.keys(empire).length };
+  return { gameIdx, nPlayers, rounds: Math.min(round, MAX_ROUNDS), endedBy, scored, issues, combatStats, empireLeft: Object.keys(empire).length, railsBuilt: combatStats.railsBuilt || 0 };
 };
 
 // ── Boucle principale ──
@@ -325,7 +338,7 @@ const pct = (a, b) => b > 0 ? (100 * a / b).toFixed(1) + '%' : '—';
 const avg = (arr) => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
 
 const byFaction = {}; const byMat = {};
-FACTION_IDS.forEach(f => { byFaction[f] = { games: 0, wins: 0, triggers: 0, scores: [], stars: [] }; });
+FACTION_IDS.forEach(f => { byFaction[f] = { games: 0, wins: 0, triggers: 0, scores: [], stars: [], abilities: [], gares: 0, traps: [], flags: [], flagPts: [], imperial: [], chimeres: 0, captured: [], encounters: [] }; });
 MATS.forEach(m => { byMat[m.name] = { games: 0, wins: 0, scores: [] }; });
 const starCounts = {}; STAR_FLAGS.forEach(([, l]) => { starCounts[l] = { all: 0, winners: 0 }; });
 let stalemates = 0; const allIssues = []; const roundsArr = [];
@@ -339,11 +352,16 @@ games.forEach(g => {
   defenses += g.combatStats.defenses; defWins += g.combatStats.defWins;
   pvpTotal += g.combatStats.pvp || 0; encountersTotal += g.combatStats.encounters || 0;
   g.scored.forEach((s, rank) => {
-    byFaction[s.faction].games++; byMat[s.mat].games++;
-    byFaction[s.faction].scores.push(s.total); byMat[s.mat].scores.push(s.total);
-    byFaction[s.faction].stars.push(s.stars);
-    if (rank === 0) { byFaction[s.faction].wins++; byMat[s.mat].wins++; }
-    if (s.isTrigger) byFaction[s.faction].triggers++;
+    const bf = byFaction[s.faction];
+    bf.games++; byMat[s.mat].games++;
+    bf.scores.push(s.total); byMat[s.mat].scores.push(s.total);
+    bf.stars.push(s.stars);
+    bf.abilities.push(s.abilities); if (s.builtGare) bf.gares++;
+    bf.traps.push(s.traps); bf.flags.push(s.flags); bf.flagPts.push(s.flagBonusPts || 0);
+    bf.imperial.push(s.imperialCoins); if (s.chimere) bf.chimeres++;
+    bf.captured.push(s.capturedWorkers); bf.encounters.push(s.encounters);
+    if (rank === 0) { bf.wins++; byMat[s.mat].wins++; }
+    if (s.isTrigger) bf.triggers++;
     STAR_FLAGS.forEach(([, l]) => {
       if (s.starFlags[l]) { starCounts[l].all++; if (rank === 0) starCounts[l].winners++; }
     });
@@ -359,6 +377,8 @@ P(`Combats PvE (bot attaque Empire): ${pveAttacks}, gagnés ${pct(pveWins, pveAt
 P(`Défenses vs Empire: ${defenses}, gagnées ${pct(defWins, defenses)}`);
 P(`Combats PvP entre bots: ${pvpTotal} (${(pvpTotal / games.length).toFixed(1)}/partie)`);
 P(`Rencontres résolues par les bots: ${encountersTotal} (${(encountersTotal / games.length).toFixed(1)}/partie, 9 jetons max)`);
+P(`Rails posés par les bots (Gares): ${games.reduce((a, g) => a + (g.railsBuilt || 0), 0)} (${(games.reduce((a, g) => a + (g.railsBuilt || 0), 0) / games.length).toFixed(1)}/partie, +2 rails Empire au setup)`);
+if (AB) P(`⚗ Mode A/B actif: ${AB}`);
 P(`Crashs: ${crashes.length}`);
 crashes.slice(0, 5).forEach(c => P(`  💥 G${c.game}: ${c.error}\n     ${c.stack}`));
 P(`Violations d'invariants: ${allIssues.length}`);
@@ -369,6 +389,19 @@ FACTION_IDS.forEach(f => {
   const d = byFaction[f];
   P(`  ${FACTIONS[f].name.padEnd(16)} ${String(d.games).padStart(4)} parties | win ${pct(d.wins, d.games).padStart(6)} | déclenche fin ${pct(d.triggers, d.games).padStart(6)} | score moy ${avg(d.scores).toFixed(1).padStart(6)} | étoiles moy ${avg(d.stars).toFixed(2)}`);
 });
+P(`\n── Usage des capacités par faction ──`);
+FACTION_IDS.forEach(f => {
+  const d = byFaction[f];
+  if (d.games === 0) return;
+  const extra = f === 'frente' ? `traps ${avg(d.traps).toFixed(1)}/4`
+    : f === 'acadiane' ? `comptoirs ${avg(d.flags).toFixed(1)}/4 (+${avg(d.flagPts).toFixed(1)} pts scoring)`
+    : f === 'dominion' ? `commerce ${avg(d.imperial).toFixed(1)}$ cumulés`
+    : f === 'bayou' ? `chimère ${pct(d.chimeres, d.games)}`
+    : f === 'confederation' ? `ouvriers capturés ${avg(d.captured).toFixed(2)}`
+    : `—`;
+  P(`  ${FACTIONS[f].name.padEnd(16)} abilities mech ${avg(d.abilities).toFixed(1)}/4 | gare ${pct(d.gares, d.games).padStart(6)} | rencontres ${avg(d.encounters).toFixed(1)} | ${extra}`);
+});
+
 P(`\n── Win rate par plateau joueur ──`);
 MATS.forEach(m => {
   const d = byMat[m.name];

@@ -15,6 +15,28 @@ import { transportUnits } from './transport.js';
 // Evaluate game phase: early (0-2 stars), mid (3-4), late (5+)
 const getPhase = (p) => p.stars >= 5 ? "late" : p.stars >= 3 ? "mid" : "early";
 
+// Bottom action maxed out? (no more stars/progress from it)
+const isBottomMaxed = (p, bottomAction) =>
+  bottomAction === "Upgrade" ? (p.upgrades || 0) >= 6
+    : bottomAction === "Deploy" ? p.mechs.length >= 4
+    : bottomAction === "Build" ? (p.buildings || []).length >= 4
+    : (p.recruits || 0) >= 4;
+
+// Ressources manquantes pour les actions bottom encore utiles → { resType: qtyManquante }
+// C'est le coeur de la planification : production et déplacements d'ouvriers visent ces types
+const neededResources = (p) => {
+  const costs = getBottomCost(p);
+  const need = {};
+  BOTTOM.forEach((ba, ci) => {
+    if (isBottomMaxed(p, ba)) return;
+    const bc = costs[ci];
+    if (!bc) return;
+    const missing = bc.qty - countRes(p, bc.res);
+    if (missing > 0) need[bc.res] = Math.max(need[bc.res] || 0, missing);
+  });
+  return need;
+};
+
 // Score a column choice based on strategic value
 const scoreColumn = (p, col, empire, enemyHexes, rails) => {
   const action = p.topRow[col];
@@ -45,6 +67,9 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
     }
     else if (bottomAction === "Build") score += 8;
     else if (bottomAction === "Upgrade") score += 5;
+  } else if (bottomMaxed) {
+    // Colonne au bottom épuisé : le top seul doit vraiment valoir le coup
+    score -= 8;
   }
 
   // Top action value
@@ -56,6 +81,14 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
       // More workers = more production value
       const wHexes = new Set(p.workers.map(w => w.hexId));
       score += Math.min(wHexes.size, 2) * 3;
+      // Planification : produire vaut plus si nos ouvriers sont sur des hex
+      // qui produisent les ressources dont nos bottoms ont besoin
+      const need = neededResources(p);
+      for (const hid of wHexes) {
+        const h = hMap[hid];
+        const res = h && TERRAINS[h.t]?.res;
+        if (res && need[res]) { score += 5; break; }
+      }
     }
   } else if (action === "Trade") {
     if (p.coins >= 1) {
@@ -98,6 +131,8 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx) => {
   // Estimation de notre force de combat pour décider d'attaquer
   const myStrength = p.power + (p.combatCards || 0) * 3;
   const wantCombatStar = (p.combatWins || 0) < 2;
+  // Planification : les ouvriers convergent vers les ressources manquantes des bottoms
+  const need = neededResources(p);
 
   let bestHex = null, bestScore = -999;
   for (const hexId of validMoves) {
@@ -109,6 +144,8 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx) => {
     // Resource hex value
     if (t && t.res && t.res !== "ouvriers") s += 3;
     if (t && t.res === "ouvriers" && p.workers.length < 5) s += 4;
+    // Hex produisant une ressource dont un bottom a besoin : priorité forte pour les ouvriers
+    if (purpose === "worker" && t && t.res && need[t.res]) s += 8;
 
     // Avoid enemy hexes for workers (displacement risk)
     if (purpose === "worker" && enemyHexes && enemyHexes.has(hexId)) s -= 15;
@@ -280,14 +317,22 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     if (!canPayProduce(p)) { logs.push(`🤖 ${f.name}: (coût prod.)`); } else {
       payProduce(p);
       const byHex = {}; p.workers.forEach(w => { if (!byHex[w.hexId]) byHex[w.hexId] = []; byHex[w.hexId].push(w); });
-      // Pick best 2 hexes (prefer resource hexes, limit workers to 5 total)
+      // Pick best 2 hexes : d'abord ceux qui produisent une ressource MANQUANTE
+      // pour un bottom, puis villages (si sous le cap), puis autres ressources
+      const needP = neededResources(p);
+      const prodCap = getPhase(p) === "early" ? 5 : 8;
+      const hexScore = (hidStr) => {
+        const h = hMap[parseInt(hidStr)];
+        if (!h) return 0;
+        const res = TERRAINS[h.t]?.res;
+        let s = 0;
+        if (res && needP[res]) s += 10;
+        else if (res === "ouvriers" && p.workers.length < prodCap) s += 6;
+        else if (res && res !== "ouvriers") s += 3;
+        return s + byHex[hidStr].length;
+      };
       const hexIds = Object.keys(byHex)
-        .sort((a, b) => {
-          const ha = hMap[parseInt(a)], hb = hMap[parseInt(b)];
-          const ra = ha && TERRAINS[ha.t]?.res ? 1 : 0;
-          const rb = hb && TERRAINS[hb.t]?.res ? 1 : 0;
-          return rb - ra || byHex[b].length - byHex[a].length;
-        })
+        .sort((a, b) => hexScore(b) - hexScore(a))
         .slice(0, 2);
       // Worker cap: 5 early (Stegmaier's rule), then push to 8 for the star
       const workerCap = getPhase(p) === "early" ? 5 : 8;
@@ -458,9 +503,17 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   // ── DOMINION COMMERCE IMPÉRIAL ──
   if (p.faction === "dominion") {
     const resTypes = ["metal", "bois", "nourriture", "petrole"];
-    const available = resTypes.filter(r => countRes(p, r) >= 1);
+    // Ne convertir QUE le surplus : jamais une ressource requise par un bottom
+    // non maxé (sinon le Dominion cannibalise sa propre course aux étoiles)
+    const reserved = new Set();
+    const costsD = getBottomCost(p);
+    BOTTOM.forEach((ba, ci) => {
+      if (isBottomMaxed(p, ba)) return;
+      const bc = costsD[ci];
+      if (bc && countRes(p, bc.res) <= bc.qty) reserved.add(bc.res);
+    });
+    const available = resTypes.filter(r => countRes(p, r) >= 1 && !reserved.has(r));
     if (available.length > 0) {
-      // Prefer spending least useful resource
       const pick = available[available.length - 1];
       const sp = spendRes(p, pick, 1); Object.assign(p, { resources: sp.resources });
       // Strategic choice: coins early/mid, cards if combat imminent
