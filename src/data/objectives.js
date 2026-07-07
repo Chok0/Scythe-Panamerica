@@ -31,8 +31,8 @@ export const OBJECTIVES = [
   } },
   { id: 7, name: "Le Marchand", desc: "16+ pièces", check: (p) => p.coins >= 16 },
   { id: 8, name: "Le Guerrier", desc: "3+ mechas déployés", check: (p) => p.mechs.length >= 3 },
-  { id: 9, name: "Le Réseau", desc: "2+ hex avec vos Mines", check: (p) => {
-    if (!p.buildings) return false; return p.buildings.filter(b => b.type === "mine").length >= 2;
+  { id: 9, name: "Le Réseau", desc: "2+ bâtiments construits", check: (p) => {
+    return (p.buildings || []).length >= 2;
   } },
   { id: 10, name: "L'Éclaireur", desc: "2+ rencontres résolues", check: (p) => (p.encounters || 0) >= 2 },
   { id: 11, name: "Le Colonisateur", desc: "6+ ouvriers sur le plateau", check: (p) => p.workers.length >= 6 },

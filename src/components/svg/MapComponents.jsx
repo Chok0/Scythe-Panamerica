@@ -4,24 +4,17 @@ import { hPts, HS } from '../../logic/hexMath.js';
 import { TerrainDecor } from './TerrainDecor.jsx';
 import { FACTION_ICON_MAP, HERO_ICON_MAP, WORKER_ICON_MAP } from './FactionIcons.jsx';
 
-// DA Doc: Hex rendering — cartographic military style
-// Stroke 0.5px, no rounded corners, flat (no drop-shadows on game elements)
-
-// Terrain-specific border colors for liseré
-const TERRAIN_LISERÉ = {
-  foret: "#1A5A1A", plaine: "#7A6B3A", sierra: "#5A6A7A", desert: "#8B6B35",
-  village: "#7A4A3A", lac: "#1A3A5A", marecage: "#2A4A2A", factory: "#5A1A1A",
-  montagne: "#4A4A4A", champs: "#7A6A20", toundra: "#4A5A6A",
-};
+// DA: painted-board hex rendering — bright terrain fills, dark gutter between
+// hexes with a thin cream separation line like the printed Scythe board
 
 // ═══════════════════════════════════════════════════════════════════
 // SVG resource icons for hex overlay — hard black/white, high contrast
 // ═══════════════════════════════════════════════════════════════════
 const HexResIcon = React.memo(({ cx, cy, resType }) => {
-  const s = 40; // icon size on hex — ×2 for readability
+  const s = 17; // icon size on hex — discreet marker, must not fight the art
   const x = cx - s / 2, y = cy - s / 2;
-  const col = "rgba(0,0,0,0.9)";
-  const sw = "2";
+  const col = "rgba(20,14,8,0.5)";
+  const sw = "1.7";
   if (resType === "metal") return (
     <g transform={`translate(${x},${y})`} style={{ pointerEvents: "none" }}>
       <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke={col} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" overflow="visible">
@@ -74,22 +67,27 @@ const HexResIcon = React.memo(({ cx, cy, resType }) => {
 export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory }) => {
   const t = TERRAINS[hex.t];
   const isWater = hex.t === "lac" || hex.t === "marecage";
-  const liseré = TERRAIN_LISERÉ[hex.t] || "#2A2518";
   return (
     <g>
-      {/* Base fill with gradient */}
+      {/* Base fill with gradient — painted-board look */}
       <polygon points={hPts(hex.rx, hex.ry)}
         fill={`url(#tg-${hex.t})`}
-        stroke={isV ? "#4A8A4A" : isSel ? "#C9A84C" : isHov ? t.stroke : liseré}
-        strokeWidth={isV ? 1.5 : isSel ? 2 : isHov ? 1.2 : 0.8}
-        opacity={isWater ? 0.75 : 1}
+        stroke="#171310"
+        strokeWidth={2.2}
       />
       {/* Texture pattern overlay */}
       <polygon points={hPts(hex.rx, hex.ry)} fill={`url(#tp-${hex.t})`} opacity={isWater ? 0.5 : 0.7} style={{ pointerEvents: "none" }} />
       {/* Terrain decorations */}
-      <g opacity={0.55}><TerrainDecor hex={hex} /></g>
-      {/* Resource SVG icon — centered, hard contrast */}
-      {t.res && <HexResIcon cx={hex.rx} cy={hex.ry} resType={t.res} />}
+      <g opacity={0.85}><TerrainDecor hex={hex} /></g>
+      {/* Cream board line between hexes (printed-board separation) */}
+      <polygon points={hPts(hex.rx, hex.ry, HS - 1)} fill="none"
+        stroke={isSel ? "#e6c96a" : isHov ? "#e0d2a8" : "#d8c9a3"}
+        strokeWidth={isSel ? 2.2 : isHov ? 1.6 : 1}
+        opacity={isSel ? 0.95 : isHov ? 0.7 : 0.4}
+        style={{ pointerEvents: "none" }}
+      />
+      {/* Resource SVG icon — top of hex so units don't cover it */}
+      {t.res && <HexResIcon cx={hex.rx} cy={hex.ry - 24} resType={t.res} />}
       {/* Factory special: subtle pulsing ring */}
       {isFactory && <>
         <polygon points={hPts(hex.rx, hex.ry, HS + 4)} fill="none" stroke="#8A2A2A" strokeWidth={0.6} opacity={0.2} strokeDasharray="5 3">
@@ -99,10 +97,13 @@ export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory }) => 
           <animate attributeName="opacity" values="0.05;0.15;0.05" dur="3s" repeatCount="indefinite" />
         </polygon>
       </>}
-      {/* Valid move overlay */}
+      {/* Valid move overlay — bright enough to read on the light painted hexes */}
       {isV && <>
-        <polygon points={hPts(hex.rx, hex.ry)} fill="rgba(74,138,74,0.15)" stroke="#4A8A4A" strokeWidth={1} opacity={0.8}>
-          <animate attributeName="opacity" values="0.4;0.8;0.4" dur="1.4s" repeatCount="indefinite" />
+        <polygon points={hPts(hex.rx, hex.ry)} fill="rgba(60,160,60,0.28)" stroke="none" style={{ pointerEvents: "none" }}>
+          <animate attributeName="opacity" values="0.5;1;0.5" dur="1.4s" repeatCount="indefinite" />
+        </polygon>
+        <polygon points={hPts(hex.rx, hex.ry, HS - 2)} fill="none" stroke="#b8f0a8" strokeWidth={2.5} opacity={0.9} style={{ pointerEvents: "none" }}>
+          <animate attributeName="opacity" values="0.55;0.95;0.55" dur="1.4s" repeatCount="indefinite" />
         </polygon>
       </>}
     </g>
@@ -117,75 +118,73 @@ export const UnitToken = React.memo(({ type, cx, cy, color, label, icon, faction
     const HeroIcon = factionId ? HERO_ICON_MAP[factionId] : null;
     if (HeroIcon) {
       return (<g>
-        {/* Solid backdrop ×2 */}
-        <circle cx={cx} cy={cy + 2} r={36} fill="rgba(6,5,3,0.85)" stroke={color} strokeWidth={2.5} />
-        <HeroIcon cx={cx} cy={cy + 2} size={64} color={color} />
-        <text x={cx} y={cy + 48} textAnchor="middle" fontSize="11" fill={color} fontWeight="700" stroke="rgba(6,5,3,0.8)" strokeWidth="3" paintOrder="stroke" style={{ fontFamily: "var(--font-map, 'IM Fell English SC', serif)" }}>{label}</text>
+        <circle cx={cx} cy={cy + 1} r={19} fill="rgba(6,5,3,0.85)" stroke={color} strokeWidth={2} />
+        <HeroIcon cx={cx} cy={cy + 1} size={32} color={color} />
+        <text x={cx} y={cy + 30} textAnchor="middle" fontSize="9" fill={color} fontWeight="700" stroke="rgba(6,5,3,0.8)" strokeWidth="2.5" paintOrder="stroke" style={{ fontFamily: "var(--font-map, 'IM Fell English SC', serif)" }}>{label}</text>
       </g>);
     }
-    // Fallback — generic star ×2
-    const r = 28, ri = 12;
+    // Fallback — generic star
+    const r = 15, ri = 6.5;
     const pts = Array.from({ length: 10 }, (_, i) => {
       const a = (Math.PI / 5) * i - Math.PI / 2;
       const rad = i % 2 === 0 ? r : ri;
       return `${cx + rad * Math.cos(a)},${cy + rad * Math.sin(a)}`;
     }).join(" ");
     return (<g>
-      <circle cx={cx} cy={cy} r={32} fill="rgba(6,5,3,0.85)" />
-      <polygon points={pts} fill={color} stroke="rgba(255,255,240,0.9)" strokeWidth={2.5} />
-      <text x={cx} y={cy + 42} textAnchor="middle" fontSize="11" fill={color} fontWeight="700" stroke="rgba(6,5,3,0.8)" strokeWidth="3" paintOrder="stroke" style={{ fontFamily: "var(--font-map, 'IM Fell English SC', serif)" }}>{label}</text>
+      <circle cx={cx} cy={cy} r={17} fill="rgba(6,5,3,0.85)" />
+      <polygon points={pts} fill={color} stroke="rgba(255,255,240,0.9)" strokeWidth={1.5} />
+      <text x={cx} y={cy + 28} textAnchor="middle" fontSize="9" fill={color} fontWeight="700" stroke="rgba(6,5,3,0.8)" strokeWidth="2.5" paintOrder="stroke" style={{ fontFamily: "var(--font-map, 'IM Fell English SC', serif)" }}>{label}</text>
     </g>);
   }
   if (type === "mech") {
     const FactionIcon = factionId ? FACTION_ICON_MAP[factionId] : null;
     if (FactionIcon) {
       return (<g>
-        {/* Solid hex backdrop ×2 */}
-        {(() => { const r = 40; const pts = Array.from({ length: 6 }, (_, i) => { const a = (Math.PI / 3) * i - Math.PI / 6; return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`; }).join(" "); return <polygon points={pts} fill="rgba(6,5,3,0.8)" stroke={color} strokeWidth={2.5} />; })()}
-        <FactionIcon cx={cx} cy={cy} size={76} color={color} />
+        {(() => { const r = 20; const pts = Array.from({ length: 6 }, (_, i) => { const a = (Math.PI / 3) * i - Math.PI / 6; return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`; }).join(" "); return <polygon points={pts} fill="rgba(6,5,3,0.8)" stroke={color} strokeWidth={2} />; })()}
+        <FactionIcon cx={cx} cy={cy} size={34} color={color} />
       </g>);
     }
-    const r = 32;
+    const r = 17;
     const pts = Array.from({ length: 6 }, (_, i) => {
       const a = (Math.PI / 3) * i - Math.PI / 6;
       return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
     }).join(" ");
     return (<g>
-      <polygon points={pts} fill="rgba(6,5,3,0.8)" stroke={color} strokeWidth={2.5} />
-      <polygon points={pts} fill={color + "88"} stroke="rgba(255,255,240,0.8)" strokeWidth={1.5} />
+      <polygon points={pts} fill="rgba(6,5,3,0.8)" stroke={color} strokeWidth={2} />
+      <polygon points={pts} fill={color + "88"} stroke="rgba(255,255,240,0.8)" strokeWidth={1.2} />
     </g>);
   }
   if (type === "building") {
     const bt = icon || "■";
     return (<g>
-      <rect x={cx - 20} y={cy - 20} width={40} height={40} rx={5} fill="rgba(6,5,3,0.85)" stroke={color} strokeWidth={2.5} />
-      <rect x={cx - 18} y={cy - 18} width={36} height={36} rx={4} fill={color + "66"} stroke="none" />
-      <text x={cx} y={cy + 8} textAnchor="middle" fontSize={22}>{bt}</text>
+      <rect x={cx - 13} y={cy - 13} width={26} height={26} rx={4} fill="rgba(6,5,3,0.85)" stroke={color} strokeWidth={2} />
+      <rect x={cx - 11.5} y={cy - 11.5} width={23} height={23} rx={3} fill={color + "66"} stroke="none" />
+      <text x={cx} y={cy + 5} textAnchor="middle" fontSize={14}>{bt}</text>
     </g>);
   }
-  // Worker — faction-specific silhouette ×2
+  // Worker — faction-specific silhouette
   const WorkerIcon = factionId ? WORKER_ICON_MAP[factionId] : null;
   if (WorkerIcon) {
     return (<g>
-      <circle cx={cx} cy={cy} r={24} fill="rgba(6,5,3,0.85)" stroke={color} strokeWidth={2} />
-      <WorkerIcon cx={cx} cy={cy} size={40} color={color} />
+      <circle cx={cx} cy={cy} r={12} fill="rgba(6,5,3,0.85)" stroke={color} strokeWidth={1.5} />
+      <WorkerIcon cx={cx} cy={cy} size={20} color={color} />
     </g>);
   }
-  // Fallback — filled circle ×2
+  // Fallback — filled circle
   return (<g>
-    <circle cx={cx} cy={cy} r={18} fill="rgba(6,5,3,0.85)" stroke={color} strokeWidth={2.5} />
-    <circle cx={cx} cy={cy} r={14} fill={color} stroke="rgba(255,255,240,0.8)" strokeWidth={1.5} />
+    <circle cx={cx} cy={cy} r={10} fill="rgba(6,5,3,0.85)" stroke={color} strokeWidth={1.5} />
+    <circle cx={cx} cy={cy} r={7.5} fill={color} stroke="rgba(255,255,240,0.8)" strokeWidth={1} />
   </g>);
 });
 
-// Faction halo — semi-transparent circle under unit groups ×2
-export const FactionHalo = React.memo(({ cx, cy, color, r = 44 }) => (
+// Faction halo — semi-transparent circle under unit groups
+export const FactionHalo = React.memo(({ cx, cy, color, r = 24 }) => (
   <circle cx={cx} cy={cy} r={r} fill={color} opacity={0.2} style={{ pointerEvents: "none" }} />
 ));
 
-// Empire mecha — hexagon with X cross, navy blue ×2
+// Empire mecha — hexagon with X cross, navy blue
 export const EmpireMecha = React.memo(({ cx, cy, eid }) => {
-  const r = 28;
+  const r = 15;
   const pts = Array.from({ length: 6 }, (_, i) => {
     const a = (Math.PI / 3) * i - Math.PI / 6;
     return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
@@ -194,9 +193,9 @@ export const EmpireMecha = React.memo(({ cx, cy, eid }) => {
     <polygon points={pts} fill="#0A1A3A" stroke="#1A3A6A" strokeWidth={1.5} opacity={0.95}>
       <animate attributeName="opacity" values="0.8;1;0.8" dur="3s" repeatCount="indefinite" />
     </polygon>
-    <line x1={cx - 10} y1={cy - 10} x2={cx + 10} y2={cy + 10} stroke="#2A5A8A" strokeWidth={2.5} />
-    <line x1={cx + 10} y1={cy - 10} x2={cx - 10} y2={cy + 10} stroke="#2A5A8A" strokeWidth={2.5} />
-    <text x={cx} y={cy + 36} textAnchor="middle" fontSize={9} fill="#2A5A8A" fontWeight={700} opacity={0.7}>{eid}</text>
+    <line x1={cx - 6} y1={cy - 6} x2={cx + 6} y2={cy + 6} stroke="#2A5A8A" strokeWidth={2} />
+    <line x1={cx + 6} y1={cy - 6} x2={cx - 6} y2={cy + 6} stroke="#2A5A8A" strokeWidth={2} />
+    <text x={cx} y={cy + 25} textAnchor="middle" fontSize={8} fill="#2A5A8A" fontWeight={700} opacity={0.8}>{eid}</text>
   </g>);
 });
 

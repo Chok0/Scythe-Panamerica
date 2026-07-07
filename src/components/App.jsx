@@ -196,8 +196,10 @@ export default function App(){
   const mapCenterOnMe=useCallback(()=>{
     if(!me)return;
     const heroHex=hMap[me.hero];if(!heroHex)return;
-    const zoomW=400,zoomH=400; // tight view around hero
-    setMapView({x:heroHex.rx-zoomW/2,y:heroHex.ry-zoomH/2,w:zoomW,h:zoomH});
+    const zoomW=400,zoomH=400; // tight view around hero, clamped to board bounds
+    const x=Math.max(MAP_BASE.x,Math.min(MAP_BASE.x+MAP_BASE.w-zoomW,heroHex.rx-zoomW/2));
+    const y=Math.max(MAP_BASE.y,Math.min(MAP_BASE.y+MAP_BASE.h-zoomH,heroHex.ry-zoomH/2));
+    setMapView({x,y,w:zoomW,h:zoomH});
   },[me]);
   // ── Structured log: auto-categorize from emoji/content ──
   const turnRef=useRef(0);
@@ -251,7 +253,12 @@ export default function App(){
     ps.forEach(p=>{const f=FACTIONS[p.faction];addLog(`${p.isBot?"🤖":"👤"} ${f.name} (${p.matName})  ⚡${p.power} 🃏${p.combatCards} ♥${p.pop} 💰${p.coins}`);});
     // Auto-center on player's hero
     const heroHex=hMap[ps[0].hero];
-    if(heroHex){const zw=500,zh=500;setMapView({x:heroHex.rx-zw/2,y:heroHex.ry-zh/2,w:zw,h:zh});}
+    if(heroHex){
+      const zw=700,zh=700;
+      const x=Math.max(MAP_BASE.x,Math.min(MAP_BASE.x+MAP_BASE.w-zw,heroHex.rx-zw/2));
+      const y=Math.max(MAP_BASE.y,Math.min(MAP_BASE.y+MAP_BASE.h-zh,heroHex.ry-zh/2));
+      setMapView({x,y,w:zw,h:zh});
+    }
   },[selFaction,selMat,numBots,addLog]);
 
   const revealObjective=useCallback((objIdx)=>{
@@ -288,14 +295,15 @@ export default function App(){
                 // Auto-resolve bot defense
                 const card=drawEmpireCombat();
                 const botCBonus=getCombatBonus(pl,toId,false);
-                const botPow=Math.min(Math.floor(pl.power*0.5),5)+botCBonus.powerBonus;
+                // Ability bonus adds to the combat total but is NOT spent from the power track
+                const botSpend=Math.min(Math.floor(pl.power*0.5),5,pl.power);
                 const botUnitsOnHex=(pl.hero===toId?1:0)+pl.mechs.filter(m=>m.hexId===toId).length;
                 const botCC=Math.min(Math.floor(Math.random()*(pl.combatCards+1)),botUnitsOnHex+botCBonus.cardBonus);
-                const botTotal=botPow+(botCC*2);
+                const botTotal=botSpend+botCBonus.powerBonus+(botCC*2);
                 const bf=FACTIONS[pl.faction];
                 const updPlayers=[...players];const bp={...updPlayers[pi]};
-                bp.power-=botPow;bp.combatCards-=botCC;
-                if(botTotal>card.power){ // defender wins ties
+                bp.power-=botSpend;bp.combatCards-=botCC;
+                if(botTotal>=card.power){ // defender wins ties (same rule as the human defender)
                   addLog(`⚔🤖 ${bf.name} défend vs ${card.name} (${botTotal} vs ${card.power}) ✅`);
                   setEmpire(prev2=>{const n2={...prev2};delete n2[eid];return n2;});
                   bp.empireKills=(bp.empireKills||0)+1;
@@ -344,15 +352,15 @@ export default function App(){
       const empireOnHero=Object.entries(empire).find(([_,hid])=>hid===botHeroHex);
       if(empireOnHero&&p.power>=2){
         const card=drawEmpireCombat();
-        // Combat ability bonus (bot is attacker)
+        // Combat ability bonus (bot is attacker) — adds to total, not spent from track
         const botCBonus=getCombatBonus(p, botHeroHex, true);
-        const botPow=Math.min(Math.floor(p.power*0.6),7)+botCBonus.powerBonus;
+        const botSpend=Math.min(Math.floor(p.power*0.6),7,p.power);
         // Card limit = 1 per combat unit (hero/mech) on the hex + card bonus
         const botUnitsOnHex=(p.hero===botHeroHex?1:0)+p.mechs.filter(m=>m.hexId===botHeroHex).length;
         const botCC=Math.min(Math.floor(Math.random()*(p.combatCards+1)),botUnitsOnHex+botCBonus.cardBonus);
-        const botTotal=botPow+(botCC*2);
+        const botTotal=botSpend+botCBonus.powerBonus+(botCC*2);
         const bf=FACTIONS[p.faction];
-        p.power-=botPow;p.combatCards-=botCC;
+        p.power-=botSpend;p.combatCards-=botCC;
         if(botTotal>=card.power){
           logs.push(`⚔🤖 ${bf.name} bat ${card.name} (${botTotal} vs ${card.power})`);
           // Remove empire mecha
@@ -394,7 +402,7 @@ export default function App(){
             n[oi]={...n[oi],workers:n[oi].workers.map(w=>botHexes.has(w.hexId)?{...w,hexId:ohbHex.id}:w)};
             // Bot loses pop for displacing workers
             n[cp]={...n[cp],pop:Math.max(0,(n[cp].pop||0)-displaced.length)};
-            logs.push(`🏃 ${displaced.length} ouvrier(s) ${FACTIONS[n[oi].faction].name} renvoyé(s) ! (-${displaced.length} Pop ${f.name})`);
+            logs.push(`🏃 ${displaced.length} ouvrier(s) ${FACTIONS[n[oi].faction].name} renvoyé(s) ! (-${displaced.length} Pop ${FACTIONS[n[cp].faction].name})`);
           }
           // ── TRAP TRIGGER: bot hero/mech lands on enemy Frente trap ──
           if(n[oi].faction==="frente"){
@@ -404,7 +412,7 @@ export default function App(){
                 n[cp]={...n[cp],power:Math.max(0,(n[cp].power||0)-penalty)};
                 n[oi]={...n[oi],trapTokens:[...n[oi].trapTokens]};
                 n[oi].trapTokens[ti]={...n[oi].trapTokens[ti],disarmed:true};
-                logs.push(`💥 Trap Frente sur #${trap.hexId} ! ${f.name} -${penalty}⚡`);
+                logs.push(`💥 Trap Frente sur #${trap.hexId} ! ${FACTIONS[n[cp].faction].name} -${penalty}⚡`);
               }
             });
           }
@@ -418,9 +426,11 @@ export default function App(){
         return n;
       });
       // Apply bot-placed rails (from Gare build)
+      // Capture the array before deleting: the setRails updater runs after this code
       if(p._pendingRails&&p._pendingRails.length>0){
-        setRails(prev=>[...prev,...p._pendingRails]);
+        const newRails=[...p._pendingRails];
         delete p._pendingRails;
+        setRails(prev=>[...prev,...newRails]);
       }
       addLogs(logs);setCurrentP(cp+1);
     },350);
@@ -648,6 +658,29 @@ export default function App(){
     }
     return new Set(moves);
   },[moveSource,me,players,rails]);
+
+  // Automatic stars for the human player (bots handle these in botTurn)
+  useEffect(()=>{
+    if(phase!=="playing"||players.length===0)return;
+    const p=players[0];if(!p||p.isBot)return;
+    if(p.power>=16&&!p.starPower){
+      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],stars:n[0].stars+1,starPower:true};return n;});
+      addLog(`⭐⚡ Puissance maximale (16) !`);return;
+    }
+    if(p.pop>=18&&!p.starPop){
+      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],stars:n[0].stars+1,starPop:true};return n;});
+      addLog(`⭐♥ Popularité maximale (18) !`);return;
+    }
+    if(p.workers.length>=8&&!p.starWorkers){
+      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],stars:n[0].stars+1,starWorkers:true};return n;});
+      addLog(`⭐👷 8 ouvriers !`);return;
+    }
+    const fc=FACTIONS[p.faction];
+    if(fc?.fObj&&!p.fObjRevealed&&fc.fObj.check(p)){
+      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],stars:n[0].stars+1,fObjRevealed:true};return n;});
+      addLog(`🏛⭐ Objectif de faction "${fc.fObj.name}" accompli !`);return;
+    }
+  },[players,phase,addLog]);
 
   // Fix #8: Immediate game end when ANY player reaches 6 stars (Scythe rule)
   useEffect(()=>{
@@ -1001,9 +1034,10 @@ export default function App(){
       const enemyUnitsOnHex=(enemy.hero===combat.hexId?1:0)+enemy.mechs.filter(m=>m.hexId===combat.hexId).length;
       const enemyCBonus=getCombatBonus(enemy, combat.hexId, false, me.combatCards);
       const botCardSlots=enemyUnitsOnHex+enemyCBonus.cardBonus;
-      const botPower=Math.min(Math.floor(Math.random()*Math.min(enemy.power,4)),7)+enemyCBonus.powerBonus;
+      // Ability bonus adds to the total but is NOT spent from the power track
+      const botPower=Math.min(Math.floor(Math.random()*Math.min(enemy.power,4)),7,enemy.power);
       const botCards=Math.min(Math.floor(Math.random()*(enemy.combatCards+1)),botCardSlots);
-      const enemyTotal=botPower+(botCards*2);
+      const enemyTotal=botPower+enemyCBonus.powerBonus+(botCards*2);
       const win=playerTotal>=enemyTotal; // attacker wins ties
       
       let bonusLog="";
@@ -1505,9 +1539,10 @@ export default function App(){
             <filter id="softglow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <radialGradient id="hero-aura"><stop offset="0%" stopColor="#C9A84C" stopOpacity="0.3"/><stop offset="60%" stopColor="#C9A84C" stopOpacity="0.05"/><stop offset="100%" stopColor="#C9A84C" stopOpacity="0"/></radialGradient>
             <radialGradient id="empire-aura"><stop offset="0%" stopColor="#1A3A6A" stopOpacity="0.4"/><stop offset="50%" stopColor="#ff0000" stopOpacity="0.1"/><stop offset="100%" stopColor="#ff0000" stopOpacity="0"/></radialGradient>
-            <radialGradient id="mapvig" cx="50%" cy="47%" r="56%"><stop offset="0%" stopColor="transparent"/><stop offset="75%" stopColor="rgba(10,8,4,1)" stopOpacity="0.2"/><stop offset="100%" stopColor="rgba(10,8,4,1)" stopOpacity="0.75"/></radialGradient>
+            <radialGradient id="mapvig" cx="50%" cy="47%" r="60%"><stop offset="0%" stopColor="transparent"/><stop offset="80%" stopColor="rgba(10,8,4,1)" stopOpacity="0.06"/><stop offset="100%" stopColor="rgba(10,8,4,1)" stopOpacity="0.3"/></radialGradient>
+            <radialGradient id="mapbg" cx="50%" cy="45%" r="75%"><stop offset="0%" stopColor="#26211a"/><stop offset="70%" stopColor="#1c1812"/><stop offset="100%" stopColor="#12100a"/></radialGradient>
           </defs>
-          <rect x="20" y="20" width="980" height="990" fill="#0b0a07"/>
+          <rect x="20" y="20" width="980" height="990" fill="url(#mapbg)"/>
           <rect x="20" y="20" width="980" height="990" fill="url(#mapvig)"/>
           {/* Compass */}
           <g transform="translate(920,90)" opacity={0.2}>
@@ -1515,13 +1550,13 @@ export default function App(){
             <polygon points="0,-22 -3,-6 0,-8 3,-6" fill="#c9a84c" opacity="0.9"/>
             <text y="-26" textAnchor="middle" fontSize="7" fill="#c9a84c" style={{fontFamily:"var(--font-title)"}}>N</text>
           </g>
-          {/* Rivers */}
+          {/* Rivers — painted water ribbons with light banks (no neon) */}
           {RIVERS.map(([a,b],i)=>{const g=edgeGeo(a,b,hMap);if(!g)return null;return(
             <React.Fragment key={`r${i}`}>
-              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#0a2a50" strokeWidth={10} strokeLinecap="round" opacity={0.5}/>
-              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#1a5590" strokeWidth={5} strokeLinecap="round" opacity={0.6}/>
-              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#4098d0" strokeWidth={2.5} strokeLinecap="round" opacity={0.5}/>
-              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#60b8f0" strokeWidth={1.2} strokeLinecap="round" opacity={0.2} strokeDasharray="4 12" style={{animation:"riverFlow 3s linear infinite"}}/>
+              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#d8c9a3" strokeWidth={11} strokeLinecap="round" opacity={0.35}/>
+              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#1e3f5e" strokeWidth={8.5} strokeLinecap="round" opacity={0.95}/>
+              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#3a688e" strokeWidth={5} strokeLinecap="round" opacity={0.9}/>
+              <line x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="#7fb3d6" strokeWidth={1.6} strokeLinecap="round" opacity={0.45} strokeDasharray="5 9" style={{animation:"riverFlow 4s linear infinite"}}/>
             </React.Fragment>
           );})}
           {/* Rails — center-to-center hex lines */}
@@ -1568,7 +1603,7 @@ export default function App(){
               <text x={hex.rx} y={hex.ry+32} textAnchor="middle" fontSize={6.5} fill="#4a4030" opacity={0.2} style={{fontFamily:"var(--font-map)",pointerEvents:"none"}}>#{hex.id}</text>
               {units.length>0&&(()=>{const fc=units[0].factionId;const c=FACTIONS[fc]?.color||"#888";return <FactionHalo cx={hex.rx} cy={hex.ry+6} color={c} r={22}/>;})()}
               {units.map((u,ui)=>{
-                const ox=(ui-(units.length-1)/2)*48;
+                const ox=(ui-(units.length-1)/2)*22;
                 return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}/>;
               })}
               {(()=>{
@@ -1599,13 +1634,20 @@ export default function App(){
                   </g>)}
                 </React.Fragment>;
               })}
-              {encounterTokens.has(hex.id)&&(
-                <g style={{pointerEvents:"none"}}>
-                  <circle cx={hex.rx+26} cy={hex.ry+24} r={11} fill="rgba(6,5,3,0.6)"/>
-                  <circle cx={hex.rx+26} cy={hex.ry+24} r={10} fill="rgba(201,168,76,0.25)" stroke="#c9a84c" strokeWidth={1.5}/>
-                  <text x={hex.rx+26} y={hex.ry+29} textAnchor="middle" fontSize={14} fill="#c9a84c" fontWeight={700}>?</text>
-                </g>
-              )}
+              {encounterTokens.has(hex.id)&&(()=>{
+                const ex=hex.rx+26,ey=hex.ry+24;
+                const star=Array.from({length:8},(_,i)=>{
+                  const a=(Math.PI/4)*i-Math.PI/2;const r=i%2===0?6.5:2.6;
+                  return `${ex+r*Math.cos(a)},${ey+r*Math.sin(a)}`;
+                }).join(" ");
+                return(
+                  <g style={{pointerEvents:"none"}}>
+                    <circle cx={ex} cy={ey} r={11} fill="rgba(6,5,3,0.6)"/>
+                    <circle cx={ex} cy={ey} r={10} fill="#2e6b34" stroke="#d8c9a3" strokeWidth={1.5}/>
+                    <polygon points={star} fill="#e8e4d0" opacity={0.95}/>
+                  </g>
+                );
+              })()}
             </g>);
           })}
           {/* Hex click ripple */}
@@ -1620,11 +1662,11 @@ export default function App(){
           {/* Home Bases */}
           {Object.entries(HOME_BASES).map(([fid,hb])=>{
             const fc=FACTIONS[fid];if(!fc)return null;const isMe=fid===me.faction;
-            return(<g key={fid} opacity={isMe?1:0.2}>
-              <line x1={hb.rx} y1={hb.ry-16} x2={hb.rx} y2={hb.ry+16} stroke={fc.color} strokeWidth={isMe?1.5:0.5} opacity={0.5}/>
-              <path d={`M${hb.rx} ${hb.ry-14} L${hb.rx+30} ${hb.ry-8} L${hb.rx+28} ${hb.ry} L${hb.rx} ${hb.ry+6} Z`} fill={isMe?fc.color+"44":fc.color+"15"} stroke={fc.color} strokeWidth={isMe?1.5:0.6}/>
-              <text x={hb.rx+14} y={hb.ry-1} textAnchor="middle" fontSize={isMe?9:7} fill={fc.color} fontWeight={isMe?700:400} style={{fontFamily:"var(--font-title)"}}>{fc.name.slice(0,8)}</text>
-              <circle cx={hb.rx} cy={hb.ry-16} r={isMe?2.5:1.5} fill={fc.color}/>
+            return(<g key={fid} opacity={isMe?1:0.55}>
+              <line x1={hb.rx} y1={hb.ry-18} x2={hb.rx} y2={hb.ry+14} stroke="#d8c9a3" strokeWidth={1.2} opacity={0.6}/>
+              <path d={`M${hb.rx} ${hb.ry-17} L${hb.rx+34} ${hb.ry-10} L${hb.rx+32} ${hb.ry-1} L${hb.rx} ${hb.ry+5} Z`} fill={fc.color} opacity={isMe?0.9:0.55} stroke="#0e0c08" strokeWidth={1}/>
+              <text x={hb.rx+16} y={hb.ry-4} textAnchor="middle" fontSize={8} fill="#fff" fontWeight={700} stroke="rgba(0,0,0,0.5)" strokeWidth={2} paintOrder="stroke" style={{fontFamily:"var(--font-title)"}}>{fc.name.slice(0,8)}</text>
+              <circle cx={hb.rx} cy={hb.ry-18} r={2.5} fill="#d8c9a3"/>
             </g>);
           })}
           {/* Watermark */}
@@ -1642,9 +1684,12 @@ export default function App(){
               {combat&&combat.phase==="choose"&&(()=>{
                 const maxPower=Math.min(me.power,7);
                 // Scythe rule: max 1 combat card per hero/mech involved
-                const combatUnits=(combat.moveData.unitType==="hero"?1:0)+me.mechs.filter(m=>m.hexId===combat.hexId).length+(combat.moveData.unitType==="mech"?1:0);
+                // combat.moveData is undefined when the Empire attacks us (defender): count units already on the hex
+                const combatUnits=combat.moveData
+                  ?(combat.moveData.unitType==="hero"?1:0)+me.mechs.filter(m=>m.hexId===combat.hexId).length+(combat.moveData.unitType==="mech"?1:0)
+                  :(me.hero===combat.hexId?1:0)+me.mechs.filter(m=>m.hexId===combat.hexId).length;
                 // Combat ability bonus (slot 2)
-                const isAttacker=true; // player is always attacker (moved into enemy)
+                const isAttacker=!combat.empireAttacks;
                 const cBonus=getCombatBonus(me, combat.hexId, isAttacker);
                 const maxCards=Math.min(me.combatCards, combatUnits + cBonus.cardBonus);
                 const total=combat.powerSpend + cBonus.powerBonus + (combat.cardsSpend*2);
@@ -1823,6 +1868,7 @@ export default function App(){
             {icon:"⚔",name:"Cmbt",prog:`${Math.min(me.combatWins||0,2)}/2`,done:(me.combatWins||0)>=2},
             {icon:"🎯",name:"Obj",prog:me.objectiveRevealed?"✓":"…",done:me.objectiveRevealed},
             {icon:"🏛",name:"Fact",prog:me.fObjRevealed?"✓":"…",done:me.fObjRevealed},
+            {icon:"👷",name:"Ouv8",prog:`${me.workers.length}/8`,done:me.workers.length>=8},
             {icon:"♥",name:"Pop18",prog:`${me.pop}/18`,done:me.pop>=18},
             {icon:"⚡",name:"Pui16",prog:`${me.power}/16`,done:me.power>=16},
           ];
