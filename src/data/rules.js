@@ -26,6 +26,7 @@ export const RULES = [
           "Déployer les 4 Mechas",
           "Construire les 4 Bâtiments",
           "Recruter les 4 Enrôlés",
+          "Avoir 8 Ouvriers sur le plateau",
           "Gagner un combat (max 2 étoiles)",
           "Compléter un Objectif secret",
           "Compléter l'Objectif de Faction"

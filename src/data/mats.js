@@ -51,7 +51,7 @@ export const applyEnlistOngoing = (playersArr, actorIdx, bottomCol, FACTIONS) =>
   if (count < 2) return { players: n, logs };
   const leftIdx = (actorIdx - 1 + count) % count;
   const rightIdx = (actorIdx + 1) % count;
-  [actorIdx, leftIdx, rightIdx].forEach(pi => {
+  [...new Set([actorIdx, leftIdx, rightIdx])].forEach(pi => {
     const p = n[pi];
     if ((p.enlistMap || [])[bottomCol]) {
       const bonus = ENLIST_ONGOING[bottomCol];

@@ -112,7 +112,7 @@ export default function AmbientSound() {
 
   return (
     <div style={{
-      position: 'fixed', bottom: 8, left: 8, zIndex: 100,
+      position: 'fixed', bottom: 8, right: 328, zIndex: 100,
       display: 'flex', alignItems: 'center', gap: 6,
       background: 'rgba(10,9,6,0.8)', borderRadius: 4,
       padding: '4px 8px', border: '1px solid rgba(42,36,24,0.5)',

@@ -251,7 +251,7 @@ export default function App(){
     ps.forEach(p=>{const f=FACTIONS[p.faction];addLog(`${p.isBot?"🤖":"👤"} ${f.name} (${p.matName})  ⚡${p.power} 🃏${p.combatCards} ♥${p.pop} 💰${p.coins}`);});
     // Auto-center on player's hero
     const heroHex=hMap[ps[0].hero];
-    if(heroHex){const zw=500,zh=500;setMapView({x:heroHex.rx-zw/2,y:heroHex.ry-zh/2,w:zw,h:zh});}
+    if(heroHex){const zw=700,zh=700;setMapView({x:heroHex.rx-zw/2,y:heroHex.ry-zh/2,w:zw,h:zh});}
   },[selFaction,selMat,numBots,addLog]);
 
   const revealObjective=useCallback((objIdx)=>{
@@ -394,7 +394,7 @@ export default function App(){
             n[oi]={...n[oi],workers:n[oi].workers.map(w=>botHexes.has(w.hexId)?{...w,hexId:ohbHex.id}:w)};
             // Bot loses pop for displacing workers
             n[cp]={...n[cp],pop:Math.max(0,(n[cp].pop||0)-displaced.length)};
-            logs.push(`🏃 ${displaced.length} ouvrier(s) ${FACTIONS[n[oi].faction].name} renvoyé(s) ! (-${displaced.length} Pop ${f.name})`);
+            logs.push(`🏃 ${displaced.length} ouvrier(s) ${FACTIONS[n[oi].faction].name} renvoyé(s) ! (-${displaced.length} Pop ${FACTIONS[n[cp].faction].name})`);
           }
           // ── TRAP TRIGGER: bot hero/mech lands on enemy Frente trap ──
           if(n[oi].faction==="frente"){
@@ -404,7 +404,7 @@ export default function App(){
                 n[cp]={...n[cp],power:Math.max(0,(n[cp].power||0)-penalty)};
                 n[oi]={...n[oi],trapTokens:[...n[oi].trapTokens]};
                 n[oi].trapTokens[ti]={...n[oi].trapTokens[ti],disarmed:true};
-                logs.push(`💥 Trap Frente sur #${trap.hexId} ! ${f.name} -${penalty}⚡`);
+                logs.push(`💥 Trap Frente sur #${trap.hexId} ! ${FACTIONS[n[cp].faction].name} -${penalty}⚡`);
               }
             });
           }
@@ -418,9 +418,11 @@ export default function App(){
         return n;
       });
       // Apply bot-placed rails (from Gare build)
+      // Capture the array before deleting: the setRails updater runs after this code
       if(p._pendingRails&&p._pendingRails.length>0){
-        setRails(prev=>[...prev,...p._pendingRails]);
+        const newRails=[...p._pendingRails];
         delete p._pendingRails;
+        setRails(prev=>[...prev,...newRails]);
       }
       addLogs(logs);setCurrentP(cp+1);
     },350);
@@ -648,6 +650,29 @@ export default function App(){
     }
     return new Set(moves);
   },[moveSource,me,players,rails]);
+
+  // Automatic stars for the human player (bots handle these in botTurn)
+  useEffect(()=>{
+    if(phase!=="playing"||players.length===0)return;
+    const p=players[0];if(!p||p.isBot)return;
+    if(p.power>=16&&!p.starPower){
+      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],stars:n[0].stars+1,starPower:true};return n;});
+      addLog(`⭐⚡ Puissance maximale (16) !`);return;
+    }
+    if(p.pop>=18&&!p.starPop){
+      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],stars:n[0].stars+1,starPop:true};return n;});
+      addLog(`⭐♥ Popularité maximale (18) !`);return;
+    }
+    if(p.workers.length>=8&&!p.starWorkers){
+      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],stars:n[0].stars+1,starWorkers:true};return n;});
+      addLog(`⭐👷 8 ouvriers !`);return;
+    }
+    const fc=FACTIONS[p.faction];
+    if(fc?.fObj&&!p.fObjRevealed&&fc.fObj.check(p)){
+      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],stars:n[0].stars+1,fObjRevealed:true};return n;});
+      addLog(`🏛⭐ Objectif de faction "${fc.fObj.name}" accompli !`);return;
+    }
+  },[players,phase,addLog]);
 
   // Fix #8: Immediate game end when ANY player reaches 6 stars (Scythe rule)
   useEffect(()=>{
@@ -1568,7 +1593,7 @@ export default function App(){
               <text x={hex.rx} y={hex.ry+32} textAnchor="middle" fontSize={6.5} fill="#4a4030" opacity={0.2} style={{fontFamily:"var(--font-map)",pointerEvents:"none"}}>#{hex.id}</text>
               {units.length>0&&(()=>{const fc=units[0].factionId;const c=FACTIONS[fc]?.color||"#888";return <FactionHalo cx={hex.rx} cy={hex.ry+6} color={c} r={22}/>;})()}
               {units.map((u,ui)=>{
-                const ox=(ui-(units.length-1)/2)*48;
+                const ox=(ui-(units.length-1)/2)*22;
                 return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}/>;
               })}
               {(()=>{
@@ -1642,9 +1667,12 @@ export default function App(){
               {combat&&combat.phase==="choose"&&(()=>{
                 const maxPower=Math.min(me.power,7);
                 // Scythe rule: max 1 combat card per hero/mech involved
-                const combatUnits=(combat.moveData.unitType==="hero"?1:0)+me.mechs.filter(m=>m.hexId===combat.hexId).length+(combat.moveData.unitType==="mech"?1:0);
+                // combat.moveData is undefined when the Empire attacks us (defender): count units already on the hex
+                const combatUnits=combat.moveData
+                  ?(combat.moveData.unitType==="hero"?1:0)+me.mechs.filter(m=>m.hexId===combat.hexId).length+(combat.moveData.unitType==="mech"?1:0)
+                  :(me.hero===combat.hexId?1:0)+me.mechs.filter(m=>m.hexId===combat.hexId).length;
                 // Combat ability bonus (slot 2)
-                const isAttacker=true; // player is always attacker (moved into enemy)
+                const isAttacker=!combat.empireAttacks;
                 const cBonus=getCombatBonus(me, combat.hexId, isAttacker);
                 const maxCards=Math.min(me.combatCards, combatUnits + cBonus.cardBonus);
                 const total=combat.powerSpend + cBonus.powerBonus + (combat.cardsSpend*2);
@@ -1823,6 +1851,7 @@ export default function App(){
             {icon:"⚔",name:"Cmbt",prog:`${Math.min(me.combatWins||0,2)}/2`,done:(me.combatWins||0)>=2},
             {icon:"🎯",name:"Obj",prog:me.objectiveRevealed?"✓":"…",done:me.objectiveRevealed},
             {icon:"🏛",name:"Fact",prog:me.fObjRevealed?"✓":"…",done:me.fObjRevealed},
+            {icon:"👷",name:"Ouv8",prog:`${me.workers.length}/8`,done:me.workers.length>=8},
             {icon:"♥",name:"Pop18",prog:`${me.pop}/18`,done:me.pop>=18},
             {icon:"⚡",name:"Pui16",prog:`${me.power}/16`,done:me.power>=16},
           ];

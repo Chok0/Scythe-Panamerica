@@ -106,6 +106,8 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose) => {
 
     // Avoid enemy hexes for workers (displacement risk)
     if (purpose === "worker" && enemyHexes && enemyHexes.has(hexId)) s -= 15;
+    // Heroes/mechs also avoid enemy hexes (no bot-initiated combat implemented)
+    if ((purpose === "hero" || purpose === "mech") && enemyHexes && enemyHexes.has(hexId)) s -= 10;
 
     // Move toward uncontrolled resource hexes
     const myHexes = new Set([p.hero, ...p.workers.map(w => w.hexId), ...p.mechs.map(m => m.hexId)]);
@@ -323,9 +325,9 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
   const botCosts = getBottomCost(p);
   const bc = botCosts[col];
   const canAffordBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && p.faction === "nations" && countRes(p, "bois") >= bc.qty));
+  let bottomDone = false;
   if (canAffordBottom) {
     if (bottomAction === "Upgrade" && (p.upgrades || 0) < 6) {
-      const sp = spendRes(p, bc.res, bc.qty); Object.assign(p, { resources: sp.resources });
       const mat = MATS.find(m => m.id === p.matId);
       const validTop = []; const validBottom = [];
       if (mat) {
@@ -333,15 +335,17 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
         (mat.bottomSlots || []).forEach((s, i) => { if ((p.cubesOnBottom || [])[i] < s) validBottom.push(i); });
       }
       if (validTop.length > 0 && validBottom.length > 0) {
+        const sp = spendRes(p, bc.res, bc.qty); Object.assign(p, { resources: sp.resources });
         const fromC = pickUpgradeSource(p, validTop);
         const toC = pickUpgradeDest(p, validBottom, mat);
         p.cubesOnTop = [...(p.cubesOnTop || [])]; p.cubesOnTop[fromC]--;
         p.cubesOnBottom = [...(p.cubesOnBottom || [])]; p.cubesOnBottom[toC]++;
         p.coins += (mat.bottomCosts[toC].bonus || 0);
+        p.upgrades = (p.upgrades || 0) + 1;
+        bottomDone = true;
+        if (p.upgrades >= 6 && !p.starUpgrades) { p.stars++; p.starUpgrades = true; logs.push(`⭐ ${f.name}: 6 upgrades !`); }
+        logs.push(`🤖 ${f.name}: Upgrade ${p.upgrades}/6`);
       }
-      p.upgrades = (p.upgrades || 0) + 1;
-      if (p.upgrades >= 6 && !p.starUpgrades) { p.stars++; p.starUpgrades = true; logs.push(`⭐ ${f.name}: 6 upgrades !`); }
-      logs.push(`🤖 ${f.name}: Upgrade ${p.upgrades}/6`);
     } else if (bottomAction === "Deploy" && p.mechs.length < 4) {
       const wh = getWorkerHexes(p);
       if (wh.length > 0) {
@@ -360,6 +364,7 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
         const abilityNames = ["Speed", "Riverwalk", "Combat", "Position"];
         p.mechs.push({ id: `${p.faction}_m${p.mechs.length}`, hexId: th });
         p.unlockedAbilities = [...(p.unlockedAbilities || []), abilityIdx];
+        bottomDone = true;
         if (p.mechs.length >= 4 && !p.starMechs) { p.stars++; p.starMechs = true; logs.push(`⭐ ${f.name}: 4 mechas !`); }
         logs.push(`🤖 ${f.name}: Deploy #${th} → 🔓 ${abilityNames[abilityIdx]}`);
       }
@@ -370,6 +375,7 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
         const sp = spendRes(p, bc.res, bc.qty); Object.assign(p, { resources: sp.resources });
         const building = pickBuilding(p, avail);
         p.buildings = [...(p.buildings || []), { type: building.type, hexId: wh[0] }];
+        bottomDone = true;
         if (p.buildings.length >= 4 && !p.starBuildings) { p.stars++; p.starBuildings = true; logs.push(`⭐ ${f.name}: 4 bâtiments !`); }
         logs.push(`🤖 ${f.name}: Build ${building.name} #${wh[0]}`);
         // Gare: place rails
@@ -393,6 +399,7 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
     } else if (bottomAction === "Enlist" && (p.recruits || 0) < 4) {
       const sp = spendRes(p, bc.res, bc.qty); Object.assign(p, { resources: sp.resources });
       p.recruits = (p.recruits || 0) + 1;
+      bottomDone = true;
       // Strategic enlist: prioritize power > coins > pop > cards
       const priority = [0, 1, 2, 3]; // power, coins, pop, cards
       const freeSlots = priority.filter(ci => !(p.enlistMap || [])[ci]);
@@ -413,6 +420,9 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
     }
   }
 
+  // ── AUTOMATIC STARS ──
+  if (p.pop >= 18 && !p.starPop) { p.stars++; p.starPop = true; logs.push(`⭐ ${f.name}: Popularité max !`); }
+
   // ── OBJECTIVE CHECK ──
   if (p.objective && !p.objectiveRevealed && p.objective.check(p)) { p.objectiveRevealed = true; p.stars++; logs.push(`⭐ ${f.name}: objectif !`); }
   const fObj = FACTIONS[p.faction]?.fObj;
@@ -430,10 +440,10 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
       if (p.combatCards < 2 && Math.random() < 0.4) {
         p.combatCards++; logs.push(`🤖🏛 ${f.name}: Commerce -1${pick}→+1CC`);
       } else {
-        p.coins += 2; p.imperialCoins = (p.imperialCoins || 0) + 2; logs.push(`🤖🏛 ${f.name}: Commerce -1${pick}→+2$`);
+        p.coins += 1; p.imperialCoins = (p.imperialCoins || 0) + 1; logs.push(`🤖🏛 ${f.name}: Commerce -1${pick}→+1$`);
       }
     }
   }
 
-  return { player: p, logs, bottomCol: canAffordBottom ? col : -1 };
+  return { player: p, logs, bottomCol: bottomDone ? col : -1 };
 };
