@@ -171,7 +171,12 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
   const action = p.topRow[col];
 
   // ── EXECUTE TOP ACTION ──
-  if (action === "Move") {
+  if (action === "Move" && p.coins <= 0) {
+    // Scythe rule: Move's alternative is "gain 1$" — prevents the economic
+    // deadlock (0 coins + 0 power = no Produce/Bolster/Trade possible)
+    p.coins++;
+    logs.push(`🤖 ${f.name}: +1$ (Move)`);
+  } else if (action === "Move") {
     // Nations Pack Up (strategic building repositioning)
     if (p.faction === "nations" && (p.unlockedAbilities || []).includes(3) && (p.buildings || []).length > 0 && Math.random() < 0.3) {
       const bi = Math.floor(Math.random() * (p.buildings || []).length);
@@ -240,8 +245,8 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
       p.coins--;
       const hasArsenal = (p.buildings || []).some(b => b.type === "arsenal");
       const hasMemorial = (p.buildings || []).some(b => b.type === "memorial");
-      // Strategic choice: power if low or near star, cards if combat likely
-      const needPower = p.power < 8 || p.power >= 14;
+      // Strategic choice: power if low or pushing toward the 16-power star
+      const needPower = p.power < 8 || (p.power >= 12 && !p.starPower);
       if (needPower) {
         const bonus = hasArsenal ? 1 : 0;
         p.power = Math.min(p.power + 2 + bonus, 16);
@@ -267,13 +272,14 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
           return rb - ra || byHex[b].length - byHex[a].length;
         })
         .slice(0, 2);
+      // Worker cap: 5 early (Stegmaier's rule), then push to 8 for the star
+      const workerCap = getPhase(p) === "early" ? 5 : 8;
       hexIds.forEach(hidStr => {
         const hid = parseInt(hidStr); const hex = hMap[hid]; const t = TERRAINS[hex.t]; let wc = byHex[hidStr].length;
         const hasMoulin = (p.buildings || []).some(b => b.type === "moulin" && b.hexId === hid);
         if (hasMoulin) wc++;
-        // Strategic worker cap at 5 (Stegmaier's rule)
-        if (hex.t === "village" && p.workers.length < 5) {
-          const toAdd = Math.min(wc, 5 - p.workers.length);
+        if (hex.t === "village" && p.workers.length < workerCap) {
+          const toAdd = Math.min(wc, workerCap - p.workers.length);
           for (let i = 0; i < toAdd; i++) p.workers.push({ id: `${p.faction}_w${p.workers.length}`, hexId: hid });
           if (toAdd > 0) logs.push(`🤖 ${f.name}: +${toAdd} ouv. #${hid}`);
           // Star check: 8 workers
@@ -284,7 +290,11 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
       logs.push(`🤖 ${f.name}: Produce`);
     }
   } else if (action === "Trade") {
-    if (p.coins >= 1) {
+    if (p.coins >= 1 && p.pop >= 13 && !p.starPop) {
+      // Push toward the 18-pop star once in the top popularity tier
+      p.coins--; p.pop = Math.min(p.pop + 1, 18);
+      logs.push(`🤖 ${f.name}: +1 Pop`);
+    } else if (p.coins >= 1) {
       // Strategic resource choice: pick what we need for upcoming bottom action
       const costs = getBottomCost(p);
       const bc = costs[col];

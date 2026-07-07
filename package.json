@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && cp dist/index.html panamerica_v09_build.html",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sim": "node scripts/simulate.mjs"
   },
   "dependencies": {
     "react": "^19.2.4",

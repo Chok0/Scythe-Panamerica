@@ -295,14 +295,15 @@ export default function App(){
                 // Auto-resolve bot defense
                 const card=drawEmpireCombat();
                 const botCBonus=getCombatBonus(pl,toId,false);
-                const botPow=Math.min(Math.floor(pl.power*0.5),5)+botCBonus.powerBonus;
+                // Ability bonus adds to the combat total but is NOT spent from the power track
+                const botSpend=Math.min(Math.floor(pl.power*0.5),5,pl.power);
                 const botUnitsOnHex=(pl.hero===toId?1:0)+pl.mechs.filter(m=>m.hexId===toId).length;
                 const botCC=Math.min(Math.floor(Math.random()*(pl.combatCards+1)),botUnitsOnHex+botCBonus.cardBonus);
-                const botTotal=botPow+(botCC*2);
+                const botTotal=botSpend+botCBonus.powerBonus+(botCC*2);
                 const bf=FACTIONS[pl.faction];
                 const updPlayers=[...players];const bp={...updPlayers[pi]};
-                bp.power-=botPow;bp.combatCards-=botCC;
-                if(botTotal>card.power){ // defender wins ties
+                bp.power-=botSpend;bp.combatCards-=botCC;
+                if(botTotal>=card.power){ // defender wins ties (same rule as the human defender)
                   addLog(`⚔🤖 ${bf.name} défend vs ${card.name} (${botTotal} vs ${card.power}) ✅`);
                   setEmpire(prev2=>{const n2={...prev2};delete n2[eid];return n2;});
                   bp.empireKills=(bp.empireKills||0)+1;
@@ -351,15 +352,15 @@ export default function App(){
       const empireOnHero=Object.entries(empire).find(([_,hid])=>hid===botHeroHex);
       if(empireOnHero&&p.power>=2){
         const card=drawEmpireCombat();
-        // Combat ability bonus (bot is attacker)
+        // Combat ability bonus (bot is attacker) — adds to total, not spent from track
         const botCBonus=getCombatBonus(p, botHeroHex, true);
-        const botPow=Math.min(Math.floor(p.power*0.6),7)+botCBonus.powerBonus;
+        const botSpend=Math.min(Math.floor(p.power*0.6),7,p.power);
         // Card limit = 1 per combat unit (hero/mech) on the hex + card bonus
         const botUnitsOnHex=(p.hero===botHeroHex?1:0)+p.mechs.filter(m=>m.hexId===botHeroHex).length;
         const botCC=Math.min(Math.floor(Math.random()*(p.combatCards+1)),botUnitsOnHex+botCBonus.cardBonus);
-        const botTotal=botPow+(botCC*2);
+        const botTotal=botSpend+botCBonus.powerBonus+(botCC*2);
         const bf=FACTIONS[p.faction];
-        p.power-=botPow;p.combatCards-=botCC;
+        p.power-=botSpend;p.combatCards-=botCC;
         if(botTotal>=card.power){
           logs.push(`⚔🤖 ${bf.name} bat ${card.name} (${botTotal} vs ${card.power})`);
           // Remove empire mecha
@@ -1033,9 +1034,10 @@ export default function App(){
       const enemyUnitsOnHex=(enemy.hero===combat.hexId?1:0)+enemy.mechs.filter(m=>m.hexId===combat.hexId).length;
       const enemyCBonus=getCombatBonus(enemy, combat.hexId, false, me.combatCards);
       const botCardSlots=enemyUnitsOnHex+enemyCBonus.cardBonus;
-      const botPower=Math.min(Math.floor(Math.random()*Math.min(enemy.power,4)),7)+enemyCBonus.powerBonus;
+      // Ability bonus adds to the total but is NOT spent from the power track
+      const botPower=Math.min(Math.floor(Math.random()*Math.min(enemy.power,4)),7,enemy.power);
       const botCards=Math.min(Math.floor(Math.random()*(enemy.combatCards+1)),botCardSlots);
-      const enemyTotal=botPower+(botCards*2);
+      const enemyTotal=botPower+enemyCBonus.powerBonus+(botCards*2);
       const win=playerTotal>=enemyTotal; // attacker wins ties
       
       let bonusLog="";
