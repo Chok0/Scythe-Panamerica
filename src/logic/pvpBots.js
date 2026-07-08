@@ -11,6 +11,7 @@
 import { FACTIONS } from '../data/factions.js';
 import { HEXES, HOME_BASES } from '../data/hexes.js';
 import { getCombatBonus } from '../data/combat.js';
+import { BALANCE } from '../data/balance.js';
 
 const hbHexOf = (factionId) => {
   const hb = HOME_BASES[factionId];
@@ -75,7 +76,7 @@ export const resolveBotPvp = (playersArr, attIdx, defIdx, hexId) => {
   // ── White Flag (Acadiane défenseur, slot 2) : 50% → retraite volontaire + 2 pop ──
   if (def.faction === "acadiane" && (def.unlockedAbilities || []).includes(2) && Math.random() < 0.5) {
     const displaced = retreatAll(def, hexId);
-    def.pop = Math.min((def.pop || 0) + 2, 18);
+    def.pop = Math.min((def.pop || 0) + BALANCE.whiteFlagPop, 18);
     transferHexResources(def, att, hexId);
     if (displaced > 0) att.pop = Math.max(0, att.pop - displaced);
     awardCombatStar(att, logs, af.name);
@@ -143,6 +144,23 @@ export const resolveBotPvp = (playersArr, attIdx, defIdx, hexId) => {
 
   players[attIdx] = att; players[defIdx] = def;
   return { players, logs };
+};
+
+/**
+ * Servitude (Confédération) après un déplacement d'ouvriers ennemis (sans combat) :
+ * capture 1 des ouvriers chassés (-2 pop, max 2 par partie). Rend l'ability et
+ * l'objectif de faction « Le Joug » réellement atteignables.
+ * @param {object} p — joueur Confédération (muté : retourne une copie modifiée)
+ * @returns {{player, captured: boolean}}
+ */
+export const servitudeOnDisplace = (p, hexId) => {
+  if (!BALANCE.servitudeOnDisplace) return { player: p, captured: false };
+  if (p.faction !== "confederation" || p.pop < 2 || (p.capturedWorkers || 0) >= 2) return { player: p, captured: false };
+  const n = { ...p, workers: [...p.workers] };
+  n.pop = Math.max(0, n.pop - 2);
+  n.workers.push({ id: `${n.faction}_serv${n.workers.length}`, hexId });
+  n.capturedWorkers = (n.capturedWorkers || 0) + 1;
+  return { player: n, captured: true };
 };
 
 /**

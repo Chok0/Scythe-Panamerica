@@ -12,7 +12,10 @@ import { FACTIONS } from '../data/factions.js';
  */
 export const resolveBotEncounter = (player) => {
   const card = ENCOUNTERS[Math.floor(Math.random() * ENCOUNTERS.length)];
-  const choice = card.choices[Math.floor(Math.random() * card.choices.length)];
+  // Coût obligatoire (règle p.24) : seules les options payables sont éligibles
+  const eligible = card.choices.filter(c => !c.available || c.available(player));
+  const pool = eligible.length > 0 ? eligible : card.choices.filter(c => !c.available);
+  const choice = pool[Math.floor(Math.random() * pool.length)] || card.choices[0];
   const p = {
     ...player,
     workers: [...player.workers],

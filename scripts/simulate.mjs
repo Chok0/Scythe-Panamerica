@@ -18,11 +18,13 @@
  */
 import { writeFileSync } from 'node:fs';
 import { botTurn } from '../src/logic/bot.js';
-import { applyBotPvpAfterMove } from '../src/logic/pvpBots.js';
+import { applyBotPvpAfterMove, servitudeOnDisplace } from '../src/logic/pvpBots.js';
 import { resolveBotEncounter } from '../src/logic/botEncounters.js';
-import { ENCOUNTER_HEXES } from '../src/data/encounters.js';
+import { CURRENT_MAP, loadMap, DEFAULT_MAP } from '../src/data/hexes.js';
+import { generateAcceptedMap, validateMap } from '../src/data/mapGen.js';
 import { createPlayer } from '../src/logic/player.js';
 import { FACTIONS, FACTION_IDS } from '../src/data/factions.js';
+import { BALANCE } from '../src/data/balance.js';
 import { MATS, applyEnlistOngoing, BOTTOM } from '../src/data/mats.js';
 import { HEXES, HOME_BASES, hMap, ADJ } from '../src/data/hexes.js';
 import { EMPIRE_START, EMPIRE_RAILS, drawEmpireCombat } from '../src/data/empire.js';
@@ -41,8 +43,19 @@ const SEED = parseInt(getArg('seed', '1'), 10);
 const MAX_ROUNDS = parseInt(getArg('maxRounds', '150'), 10);
 const VERBOSE = args.includes('--verbose');
 const DUMP = getArg('dump', null);
-// Expérience A/B : --ab noFlagBonus → les comptoirs Acadiane ne comptent plus au scoring
+// Expériences A/B :
+//   --ab noFlagBonus → comptoirs Acadiane retirés du scoring
+//   --ab wf1         → White Flag rapporte +1 pop (au lieu de 2)
+//   --ab bayouBois   → le Bayou peut déployer ses mechas en bois (comme Nations)
 const AB = getArg('ab', null);
+if (AB === 'wf1') BALANCE.whiteFlagPop = 1;
+if (AB === 'bayouBois') FACTIONS.bayou.deployAltRes = 'bois';
+// (le nerf acadianeHard testé en A/B est désormais le comportement par défaut — factions.js)
+// Cartes procédurales :
+//   --randomMap    → une carte générée+acceptée différente PAR PARTIE
+//   --mapSearch K  → évalue K cartes acceptées (N_GAMES parties chacune) et les classe
+const RANDOM_MAP = args.includes('--randomMap');
+const MAP_SEARCH = parseInt(getArg('mapSearch', '0'), 10);
 
 // ── RNG seedé (remplace Math.random pour la reproductibilité) ──
 const mulberry32 = (a) => () => {
@@ -127,6 +140,10 @@ const checkInvariants = (p, round, issues) => {
 
 // ── Une partie complète ──
 const playGame = (gameIdx, log) => {
+  if (RANDOM_MAP) {
+    const g = generateAcceptedMap(Math.random);
+    loadMap(g.map);
+  }
   const nPlayers = 2 + Math.floor(Math.random() * 4); // 2-5 joueurs
   const factions = shuffleArray(FACTION_IDS).slice(0, nPlayers);
   const mats = shuffleArray(MATS.map(m => m.id)).slice(0, nPlayers);
@@ -139,7 +156,7 @@ const playGame = (gameIdx, log) => {
   });
   let empire = Object.fromEntries(EMPIRE_START.map(e => [e.id, e.hexId]));
   let rails = [...EMPIRE_RAILS];
-  let encounterTokens = new Set(ENCOUNTER_HEXES);
+  let encounterTokens = new Set(CURRENT_MAP.encounterHexes);
   const issues = [];
   const combatStats = { pveAttacks: 0, pveWins: 0, defenses: 0, defWins: 0, pvp: 0, encounters: 0 };
   let round = 0, endedBy = 'cap';
@@ -213,6 +230,9 @@ const playGame = (gameIdx, log) => {
           const ohb = hbHexOf(players[oi].faction);
           players[oi] = { ...players[oi], workers: players[oi].workers.map(w => botHexes.has(w.hexId) && !defended(w.hexId) ? { ...w, hexId: ohb.id } : w) };
           players[cp] = { ...players[cp], pop: Math.max(0, (players[cp].pop || 0) - displaced.length) };
+          // Servitude (Confédération) : capture lors du déplacement d'ouvriers
+          const serv = servitudeOnDisplace(players[cp], displaced[0].hexId);
+          if (serv.captured) players[cp] = serv.player;
         }
         if (players[oi].faction === 'frente') {
           (players[oi].trapTokens || []).forEach((trap, ti) => {
@@ -322,6 +342,50 @@ const playGame = (gameIdx, log) => {
 
 // ── Boucle principale ──
 Math.random = mulberry32(SEED);
+
+// Mode recherche de carte : K cartes acceptées x N_GAMES parties, classées par équilibre
+if (MAP_SEARCH > 0) {
+  const results = [];
+  const evalMap = (map, label) => {
+    loadMap(map);
+    const gs = [];
+    for (let g = 0; g < N_GAMES; g++) {
+      try { gs.push(playGame(g, null)); } catch (e) { /* crash = carte disqualifiée */ return null; }
+    }
+    const fin = gs.filter(g => g.endedBy === 'stars');
+    const winByF = {}; const seatByF = {};
+    gs.forEach(g => g.scored.forEach((s, r) => {
+      seatByF[s.faction] = (seatByF[s.faction] || 0) + 1;
+      if (r === 0) winByF[s.faction] = (winByF[s.faction] || 0) + 1;
+    }));
+    const rates = Object.keys(seatByF).map(f => (winByF[f] || 0) / seatByF[f]);
+    const mean = rates.reduce((a, b) => a + b, 0) / rates.length;
+    const stddev = Math.sqrt(rates.reduce((a, r) => a + (r - mean) ** 2, 0) / rates.length);
+    const med = fin.length ? [...fin.map(g => g.rounds)].sort((a, b) => a - b)[Math.floor(fin.length / 2)] : 999;
+    return { label, pctFinished: fin.length / gs.length, medianRounds: med, winrateStddev: stddev,
+      spread: `${(100 * Math.min(...rates)).toFixed(0)}–${(100 * Math.max(...rates)).toFixed(0)}%`, map };
+  };
+  console.log(`\n════ MAP SEARCH — ${MAP_SEARCH} cartes générées × ${N_GAMES} parties (+ carte actuelle) ════`);
+  const base = evalMap(DEFAULT_MAP, 'panamerica (actuelle)');
+  if (base) results.push(base);
+  for (let k = 0; k < MAP_SEARCH; k++) {
+    const gen = generateAcceptedMap(Math.random);
+    const r = evalMap(gen.map, `carte-${k + 1} (${gen.tries} essais)`);
+    if (r) results.push(r);
+  }
+  // Classement : équilibre (stddev) d'abord, puis % parties finies, puis durée
+  results.sort((a, b) => (a.winrateStddev - b.winrateStddev) || (b.pctFinished - a.pctFinished) || (a.medianRounds - b.medianRounds));
+  console.log(`\n${'Carte'.padEnd(26)} | équilibre σ | winrates | finies | médiane`);
+  results.forEach((r, i) => {
+    console.log(`${(i + 1 + '. ' + r.label).padEnd(26)} |    ${r.winrateStddev.toFixed(3)}  | ${r.spread.padStart(8)} | ${(100 * r.pctFinished).toFixed(0).padStart(4)}%  | ${String(r.medianRounds).padStart(3)} rounds`);
+  });
+  if (DUMP) {
+    writeFileSync(DUMP, JSON.stringify({ ranking: results.map(({ map, ...rest }) => rest), bestMap: results[0].map }, null, 2));
+    console.log(`\nMeilleure carte + classement → ${DUMP}`);
+  }
+  process.exit(0);
+}
+
 const games = [];
 const crashes = [];
 for (let g = 0; g < N_GAMES; g++) {

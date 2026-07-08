@@ -87,8 +87,9 @@
 
   /* Map */
   --bg-map: #0B0A07;
-  --bg-panel: #12110B;
-  --bg-topbar: #1A1812;
+  --bg-panel: #1c1710;   /* panneau latéral — bois/papier sombre chaud */
+  --bg-topbar: #221b11;  /* barre du haut — cuir chaud */
+  --panel-edge: #3d3322;   /* liseré chaud des panneaux */
 
   /* Action cost/gain — PRESERVED */
   --cost-bg: #8B2E2E;

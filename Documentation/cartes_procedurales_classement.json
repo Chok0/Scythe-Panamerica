@@ -1,0 +1,545 @@
+{
+  "ranking": [
+    {
+      "label": "carte-4 (6 essais)",
+      "pctFinished": 1,
+      "medianRounds": 34,
+      "winrateStddev": 0.09260159433290877,
+      "spread": "14–39%"
+    },
+    {
+      "label": "carte-12 (6 essais)",
+      "pctFinished": 0.9666666666666667,
+      "medianRounds": 36,
+      "winrateStddev": 0.11967806690836547,
+      "spread": "5–41%"
+    },
+    {
+      "label": "carte-6 (2 essais)",
+      "pctFinished": 0.9833333333333333,
+      "medianRounds": 34,
+      "winrateStddev": 0.14362391963244434,
+      "spread": "10–57%"
+    },
+    {
+      "label": "carte-8 (1 essais)",
+      "pctFinished": 0.9833333333333333,
+      "medianRounds": 35,
+      "winrateStddev": 0.14666444611645352,
+      "spread": "11–56%"
+    },
+    {
+      "label": "carte-7 (2 essais)",
+      "pctFinished": 0.9666666666666667,
+      "medianRounds": 36,
+      "winrateStddev": 0.16172752412996497,
+      "spread": "7–59%"
+    },
+    {
+      "label": "carte-5 (2 essais)",
+      "pctFinished": 1,
+      "medianRounds": 34,
+      "winrateStddev": 0.16189576182990803,
+      "spread": "3–55%"
+    },
+    {
+      "label": "carte-9 (3 essais)",
+      "pctFinished": 1,
+      "medianRounds": 34,
+      "winrateStddev": 0.1662159889198748,
+      "spread": "6–53%"
+    },
+    {
+      "label": "carte-2 (5 essais)",
+      "pctFinished": 0.9833333333333333,
+      "medianRounds": 35,
+      "winrateStddev": 0.17077773956614858,
+      "spread": "3–53%"
+    },
+    {
+      "label": "carte-10 (1 essais)",
+      "pctFinished": 1,
+      "medianRounds": 34,
+      "winrateStddev": 0.17159279783561865,
+      "spread": "11–60%"
+    },
+    {
+      "label": "carte-1 (1 essais)",
+      "pctFinished": 0.9833333333333333,
+      "medianRounds": 32,
+      "winrateStddev": 0.17755140632189703,
+      "spread": "7–56%"
+    },
+    {
+      "label": "carte-3 (2 essais)",
+      "pctFinished": 1,
+      "medianRounds": 33,
+      "winrateStddev": 0.195534349961694,
+      "spread": "3–60%"
+    },
+    {
+      "label": "carte-11 (2 essais)",
+      "pctFinished": 1,
+      "medianRounds": 35,
+      "winrateStddev": 0.20882747348119893,
+      "spread": "8–61%"
+    },
+    {
+      "label": "panamerica (actuelle)",
+      "pctFinished": 0.9666666666666667,
+      "medianRounds": 35,
+      "winrateStddev": 0.23930441509774622,
+      "spread": "3–62%"
+    }
+  ],
+  "bestMap": {
+    "name": "proc-6",
+    "hexes": [
+      {
+        "id": 0,
+        "rx": 265,
+        "ry": 103,
+        "t": "foret"
+      },
+      {
+        "id": 1,
+        "rx": 501,
+        "ry": 103,
+        "t": "desert"
+      },
+      {
+        "id": 2,
+        "rx": 737,
+        "ry": 103,
+        "t": "lac"
+      },
+      {
+        "id": 3,
+        "rx": 146,
+        "ry": 171,
+        "t": "village"
+      },
+      {
+        "id": 4,
+        "rx": 382,
+        "ry": 171,
+        "t": "foret"
+      },
+      {
+        "id": 5,
+        "rx": 618,
+        "ry": 171,
+        "t": "village"
+      },
+      {
+        "id": 6,
+        "rx": 855,
+        "ry": 171,
+        "t": "foret"
+      },
+      {
+        "id": 7,
+        "rx": 265,
+        "ry": 240,
+        "t": "plaine"
+      },
+      {
+        "id": 8,
+        "rx": 501,
+        "ry": 240,
+        "t": "marecage"
+      },
+      {
+        "id": 9,
+        "rx": 737,
+        "ry": 240,
+        "t": "toundra"
+      },
+      {
+        "id": 10,
+        "rx": 146,
+        "ry": 308,
+        "t": "village"
+      },
+      {
+        "id": 11,
+        "rx": 382,
+        "ry": 308,
+        "t": "village"
+      },
+      {
+        "id": 12,
+        "rx": 618,
+        "ry": 308,
+        "t": "marecage"
+      },
+      {
+        "id": 13,
+        "rx": 855,
+        "ry": 308,
+        "t": "toundra"
+      },
+      {
+        "id": 14,
+        "rx": 265,
+        "ry": 376,
+        "t": "champs"
+      },
+      {
+        "id": 15,
+        "rx": 501,
+        "ry": 376,
+        "t": "montagne"
+      },
+      {
+        "id": 16,
+        "rx": 737,
+        "ry": 376,
+        "t": "foret"
+      },
+      {
+        "id": 17,
+        "rx": 146,
+        "ry": 445,
+        "t": "sierra"
+      },
+      {
+        "id": 18,
+        "rx": 382,
+        "ry": 445,
+        "t": "lac"
+      },
+      {
+        "id": 19,
+        "rx": 618,
+        "ry": 445,
+        "t": "plaine"
+      },
+      {
+        "id": 20,
+        "rx": 855,
+        "ry": 445,
+        "t": "toundra"
+      },
+      {
+        "id": 21,
+        "rx": 265,
+        "ry": 513,
+        "t": "lac"
+      },
+      {
+        "id": 22,
+        "rx": 501,
+        "ry": 513,
+        "t": "factory"
+      },
+      {
+        "id": 23,
+        "rx": 737,
+        "ry": 513,
+        "t": "sierra"
+      },
+      {
+        "id": 25,
+        "rx": 146,
+        "ry": 581,
+        "t": "foret"
+      },
+      {
+        "id": 26,
+        "rx": 382,
+        "ry": 581,
+        "t": "village"
+      },
+      {
+        "id": 27,
+        "rx": 618,
+        "ry": 581,
+        "t": "desert"
+      },
+      {
+        "id": 28,
+        "rx": 855,
+        "ry": 581,
+        "t": "sierra"
+      },
+      {
+        "id": 29,
+        "rx": 265,
+        "ry": 650,
+        "t": "marecage"
+      },
+      {
+        "id": 30,
+        "rx": 501,
+        "ry": 650,
+        "t": "champs"
+      },
+      {
+        "id": 31,
+        "rx": 737,
+        "ry": 650,
+        "t": "lac"
+      },
+      {
+        "id": 32,
+        "rx": 146,
+        "ry": 718,
+        "t": "lac"
+      },
+      {
+        "id": 33,
+        "rx": 382,
+        "ry": 718,
+        "t": "plaine"
+      },
+      {
+        "id": 34,
+        "rx": 618,
+        "ry": 718,
+        "t": "montagne"
+      },
+      {
+        "id": 35,
+        "rx": 855,
+        "ry": 718,
+        "t": "foret"
+      },
+      {
+        "id": 36,
+        "rx": 265,
+        "ry": 786,
+        "t": "montagne"
+      },
+      {
+        "id": 37,
+        "rx": 501,
+        "ry": 786,
+        "t": "desert"
+      },
+      {
+        "id": 38,
+        "rx": 737,
+        "ry": 786,
+        "t": "marecage"
+      },
+      {
+        "id": 40,
+        "rx": 382,
+        "ry": 855,
+        "t": "lac"
+      },
+      {
+        "id": 41,
+        "rx": 618,
+        "ry": 855,
+        "t": "champs"
+      },
+      {
+        "id": 45,
+        "rx": 737,
+        "ry": 923,
+        "t": "plaine"
+      },
+      {
+        "id": 46,
+        "rx": 500,
+        "ry": 923,
+        "t": "village"
+      },
+      {
+        "id": 47,
+        "rx": 855,
+        "ry": 855,
+        "t": "village"
+      }
+    ],
+    "rivers": [
+      [
+        8,
+        11
+      ],
+      [
+        15,
+        18
+      ],
+      [
+        20,
+        28
+      ],
+      [
+        12,
+        16
+      ],
+      [
+        30,
+        37
+      ],
+      [
+        25,
+        32
+      ],
+      [
+        2,
+        9
+      ],
+      [
+        31,
+        38
+      ],
+      [
+        14,
+        18
+      ],
+      [
+        34,
+        38
+      ],
+      [
+        22,
+        27
+      ],
+      [
+        14,
+        17
+      ],
+      [
+        9,
+        16
+      ],
+      [
+        19,
+        27
+      ],
+      [
+        15,
+        19
+      ],
+      [
+        1,
+        8
+      ],
+      [
+        29,
+        32
+      ],
+      [
+        25,
+        29
+      ],
+      [
+        33,
+        37
+      ],
+      [
+        19,
+        22
+      ],
+      [
+        23,
+        27
+      ],
+      [
+        17,
+        21
+      ],
+      [
+        21,
+        29
+      ],
+      [
+        11,
+        18
+      ],
+      [
+        23,
+        28
+      ],
+      [
+        0,
+        3
+      ],
+      [
+        17,
+        25
+      ],
+      [
+        22,
+        26
+      ],
+      [
+        40,
+        46
+      ],
+      [
+        16,
+        20
+      ],
+      [
+        9,
+        13
+      ],
+      [
+        8,
+        12
+      ],
+      [
+        0,
+        7
+      ],
+      [
+        1,
+        5
+      ]
+    ],
+    "encounterHexes": [
+      9,
+      36,
+      37,
+      23,
+      8,
+      14,
+      38,
+      25,
+      3
+    ],
+    "starts": {
+      "confederation": {
+        "workerHex": [
+          36,
+          33
+        ]
+      },
+      "frente": {
+        "workerHex": [
+          41,
+          46
+        ]
+      },
+      "nations": {
+        "workerHex": [
+          10,
+          17
+        ]
+      },
+      "acadiane": {
+        "workerHex": [
+          6,
+          9
+        ]
+      },
+      "bayou": {
+        "workerHex": [
+          35,
+          28
+        ]
+      },
+      "dominion": {
+        "workerHex": [
+          4,
+          1
+        ]
+      }
+    }
+  }
+}

@@ -48,7 +48,8 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
   let score = 0;
 
   // Can we afford the bottom action?
-  const canBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && p.faction === "nations" && countRes(p, "bois") >= bc.qty));
+  const altRes = FACTIONS[p.faction]?.deployAltRes;
+  const canBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && altRes && countRes(p, altRes) >= bc.qty));
   const bottomMaxed = bottomAction === "Upgrade" ? (p.upgrades || 0) >= 6
     : bottomAction === "Deploy" ? p.mechs.length >= 4
     : bottomAction === "Build" ? (p.buildings || []).length >= 4
@@ -156,7 +157,9 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx) => {
         else s -= 12;
       } else if (enemyHexes && enemyHexes.has(hexId)) {
         // Hex avec seulement des ouvriers ennemis : déplacement possible mais coûte de la pop
-        s -= 4;
+        // Servitude : la Confédération y gagne un ouvrier → elle les chasse activement
+        if (p.faction === "confederation" && (p.capturedWorkers || 0) < 2 && p.pop >= 2) s += 6;
+        else s -= 4;
       }
     }
 
@@ -396,7 +399,8 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const bottomAction = BOTTOM[col];
   const botCosts = getBottomCost(p);
   const bc = botCosts[col];
-  const canAffordBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && p.faction === "nations" && countRes(p, "bois") >= bc.qty));
+  const altResB = FACTIONS[p.faction]?.deployAltRes;
+  const canAffordBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && altResB && countRes(p, altResB) >= bc.qty));
   let bottomDone = false;
   if (canAffordBottom) {
     if (bottomAction === "Upgrade" && (p.upgrades || 0) < 6) {
@@ -421,7 +425,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     } else if (bottomAction === "Deploy" && p.mechs.length < 4) {
       const wh = getWorkerHexes(p);
       if (wh.length > 0) {
-        const deployRes = (p.faction === "nations" && countRes(p, bc.res) < bc.qty) ? "bois" : bc.res;
+        const deployRes = (altResB && countRes(p, bc.res) < bc.qty) ? altResB : bc.res;
         const sp = spendRes(p, deployRes, bc.qty); Object.assign(p, { resources: sp.resources });
         // Deploy on worker hex closest to center (strategic position)
         const centerX = 500, centerY = 500;

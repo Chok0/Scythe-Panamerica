@@ -4,10 +4,12 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { TERRAINS } from '../data/terrains.js';
 import { FACTIONS, FACTION_IDS } from '../data/factions.js';
-import { HEXES, RIVERS, HOME_BASES, hMap, ADJ } from '../data/hexes.js';
+import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, CURRENT_MAP, DEFAULT_MAP, loadMap } from '../data/hexes.js';
+import { generateAcceptedMap } from '../data/mapGen.js';
 import { getCombatBonus } from '../data/combat.js';
+import { BALANCE } from '../data/balance.js';
 import { EMPIRE_START, EMPIRE_RAILS, drawEmpireCombat } from '../data/empire.js';
-import { ENCOUNTERS, ENCOUNTER_HEXES } from '../data/encounters.js';
+import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA } from '../data/plans.js';
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, applyEnlistOngoing } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
@@ -21,7 +23,7 @@ import { getValidMoves } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer } from '../logic/player.js';
 import { botTurn } from '../logic/bot.js';
-import { applyBotPvpAfterMove } from '../logic/pvpBots.js';
+import { applyBotPvpAfterMove, servitudeOnDisplace } from '../logic/pvpBots.js';
 import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { applyPlanTop, getPlanBottomBonus } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
@@ -32,6 +34,7 @@ export default function App(){
   const[selFaction,setSelFaction]=useState(null);
   const[selMat,setSelMat]=useState(null);
   const[numBots,setNumBots]=useState(2);
+  const[randomMap,setRandomMap]=useState(false);
   const[players,setPlayers]=useState([]);
   const[currentP,setCurrentP]=useState(0);
   const[turn,setTurn]=useState(1);
@@ -46,7 +49,7 @@ export default function App(){
   const[combat,setCombat]=useState(null); // {type:"pvp"|"pve", hexId, enemyIdx?, empireId?, empireCard?, phase:"choose"|"reward", powerSpend:0, cardsSpend:0}
   const[encounter,setEncounter]=useState(null); // {card, hexId}
   const[rougeRiver,setRougeRiver]=useState(null); // {cards:[]}
-  const[encounterTokens,setEncounterTokens]=useState(new Set(ENCOUNTER_HEXES));
+  const[encounterTokens,setEncounterTokens]=useState(new Set(CURRENT_MAP.encounterHexes));
   const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
   const[moveSource,setMoveSource]=useState(null);
   const[preActionSnapshot,setPreActionSnapshot]=useState(null); // snapshot of player[0] before action, for undo
@@ -236,6 +239,18 @@ export default function App(){
 
   const startGame=useCallback(()=>{
     if(!selFaction||!selMat)return;
+    // Carte : procédurale (validée par les règles de non-acceptation) ou celle d'origine
+    if(randomMap){
+      const gen=generateAcceptedMap(Math.random);
+      loadMap(gen.map);
+      addLog(`🗺 Carte procédurale générée (${gen.tries} essai${gen.tries>1?"s":""})`);
+    } else {
+      loadMap(DEFAULT_MAP);
+    }
+    setEncounterTokens(new Set(CURRENT_MAP.encounterHexes));
+    setEmpire(Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])));
+    setRails([...EMPIRE_RAILS]);
+    setRrVisitors(0);
     const usedFactions=[selFaction];const usedMats=[selMat];
     const ps=[createPlayer(selFaction,selMat,false)];
     const availF=FACTION_IDS.filter(f=>!usedFactions.includes(f));
@@ -261,7 +276,7 @@ export default function App(){
       const y=Math.max(MAP_BASE.y,Math.min(MAP_BASE.y+MAP_BASE.h-zh,heroHex.ry-zh/2));
       setMapView({x,y,w:zw,h:zh});
     }
-  },[selFaction,selMat,numBots,addLog]);
+  },[selFaction,selMat,numBots,randomMap,addLog]);
 
   const revealObjective=useCallback((objIdx)=>{
     const p=players[0];if(!p||p.objectiveRevealed)return;
@@ -414,6 +429,8 @@ export default function App(){
           // Bot loses pop for displacing workers
           n[cp]={...n[cp],pop:Math.max(0,(n[cp].pop||0)-displaced.length)};
           logs.push(`🏃 ${displaced.length} ouvrier(s) ${FACTIONS[n[oi].faction].name} renvoyé(s) ! (-${displaced.length} Pop ${FACTIONS[n[cp].faction].name})`);
+          const servB=servitudeOnDisplace(n[cp],displaced[0].hexId);
+          if(servB.captured){n[cp]=servB.player;logs.push(`⛓🤖 Servitude ! ${FACTIONS[n[cp].faction].name} capture un ouvrier (${n[cp].capturedWorkers}/2)`);}
         }
         // ── TRAP TRIGGER: bot hero/mech lands on enemy Frente trap ──
         if(n[oi].faction==="frente"){
@@ -871,6 +888,9 @@ export default function App(){
           // Lose 1 pop per displaced worker
           p.pop=Math.max(0,p.pop-displaced);
           addLog(`♥ -${displaced} Pop (ouvriers déplacés)`);
+          // Servitude (Confédération) : capturer un des ouvriers chassés
+          const serv=servitudeOnDisplace(p,hexId);
+          if(serv.captured){p=serv.player;addLog(`⛓ Servitude ! Ouvrier capturé (-2 Pop, ${p.capturedWorkers}/2)`);}
         }
       }
       
@@ -1105,7 +1125,7 @@ export default function App(){
       // ── WHITE FLAG CHECK (Acadiane defender with slot 2) ──
       if(enemy.faction==="acadiane"&&(enemy.unlockedAbilities||[]).includes(2)&&Math.random()<0.5){
         // Acadiane refuses combat: retreat + 2 pop, attacker gets hex + resources + star for free
-        addLog(`🏳 ${ef.name} active White Flag ! Retraite volontaire + 2 Pop.`);
+        addLog(`🏳 ${ef.name} active White Flag ! Retraite volontaire + ${BALANCE.whiteFlagPop} Pop.`);
         const ehb=HOME_BASES[enemy.faction];
         const ehbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ehb.rx)**2+(h.ry-ehb.ry)**2);const db=best?Math.sqrt((best.rx-ehb.rx)**2+(best.ry-ehb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
         setPlayers(prev=>{
@@ -1130,7 +1150,7 @@ export default function App(){
           n[combat.enemyIdx].mechs=n[combat.enemyIdx].mechs.map(m=>m.hexId===combat.hexId?{...m,hexId:ehbHex.id}:m);
           n[combat.enemyIdx].workers=n[combat.enemyIdx].workers.map(w=>w.hexId===combat.hexId?{...w,hexId:ehbHex.id}:w);
           delete n[combat.enemyIdx].resources[String(combat.hexId)];
-          n[combat.enemyIdx].pop=Math.min((n[combat.enemyIdx].pop||0)+2,18);
+          n[combat.enemyIdx].pop=Math.min((n[combat.enemyIdx].pop||0)+BALANCE.whiteFlagPop,18);
           return n;
         });
         const wfWorkerCount=enemy.workers.filter(w=>w.hexId===combat.hexId).length;
@@ -1294,7 +1314,7 @@ export default function App(){
       if(n[0].hero===combat.hexId)n[0].hero=myHbHex.id;
       n[0].mechs=n[0].mechs.map(m=>m.hexId===combat.hexId?{...m,hexId:myHbHex.id}:m);
       n[0].workers=n[0].workers.map(w=>w.hexId===combat.hexId?{...w,hexId:myHbHex.id}:w);
-      n[0].pop=Math.min((n[0].pop||0)+2,18);
+      n[0].pop=Math.min((n[0].pop||0)+BALANCE.whiteFlagPop,18);
       const key=String(combat.hexId);const lostRes=n[0].resources[key];
       if(lostRes){
         if(!n[atkIdx].resources[key])n[atkIdx].resources[key]={};
@@ -1308,7 +1328,7 @@ export default function App(){
       n[atkIdx]=ab;
       return n;
     });
-    addLog(`🏳 White Flag ! Vous cédez #${combat.hexId} à ${af.name} (+2 Pop, aucune dépense).`);
+    addLog(`🏳 White Flag ! Vous cédez #${combat.hexId} à ${af.name} (+${BALANCE.whiteFlagPop} Pop, aucune dépense).`);
     setCombat(null);
     setCurrentP(combat.resumeCp);setBotRunning(true);
   },[combat,me,players,addLog]);
@@ -1461,7 +1481,7 @@ export default function App(){
 
   // ══════════ SETUP SCREEN ══════════
   if(phase==="setup"){
-    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
+    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} randomMap={randomMap} setRandomMap={setRandomMap} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
   }
 
   // (pick_objective phase removed — player keeps both objectives per Scythe rules)
@@ -1574,7 +1594,7 @@ export default function App(){
     <div style={{height:"100vh",display:"grid",gridTemplateRows:"var(--top-h) 1fr",gridTemplateColumns:"var(--left-w) 1fr var(--right-w)",background:"var(--bg)",color:"var(--text)",overflow:"hidden"}}>
 
       {/* ═══ TOP RESOURCE BAR ═══ */}
-      <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",padding:"6px 16px",gap:10,background:"var(--bg-topbar)",borderBottom:"1px solid var(--border)",flexShrink:0,height:"var(--top-h)",overflow:"hidden"}}>
+      <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",padding:"6px 16px",gap:10,background:"linear-gradient(180deg,#282013,#1c150c)",borderBottom:"1px solid var(--panel-edge)",boxShadow:"inset 0 -1px 0 rgba(216,201,163,0.07)",flexShrink:0,height:"var(--top-h)",overflow:"hidden"}}>
         {/* Faction badge */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginRight:4,flexShrink:0}}>
           <div style={{width:36,height:36,borderRadius:"50%",background:myFaction.color+"22",border:`2px solid ${myFaction.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:myFaction.color,fontFamily:"var(--font-title)"}}>{myFaction.name[0]}</div>
@@ -1620,7 +1640,7 @@ export default function App(){
       </div>
 
       {/* ═══ LEFT: POWER + POPULARITY TRACKS ═══ */}
-      <div style={{display:"flex",gap:4,background:"linear-gradient(180deg,var(--bg-panel),#0a0906)",borderRight:"1px solid var(--border)",padding:"4px 4px",overflow:"hidden"}}>
+      <div style={{display:"flex",gap:4,background:"linear-gradient(180deg,#241d12,#171209 60%,#100c07)",borderRight:"1px solid var(--panel-edge)",boxShadow:"inset -1px 0 0 rgba(216,201,163,0.06)",padding:"4px 4px",overflow:"hidden"}}>
         {/* Power track */}
         <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
           <div style={{fontSize:8,color:"var(--rust)",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pui</div>
@@ -1755,27 +1775,17 @@ export default function App(){
           {/* Hexes */}
           {HEXES.map(hex=>{
             const isV=validMoves.has(hex.id);const isSel=selHex===hex.id;const isHov=hovHex===hex.id;
-            const units=allHexContents[hex.id]||[];
-            const empHere=Object.entries(empire).filter(([_,hid])=>hid===hex.id);
             const isFactory=hex.t==="factory";
             return(<g key={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
               <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory}/>
               {/* Terrain label removed — TerrainDecor provides visual identification */}
               <text x={hex.rx} y={hex.ry+32} textAnchor="middle" fontSize={6.5} fill="#4a4030" opacity={0.2} style={{fontFamily:"var(--font-map)",pointerEvents:"none"}}>#{hex.id}</text>
-              {units.length>0&&(()=>{const fc=units[0].factionId;const c=FACTIONS[fc]?.color||"#888";return <FactionHalo cx={hex.rx} cy={hex.ry+6} color={c} r={22}/>;})()}
-              {units.map((u,ui)=>{
-                const ox=(ui-(units.length-1)/2)*22;
-                return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}/>;
-              })}
               {(()=>{
                 const pRes=players.reduce((acc,pl)=>{const r=pl.resources[String(hex.id)];if(r)Object.entries(r).forEach(([rt,cnt])=>{acc[rt]=(acc[rt]||0)+cnt;});return acc;},{});
                 return Object.entries(pRes).map(([rt,cnt],ri)=>
                   <ResourceToken key={rt} cx={hex.rx+26} cy={hex.ry-22+ri*18} resType={rt} count={cnt}/>
                 );
               })()}
-              {empHere.map(([eid],ei)=>
-                <EmpireMecha key={eid} cx={hex.rx-16+ei*16} cy={hex.ry-20} eid={eid}/>
-              )}
               {/* Faction tokens: Traps (Frente) + Comptoirs (Acadiane) */}
               {players.map(pl=>{
                 // Traps — hidden marker (skull if active, X if disarmed)
@@ -1811,6 +1821,29 @@ export default function App(){
               })()}
             </g>);
           })}
+          {/* ── COUCHE UNITÉS : plate et animée (les pions glissent entre les hexes) ── */}
+          <g style={{pointerEvents:"none"}}>
+            {Object.entries(allHexContents).map(([hidStr,units])=>{
+              const hex=hMap[hidStr];if(!hex||units.length===0)return null;
+              const c=FACTIONS[units[0].factionId]?.color||"#888";
+              return <FactionHalo key={`halo${hidStr}`} cx={hex.rx} cy={hex.ry+6} color={c} r={22}/>;
+            })}
+            {Object.entries(allHexContents).flatMap(([hidStr,units])=>{
+              const hex=hMap[hidStr];if(!hex)return [];
+              return units.map((u,ui)=>{
+                const ox=(ui-(units.length-1)/2)*22;
+                return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}/>;
+              });
+            })}
+            {(()=>{
+              const byHex={};
+              Object.entries(empire).forEach(([eid,hid])=>{(byHex[hid]=byHex[hid]||[]).push(eid);});
+              return Object.entries(byHex).flatMap(([hidStr,eids])=>{
+                const hex=hMap[hidStr];if(!hex)return [];
+                return eids.map((eid,ei)=><EmpireMecha key={eid} cx={hex.rx-16+ei*16} cy={hex.ry-20} eid={eid}/>);
+              });
+            })()}
+          </g>
           {/* Hex click ripple */}
           {clickRipple&&(()=>{
             const rh=hMap[clickRipple.hexId];
@@ -1922,8 +1955,10 @@ export default function App(){
                     </div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                    {encounter.card.choices.map((c,ci)=>(
-                      <button key={ci} onClick={()=>resolveEncounter(ci)} className="enc-card">
+                    {encounter.card.choices.map((c,ci)=>{
+                      const locked=c.available&&!c.available(me);
+                      return(
+                      <button key={ci} onClick={()=>{if(!locked)resolveEncounter(ci);}} className="enc-card" disabled={locked} style={locked?{opacity:0.35,cursor:"not-allowed"}:undefined}>
                         <div style={{display:"flex",alignItems:"center",gap:10}}>
                           <span style={{fontSize:20,width:28,textAlign:"center"}}>{c.icon}</span>
                           <div style={{flex:1}}>
@@ -1933,7 +1968,7 @@ export default function App(){
                           <span style={{fontSize:16,color:"var(--gold-dim)"}}>›</span>
                         </div>
                       </button>
-                    ))}
+                    );})}
                   </div>
                 </div>
               )}
@@ -2002,7 +2037,7 @@ export default function App(){
       </div>
 
       {/* ═══ RIGHT PANEL: SCOREBOARD + ACTIONS + DROPDOWNS ═══ */}
-      <div style={{display:"flex",flexDirection:"column",background:"linear-gradient(180deg,var(--bg-panel),#0a0906)",borderLeft:"1px solid var(--border)",overflow:"hidden"}}>
+      <div style={{display:"flex",flexDirection:"column",background:"linear-gradient(180deg,#241d12,#171209 60%,#100c07)",borderLeft:"1px solid var(--panel-edge)",boxShadow:"inset 1px 0 0 rgba(216,201,163,0.06)",overflow:"hidden"}}>
 
         {/* ── Scoreboard ── */}
         <div style={{padding:"6px 8px",borderBottom:"1px solid var(--border)",flexShrink:0}}>
@@ -2097,7 +2132,7 @@ export default function App(){
                     transition:"all 0.2s ease",
                   }}>
                     {/* TOP ACTION */}
-                    <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(30,27,20,0.8),rgba(22,20,14,0.6))"}}>
+                    <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(46,37,22,0.75),rgba(30,24,14,0.6))"}}>
                       <div style={{minWidth:0,flex:1}}>
                         <div style={{fontSize:11,fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",color:"var(--rust)",marginBottom:4,fontFamily:"var(--font-title)"}}>{action}</div>
                         <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact />
@@ -2251,15 +2286,15 @@ export default function App(){
                   </div>;
                 })()}
                 {ba==="Deploy"&&!maxed&&(()=>{
-                  const isNations=me.faction==="nations";
+                  const deployAlt=FACTIONS[me.faction]?.deployAltRes;
                   const metalCount=countRes(me,"metal");const boisCount=countRes(me,"bois");
                   const qty=bc.qty;
                   const hasMetal=metalCount>=qty;const hasBois=boisCount>=qty;
-                  if(!isNations) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{workerHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn">⬡ #{hid}</button>)}</div>:<div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
+                  if(!deployAlt) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{workerHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn">⬡ #{hid}</button>)}</div>:<div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
                   // Nations: Esprit Sauvage — choose metal or bois
                   if(!hasMetal&&!hasBois) return <div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de métal ni de bois</div>;
                   if(!bottomPick||!bottomPick.deployRes) return <div>
-                    <div style={{fontSize:10,color:"var(--brass)",marginBottom:6}}>🌿 Esprit Sauvage — déployer avec :</div>
+                    <div style={{fontSize:10,color:"var(--brass)",marginBottom:6}}>🌿 {FACTIONS[me.faction].deployAltName||FACTIONS[me.faction].ability} — déployer avec :</div>
                     <div style={{display:"flex",gap:6}}>
                       {hasMetal&&<button onClick={()=>setBottomPick({deployRes:"metal"})} className="act-btn" style={{flex:1}}>⚙ Métal ({metalCount})</button>}
                       {hasBois&&<button onClick={()=>setBottomPick({deployRes:"bois"})} className="act-btn" style={{flex:1,borderColor:"#5a8a3a"}}>🪵 Bois ({boisCount})</button>}

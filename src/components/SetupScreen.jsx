@@ -2,7 +2,7 @@ import React from 'react';
 import { FACTIONS, FACTION_IDS } from '../data/factions.js';
 import { MATS } from '../data/mats.js';
 
-export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, startGame, onShowRules }) {
+export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, randomMap, setRandomMap, startGame, onShowRules }) {
   return (
     <div style={{minHeight:"100vh",background:"linear-gradient(170deg, #1A1710 0%, #1A1710 30%, #1a1610 60%, #1A1710 100%)",color:"var(--text)",display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 16px",position:"relative",overflow:"auto"}}>
       <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"repeating-linear-gradient(0deg,transparent,transparent 1px,rgba(201,168,76,0.012) 1px,rgba(201,168,76,0.012) 2px)",pointerEvents:"none"}}/>
@@ -32,6 +32,16 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
             }}>{n}</button>
           ))}
         </div>
+
+        <button onClick={()=>setRandomMap(r=>!r)} style={{
+          marginBottom:32,padding:"10px 24px",fontSize:12,letterSpacing:2,
+          background:randomMap?"rgba(201,168,76,0.12)":"transparent",
+          color:randomMap?"var(--gold)":"var(--text-muted)",
+          border:randomMap?"1px solid var(--gold)":"1px solid var(--border)",
+          borderRadius:4,fontFamily:"'Bitter',serif",fontWeight:700,
+        }}>
+          🗺 Carte {randomMap?"PROCÉDURALE":"classique"} {randomMap?"— nouvelle carte à chaque partie":""}
+        </button>
 
         <div style={{color:"var(--gold-dim)",fontSize:12,marginBottom:12,letterSpacing:4,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Votre Faction</div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,width:"100%",marginBottom:32}}>

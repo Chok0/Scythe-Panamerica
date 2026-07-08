@@ -1,4 +1,4 @@
-import { hMap } from './hexes.js';
+import { hMap, ADJ } from './hexes.js';
 
 export const FACTIONS = {
   confederation: {
@@ -25,7 +25,7 @@ export const FACTIONS = {
   nations: {
     name: "Nations Souv.", color: "#20B2AA", hero: "Aiyana", companion: "Koda",
     power: 3, cards: 2, workerHex: [10, 17], riverwalk: ["plaine", "foret"], rwName: "Piste",
-    ability: "Esprit Sauvage",
+    ability: "Esprit Sauvage", deployAltRes: "bois", deployAltName: "Esprit Sauvage",
     fObj: {
       name: "Le Grand Retour", desc: "5+ hex Plaine/Forêt contrôlés",
       check: p => {
@@ -42,14 +42,19 @@ export const FACTIONS = {
     power: 1, cards: 3, workerHex: [2, 6], riverwalk: ["foret", "village"], rwName: "Portage",
     ability: "Comptoir",
     fObj: {
-      name: "Réseau Invisible", desc: "4 Comptoirs + héros sur un Lac",
-      check: p => (p.flagTokens || []).length >= 4 && hMap[p.hero]?.t === "lac",
+      name: "Réseau Invisible", desc: "4 Comptoirs non adjacents entre eux + héros sur un Lac",
+      // Nerf mesuré par simulation (65,6% → 58,1% de winrate) : le réseau doit être étalé
+      check: p => {
+        if ((p.flagTokens || []).length < 4 || hMap[p.hero]?.t !== "lac") return false;
+        const ids = (p.flagTokens || []).map(f => f.hexId);
+        return !ids.some((a, i) => ids.slice(i + 1).some(b => (ADJ[a] || []).includes(b)));
+      },
     },
   },
   bayou: {
     name: "Bayou", color: "#7B2D8B", hero: "Cap. Zeke", companion: "Croc",
     power: 2, cards: 3, workerHex: [35, 28], riverwalk: ["desert", "village"], rwName: "Mangrove",
-    ability: "Chimère",
+    ability: "Chimère", deployAltRes: "bois", deployAltName: "Bois flotté",
     fObj: {
       name: "Le Prédateur", desc: "1 mecha capturé + 2 Empire détruits",
       check: p => (p.capturedMech || 0) >= 1 && (p.empireKills || 0) >= 2,
