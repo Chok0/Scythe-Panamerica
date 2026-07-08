@@ -1,8 +1,27 @@
 # Rapport de simulation — parties bot vs bot
 
-> `npm run sim -- --games 500 --seed 42` · **v8** : diagnostic Acadiane bouclé
-> (départ asymétrique), fix scoring Rouge River, verdict Rusviet pour le
-> Dominion.
+> `npm run sim -- --games 500 --seed 42` · **v9** : équilibrage final par
+> stats de départ asymétriques (façon fiches de faction de l'original).
+
+## 0-v9. Équilibrage par stats de départ — l'état final
+
+3 itérations mesurées (400 parties chacune) + validation croisée sur 3 seeds
+indépendants. Les modificateurs (affichés sur les cartes de faction au setup,
+appliqués aux valeurs du plateau joueur) :
+
+| Faction | ⚡ | 🃏 | 💰 | ♥ | Winrate (moy. 3 seeds) |
+|---|---|---|---|---|---|
+| Acadiane | 1 | 1 | **−3** | **−3** | ~36 % |
+| Frente | 2 | 3 | — | — | ~31 % |
+| Nations | 3 | 2 | **−2** | **−1** | ~30 % |
+| Bayou | 2 | 3 | **+6** | **+4** | ~27 % |
+| Confédération | 4 | 1 | **+5** | **+4** | ~25 % |
+| Dominion | 3 | 2 | **+6** | **+3** | ~21 % |
+
+Sur les seeds 42 / 7 / 123 : toutes les factions jouent entre **19 et 38 %**
+(contre 5,8–67,8 % en début de chantier). La logique est celle de l'original :
+la géographie est inégale par design (péninsules plus ou moins riches), les
+fiches de départ compensent.
 
 ## 0-v8. Pourquoi un tel succès de l'Acadiane ? (diagnostic final)
 

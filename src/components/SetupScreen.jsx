@@ -79,6 +79,9 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
               <div style={{fontSize:12,color:"var(--text-dim)"}}>{f.hero} & {f.companion}</div>
               <div style={{display:"flex",gap:8,fontSize:11,color:"var(--text-dim)",marginTop:6,fontFamily:"'IBM Plex Mono',monospace"}}>
                 <span>⚡{f.power}</span><span>🃏{f.cards}</span>
+                {f.startBonus&&<span style={{color:(f.startBonus.coins||0)<0?"#c07050":"#7fa05a"}}>
+                  💰{f.startBonus.coins>0?"+":""}{f.startBonus.coins} ♥{f.startBonus.pop>0?"+":""}{f.startBonus.pop}
+                </span>}
               </div>
               {f.fObj&&<div style={{fontSize:11,color:"var(--gold-dim)",marginTop:4,fontStyle:"italic"}}>🏛 {f.fObj.name}</div>}
               {f.isExtension&&<div style={{fontSize:10,color:"var(--gold-dim)",marginTop:2,letterSpacing:2,textTransform:"uppercase"}}>Extension</div>}
