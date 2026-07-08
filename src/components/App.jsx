@@ -13,6 +13,7 @@ import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA } from '../data/plans.js';
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, applyEnlistOngoing } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
+import { pickStructureBonus, structureBonusDetail } from '../data/structureBonus.js';
 import RulesPage from './RulesPage.jsx';
 import AmbientSound from './AmbientSound.jsx';
 import SetupScreen from './SetupScreen.jsx';
@@ -36,7 +37,9 @@ export default function App(){
   const[selMat,setSelMat]=useState(null);
   const[numBots,setNumBots]=useState(2);
   const[randomMap,setRandomMap]=useState(false);
+  const[empireEnabled,setEmpireEnabled]=useState(true); // bots de l'Empire activables/désactivables au setup
   const[difficulty,setDifficulty]=useState("normal");
+  const[structureBonus,setStructureBonus]=useState(null); // tuile bonus de construction tirée au début
   const[players,setPlayers]=useState([]);
   const[currentP,setCurrentP]=useState(0);
   const[turn,setTurn]=useState(1);
@@ -54,6 +57,7 @@ export default function App(){
   const[encounterTokens,setEncounterTokens]=useState(new Set(CURRENT_MAP.encounterHexes));
   const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
   const[moveSource,setMoveSource]=useState(null);
+  const[unitPicker,setUnitPicker]=useState(null); // {hexId,units:[{type,id,label}]} — plusieurs unités sur le hex cliqué
   const[carryOnMove,setCarryOnMove]=useState(true); // 🚚 emporter ouvriers/ressources au Move
   const[routeDrop,setRouteDrop]=useState(null); // 📦 dépose en route: {mids,destHex,endAfter}
   const[preActionSnapshot,setPreActionSnapshot]=useState(null); // snapshot of player[0] before action, for undo
@@ -183,12 +187,14 @@ export default function App(){
   },[]);
 
   // Attach wheel + touch listeners with passive:false
+  // `phase` est dans les deps : le SVG n'existe pas pendant le setup, il faut
+  // ré-attacher quand l'écran de jeu monte (sinon zoom molette/trackpad mort)
   useEffect(()=>{
     const el=mapRef.current;if(!el)return;
     el.addEventListener("wheel",handleMapWheel,{passive:false});
     el.addEventListener("touchmove",handleTouchMove,{passive:false});
     return()=>{el.removeEventListener("wheel",handleMapWheel);el.removeEventListener("touchmove",handleTouchMove);};
-  },[handleMapWheel,handleTouchMove]);
+  },[handleMapWheel,handleTouchMove,phase]);
 
   const mapZoom=useCallback((factor)=>{
     setMapView(prev=>{
@@ -252,9 +258,14 @@ export default function App(){
       loadMap(DEFAULT_MAP);
     }
     setEncounterTokens(new Set(CURRENT_MAP.encounterHexes));
-    setEmpire(Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])));
+    setEmpire(empireEnabled?Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])):{});
+    if(!empireEnabled)addLog(`🤖 Bots de l'Empire désactivés pour cette partie`);
     setRails([...EMPIRE_RAILS]);
     setRrVisitors(0);
+    // Bonus de construction : tuile tirée au hasard, visible de tous
+    const sb=pickStructureBonus();
+    setStructureBonus(sb);
+    addLog(`🏦 Bonus de construction : ${sb.icon} ${sb.name} — +${sb.coins}$ ${sb.desc}`);
     const usedFactions=[selFaction];const usedMats=[selMat];
     const ps=[createPlayer(selFaction,selMat,false)];
     const availF=FACTION_IDS.filter(f=>!usedFactions.includes(f));
@@ -289,7 +300,7 @@ export default function App(){
       const y=Math.max(MAP_BASE.y,Math.min(MAP_BASE.y+MAP_BASE.h-zh,heroHex.ry-zh/2));
       setMapView({x,y,w:zw,h:zh});
     }
-  },[selFaction,selMat,numBots,randomMap,difficulty,addLog]);
+  },[selFaction,selMat,numBots,randomMap,empireEnabled,difficulty,addLog]);
 
   const revealObjective=useCallback((objIdx)=>{
     const p=players[0];if(!p||p.objectiveRevealed)return;
@@ -542,7 +553,7 @@ export default function App(){
   // After top-row → show bottom-row option
   const endHumanTurn=useCallback((col)=>{
     setPlayers(prev=>{const n=[...prev];n[0]={...n[0],lastCol:col,movesLeft:undefined,movedUnits:[],packUpUsed:false};return n;});
-    setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);setTradePicks([]);
+    setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);
     // Show bottom-row option
     const bottomAction=BOTTOM[col];
     setPendingBottom({col,action:bottomAction});
@@ -777,6 +788,20 @@ export default function App(){
     }
     return new Set(moves);
   },[moveSource,me,players,rails]);
+
+  // Déplacement au clic : hex → unités du joueur encore déplaçables ce tour.
+  // Cliquer un hex surligné sélectionne l'unité (picker si plusieurs).
+  const movableUnits=useMemo(()=>{
+    const m=new Map();
+    if(!me||selAction!=="Move")return m;
+    if((me.movedUnits||[]).length>=2)return m;
+    const moved=new Set(me.movedUnits||[]);
+    const add=(hid,u)=>{if(!m.has(hid))m.set(hid,[]);m.get(hid).push(u);};
+    if(!moved.has("hero"))add(me.hero,{type:"hero",id:"hero",icon:"★",label:myFaction?.hero||"Héros"});
+    me.mechs.forEach(mm=>{if(!moved.has(mm.id))add(mm.hexId,{type:"mech",id:mm.id,icon:"⬡",label:"Mecha"});});
+    me.workers.forEach(w=>{if(!moved.has(w.id))add(w.hexId,{type:"worker",id:w.id,icon:"●",label:"Ouvrier"});});
+    return m;
+  },[me,selAction,myFaction]);
 
   // Automatic stars for the human player (bots handle these in botTurn)
   useEffect(()=>{
@@ -1059,9 +1084,18 @@ export default function App(){
       if(p.movedUnits.length>=2){addLog(`✅ Mouvement terminé`);if(!dropOffer)endHumanTurn(myMat.topRow.indexOf("Move"));}
       return;
     }
+    // ── SÉLECTION D'UNITÉ AU CLIC (action Move) : cliquer le pion à déplacer ──
+    if(selAction==="Move"&&movableUnits.has(hexId)){
+      const units=movableUnits.get(hexId);
+      setUnitPicker(null);
+      if(units.length===1){doMove(units[0].type,units[0].id,hexId);}
+      else{setMoveSource(null);setUnitPicker({hexId,units});}
+      return;
+    }
     if(moveSource){setMoveSource(null);return;}
+    setUnitPicker(null);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -1494,7 +1528,7 @@ export default function App(){
 
   const doMove=(unitType,unitId,fromHex)=>{
     if(!me.movesLeft)setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:2,movedUnits:[]};return n;});
-    setMoveSource({unitType,unitId,fromHex});setSelHex(null);
+    setMoveSource({unitType,unitId,fromHex});setSelHex(null);setUnitPicker(null);
   };
 
   const doBolster=(type)=>{
@@ -1575,7 +1609,7 @@ export default function App(){
 
   // ══════════ SETUP SCREEN ══════════
   if(phase==="setup"){
-    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} randomMap={randomMap} setRandomMap={setRandomMap} difficulty={difficulty} setDifficulty={setDifficulty} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
+    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} randomMap={randomMap} setRandomMap={setRandomMap} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
   }
 
   // (pick_objective phase removed — player keeps both objectives per Scythe rules)
@@ -1615,10 +1649,13 @@ export default function App(){
       const starScore=p.stars*starMult;
       const terScore=(territories+factoryBonus+flagBonus)*terMult;
       const resScore=resPairs*resMult;
-      const total=starScore+terScore+resScore+p.coins;
+      // Bonus de construction : X$ par bâtiment sur les tuiles qualifiées
+      const sbDetail=structureBonusDetail(p,structureBonus);
+      const total=starScore+terScore+resScore+p.coins+sbDetail.coins;
       return{faction:p.faction,name:f.name,color:f.color,hero:f.hero,isBot:p.isBot,
         stars:p.stars,pop:p.pop,popTier,territories,factoryBonus,flagBonus,totalRes,resPairs,coins:p.coins,
-        starScore,terScore,resScore,total,starMult,terMult,resMult};
+        starScore,terScore,resScore,total,starMult,terMult,resMult,
+        sbCount:sbDetail.count,sbCoins:sbDetail.coins};
     }).sort((a,b)=>b.total-a.total);
 
     return(
@@ -1667,6 +1704,7 @@ export default function App(){
               </div>
               <div style={{fontSize:11,color:"var(--text-dim)",marginTop:4}}>
                 Pop: {s.pop} (palier {["0-6","7-12","13-18"][s.popTier]}) — {s.totalRes} ressources
+                {structureBonus&&s.sbCoins>0&&<span style={{color:"var(--gold)",marginLeft:8}}>🏦 {structureBonus.icon} {structureBonus.name}: +{s.sbCoins}$ ({s.sbCount} bât.)</span>}
               </div>
             </div>
           ))}
@@ -1873,8 +1911,15 @@ export default function App(){
           {HEXES.map(hex=>{
             const isV=validMoves.has(hex.id);const isSel=selHex===hex.id;const isHov=hovHex===hex.id;
             const isFactory=hex.t==="factory";
+            const isSrc=!moveSource&&movableUnits.has(hex.id);
+            const isBonusTile=structureBonus&&hex.t!=="lac"&&hex.t!=="marecage"&&hex.t!=="factory"&&structureBonus.check(hex.id);
             return(<g key={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
-              <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory}/>
+              <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc}/>
+              {/* Bonus de construction : pastille $ sur les tuiles qualifiées */}
+              {isBonusTile&&<g style={{pointerEvents:"none"}}>
+                <circle cx={hex.rx-26} cy={hex.ry+24} r={8} fill="rgba(6,5,3,0.75)" stroke="#d4b254" strokeWidth={1}/>
+                <text x={hex.rx-26} y={hex.ry+27.5} textAnchor="middle" fontSize={10} fill="#d4b254" fontWeight={700}>$</text>
+              </g>}
               {/* Terrain label removed — TerrainDecor provides visual identification */}
               <text x={hex.rx} y={hex.ry+32} textAnchor="middle" fontSize={6.5} fill="#4a4030" opacity={0.2} style={{fontFamily:"var(--font-map)",pointerEvents:"none"}}>#{hex.id}</text>
               {(()=>{
@@ -1965,6 +2010,23 @@ export default function App(){
             <text x="510" y="505" textAnchor="middle" fontSize="80" fill="#c9a84c" letterSpacing="25">1920+</text>
           </g>
         </svg>
+
+        {/* ═══ UNIT PICKER — plusieurs unités sur le hex cliqué ═══ */}
+        {unitPicker&&selAction==="Move"&&(
+          <div style={{position:"absolute",bottom:16,left:"50%",transform:"translateX(-50%)",zIndex:8,
+            background:"rgba(14,12,8,0.95)",border:"1px solid var(--gold-dim)",borderRadius:10,
+            padding:"10px 14px",boxShadow:"0 6px 30px rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",animation:"slideUp 0.2s ease"}}>
+            <div style={{fontSize:12,color:"var(--gold)",fontWeight:700,marginBottom:8,fontFamily:"var(--font-title)"}}>Quelle unité déplacer depuis #{unitPicker.hexId} ?</div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {unitPicker.units.map(u=>(
+                <button key={u.id} onClick={()=>doMove(u.type,u.id,unitPicker.hexId)} className="act-btn" style={{borderColor:myFaction.color+"88",fontSize:13}}>
+                  {u.icon} {u.label}
+                </button>
+              ))}
+              <button onClick={()=>setUnitPicker(null)} className="act-btn" style={{fontSize:12,opacity:0.7}}>✕</button>
+            </div>
+          </div>
+        )}
 
         {/* ═══ MODAL OVERLAYS (combat/encounter/RR) ═══ */}
         {(combat||encounter||rougeRiver)&&(
@@ -2184,12 +2246,22 @@ export default function App(){
             }}>
               <div style={{width:8,height:8,borderRadius:"50%",background:fc.color,flexShrink:0}}/>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:11,fontWeight:700,color:fc.color,fontFamily:"var(--font-title)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{fc.name.slice(0,8)}{isActive&&<span style={{color:"var(--gold)",marginLeft:4}}>◀</span>}</div>
+                <div style={{fontSize:12,fontWeight:700,color:fc.color,fontFamily:"var(--font-title)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{fc.name.slice(0,8)}{isActive&&<span style={{color:"var(--gold)",marginLeft:4}}>◀</span>}</div>
               </div>
-              <div style={{fontSize:10,color:"var(--text-dim)",whiteSpace:"nowrap",fontFamily:"var(--font-mono)"}}>⚡{p.power} ♥{p.pop} ⭐{p.stars}</div>
+              <div style={{fontSize:11,color:"var(--text-dim)",whiteSpace:"nowrap",fontFamily:"var(--font-mono)"}}>⚡{p.power} ♥{p.pop} ⭐{p.stars}</div>
             </div>
           );})}
         </div>
+
+        {/* ── Bonus de construction actif ── */}
+        {structureBonus&&(
+          <div title={`En fin de partie : +${structureBonus.coins}$ ${structureBonus.desc} (tuiles marquées $ sur la carte)`}
+            style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:11,color:"var(--gold)",display:"flex",alignItems:"center",gap:6,background:"rgba(212,178,84,0.05)"}}>
+            <span>🏦</span>
+            <span style={{fontWeight:700,fontFamily:"var(--font-title)"}}>{structureBonus.icon} {structureBonus.name}</span>
+            <span style={{color:"var(--text-dim)",marginLeft:"auto"}}>+{structureBonus.coins}$/bât.</span>
+          </div>
+        )}
 
         {/* Star tracker (toggled) */}
         {showStars&&(()=>{
@@ -2206,13 +2278,13 @@ export default function App(){
             {icon:"⚡",name:"Pui16",prog:`${me.power}/16`,done:me.power>=16},
           ];
           return(
-            <div style={{padding:"4px 8px",borderBottom:"1px solid var(--border)",flexShrink:0}}>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:2}}>
+            <div style={{padding:"6px 8px",borderBottom:"1px solid var(--border)",flexShrink:0}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:3}}>
                 {stars.map((s,i)=>(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:3,padding:"2px 4px",borderRadius:3,fontSize:9,whiteSpace:"nowrap",background:s.done?"rgba(76,175,80,0.1)":"transparent",border:s.done?"1px solid rgba(76,175,80,0.2)":"1px solid transparent"}}>
-                    <span style={{fontSize:10}}>{s.done?"⭐":s.icon}</span>
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 5px",borderRadius:3,fontSize:10,whiteSpace:"nowrap",background:s.done?"rgba(76,175,80,0.1)":"transparent",border:s.done?"1px solid rgba(76,175,80,0.2)":"1px solid transparent"}}>
+                    <span style={{fontSize:11}}>{s.done?"⭐":s.icon}</span>
                     <span style={{color:s.done?"#4A8A4A":"var(--text-dim)"}}>{s.name}</span>
-                    {!s.done&&<span style={{color:"var(--gold)",fontWeight:700,fontSize:9}}>{s.prog}</span>}
+                    {!s.done&&<span style={{color:"var(--gold)",fontWeight:700,fontSize:10}}>{s.prog}</span>}
                   </div>
                 ))}
               </div>
@@ -2305,11 +2377,16 @@ export default function App(){
                 <div>
                   <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:14}}>Déplacement ({(me.movedUnits||[]).length}/2)</div>
                   <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+1};return n;});addLog(`💰 +1$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner 1$ (pas de déplacement)</button>
-                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                    {!(me.movedUnits||[]).includes("hero")&&<button onClick={()=>doMove("hero","hero",me.hero)} className="act-btn" style={{borderColor:myFaction.color+"66"}}>★ {myFaction.hero} <span style={{opacity:0.5}}>#{me.hero}</span></button>}
-                    {me.workers.filter(w=>!(me.movedUnits||[]).includes(w.id)).map(w=><button key={w.id} onClick={()=>doMove("worker",w.id,w.hexId)} className="act-btn" style={{borderColor:myFaction.color+"66"}}>● #{w.hexId}</button>)}
-                    {me.mechs.filter(m=>!(me.movedUnits||[]).includes(m.id)).map(m=><button key={m.id} onClick={()=>doMove("mech",m.id,m.hexId)} className="act-btn" style={{borderColor:myFaction.color+"66"}}>⬡ #{m.hexId}</button>)}
-                  </div>
+                  {!moveSource&&(
+                    <div style={{padding:"10px 12px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:12,color:"var(--gold)",lineHeight:1.5}}>
+                      👆 Cliquez sur la carte l'unité à déplacer (hexes surlignés en doré), puis sa destination.
+                      <div style={{fontSize:11,color:"var(--text-dim)",marginTop:4}}>
+                        Disponibles : {!(me.movedUnits||[]).includes("hero")&&<span>★ {myFaction.hero} · </span>}
+                        ● {me.workers.filter(w=>!(me.movedUnits||[]).includes(w.id)).length} ouvrier(s)
+                        {me.mechs.length>0&&<span> · ⬡ {me.mechs.filter(m=>!(me.movedUnits||[]).includes(m.id)).length} mecha(s)</span>}
+                      </div>
+                    </div>
+                  )}
                   {/* 🚚 Choix d'emport (règle Scythe : le transport est optionnel) —
                       désactivé, le mech laisse ouvriers+ressources tenir le terrain */}
                   <button onClick={()=>setCarryOnMove(c=>!c)} className="act-btn" style={{marginTop:8,width:"100%",fontSize:12,
@@ -2318,7 +2395,9 @@ export default function App(){
                     color:carryOnMove?"var(--gold)":"var(--text-muted)"}}>
                     🚚 Emporter ouvriers & ressources : {carryOnMove?"OUI":"NON (les laisser sur place)"}
                   </button>
-                  {moveSource&&<div style={{color:"#C9A84C",fontSize:11,marginTop:8,fontStyle:"italic"}}>Sélectionnez un hex doré sur la carte</div>}
+                  {moveSource&&<div style={{color:"#C9A84C",fontSize:12,marginTop:8,fontStyle:"italic"}}>
+                    {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:moveSource.unitType==="mech"?"⬡ Mecha":"● Ouvrier"} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts), ou une autre de vos unités pour changer.
+                  </div>}
                   {/* PACK UP — Nations free building move */}
                   {me.faction==="nations"&&(me.unlockedAbilities||[]).includes(3)&&(me.buildings||[]).length>0&&!me.packUpUsed&&!moveSource&&(()=>{
                     if(bottomPick&&bottomPick.packUp){
@@ -2372,7 +2451,7 @@ export default function App(){
                   <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité</button>
                 </div>}
               </div>)}
-              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:12,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
+              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:12,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
             </div>
           )}
 
@@ -2533,7 +2612,7 @@ export default function App(){
 
         {/* ── Dropdown: Star Tracker ── */}
         <div style={{borderTop:"1px solid var(--border)",flexShrink:0}}>
-          <button onClick={()=>setShowStars(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
+          <button onClick={()=>setShowStars(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:12,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
             <span>⭐ Étoiles ({me.stars}/6)</span>
             <span style={{fontSize:9,color:"var(--text-dim)",transform:showStars?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
           </button>
@@ -2542,7 +2621,7 @@ export default function App(){
         {/* ── Dropdown: Objectives ── */}
         {me.objectives&&me.objectives.length>0&&(
           <div style={{borderTop:"1px solid var(--border)",flexShrink:0}}>
-            <button onClick={()=>setShowObjectives(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:11,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
+            <button onClick={()=>setShowObjectives(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:12,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
               <span>🎯 Objectifs {me.objectiveRevealed?"(1 révélé)":""}</span>
               <span style={{fontSize:9,color:"var(--text-dim)",transform:showObjectives?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
             </button>
@@ -2576,7 +2655,7 @@ export default function App(){
 
         {/* ── Dropdown: Journal enrichi ── */}
         <div style={{borderTop:"1px solid var(--border)",flexShrink:0,marginTop:"auto"}}>
-          <button onClick={()=>setShowLog(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(200,112,64,0.04)",border:"none",color:"var(--rust)",fontSize:11,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
+          <button onClick={()=>setShowLog(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",background:"rgba(200,112,64,0.04)",border:"none",color:"var(--rust)",fontSize:12,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
             <span>📜 Journal ({log.length})</span>
             <span style={{fontSize:9,color:"var(--text-dim)",transform:showLog?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
           </button>
@@ -2585,7 +2664,7 @@ export default function App(){
             <div style={{display:"flex",gap:2,padding:"3px 6px",flexWrap:"wrap",alignItems:"center",borderBottom:"1px solid var(--border)"}}>
               {[["all","Tout"],["combat","⚔"],["move","🚶"],["bot","🤖"],["resource","💰"],["deploy","⬡"],["encounter","📜"],["warn","⚠"],["star","⭐"]].map(([k,label])=>(
                 <button key={k} onClick={()=>setLogFilter(k)} style={{
-                  padding:"1px 5px",fontSize:9,borderRadius:3,cursor:"pointer",
+                  padding:"2px 7px",fontSize:10,borderRadius:3,cursor:"pointer",
                   background:logFilter===k?"var(--rust)":"transparent",
                   color:logFilter===k?"#fff":"var(--text-muted)",
                   border:logFilter===k?"1px solid var(--rust)":"1px solid transparent",
@@ -2596,13 +2675,13 @@ export default function App(){
                 navigator.clipboard.writeText(txt);
               }} style={{marginLeft:"auto",padding:"1px 5px",fontSize:9,borderRadius:3,cursor:"pointer",background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)"}} title="Copier tout le log">📋</button>
             </div>
-            <div ref={logRef} style={{maxHeight:200,overflow:"auto",padding:"4px 6px",fontSize:10}}>
+            <div ref={logRef} style={{maxHeight:200,overflow:"auto",padding:"6px 8px",fontSize:11,lineHeight:1.55}}>
               {(()=>{
                 const CAT_COLORS={combat:"#e04838",bot:"#a89878",star:"#d4b254",warn:"#e08850",encounter:"#b08060",rr:"#c87040",move:"#5a9aca",deploy:"#7aaa55",build:"#7aaa55",enlist:"#5a7a6a",upgrade:"#c4a060",resource:"#d4b254",ability:"#e08850",turn:"var(--rust)",info:"var(--text-dim)"};
                 const filtered=logFilter==="all"?log:log.filter(e=>e.cat===logFilter);
                 return filtered.slice(-60).map((e,i)=>(
-                  <div key={i} className="log-line" style={{display:"flex",gap:5,alignItems:"baseline"}}>
-                    <span style={{fontSize:8,color:"var(--text-muted)",fontFamily:"var(--font-mono)",flexShrink:0,minWidth:36,textAlign:"right"}}>T{e.turn}.{e.step}</span>
+                  <div key={i} className="log-line" style={{display:"flex",gap:6,alignItems:"baseline"}}>
+                    <span style={{fontSize:9,color:"var(--text-muted)",fontFamily:"var(--font-mono)",flexShrink:0,minWidth:36,textAlign:"right"}}>T{e.turn}.{e.step}</span>
                     <span style={{color:CAT_COLORS[e.cat]||"var(--text-dim)",fontWeight:e.cat==="turn"||e.cat==="star"?700:400}}>{e.msg}</span>
                   </div>
                 ));
