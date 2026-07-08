@@ -356,16 +356,17 @@ export default function App(){
     const timer=setTimeout(()=>{
       // Build enemy hexes set for this bot (all hexes with other factions' units)
       const botEnemyHexes=new Set();
-      // PvP : hex des unités combattantes adverses (bots ET joueur humain — la
-      // défense du joueur est interactive via le modal de combat)
-      const attackable=new Set();
+      // PvP : hex des unités combattantes adverses → force défensive estimée
+      // (l'IA n'attaque que sur avantage réel)
+      const attackable=new Map();
       players.forEach((op,oi)=>{
         if(oi===cp)return;
         botEnemyHexes.add(op.hero);
         op.mechs.forEach(m=>botEnemyHexes.add(m.hexId));
         op.workers.forEach(w=>botEnemyHexes.add(w.hexId));
-        attackable.add(op.hero);
-        op.mechs.forEach(m=>attackable.add(m.hexId));
+        const strength=op.power+(op.combatCards||0)*2;
+        attackable.set(op.hero,Math.max(attackable.get(op.hero)||0,strength));
+        op.mechs.forEach(m=>attackable.set(m.hexId,Math.max(attackable.get(m.hexId)||0,strength)));
       });
       const botCtx={attackable,forbidden:new Set(),encounterHexes:encounterTokens};
       let result=botTurn(players[cp],empire,botEnemyHexes,rails,botCtx);

@@ -55,6 +55,10 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
     : bottomAction === "Build" ? (p.buildings || []).length >= 4
     : (p.recruits || 0) >= 4;
 
+  // Corpus stratégie : l'étoile Amélioration est un piège de tempo — 2 upgrades
+  // suffisent (réduction de coût) ; en fin de course (4+ étoiles) l'étoile
+  // 6-upgrades redevient une source valable pour boucler la partie
+  const upgradeWorthIt = (p.upgrades || 0) < 2 || p.stars >= 4;
   // HUGE bonus for being able to do a bottom action (it's the main way to get stars)
   if (canBottom && !bottomMaxed) {
     score += 25;
@@ -67,7 +71,7 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
       if (p.mechs.length === 0) score += 10;
     }
     else if (bottomAction === "Build") score += 8;
-    else if (bottomAction === "Upgrade") score += 5;
+    else if (bottomAction === "Upgrade") { if (upgradeWorthIt) score += 5; else score -= 20; }
   } else if (bottomMaxed) {
     // Colonne au bottom épuisé : le top seul doit vraiment valoir le coup
     score -= 8;
@@ -98,6 +102,10 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
       if (canBottom && !bottomMaxed) score += 4;
       // Also good for getting pop in late game
       if (phase === "late") score += 3;
+      // Corpus : maintenir un palier de pop correct (7-12) — sous 7, tout le
+      // score final est amputé (multiplicateurs ×3/×2/×1) et Produce à 5+
+      // ouvriers coûte 1 pop (à 0 pop l'économie se bloque)
+      if (p.pop < 7 && (p.stars >= 1 || p.workers.length >= 5)) score += 5;
     }
   } else if (action === "Bolster") {
     if (p.coins >= 1) {
@@ -112,6 +120,10 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
     }
   } else if (action === "Move") {
     score += 7;
+    // Ouvriers empilés (≥3 sur un hex) : le Move de désempilage est prioritaire
+    const stacks = {};
+    p.workers.forEach(w => { stacks[w.hexId] = (stacks[w.hexId] || 0) + 1; });
+    if (Object.values(stacks).some(n => n >= 3)) score += 5;
     // Move is critical in late game for territory
     if (phase === "late") score += 8;
     // Early game: spread workers
@@ -152,8 +164,10 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx) => {
     if (purpose === "worker" && enemyHexes && enemyHexes.has(hexId)) s -= 15;
     if (purpose === "hero" || purpose === "mech") {
       if (ctx && ctx.attackable && ctx.attackable.has(hexId)) {
-        // Combat PvP possible : attaque si on est fort et qu'une étoile est en jeu
-        if (myStrength >= 8 && wantCombatStar && getPhase(p) !== "early") s += 9;
+        // Combat PvP : attaquer seulement sur avantage réel (corpus : viser les
+        // unités isolées / les 2v1, pas les forteresses)
+        const defStrength = ctx.attackable.get ? (ctx.attackable.get(hexId) || 0) : 0;
+        if (myStrength >= defStrength + 2 && wantCombatStar && getPhase(p) !== "early") s += 9 + Math.min(4, myStrength - defStrength);
         else s -= 12;
       } else if (enemyHexes && enemyHexes.has(hexId)) {
         // Hex avec seulement des ouvriers ennemis : déplacement possible mais coûte de la pop
@@ -171,7 +185,7 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx) => {
     if (purpose === "hero" && ctx && ctx.encounterHexes && ctx.encounterHexes.has(hexId)) s += 7;
 
     // Move toward Rouge River if haven't visited
-    if (purpose === "hero" && hexId === 22 && !p.rrVisited) s += 4;
+    if (purpose === "hero" && hexId === 22 && !p.rrVisited) s += 1;
 
     // Avoid lakes/swamps for non-appropriate factions
     if (hex.t === "lac" || hex.t === "marecage") s -= 5;
@@ -272,8 +286,12 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
 
     // Move workers or mechs strategically
     if (p.workers.length > 0) {
-      // Move worker most in need of repositioning
-      const wi = Math.floor(Math.random() * p.workers.length);
+      // Corpus : « sortir les ouvriers du village » — déplacer un ouvrier du
+      // hex le plus peuplé plutôt qu'un ouvrier au hasard
+      const byHexW = {};
+      p.workers.forEach((w, i) => { (byHexW[w.hexId] = byHexW[w.hexId] || []).push(i); });
+      const crowded = Object.values(byHexW).sort((a, b) => b.length - a.length)[0];
+      const wi = crowded.length >= 2 ? crowded[0] : Math.floor(Math.random() * p.workers.length);
       let wv = getValidMoves(p.workers[wi].hexId, p.faction, p.unlockedAbilities || [], p, rails);
       // Workers avoid enemies
       if (enemyHexes) wv = wv.filter(id => !enemyHexes.has(id));
@@ -355,7 +373,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       logs.push(`🤖 ${f.name}: Produce`);
     }
   } else if (action === "Trade") {
-    if (p.coins >= 1 && p.pop >= 13 && !p.starPop) {
+    if (p.coins >= 1 && ((p.pop >= 13 && !p.starPop) || (p.pop < 7 && (p.stars >= 1 || p.workers.length >= 5)))) {
       // Push toward the 18-pop star once in the top popularity tier
       p.coins--; p.pop = Math.min(p.pop + 1, 18);
       logs.push(`🤖 ${f.name}: +1 Pop`);
@@ -403,7 +421,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const canAffordBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && altResB && countRes(p, altResB) >= bc.qty));
   let bottomDone = false;
   if (canAffordBottom) {
-    if (bottomAction === "Upgrade" && (p.upgrades || 0) < 6) {
+    if (bottomAction === "Upgrade" && (p.upgrades || 0) < 6 && ((p.upgrades || 0) < 2 || p.stars >= 4)) {
       const mat = MATS.find(m => m.id === p.matId);
       const validTop = []; const validBottom = [];
       if (mat) {

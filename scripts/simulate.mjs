@@ -20,7 +20,7 @@ import { writeFileSync } from 'node:fs';
 import { botTurn } from '../src/logic/bot.js';
 import { applyBotPvpAfterMove, servitudeOnDisplace } from '../src/logic/pvpBots.js';
 import { resolveBotEncounter } from '../src/logic/botEncounters.js';
-import { CURRENT_MAP, loadMap, DEFAULT_MAP } from '../src/data/hexes.js';
+import { CURRENT_MAP, loadMap, DEFAULT_MAP, LEGACY_MAP } from '../src/data/hexes.js';
 import { generateAcceptedMap, validateMap } from '../src/data/mapGen.js';
 import { createPlayer } from '../src/logic/player.js';
 import { FACTIONS, FACTION_IDS } from '../src/data/factions.js';
@@ -50,6 +50,8 @@ const DUMP = getArg('dump', null);
 const AB = getArg('ab', null);
 if (AB === 'wf1') BALANCE.whiteFlagPop = 1;
 if (AB === 'bayouBois') FACTIONS.bayou.deployAltRes = 'bois';
+//   --ab legacyMap   → carte v1 d'origine (avant retouches péninsules)
+if (AB === 'legacyMap') loadMap(LEGACY_MAP);
 // (le nerf acadianeHard testé en A/B est désormais le comportement par défaut — factions.js)
 // Cartes procédurales :
 //   --randomMap    → une carte générée+acceptée différente PAR PARTIE
@@ -175,12 +177,13 @@ const playGame = (gameIdx, log) => {
         op.workers.forEach(w => enemyHexes.add(w.hexId));
       });
 
-      // Tous les joueurs sont des bots : tout hex combattant adverse est attaquable
-      const attackable = new Set();
+      // Hex combattants adverses → force défensive estimée (attaque sur avantage)
+      const attackable = new Map();
       players.forEach((op, oi) => {
         if (oi === cp) return;
-        attackable.add(op.hero);
-        op.mechs.forEach(m => attackable.add(m.hexId));
+        const strength = op.power + (op.combatCards || 0) * 2;
+        attackable.set(op.hero, Math.max(attackable.get(op.hero) || 0, strength));
+        op.mechs.forEach(m => attackable.set(m.hexId, Math.max(attackable.get(m.hexId) || 0, strength)));
       });
       const result = botTurn(players[cp], empire, enemyHexes, rails, { attackable, forbidden: new Set(), encounterHexes: encounterTokens });
       let p = result.player;
@@ -402,7 +405,7 @@ const pct = (a, b) => b > 0 ? (100 * a / b).toFixed(1) + '%' : '—';
 const avg = (arr) => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
 
 const byFaction = {}; const byMat = {};
-FACTION_IDS.forEach(f => { byFaction[f] = { games: 0, wins: 0, triggers: 0, scores: [], stars: [], abilities: [], gares: 0, traps: [], flags: [], flagPts: [], imperial: [], chimeres: 0, captured: [], encounters: [] }; });
+FACTION_IDS.forEach(f => { byFaction[f] = { games: 0, wins: 0, triggers: 0, scores: [], stars: [], abilities: [], gares: 0, traps: [], flags: [], flagPts: [], imperial: [], chimeres: 0, captured: [], encounters: [], pops: [], terrs: [], coins: [], starScores: [], terScores: [], resScores: [] }; });
 MATS.forEach(m => { byMat[m.name] = { games: 0, wins: 0, scores: [] }; });
 const starCounts = {}; STAR_FLAGS.forEach(([, l]) => { starCounts[l] = { all: 0, winners: 0 }; });
 let stalemates = 0; const allIssues = []; const roundsArr = [];
@@ -424,6 +427,8 @@ games.forEach(g => {
     bf.traps.push(s.traps); bf.flags.push(s.flags); bf.flagPts.push(s.flagBonusPts || 0);
     bf.imperial.push(s.imperialCoins); if (s.chimere) bf.chimeres++;
     bf.captured.push(s.capturedWorkers); bf.encounters.push(s.encounters);
+    bf.pops.push(s.pop); bf.terrs.push(s.territories); bf.coins.push(s.coins);
+    bf.starScores.push(s.starScore); bf.terScores.push(s.terScore); bf.resScores.push(s.resScore);
     if (rank === 0) { bf.wins++; byMat[s.mat].wins++; }
     if (s.isTrigger) bf.triggers++;
     STAR_FLAGS.forEach(([, l]) => {
@@ -453,6 +458,13 @@ FACTION_IDS.forEach(f => {
   const d = byFaction[f];
   P(`  ${FACTIONS[f].name.padEnd(16)} ${String(d.games).padStart(4)} parties | win ${pct(d.wins, d.games).padStart(6)} | déclenche fin ${pct(d.triggers, d.games).padStart(6)} | score moy ${avg(d.scores).toFixed(1).padStart(6)} | étoiles moy ${avg(d.stars).toFixed(2)}`);
 });
+P(`\n── Décomposition du score final (moyennes) ──`);
+FACTION_IDS.forEach(f => {
+  const d = byFaction[f];
+  if (d.games === 0) return;
+  P(`  ${FACTIONS[f].name.padEnd(16)} pop ${avg(d.pops).toFixed(1).padStart(4)} | terr ${avg(d.terrs).toFixed(1).padStart(4)} | ⭐pts ${avg(d.starScores).toFixed(1).padStart(5)} | 🗺pts ${avg(d.terScores).toFixed(1).padStart(5)} | 📦pts ${avg(d.resScores).toFixed(1).padStart(4)} | 💰 ${avg(d.coins).toFixed(1).padStart(5)}`);
+});
+
 P(`\n── Usage des capacités par faction ──`);
 FACTION_IDS.forEach(f => {
   const d = byFaction[f];

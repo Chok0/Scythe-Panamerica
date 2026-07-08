@@ -1,8 +1,87 @@
 # Rapport de simulation — parties bot vs bot
 
-> `npm run sim -- --games 600 --seed 42` · **v4** : équilibrage appliqué après
-> A/B, cartes procédurales avec règles de non-acceptation, audit des cartes
-> usine/rencontre.
+> `npm run sim -- --games 500 --seed 42` · **v5** : carte physique v2
+> (péninsules de départ pour les 6 factions) + IA stratégique alignée sur le
+> corpus Scythe (course aux 6 étoiles, enlist tôt, ≤2 upgrades, palier de pop).
+
+## 0. v5 — Carte physique v2 + IA stratégique
+
+### La carte dessinée est LA carte à équilibrer (le procédural reste une option)
+
+Diagnostic de départ (mesuré) : sur la carte v1, la « zone de départ » de
+l'Acadiane faisait **19 hexes, Rouge River incluse** — la moitié du plateau
+offerte au tour 1 — pendant que le Bayou démarrait sur **2 hexes avec une
+seule ressource**. Le plateau original de Scythe (vectoriel ajouté à la
+Documentation) confirme le pattern voulu : chaque faction est clôturée par des
+segments de rivière sur un îlot de ~3 hexes, et la sortie se gagne (mecha
+Riverwalk, ou ici Gare/rails).
+
+**3 retouches physiques** (`src/data/hexes.js`, v1 conservée en `LEGACY_MAP`) :
+
+1. rivière **[9,12]** → l'Acadiane démarre en péninsule **{2,6,9}** à
+   3 ressources sans village (l'analogue des Nordiques de l'original) ;
+2. hex 31 **marécage→montagne** → le Bayou a enfin du **métal** natif ;
+3. rivières **[23,31], [27,31], [31,34], [31,38]** ajoutées, **[31,35]**
+   retirée → le Bayou démarre en péninsule **{35,28,31}** village+bois+métal.
+
+Vérifié : les 6 factions démarrent désormais sur une péninsule de 3 hexes
+(village + 2 ressources, sauf Acadiane : 3 ressources), chacune avec une
+sortie Riverwalk native — `validateMap(DEFAULT_MAP)` → acceptée.
+
+### IA v2 (corpus stratégique Reddit/blog dans la Documentation)
+
+`src/logic/bot.js` : enlist en priorité (bottom le plus fort), Speed mech
+d'abord, sortir les ouvriers du village (production ciblée sur les ressources
+du prochain bottom), **≤ 2 upgrades** sauf fin de course (4+ étoiles, où
+l'étoile 6-upgrades redevient une source valable), usine dévaluée, attaque
+opportuniste seulement à +2 de force et hors early game, achat de pop pour
+tenir le palier 7-12 dès que l'économie tourne, régime d'ouvriers 5 puis 8.
+
+### A/B carte v1 → v2 (500 parties, seed 42, IA v2 identique)
+
+| Faction | Carte v1 | **Carte v2 (péninsules)** |
+|---|---|---|
+| Acadiane | 59,5 % | **48,9 %** |
+| Bayou | 9,9 % | **12,9 %** |
+| Confédération | 12,3 % | 13,9 % |
+| Nations | 47,7 % | 47,1 % |
+| Frente | 36,6 % | 40,6 % |
+| Dominion | 8,5 % | 6,3 % |
+
+Et l'IA v2 accélère et fiabilise les parties : **99 % finies à 6 étoiles**
+(v4 : 90-98 %), moyenne **43 rounds** (v4 : ~51 en fin de session), toujours
+0 crash / 0 invariant sur 2 000+ parties cumulées.
+
+### Décomposition du score (nouvelle instrumentation)
+
+| Faction | Pop finale | ⭐pts | 🗺pts | 📦pts | 💰 |
+|---|---|---|---|---|---|
+| Frente | 10,5 | 15,6 | 24,2 | 14,4 | 8,4 |
+| Nations | 10,3 | 19,0 | 20,1 | 14,2 | 7,9 |
+| Acadiane | 10,2 | 11,9 | 20,3 | **24,0** | 6,4 |
+| Confédération | 3,9 | 11,9 | 14,8 | 7,0 | 2,6 |
+| Bayou | 5,2 | 12,1 | 15,8 | 5,0 | 3,0 |
+| Dominion | 5,2 | 9,0 | 13,6 | 1,8 | 6,0 |
+
+Deux lectures nettes :
+
+- **L'Acadiane n'est plus « broken », c'est une thésauriseuse** : 48,9 % avec
+  seulement 2,7 étoiles — sa péninsule sans métal (pas de Deploy facile) fait
+  s'empiler les ressources, converties en 24 pts au scoring. C'est un profil
+  « coaster » légitime dans Scythe, mais encore ~10 pts trop rentable.
+- **Le trio faible partage une même cause : pauvreté → pop de palier 1** —
+  ~2,5 $ en caisse, pop < 7, donc TOUS leurs points sont multipliés ×3/×2/×1
+  au lieu de ×4/×3/×2. Ce n'est plus un problème de géographie (péninsules
+  équivalentes) ni de politique de bot (identique pour tous) : c'est un
+  déficit d'économie de faction.
+
+### Chantier suivant recommandé (décision de design, pas de code)
+
+À la manière des compensations asymétriques de l'original (pouvoir/cartes de
+départ), donner au trio faible un levier économique : pièces de départ
+bonus, une capacité générant des pièces (le Commerce Impérial du Dominion ne
+rapporte que ~6 $/partie), ou un coût de sortie d'îlot réduit. Chaque option
+se teste en 5 minutes au simulateur (`--ab`).
 
 ## 1. Le harnais
 
@@ -108,7 +187,7 @@ les bots ne choisissent que parmi les options payables (règle p.24). Reste
 plus généreux que l'original (gains posés sur le hex ✅, mais pas de coûts en
 ressources) — à resserrer si les parties réelles le confirment.
 
-## 5. Batch final — LE résultat clé
+## 5. Batch v4 (historique — avant carte v2 + IA v2, voir §0)
 
 600 parties carte classique + 300 parties cartes procédurales v2 (98 % finies,
 médiane ~35 rounds, 0 crash / 0 invariant) :
