@@ -1,8 +1,78 @@
 # Rapport de simulation — parties bot vs bot
 
-> `npm run sim -- --games 500 --seed 42` · **v6** : profils stratégiques des
-> bots + niveaux de difficulté + méta-stratégie de plateau + équilibrage
-> appliqué (plafond de ressources, compensations de départ).
+> `npm run sim -- --games 500 --seed 42` · **v7** : magot pillable (plafond
+> retiré), feinte/fold au combat, mechs mobiles + dépose en route, Import
+> Impérial du Dominion.
+
+## 0-v7. Le magot, la feinte, le trajet — et le Dominion réparé
+
+### Le magot redevient une motivation au combat (décision de design)
+
+Le plafond de scoring v6 est **retiré** (`resScoringCap` neutralisé,
+`--ab resCap12` pour comparaison) : un gros tas de ressources doit attirer
+les attaques, pas être bridé par une règle. En échange, le PILLAGE est
+maintenant réel partout : le magot change de mains en combat (déjà le cas),
+mais aussi lors d'un **déplacement qui chasse des ouvriers** (sim + jeu,
+humain compris — « 💰 Pillage » au journal). Et les bots convergent : l'attrait
+du butin est proportionnel au tas (jusqu'à +12), un magot ≥ 4 justifie un
+combat même sans étoile à la clé, et un **aimant à magot** fait converger les
+profils agressifs vers le plus gros tas ennemi sur plusieurs tours.
+Conséquence assumée : l'Acadiane (coffre-fort derrière ses rivières) remonte
+à ~50-57 % contre bots — c'est le prix du choix « le contre de la
+thésaurisation, c'est le raid » ; contre des humains qui raident sciemment,
+c'est jouable.
+
+### La feinte et le fold (combat psychologique, comme entre humains)
+
+`resolveBotPvp` : décisions **simultanées et secrètes** —
+- **Fold** : dominé de ≥5 en force visible, le défenseur ne mise parfois RIEN
+  (50 %) : le combat est perdu d'avance, il garde puissance et cartes pour la
+  contre-attaque.
+- **Feinte** : écrasant en visible (≥+6), l'attaquant mise parfois le minimum
+  (35 %) en pariant sur le fold… s'il ne plie pas, la feinte échoue.
+
+Mesuré sur 500 parties : **111 feintes (82,9 % réussies), 220 folds**. Les
+deux existent aussi contre l'humain : le bot attaquant peut feinter (mise
+secrète), le bot défenseur peut folder devant votre stock — donc VOS feintes
+peuvent réussir… ou pas.
+
+### Mechs mobiles + dépose en route (passe-passe stratégiques)
+
+Bug d'IA découvert au passage : les bots ne bougeaient leurs mechs que s'ils
+n'avaient AUCUN ouvrier — les mechs restaient plantés toute la partie. Corrigé :
+le mech bouge dès qu'il a une vraie cible (attaque, butin, leader, expansion) →
+PvP 2,2 → **5,6/partie**, parties raccourcies (~40 rounds).
+
+`findPathWaypoints` (BFS pas + rails) reconstitue le TRAJET d'un déplacement :
+- **Humain** : après un move de mech chargé, panneau « 📦 Dépose en route » —
+  déposer 1 ouvrier ou le matériel sur chaque hex de passage (relais de
+  mechas, dépôt avant bataille, expansion).
+- **Bots** : en mid/late, un mech qui transporte ≥2 ouvriers les égrène le
+  long du trajet (1 par hex de passage).
+
+### Dominion : goulot structurel identifié et corrigé
+
+Diagnostic : coûts bottom = Upgrade:pétrole, Deploy:métal, Build:bois,
+Enlist:nourriture. Or le trio fort (Nations/Frente/Acadiane) a la
+**nourriture native** (Enlist, le bottom le plus fort — l'étoile recrues est
+chez ~95 % des vainqueurs) ; le trio faible n'en a pas, et le Dominion est le
+pire cas : sa péninsule produit pétrole+métal, donc son 2ᵉ terrain alimente
+UNIQUEMENT l'Upgrade — le bottom que l'IA (et le corpus) refuse de jouer.
+
+Correctif fidèle à son identité de faction commerçante : **Import Impérial**
+(`BALANCE.imperialImport`) — le Commerce dans l'autre sens, 2$ → 1 ressource
+au choix, 1×/tour (UI humaine incluse). Le bot l'utilise avec un matelas de
+pièces (≥5$) pour finir un bottom presque payable — la v1 sans garde-fou le
+ruinait (7,5 %). Résultat : **Dominion 7,5 → 13-16 %**, 4,03 étoiles (vs
+2,7-3,3), il déclenche la fin de partie plus que toute autre faction (35 %).
+
+### Batch v7 (500 parties, seed 42)
+
+Conf 20,9 · Frente 30,6 · Nations 31,5 · Acadiane 57,5 · Bayou 14,7 ·
+Dominion 13,3 — 98,8 % finies, ~40 rounds, 0 crash / 0 invariant. Les 4
+profils restent viables (15-39 %). Chantier restant : l'Acadiane sans plafond
+(voir plus haut — levier possible : rendre sa péninsule plus perméable aux
+raids, ou tester `--ab resCap12` si tu changes d'avis).
 
 ## 0-v6. Profils stratégiques, difficulté, méta — et l'équilibrage qui en découle
 

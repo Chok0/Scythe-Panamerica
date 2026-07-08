@@ -3,7 +3,7 @@ import { HEXES, hMap, ADJ, hasR } from '../data/hexes.js';
 import { FACTORY_RR_HEX } from '../data/plans.js';
 
 // BFS: find all hexes connected to fromId via rail network
-const getRailNetwork = (fromId, rails) => {
+export const getRailNetwork = (fromId, rails) => {
   if (!rails || rails.length === 0) return null;
   const onRail = rails.some(([a, b]) => a === fromId || b === fromId);
   if (!onRail) return null;
@@ -102,4 +102,34 @@ export const getValidMoves = (fromId, factionId, abilities, player, rails) => {
   }
 
   return [...all];
+};
+
+// ── Trajet : reconstitue les ÉTAPES d'un déplacement from→to ──
+// Rend les hexes intermédiaires (hors départ/arrivée) où l'unité « passe » :
+// c'est là qu'un mech peut DÉPOSER un ouvrier ou du matériel en cours de route
+// (stratégie classique : relais de mechas, dépôt avant bataille, expansion).
+// BFS sur le même graphe que getValidMoves : pas normaux + bonds de rail.
+export const findPathWaypoints = (fromId, toId, factionId, abilities, player, rails) => {
+  if (fromId === toId) return [];
+  const prev = new Map([[fromId, null]]);
+  const queue = [fromId];
+  let found = false;
+  while (queue.length > 0 && !found) {
+    const cur = queue.shift();
+    const nexts = new Set(getValidMoves1Step(cur, factionId, abilities, player, rails));
+    const rn = getRailNetwork(cur, rails);
+    if (rn) rn.forEach(rid => nexts.add(rid));
+    for (const nx of nexts) {
+      if (prev.has(nx)) continue;
+      prev.set(nx, cur);
+      if (nx === toId) { found = true; break; }
+      // Profondeur bornée implicitement par le graphe (43 hexes)
+      queue.push(nx);
+    }
+  }
+  if (!prev.has(toId)) return [];
+  const path = [];
+  let cur = prev.get(toId);
+  while (cur !== null && cur !== fromId) { path.unshift(cur); cur = prev.get(cur); }
+  return path; // hexes intermédiaires, dans l'ordre de passage
 };

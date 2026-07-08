@@ -4,7 +4,7 @@ import { hMap, ADJ, HEXES, HOME_BASES } from '../data/hexes.js';
 import { MATS, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, getBottomCost } from '../data/mats.js';
 import { countRes, spendRes, getWorkerHexes } from './resources.js';
 import { canPayProduce, payProduce } from './production.js';
-import { getValidMoves } from './movement.js';
+import { getValidMoves, findPathWaypoints } from './movement.js';
 import { transportUnits } from './transport.js';
 import { BOT_PROFILES } from './botProfiles.js';
 import { BALANCE } from '../data/balance.js';
@@ -157,6 +157,13 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
   const wantCombatStar = (p.combatWins || 0) < 2;
   // Planification : les ouvriers convergent vers les ressources manquantes des bottoms
   const need = neededResources(p);
+  // Aimant à magot : le plus gros tas ennemi (≥6) attire les profils agressifs
+  // sur PLUSIEURS tours (convergence vers la cible, pas seulement l'adjacence)
+  let hoardHex = null, hoardQty = 0;
+  if ((purpose === "hero" || purpose === "mech") && ctx && ctx.hexLoot && prof.aggroMargin <= 2) {
+    ctx.hexLoot.forEach((q, hid) => { if (q > hoardQty) { hoardQty = q; hoardHex = hid; } });
+    if (hoardQty < 6) hoardHex = null;
+  }
 
   let bestHex = null, bestScore = -999;
   for (const hexId of validMoves) {
@@ -179,18 +186,18 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
         // sur avantage réel (corpus : unités isolées / 2v1), le blitz à force
         // égale et dès le début, le bâtisseur/thésauriseur presque jamais
         const defStrength = ctx.attackable.get ? (ctx.attackable.get(hexId) || 0) : 0;
-        // Butin : le vainqueur prend les ressources du hex — les gros tas des
-        // thésauriseurs attirent les raids (contre naturel de la thésaurisation)
-        const loot = ctx.hexLoot ? Math.min(6, ctx.hexLoot.get(hexId) || 0) : 0;
+        // Butin : le vainqueur prend les ressources du hex — plus le magot est
+        // gros, plus il attire (motivation au combat voulue par le design :
+        // les empilements déclenchent des chaînes de batailles)
+        const loot = ctx.hexLoot ? Math.min(12, ctx.hexLoot.get(hexId) || 0) : 0;
         // Méta : harceler la faction avantagée sur cette carte / le leader
         // de la partie (« attaquer la Crimée tôt pour la ralentir »)
         const threat = ctx.hexThreat ? (ctx.hexThreat.get(hexId) || 0) : 0;
         // Couvrir ses arrières : à court de puissance, une attaque expose à la
         // contre-attaque (on ne pourra pas défendre le terrain gagné)
         const overextended = p.power <= 4 && !prof.earlyAttack;
-        if (!overextended && myStrength >= defStrength + prof.aggroMargin && (wantCombatStar || prof.earlyAttack) && (prof.earlyAttack || getPhase(p) !== "early"))
-          // Étoiles de combat pleines : le blitz continue à harceler (déni de
-          // territoire et pillage de ressources), moitié moins motivé
+        // Un gros magot (≥4) justifie le combat même sans étoile à la clé
+        if (!overextended && myStrength >= defStrength + prof.aggroMargin && (wantCombatStar || prof.earlyAttack || loot >= 4) && (prof.earlyAttack || getPhase(p) !== "early"))
           s += (wantCombatStar ? prof.attackReward : Math.floor(prof.attackReward / 2)) + Math.min(4, myStrength - defStrength) + loot + threat;
         else s -= 12;
       } else if (enemyHexes && enemyHexes.has(hexId)) {
@@ -203,7 +210,7 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
         // du thésauriseur au scoring ; ralentir l'économie du leader compte aussi
         const wLoot = ctx && ctx.hexLoot ? (ctx.hexLoot.get(hexId) || 0) : 0;
         const wThreat = ctx && ctx.hexThreat ? (ctx.hexThreat.get(hexId) || 0) : 0;
-        if (wLoot >= 3 && prof.aggroMargin <= 2 && p.pop >= 3) s += Math.min(8, wLoot);
+        if (wLoot >= 3 && prof.aggroMargin <= 2 && p.pop >= 3) s += Math.min(12, wLoot);
         if (wThreat >= 3 && prof.aggroMargin <= 2 && p.pop >= 3) s += Math.floor(wThreat / 2);
       }
     }
@@ -218,6 +225,15 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
 
     // Move toward Rouge River if haven't visited
     if (purpose === "hero" && hexId === 22 && !p.rrVisited) s += 1;
+
+    // Aimant à magot : se rapprocher du gros tas vaut des points (raid en 2-3 tours)
+    if (hoardHex !== null && hexId !== hoardHex) {
+      const hh = hMap[hoardHex];
+      if (hh) {
+        const d = Math.sqrt((hex.rx - hh.rx) ** 2 + (hex.ry - hh.ry) ** 2);
+        s += Math.max(0, 3 - Math.round(d / 200));
+      }
+    }
 
     // Avoid lakes/swamps for non-appropriate factions
     if (hex.t === "lac" || hex.t === "marecage") s -= 5;
@@ -322,8 +338,60 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       }
     }
 
-    // Move workers or mechs strategically
-    if (p.workers.length > 0) {
+    // ── 2e unité : mech OU ouvrier — le mech est prioritaire s'il a une
+    // vraie cible (attaque, butin, leader, expansion late) ; sinon c'était
+    // toujours l'ouvrier qui bougeait et les mechs restaient plantés
+    let mechMoved = false;
+    if (p.mechs.length > 0) {
+      const mi = Math.floor(Math.random() * p.mechs.length);
+      const fromHexM = p.mechs[mi].hexId;
+      const mv = getValidMoves(fromHexM, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
+      if (mv.length > 0) {
+        const mt = pickMoveTarget(mv, p, empire, enemyHexes, "mech", ctx, prof);
+        const worthIt = mt !== null && (
+          (ctx && ctx.attackable && ctx.attackable.has(mt))
+          || (ctx && ctx.hexLoot && (ctx.hexLoot.get(mt) || 0) >= 3)
+          || (ctx && ctx.hexThreat && (ctx.hexThreat.get(mt) || 0) >= 3)
+          || (enemyHexes && enemyHexes.has(mt))
+          || getPhase(p) === "late");
+        if (worthIt) {
+          p.mechs = [...p.mechs];
+          p.mechs[mi] = { ...p.mechs[mi], hexId: mt };
+          // Expansion : vers un combat, le mech n'embarque jamais d'ouvriers.
+          // En late, deux modes : s'il y a ≥2 ouvriers au départ ET un trajet à
+          // étapes, il les embarque et les ÉGRÈNE le long du trajet (1 par hex
+          // de passage — expansion maximale de territoire) ; sinon il les
+          // laisse tenir le terrain et continue seul.
+          const isAttack = ctx && ctx.attackable && ctx.attackable.has(mt);
+          const isLate = getPhase(p) === "late";
+          const wAtOrigin = p.workers.filter(w => w.hexId === fromHexM).length;
+          const waypoints = isAttack ? [] : findPathWaypoints(fromHexM, mt, p.faction, p.unlockedAbilities || [], p, rails)
+            .filter(hid => { const h = hMap[hid]; return h && h.t !== "lac" && h.t !== "marecage" && !(enemyHexes && enemyHexes.has(hid)); });
+          const dropRun = getPhase(p) !== "early" && !isAttack && wAtOrigin >= 2 && waypoints.length > 0;
+          const carryWorkers = !isAttack && (!isLate || dropRun);
+          const tr = transportUnits(p, fromHexM, mt, "mech", { carryWorkers });
+          Object.assign(p, { workers: tr.player.workers, resources: tr.player.resources });
+          if (dropRun && tr.carried.workers >= 2) {
+            p.workers = [...p.workers];
+            let toDrop = Math.min(waypoints.length, tr.carried.workers - 1);
+            for (const dropHex of waypoints) {
+              if (toDrop <= 0) break;
+              const wi2 = p.workers.findIndex(w => w.hexId === mt);
+              if (wi2 < 0) break;
+              p.workers[wi2] = { ...p.workers[wi2], hexId: dropHex };
+              logs.push(`🤖📦 ${f.name}: dépose 1 ouvrier sur #${dropHex} au passage`);
+              toDrop--;
+            }
+          }
+          let tl = "";
+          if (tr.carried.workers > 0) tl += ` 👷×${tr.carried.workers}`;
+          if (tr.carried.resTypes.length > 0) tl += ` 📦${tr.carried.resTypes.join(",")}`;
+          logs.push(`🤖 ${f.name}: Mech → #${mt}${tl}`);
+          mechMoved = true;
+        }
+      }
+    }
+    if (!mechMoved && p.workers.length > 0) {
       // Corpus : « sortir les ouvriers du village » — déplacer un ouvrier du
       // hex le plus peuplé plutôt qu'un ouvrier au hasard
       const byHexW = {};
@@ -350,25 +418,6 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         } else {
           logs.push(`🤖 ${f.name}: Ouv. → #${wt}`);
         }
-      }
-    } else if (p.mechs.length > 0) {
-      const mi = Math.floor(Math.random() * p.mechs.length);
-      const fromHex = p.mechs[mi].hexId;
-      const mv = getValidMoves(fromHex, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
-      if (mv.length > 0) {
-        const mt = pickMoveTarget(mv, p, empire, enemyHexes, "mech", ctx, prof);
-        p.mechs[mi] = { ...p.mechs[mi], hexId: mt };
-        // Stratégie classique d'expansion : en fin de partie le mech laisse
-        // les ouvriers tenir le territoire et continue seul ; il ne les
-        // embarque pas non plus vers un combat
-        const isAttack = ctx && ctx.attackable && ctx.attackable.has(mt);
-        const carryWorkers = getPhase(p) !== "late" && !isAttack;
-        const tr = transportUnits(p, fromHex, mt, "mech", { carryWorkers });
-        Object.assign(p, { workers: tr.player.workers, resources: tr.player.resources });
-        let tl = "";
-        if (tr.carried.workers > 0) tl += ` 👷×${tr.carried.workers}`;
-        if (tr.carried.resTypes.length > 0) tl += ` 📦${tr.carried.resTypes.join(",")}`;
-        logs.push(`🤖 ${f.name}: Mech → #${mt}${tl}`);
       }
     }
   } else if (action === "Bolster") {
@@ -582,6 +631,21 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
 
   // ── DOMINION COMMERCE IMPÉRIAL ──
   if (p.faction === "dominion") {
+    // Import Impérial : 2$ → 1 ressource manquante (1×/tour) — l'empire
+    // commerçant achète ce que sa péninsule (pétrole+métal) ne produit pas.
+    // Gardé pour finir un bottom PRESQUE payable (≤2 manquants), avec un
+    // matelas de pièces (les pièces scorent : ne pas se ruiner en imports)
+    if (BALANCE.imperialImport && p.coins >= 5) {
+      const needI = neededResources(p);
+      const buy = Object.keys(needI).find(r => needI[r] <= 2);
+      if (buy) {
+        p.coins -= 2;
+        const wHexI = p.workers.length > 0 ? String(p.workers[0].hexId) : String(p.hero);
+        p.resources = { ...p.resources, [wHexI]: { ...(p.resources[wHexI] || {}) } };
+        p.resources[wHexI][buy] = (p.resources[wHexI][buy] || 0) + 1;
+        logs.push(`🤖🏛 ${f.name}: Import -2$→+1${buy}`);
+      }
+    }
     const resTypes = ["metal", "bois", "nourriture", "petrole"];
     // Ne convertir QUE le surplus : jamais une ressource requise par un bottom
     // non maxé (sinon le Dominion cannibalise sa propre course aux étoiles)

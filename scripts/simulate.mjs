@@ -18,7 +18,7 @@
  */
 import { writeFileSync } from 'node:fs';
 import { botTurn } from '../src/logic/bot.js';
-import { applyBotPvpAfterMove, servitudeOnDisplace } from '../src/logic/pvpBots.js';
+import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../src/logic/pvpBots.js';
 import { resolveBotEncounter } from '../src/logic/botEncounters.js';
 import { CURRENT_MAP, loadMap, DEFAULT_MAP, LEGACY_MAP } from '../src/data/hexes.js';
 import { generateAcceptedMap, validateMap } from '../src/data/mapGen.js';
@@ -55,8 +55,10 @@ if (ABS.has('wf1')) BALANCE.whiteFlagPop = 1;
 if (ABS.has('bayouBois')) FACTIONS.bayou.deployAltRes = 'bois';
 //   --ab dom2        → Commerce Impérial : 2 conversions de surplus par tour
 if (ABS.has('dom2')) BALANCE.imperialRate = 2;
-//   --ab noResCap    → retire le plafond de scoring des ressources (contrôle)
-if (ABS.has('noResCap')) BALANCE.resScoringCap = 9999;
+//   --ab noDomImport → désactive l'Import Impérial du Dominion (contrôle)
+if (ABS.has('noDomImport')) BALANCE.imperialImport = false;
+//   --ab resCap12    → réactive le plafond de scoring des ressources à 12 (comparaison)
+if (ABS.has('resCap12')) BALANCE.resScoringCap = 12;
 //   --ab noTrioBoost → retire la compensation de départ Conf/Bayou/Dominion (contrôle)
 if (ABS.has('noTrioBoost')) ['confederation', 'bayou', 'dominion'].forEach(f => { delete FACTIONS[f].startBonus; });
 //   --ab legacyMap   → carte v1 d'origine (avant retouches péninsules)
@@ -269,8 +271,15 @@ const playGame = (gameIdx, log) => {
         const displaced = players[oi].workers.filter(w => botHexes.has(w.hexId) && !defended(w.hexId));
         if (displaced.length > 0) {
           const ohb = hbHexOf(players[oi].faction);
+          const dispHexes = [...new Set(displaced.map(w => w.hexId))];
           players[oi] = { ...players[oi], workers: players[oi].workers.map(w => botHexes.has(w.hexId) && !defended(w.hexId) ? { ...w, hexId: ohb.id } : w) };
           players[cp] = { ...players[cp], pop: Math.max(0, (players[cp].pop || 0) - displaced.length) };
+          // Pillage : les ressources des hexes pris passent au nouvel occupant
+          const deepRes = (pl) => { const r = {}; Object.entries(pl.resources).forEach(([k, v]) => { r[k] = { ...v }; }); return r; };
+          const loserC = { ...players[oi], resources: deepRes(players[oi]) };
+          const winnerC = { ...players[cp], resources: deepRes(players[cp]) };
+          dispHexes.forEach(hid => transferHexResources(loserC, winnerC, hid));
+          players[oi] = loserC; players[cp] = winnerC;
           // Servitude (Confédération) : capture lors du déplacement d'ouvriers
           const serv = servitudeOnDisplace(players[cp], displaced[0].hexId);
           if (serv.captured) players[cp] = serv.player;
@@ -291,6 +300,10 @@ const playGame = (gameIdx, log) => {
       const pvpRes = applyBotPvpAfterMove(players, cp, () => true);
       if (pvpRes.logs.length > 0) {
         combatStats.pvp += pvpRes.logs.filter(l => l.includes('⚔🤖') || l.includes('🏳')).length;
+        // Psychologie du combat : feintes tentées/réussies, folds
+        combatStats.feints = (combatStats.feints || 0) + pvpRes.logs.filter(l => l.includes('🃏')).length;
+        combatStats.feintsWon = (combatStats.feintsWon || 0) + pvpRes.logs.filter(l => l.includes('ça passe')).length;
+        combatStats.folds = (combatStats.folds || 0) + pvpRes.logs.filter(l => l.includes('🫱')).length;
         for (let ei = 0; ei < pvpRes.players.length; ei++) players[ei] = pvpRes.players[ei];
         if (log) pvpRes.logs.forEach(l => log(`  ${l}`));
       }
@@ -492,6 +505,10 @@ P(`Fins de partie: ${games.length - stalemates} à 6 étoiles (${pct(games.lengt
 P(`Combats PvE (bot attaque Empire): ${pveAttacks}, gagnés ${pct(pveWins, pveAttacks)}`);
 P(`Défenses vs Empire: ${defenses}, gagnées ${pct(defWins, defenses)}`);
 P(`Combats PvP entre bots: ${pvpTotal} (${(pvpTotal / games.length).toFixed(1)}/partie)`);
+const feints = games.reduce((a, g) => a + (g.combatStats.feints || 0), 0);
+const feintsWon = games.reduce((a, g) => a + (g.combatStats.feintsWon || 0), 0);
+const folds = games.reduce((a, g) => a + (g.combatStats.folds || 0), 0);
+P(`Psychologie: ${feints} feintes (${pct(feintsWon, feints)} réussies), ${folds} folds défensifs`);
 P(`Rencontres résolues par les bots: ${encountersTotal} (${(encountersTotal / games.length).toFixed(1)}/partie, 9 jetons max)`);
 P(`Rails posés par les bots (Gares): ${games.reduce((a, g) => a + (g.railsBuilt || 0), 0)} (${(games.reduce((a, g) => a + (g.railsBuilt || 0), 0) / games.length).toFixed(1)}/partie, +2 rails Empire au setup)`);
 if (AB) P(`⚗ Mode A/B actif: ${AB}`);
