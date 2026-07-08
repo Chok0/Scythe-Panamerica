@@ -23,7 +23,8 @@ export const getRailNetwork = (fromId, rails) => {
 };
 
 // 1-step movement from a single hex (no rail — rail handled in getValidMoves)
-export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) => {
+// ignoreRivers : plan Trimotor (F2) — les rivières ne bloquent plus
+export const getValidMoves1Step = (fromId, factionId, abilities, player, rails, ignoreRivers = false) => {
   const f = FACTIONS[factionId], adj = ADJ[fromId] || [];
   const from = hMap[fromId];
   const hasRiverwalk = abilities && abilities.includes(1);
@@ -55,6 +56,7 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) 
     if (to.t === "lac") return hasPosition && factionId === "acadiane";
     if (to.t === "marecage" && !(hasPosition && factionId === "bayou")) return false;
     if (adj.includes(toId) && hasR(fromId, toId)) {
+      if (ignoreRivers) return true;
       if (hasRiverwalk) return f.riverwalk.includes(to.t);
       return false;
     }
@@ -62,43 +64,39 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) 
   });
 };
 
-// Full movement: rail (free) + 1-step, or 2-step if Speed unlocked (slot 0)
+// Full movement: rail (free) + N steps.
+// Steps = 1, +1 avec Speed (slot 0), et bonus des plans Ford/Tesla :
+//   - Trimotor (move_3)      : 3 pas pour toutes les unités + ignore les rivières
+//   - Golem (remote_move)    : 2 pas pour les MECHAS
+//   - Éclair (mech_sprint)   : 4 pas pour les MECHAS
 // Rail rules:
 //   - If starting on rail network: free teleport to any connected rail hex, then normal move
-//   - If NOT on rail: normal movement only
-//   - Speed + rail: if step 1 lands on rail, step 2 can start from any connected rail hex
-export const getValidMoves = (fromId, factionId, abilities, player, rails) => {
+//   - If a step lands on rail, the next step can start from any connected rail hex
+export const getValidMoves = (fromId, factionId, abilities, player, rails, unitType) => {
   const hasSpeed = abilities && abilities.includes(0);
+  const plan = player?.factoryCard?.topBonus;
+  let steps = hasSpeed ? 2 : 1;
+  let ignoreRivers = false;
+  if (plan === "move_3") { steps = Math.max(steps, 3); ignoreRivers = true; }
+  if (plan === "remote_move" && unitType === "mech") steps = Math.max(steps, 2);
+  if (plan === "mech_sprint" && unitType === "mech") steps = Math.max(steps, 4);
+
   const all = new Set();
-
-  // Find rail origins: fromId + all connected rail hexes (free teleport)
-  const railNet = getRailNetwork(fromId, rails);
-  const origins = railNet ? [...railNet] : [fromId];
-
-  // Rail hexes themselves are valid destinations (just teleport there)
-  if (railNet) railNet.forEach(rid => { if (rid !== fromId) all.add(rid); });
-
-  // 1-step from each origin (rail = free teleport, then 1 normal step)
-  origins.forEach(oid => {
-    getValidMoves1Step(oid, factionId, abilities, player, rails).forEach(id => {
-      if (id !== fromId) all.add(id);
-    });
-  });
-
-  // Speed: 2nd step from each step-1 destination
-  if (hasSpeed) {
-    const step1 = [...all];
-    step1.forEach(midId => {
-      // Check if midId is on a rail network (may be different section)
-      const midRailNet = getRailNetwork(midId, rails);
-      const midOrigins = midRailNet ? [...midRailNet] : [midId];
-      if (midRailNet) midRailNet.forEach(rid => { if (rid !== fromId) all.add(rid); });
-      midOrigins.forEach(oid => {
-        getValidMoves1Step(oid, factionId, abilities, player, rails).forEach(id => {
-          if (id !== fromId) all.add(id);
-        });
+  let frontier = [fromId];
+  for (let s = 0; s < steps; s++) {
+    const next = [];
+    const reach = (id) => { if (id !== fromId && !all.has(id)) { all.add(id); next.push(id); } };
+    frontier.forEach(fid => {
+      // Rail hexes themselves are valid destinations (free teleport)
+      const railNet = getRailNetwork(fid, rails);
+      const origins = railNet ? [...railNet] : [fid];
+      if (railNet) railNet.forEach(reach);
+      // 1 normal step from each origin (rail = free teleport, then 1 step)
+      origins.forEach(oid => {
+        getValidMoves1Step(oid, factionId, abilities, player, rails, ignoreRivers).forEach(reach);
       });
     });
+    frontier = next;
   }
 
   return [...all];

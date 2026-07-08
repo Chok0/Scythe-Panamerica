@@ -1,6 +1,10 @@
 import React from 'react';
 import { FACTIONS, FACTION_IDS } from '../data/factions.js';
 import { MATS } from '../data/mats.js';
+import { TERRAINS } from '../data/terrains.js';
+
+const RES_EMOJI = { petrole: "🛢", metal: "⚙", bois: "🪵", nourriture: "🌽" };
+const BOTTOM_EMOJI = ["⬆", "⬡", "🏗", "🤝"]; // Upgrade, Deploy, Build, Enlist
 
 const DIFFICULTIES = [
   { key: "facile", label: "Facile", desc: "bots imprévisibles et sous-optimaux" },
@@ -107,6 +111,7 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
                   💰={f.startAbs.coins} ♥={f.startAbs.pop}
                 </span>}
               </div>
+              {f.riverwalk&&<div style={{fontSize:11,color:"#5a9aca",marginTop:4}}>🌊 {f.rwName||"Riverwalk"} → {f.riverwalk.map(t=>TERRAINS[t]?.label||t).join(" & ")}</div>}
               {f.fObj&&<div style={{fontSize:11,color:"var(--gold-dim)",marginTop:4,fontStyle:"italic"}}>🏛 {f.fObj.name}</div>}
               {f.isExtension&&<div style={{fontSize:10,color:"var(--gold-dim)",marginTop:2,letterSpacing:2,textTransform:"uppercase"}}>Extension</div>}
             </button>
@@ -129,6 +134,9 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
                 <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:14}}>{pm.name}</div>
                 <div style={{fontSize:11,color:"var(--text-dim)",marginTop:4,letterSpacing:0.5}}>{pm.topRow.join(" · ")}</div>
                 <div style={{fontSize:12,color:"var(--gold)",marginTop:6,fontFamily:"'IBM Plex Mono',monospace"}}>♥{pm.pop}  💰{pm.coins}$</div>
+                <div style={{fontSize:11,color:"var(--text-dim)",marginTop:5,fontFamily:"'IBM Plex Mono',monospace"}} title="Coûts des actions bottom : Upgrade / Deploy / Build / Enlist (+bonus $ par cube posé)">
+                  {pm.bottomCosts.map((bc,i)=><span key={i} style={{marginRight:6,whiteSpace:"nowrap"}}>{BOTTOM_EMOJI[i]}{bc.base}{RES_EMOJI[bc.res]}{bc.bonus>0?<span style={{color:"#7fa05a"}}>+{bc.bonus}$</span>:""}</span>)}
+                </div>
               </button>
             ))}
           </div>

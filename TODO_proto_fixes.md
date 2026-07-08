@@ -32,6 +32,17 @@
 | BLD | **Building effects** — Arsenal +1⚡ Bolster, Mémorial +1♥ Bolster, Moulin +1 Produce sur hex | ✅ Joueur + Bot |
 | ANI | **Animations** — hex ripple, panel slideUp, combat entrance, btn hover/press, log slide, bot pulse | ✅ |
 
+### ✅ Corrections de jouabilité (v0.11)
+| Sujet | Correction |
+|-------|-----------|
+| **Trade 2 ressources** | UI à 2 emplacements visibles + bouton Confirmer (avant : auto-appliqué, sélection peu claire) |
+| **Coût croissant de Produce** | Seuils corrigés : 4+ ouvriers → 1⚡, 6+ → +1♥, 8 → +1$ (avant : 3/5/7, ne matchait pas la règle) |
+| **Repère visuel Produce** | Jauge des 4 paliers dans le panneau + coût dynamique affiché sur la carte d'action |
+| **Coûts bottom par plateau** | Bases rendues distinctes (2-4) pour les 5 plateaux (avant : Atelier/Pionnier/Terroir partageaient [2,3,3,3]) + affichage au setup |
+| **Deploy/Build au clic** | Cliquer l'hex surligné sur la carte place directement le mecha/bâtiment (en plus des boutons) |
+| **Mechas distincts** | Fond hexagonal teinté couleur de faction + corps du mecha Frente recoloré (avant : Frente/Nations paraissaient bruns/identiques) |
+| **Riverwalk par faction** | Vérifié discriminant par terrain (déjà OK) + affiché au setup (ex. Bayou → Désert & Village) |
+
 ## 🔧 Fixes restants
 
 ### ✅ Toutes les faction abilities — IMPLÉMENTÉES (6/6)
@@ -45,22 +56,38 @@
 - Boutons hover lift + active press, log lines slide-in, bot turn pulse scoreboard
 - Player mat column hover glow, 14 @keyframes total, 25 SVG animates, 8 CSS transitions
 
-### 🚂 Questions ouvertes — Système de Rail
+### ✅ Règles de Rail — TRANCHÉES (v0.10)
 
-| # | Question | Options | Impact |
-|---|----------|---------|--------|
-| R1 | **Nombre de rails par Gare** | 3 fixe / variable selon nb joueurs (ex: 2 en 1v1, 3 en 3+) | Densité du réseau en fin de partie |
-| R2 | **Rails connectés ou indépendants ?** | Libres (actuel) / Obligatoirement connectés entre eux / Connectés au réseau existant | Contrôle la fragmentation du réseau |
-| R3 | **Pose depuis case contrôlée ?** | Libre (actuel) / Au moins un hex du segment doit être contrôlé par le joueur | Empêche la pose "offensive" de rails lointains |
-| R4 | **Pose sur cases ennemies ?** | Autorisé (actuel) / Interdit si hex contrôlé par un adversaire | Dimension stratégique vs accessibilité |
-| R5 | **Rails et décompte territoire** | Les hex avec rail comptent normalement (actuel) / Rails exclus du décompte territoire fin de partie | Évite que le réseau gonfle artificiellement le score |
-| R6 | **Rails sur lacs/marécages** | Interdit (les lacs bloquent) / Autorisé (pont ferroviaire) | Cohérence thématique vs gameplay |
+| # | Question | Décision |
+|---|----------|----------|
+| R1 | Nombre de rails par Gare | **3 fixe** (simple, indépendant du nombre de joueurs) |
+| R2 | Rails connectés ? | **Connectés** : chaque segment doit toucher la Gare qui vient d'être construite ou un rail existant (réseau connexe) |
+| R3 | Pose depuis case contrôlée ? | Couvert par R2 : le réseau part de la Gare du joueur — pas de pose isolée « offensive » |
+| R4 | Pose sur cases ennemies ? | **Autorisé** — le réseau est partagé, tout le monde en profite |
+| R5 | Rails et territoire | **Les rails ne comptent pas** comme territoire (déjà le cas : seuls unités/bâtiments/jetons comptent) |
+| R6 | Rails sur lacs/marécages | **Interdit** (joueur ET bot) — cohérence avec le blocage du mouvement |
+
+### ✅ Plans Ford/Tesla — ACTIVÉS (v0.10)
+
+| Plan | Effet top implémenté | Effet bottom implémenté |
+|------|---------------------|------------------------|
+| F1 Model M | Production ×2 sur chaque hex (Produce) | Deploy -2 métal |
+| F2 Trimotor | Move 3 hex + ignore les rivières | Upgrade -1 coût +1$ |
+| F3 River Rouge Special | 1×/tour : téléporter les ressources d'un hex vers le héros | Build -2 bois +2$ |
+| F4 Iron Horse | Chaque déplacement mine 1 ressource du terrain d'arrivée | Enlist -2 nourriture +2$ |
+| F5 Five Dollar Day | 1×/tour : -2$ → +2 Pop +1 ouvrier | Upgrade +3$ |
+| T1 Golem | Mechas : 2 hex par Move | Deploy +2 Pui |
+| T2 L'Onde Tesla | Bolster : +1 Pui par mecha ≤2 anneaux du héros | Build sans ouvrier (héros/mecha suffit) |
+| T3 Éclair | Mechas : 4 hex par Move | +2 Pui après chaque action bottom |
+| T4 Le Blueprint Perdu | Peut rejouer la même action top 2 tours de suite | Enlist ongoing déclenché par TOUS les joueurs |
+| T5 Réseau Neuronal | 3 déplacements par action Move | Deploy sur hex adjacent aux ouvriers |
+
+Note : les bots ne visitent pas Rouge River, donc les plans ne concernent que le joueur humain.
 
 ### Priorité basse (polish uniquement)
 
 | # | Élément | Détail |
 |---|---------|--------|
-| F | **Plans Tesla/Ford activables** | Les cartes choisies à Rouge River donnent des actions supplémentaires |
 | IC | **Icônes Scythe** | Remplacer les emoji par les vrais PNG depuis regledujeu.fr |
 
 ## 📝 Notes d'architecture

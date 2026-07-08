@@ -81,9 +81,10 @@
   --surface-3: #2A2418;
 
   /* Sizing */
-  --top-h: 44px;
+  --top-h: 56px;
   --left-w: 72px;
-  --right-w: 320px;
+  /* Panneau droit adaptatif : 320px minimum, s'élargit sur grands écrans */
+  --right-w: clamp(320px, 24vw, 420px);
   --btn-min: 44px;
 
   /* Map */

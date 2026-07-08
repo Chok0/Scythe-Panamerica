@@ -60,10 +60,10 @@ export const IconFrente = React.memo(({ cx, cy, size = 28, color = "#A05020" }) 
         <circle cx="2.5" cy="17" r="1" /><circle cx="4.2" cy="20" r="0.8" /><circle cx="6.2" cy="22" r="0.8" />
         <circle cx="29.5" cy="17" r="1" /><circle cx="27.8" cy="20" r="0.8" /><circle cx="25.8" cy="22" r="0.8" />
       </g>
-      {/* BODY — Rectangular engine block */}
-      <rect x="6" y="10" width="20" height="12" rx="1" fill="#8a5a30" stroke="#6a4020" strokeWidth="0.7" />
+      {/* BODY — Rectangular engine block (teinté couleur de faction) */}
+      <rect x="6" y="10" width="20" height="12" rx="1" fill={color + "88"} stroke={color} strokeWidth="0.7" />
       {/* Engine grille / radiator front */}
-      <rect x="6.5" y="10.5" width="5" height="11" rx="0.5" fill="#6a4020" stroke="#5a3010" strokeWidth="0.3" />
+      <rect x="6.5" y="10.5" width="5" height="11" rx="0.5" fill={color + "55"} stroke="#5a3010" strokeWidth="0.3" />
       <g stroke="#8a6040" strokeWidth="0.4">
         <line x1="7.5" y1="11.5" x2="7.5" y2="20.5" />
         <line x1="8.8" y1="11.5" x2="8.8" y2="20.5" />
@@ -76,9 +76,9 @@ export const IconFrente = React.memo(({ cx, cy, size = 28, color = "#A05020" }) 
       <circle cx="12" cy="20" r="0.5" fill="#9a7050" />
       <circle cx="22" cy="20" r="1.5" fill="#6a4020" stroke="#8a6040" strokeWidth="0.3" />
       <circle cx="22" cy="20" r="0.5" fill="#9a7050" />
-      {/* Bolted armor plates — welded on top, crude */}
-      <rect x="12" y="10.5" width="7" height="5" rx="0.3" fill="#7a4a28" stroke="#9a7050" strokeWidth="0.3" />
-      <rect x="20" y="11" width="5" height="4" rx="0.3" fill="#6a4020" stroke="#8a6040" strokeWidth="0.3" />
+      {/* Bolted armor plates — welded on top, crude (teinté faction) */}
+      <rect x="12" y="10.5" width="7" height="5" rx="0.3" fill={color + "66"} stroke="#9a7050" strokeWidth="0.3" />
+      <rect x="20" y="11" width="5" height="4" rx="0.3" fill={color + "44"} stroke="#8a6040" strokeWidth="0.3" />
       {/* Armor plate rivets — irregular, hand-bolted */}
       <g fill="#b08850">
         <circle cx="13" cy="11.5" r="0.4" /><circle cx="18" cy="11.5" r="0.4" />

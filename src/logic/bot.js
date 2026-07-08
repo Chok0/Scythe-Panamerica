@@ -586,6 +586,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
           for (let ri = 0; ri < 3; ri++) {
             const adjH = (ADJ[railFrom] || []).filter(id => {
               const h = hMap[id]; if (!h) return false;
+              if (h.t === "lac" || h.t === "marecage") return false; // R6: pas de rail sur l'eau
               return !rails.some(([a, b]) => (a === railFrom && b === id) || (a === id && b === railFrom));
             });
             if (adjH.length > 0) {
@@ -610,11 +611,12 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         const pick = freeSlots[0]; // highest priority available
         p.enlistMap = [...(p.enlistMap || [false, false, false, false])];
         p.enlistMap[pick] = true;
+        // Bonus immédiat décalé d'un cran vs l'ongoing (règle Scythe) : voir ENLIST_BONUSES dans App.jsx
         const imm = [
-          pp => { pp.power = Math.min(pp.power + 2, 16); },
-          pp => { pp.coins += 2; },
-          pp => { pp.pop = Math.min(pp.pop + 2, 18); },
-          pp => { pp.combatCards += 2; },
+          pp => { pp.coins += 2; },                          // Upgrade → 💰
+          pp => { pp.pop = Math.min(pp.pop + 2, 18); },      // Deploy → ❤
+          pp => { pp.combatCards += 2; },                    // Build → 🃏
+          pp => { pp.power = Math.min(pp.power + 2, 16); },  // Enlist → ⚡
         ][pick];
         if (imm) imm(p);
         logs.push(`🤖 ${f.name}: Enlist → ${BOTTOM[pick]} (${ENLIST_ONGOING[pick].icon})`);

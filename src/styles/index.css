@@ -62,6 +62,13 @@ h1, h2, h3 {
 @keyframes logSlide { from { opacity: 0; transform: translateX(-6px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes hexRipple { 0% { r: 0; opacity: 0.5; } 100% { r: 35; opacity: 0; } }
 @keyframes encounterPulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+@keyframes floatUp {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  15% { opacity: 1; transform: translate(-50%, -60%) scale(1.15); }
+  60% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -160%) scale(1); }
+}
+.floater { animation: floatUp 1.5s cubic-bezier(0.22, 0.61, 0.36, 1) forwards; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
@@ -131,21 +138,21 @@ svg text { -webkit-user-select: none; user-select: none; }
 .dial-btn.off { background: var(--bg3); color: var(--text-dim); border: 1px solid var(--border); }
 .dial-btn.on { background: var(--danger); color: #fff; border: 1px solid #AA5050; }
 
-/* Resource pill (top bar) */
+/* Resource pill (top bar) — plus grand et plus contrasté pour la lisibilité */
 .res-pill {
   display: flex;
   align-items: center;
-  gap: 3px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.03);
-  min-width: 38px;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  min-width: 46px;
 }
-.res-pill .res-icon { font-size: 11px; line-height: 1; }
+.res-pill .res-icon { font-size: 13px; line-height: 1; }
 .res-pill .res-val {
-  font-size: var(--fs-counter);
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 700;
   font-family: var(--font-mono);
 }
 
