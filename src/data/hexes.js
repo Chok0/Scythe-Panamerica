@@ -13,14 +13,31 @@ const DEFAULT_HEXES = [
   { id: 17, rx: 146, ry: 445, t: "plaine" }, { id: 18, rx: 382, ry: 445, t: "lac" }, { id: 19, rx: 618, ry: 445, t: "lac" }, { id: 20, rx: 855, ry: 445, t: "marecage" },
   { id: 21, rx: 265, ry: 513, t: "montagne" }, { id: 22, rx: 501, ry: 513, t: "factory" }, { id: 23, rx: 737, ry: 513, t: "desert" },
   { id: 25, rx: 146, ry: 581, t: "marecage" }, { id: 26, rx: 382, ry: 581, t: "plaine" }, { id: 27, rx: 618, ry: 581, t: "village" }, { id: 28, rx: 855, ry: 581, t: "foret" },
-  { id: 29, rx: 265, ry: 650, t: "foret" }, { id: 30, rx: 501, ry: 650, t: "champs" }, { id: 31, rx: 737, ry: 650, t: "marecage" },
+  { id: 29, rx: 265, ry: 650, t: "foret" }, { id: 30, rx: 501, ry: 650, t: "champs" }, { id: 31, rx: 737, ry: 650, t: "montagne" },
   { id: 32, rx: 146, ry: 718, t: "sierra" }, { id: 33, rx: 382, ry: 718, t: "lac" }, { id: 34, rx: 618, ry: 718, t: "foret" }, { id: 35, rx: 855, ry: 718, t: "village" },
   { id: 36, rx: 265, ry: 786, t: "village" }, { id: 37, rx: 501, ry: 786, t: "desert" }, { id: 38, rx: 737, ry: 786, t: "sierra" },
   { id: 40, rx: 382, ry: 855, t: "desert" }, { id: 41, rx: 618, ry: 855, t: "champs" }, { id: 45, rx: 737, ry: 923, t: "sierra" },
   { id: 46, rx: 500, ry: 923, t: "village" }, { id: 47, rx: 855, ry: 855, t: "lac" },
 ];
 
+// v2 « carte physique » : péninsules de départ pour TOUTES les factions
+// (retouches mesurées par simulation — voir RAPPORT_SIMULATION.md) :
+//   - [9,12] ajoutée → l'Acadiane démarre en péninsule {2,6,9} à 3 ressources
+//     (toundra/plaine/forêt, façon Nordiques de l'original) au lieu d'un
+//     « îlot » de 19 hexes qui lui offrait la moitié du plateau dès le tour 1
+//   - hex 31 marécage→montagne, [31,35] retirée, [27,31]+[31,34] ajoutées →
+//     le Bayou démarre en péninsule {35,28,31} village+bois+MÉTAL (il n'avait
+//     que 2 hexes et une seule ressource)
 const DEFAULT_RIVERS = [
+  [0, 3], [0, 7], [4, 7], [4, 8], [3, 10], [7, 10], [17, 21], [17, 25],
+  [23, 28], [23, 31], [27, 31], [31, 34], [31, 38], [35, 38], [38, 45], [7, 14], [14, 21],
+  [25, 32], [25, 29], [21, 29], [26, 29], [29, 33], [33, 36], [36, 40], [40, 46],
+  [37, 41], [37, 46], [38, 41], [34, 41], [20, 23], [16, 20], [9, 16], [9, 12],
+  [1, 8], [4, 11], [11, 14], [14, 18], [1, 5], [22, 26], [28, 31], [6, 13],
+];
+
+// Carte v1 d'origine (avant retouches) — conservée pour les A/B du simulateur
+export const LEGACY_RIVERS = [
   [0, 3], [0, 7], [4, 7], [4, 8], [3, 10], [7, 10], [17, 21], [17, 25],
   [23, 28], [31, 35], [35, 38], [38, 45], [7, 14], [14, 21],
   [25, 32], [25, 29], [21, 29], [26, 29], [29, 33], [33, 36], [36, 40], [40, 46],
@@ -52,7 +69,15 @@ const computeAdj = (hexes) => {
   return a;
 };
 
-// ── Carte par défaut (celle dessinée à la main) ──
+export const LEGACY_MAP = {
+  name: "panamerica-v1",
+  hexes: DEFAULT_HEXES.map(h => h.id === 31 ? { ...h, t: "marecage" } : h),
+  rivers: LEGACY_RIVERS,
+  encounterHexes: [2, 4, 14, 16, 20, 27, 29, 35, 41],
+  starts: null,
+};
+
+// ── Carte par défaut (dessinée à la main, retouches v2) ──
 export const DEFAULT_MAP = {
   name: "panamerica",
   hexes: DEFAULT_HEXES,

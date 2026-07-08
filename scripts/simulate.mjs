@@ -18,9 +18,9 @@
  */
 import { writeFileSync } from 'node:fs';
 import { botTurn } from '../src/logic/bot.js';
-import { applyBotPvpAfterMove, servitudeOnDisplace } from '../src/logic/pvpBots.js';
+import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../src/logic/pvpBots.js';
 import { resolveBotEncounter } from '../src/logic/botEncounters.js';
-import { CURRENT_MAP, loadMap, DEFAULT_MAP } from '../src/data/hexes.js';
+import { CURRENT_MAP, loadMap, DEFAULT_MAP, LEGACY_MAP } from '../src/data/hexes.js';
 import { generateAcceptedMap, validateMap } from '../src/data/mapGen.js';
 import { createPlayer } from '../src/logic/player.js';
 import { FACTIONS, FACTION_IDS } from '../src/data/factions.js';
@@ -31,6 +31,7 @@ import { EMPIRE_START, EMPIRE_RAILS, drawEmpireCombat } from '../src/data/empire
 import { getCombatBonus } from '../src/data/combat.js';
 import { OBJECTIVES } from '../src/data/objectives.js';
 import { shuffleArray } from '../src/logic/hexMath.js';
+import { BOT_PROFILES, assignBotProfile, BOT_NOISE, MAP_META_THREAT, playerStanding } from '../src/logic/botProfiles.js';
 
 // ── CLI ──
 const args = process.argv.slice(2);
@@ -48,14 +49,37 @@ const DUMP = getArg('dump', null);
 //   --ab wf1         → White Flag rapporte +1 pop (au lieu de 2)
 //   --ab bayouBois   → le Bayou peut déployer ses mechas en bois (comme Nations)
 const AB = getArg('ab', null);
-if (AB === 'wf1') BALANCE.whiteFlagPop = 1;
-if (AB === 'bayouBois') FACTIONS.bayou.deployAltRes = 'bois';
+// Plusieurs expériences combinables : --ab resCap,trioBoost
+const ABS = new Set((AB || '').split(',').filter(Boolean));
+if (ABS.has('wf1')) BALANCE.whiteFlagPop = 1;
+if (ABS.has('bayouBois')) FACTIONS.bayou.deployAltRes = 'bois';
+//   --ab dom2        → Commerce Impérial : 2 conversions de surplus par tour
+if (ABS.has('dom2')) BALANCE.imperialRate = 2;
+//   --ab noDomImport → désactive l'Import Impérial du Dominion (contrôle)
+if (ABS.has('noDomImport')) BALANCE.imperialImport = false;
+//   --ab resCap12    → réactive le plafond de scoring des ressources à 12 (comparaison)
+if (ABS.has('resCap12')) BALANCE.resScoringCap = 12;
+//   --ab wfOff       → désactive complètement le White Flag (diagnostic Acadiane)
+if (ABS.has('wfOff')) BALANCE.whiteFlagEnabled = false;
+//   --ab acadRestore → annule le handicap de départ Acadiane v8 (contrôle)
+if (ABS.has('acadRestore')) { FACTIONS.acadiane.cards = 3; delete FACTIONS.acadiane.startBonus; }
+//   --ab domSame     → Dominion façon Rusviet : peut rejouer la même colonne
+if (ABS.has('domSame')) BALANCE.dominionRelentless = true;
+//   --ab noTrioBoost → retire la compensation de départ Conf/Bayou/Dominion (contrôle)
+if (ABS.has('noTrioBoost')) ['confederation', 'bayou', 'dominion'].forEach(f => { delete FACTIONS[f].startBonus; });
+//   --ab legacyMap   → carte v1 d'origine (avant retouches péninsules)
+if (ABS.has('legacyMap')) loadMap(LEGACY_MAP);
 // (le nerf acadianeHard testé en A/B est désormais le comportement par défaut — factions.js)
 // Cartes procédurales :
 //   --randomMap    → une carte générée+acceptée différente PAR PARTIE
 //   --mapSearch K  → évalue K cartes acceptées (N_GAMES parties chacune) et les classe
 const RANDOM_MAP = args.includes('--randomMap');
 const MAP_SEARCH = parseInt(getArg('mapSearch', '0'), 10);
+// Profils stratégiques des bots :
+//   --difficulty facile|normal|difficile  → assignation + bruit (défaut : normal)
+//   --uniformBots                         → tous en profil « équilibré » (contrôle A/B)
+const DIFFICULTY = getArg('difficulty', 'normal');
+const UNIFORM_BOTS = args.includes('--uniformBots');
 
 // ── RNG seedé (remplace Math.random pour la reproductibilité) ──
 const mulberry32 = (a) => () => {
@@ -90,15 +114,18 @@ const scorePlayer = (p) => {
     const isAdjHB = hbh && (ADJ[hbh.id] || []).includes(fl.hexId);
     if (!isAdjHB) flagBonus++;
   });
-  if (AB === 'noFlagBonus') flagBonus = 0;
+  if (ABS.has('noFlagBonus')) flagBonus = 0;
   const territories = unitHexes.size;
-  const factoryBonus = unitHexes.has(22) ? 3 : 0;
+  // Règle originale : l'Usine compte 3 territoires EN TOUT (1 + bonus 2)
+  const factoryBonus = unitHexes.has(22) ? 2 : 0;
   // Règle : seules les ressources sur des territoires contrôlés comptent au scoring
   let totalRes = 0;
   Object.entries(p.resources).forEach(([hid, r]) => {
     if (unitHexes.has(parseInt(hid))) Object.values(r).forEach(n => totalRes += n);
   });
-  const resPairs = Math.floor(totalRes / 2);
+  // Plafond de scoring des ressources (BALANCE.resScoringCap, défaut 12) —
+  // sans lui, la stratégie « coffre-fort » domine (voir rapport §0 v6)
+  const resPairs = Math.floor(Math.min(totalRes, BALANCE.resScoringCap) / 2);
   const starScore = p.stars * starMult;
   const terScore = (territories + factoryBonus + flagBonus) * terMult;
   const resScore = resPairs * resMult;
@@ -148,6 +175,11 @@ const playGame = (gameIdx, log) => {
   const factions = shuffleArray(FACTION_IDS).slice(0, nPlayers);
   const mats = shuffleArray(MATS.map(m => m.id)).slice(0, nPlayers);
   const players = factions.map((f, i) => createPlayer(f, mats[i % mats.length], true));
+  // Profils stratégiques : pondérés par faction (diversité de comportements)
+  players.forEach(p => {
+    p.botProfile = UNIFORM_BOTS ? 'equilibre' : assignBotProfile(p.faction, DIFFICULTY);
+    p.botNoise = BOT_NOISE[DIFFICULTY] ?? 3;
+  });
   const shuffledObj = shuffleArray(OBJECTIVES);
   players.forEach((p, i) => {
     const o1 = shuffledObj[(i * 2) % shuffledObj.length], o2 = shuffledObj[(i * 2 + 1) % shuffledObj.length];
@@ -175,14 +207,32 @@ const playGame = (gameIdx, log) => {
         op.workers.forEach(w => enemyHexes.add(w.hexId));
       });
 
-      // Tous les joueurs sont des bots : tout hex combattant adverse est attaquable
-      const attackable = new Set();
+      // Hex combattants adverses → force défensive estimée (attaque sur avantage)
+      // + butin par hex (le vainqueur prend les ressources : les gros tas de
+      // ressources attirent les raids — contre naturel des thésauriseurs)
+      const attackable = new Map();
+      const hexLoot = new Map();
+      // Méta-stratégie : menace par hex = a priori de la faction sur CETTE
+      // carte + bonus si son propriétaire est le leader actuel de la partie
+      const hexThreat = new Map();
+      const standings = players.map((op, oi) => oi === cp ? -1 : playerStanding(op));
+      const leaderIdx = standings.indexOf(Math.max(...standings));
       players.forEach((op, oi) => {
         if (oi === cp) return;
-        attackable.add(op.hero);
-        op.mechs.forEach(m => attackable.add(m.hexId));
+        const strength = op.power + (op.combatCards || 0) * 2;
+        attackable.set(op.hero, Math.max(attackable.get(op.hero) || 0, strength));
+        op.mechs.forEach(m => attackable.set(m.hexId, Math.max(attackable.get(m.hexId) || 0, strength)));
+        Object.entries(op.resources || {}).forEach(([hid, res]) => {
+          const total = Object.values(res).reduce((a, b) => a + b, 0);
+          if (total > 0) hexLoot.set(parseInt(hid), (hexLoot.get(parseInt(hid)) || 0) + total);
+        });
+        const threat = Math.min(6, (MAP_META_THREAT[op.faction] || 0) + (oi === leaderIdx ? 3 : 0));
+        if (threat > 0) {
+          [op.hero, ...op.mechs.map(m => m.hexId), ...op.workers.map(w => w.hexId)]
+            .forEach(hid => hexThreat.set(hid, Math.max(hexThreat.get(hid) || 0, threat)));
+        }
       });
-      const result = botTurn(players[cp], empire, enemyHexes, rails, { attackable, forbidden: new Set(), encounterHexes: encounterTokens });
+      const result = botTurn(players[cp], empire, enemyHexes, rails, { attackable, hexLoot, hexThreat, forbidden: new Set(), encounterHexes: encounterTokens });
       let p = result.player;
       if (log) result.logs.forEach(l => log(`  ${l}`));
 
@@ -228,8 +278,15 @@ const playGame = (gameIdx, log) => {
         const displaced = players[oi].workers.filter(w => botHexes.has(w.hexId) && !defended(w.hexId));
         if (displaced.length > 0) {
           const ohb = hbHexOf(players[oi].faction);
+          const dispHexes = [...new Set(displaced.map(w => w.hexId))];
           players[oi] = { ...players[oi], workers: players[oi].workers.map(w => botHexes.has(w.hexId) && !defended(w.hexId) ? { ...w, hexId: ohb.id } : w) };
           players[cp] = { ...players[cp], pop: Math.max(0, (players[cp].pop || 0) - displaced.length) };
+          // Pillage : les ressources des hexes pris passent au nouvel occupant
+          const deepRes = (pl) => { const r = {}; Object.entries(pl.resources).forEach(([k, v]) => { r[k] = { ...v }; }); return r; };
+          const loserC = { ...players[oi], resources: deepRes(players[oi]) };
+          const winnerC = { ...players[cp], resources: deepRes(players[cp]) };
+          dispHexes.forEach(hid => transferHexResources(loserC, winnerC, hid));
+          players[oi] = loserC; players[cp] = winnerC;
           // Servitude (Confédération) : capture lors du déplacement d'ouvriers
           const serv = servitudeOnDisplace(players[cp], displaced[0].hexId);
           if (serv.captured) players[cp] = serv.player;
@@ -250,6 +307,10 @@ const playGame = (gameIdx, log) => {
       const pvpRes = applyBotPvpAfterMove(players, cp, () => true);
       if (pvpRes.logs.length > 0) {
         combatStats.pvp += pvpRes.logs.filter(l => l.includes('⚔🤖') || l.includes('🏳')).length;
+        // Psychologie du combat : feintes tentées/réussies, folds
+        combatStats.feints = (combatStats.feints || 0) + pvpRes.logs.filter(l => l.includes('🃏')).length;
+        combatStats.feintsWon = (combatStats.feintsWon || 0) + pvpRes.logs.filter(l => l.includes('ça passe')).length;
+        combatStats.folds = (combatStats.folds || 0) + pvpRes.logs.filter(l => l.includes('🫱')).length;
         for (let ei = 0; ei < pvpRes.players.length; ei++) players[ei] = pvpRes.players[ei];
         if (log) pvpRes.logs.forEach(l => log(`  ${l}`));
       }
@@ -322,7 +383,7 @@ const playGame = (gameIdx, log) => {
 
   // ── Scoring final ──
   const scored = players.map(p => ({
-    faction: p.faction, mat: p.matName, isTrigger: p.stars >= 6,
+    faction: p.faction, mat: p.matName, profile: p.botProfile, isTrigger: p.stars >= 6,
     stars: p.stars, pop: p.pop, power: p.power,
     starFlags: Object.fromEntries(STAR_FLAGS.map(([k, label]) => [label, !!p[k]])),
     empireKills: p.empireKills || 0,
@@ -401,8 +462,9 @@ for (let g = 0; g < N_GAMES; g++) {
 const pct = (a, b) => b > 0 ? (100 * a / b).toFixed(1) + '%' : '—';
 const avg = (arr) => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
 
-const byFaction = {}; const byMat = {};
-FACTION_IDS.forEach(f => { byFaction[f] = { games: 0, wins: 0, triggers: 0, scores: [], stars: [], abilities: [], gares: 0, traps: [], flags: [], flagPts: [], imperial: [], chimeres: 0, captured: [], encounters: [] }; });
+const byFaction = {}; const byMat = {}; const byProfile = {}; const byFactionProfile = {};
+Object.keys(BOT_PROFILES).forEach(k => { byProfile[k] = { games: 0, wins: 0, scores: [], stars: [], pops: [] }; });
+FACTION_IDS.forEach(f => { byFaction[f] = { games: 0, wins: 0, triggers: 0, scores: [], stars: [], abilities: [], gares: 0, traps: [], flags: [], flagPts: [], imperial: [], chimeres: 0, captured: [], encounters: [], pops: [], terrs: [], coins: [], starScores: [], terScores: [], resScores: [] }; });
 MATS.forEach(m => { byMat[m.name] = { games: 0, wins: 0, scores: [] }; });
 const starCounts = {}; STAR_FLAGS.forEach(([, l]) => { starCounts[l] = { all: 0, winners: 0 }; });
 let stalemates = 0; const allIssues = []; const roundsArr = [];
@@ -424,6 +486,16 @@ games.forEach(g => {
     bf.traps.push(s.traps); bf.flags.push(s.flags); bf.flagPts.push(s.flagBonusPts || 0);
     bf.imperial.push(s.imperialCoins); if (s.chimere) bf.chimeres++;
     bf.captured.push(s.capturedWorkers); bf.encounters.push(s.encounters);
+    bf.pops.push(s.pop); bf.terrs.push(s.territories); bf.coins.push(s.coins);
+    bf.starScores.push(s.starScore); bf.terScores.push(s.terScore); bf.resScores.push(s.resScore);
+    const bp = byProfile[s.profile];
+    if (bp) {
+      bp.games++; bp.scores.push(s.total); bp.stars.push(s.stars); bp.pops.push(s.pop);
+      if (rank === 0) bp.wins++;
+      const fpKey = `${s.faction}|${s.profile}`;
+      const fp = byFactionProfile[fpKey] || (byFactionProfile[fpKey] = { games: 0, wins: 0 });
+      fp.games++; if (rank === 0) fp.wins++;
+    }
     if (rank === 0) { bf.wins++; byMat[s.mat].wins++; }
     if (s.isTrigger) bf.triggers++;
     STAR_FLAGS.forEach(([, l]) => {
@@ -440,6 +512,10 @@ P(`Fins de partie: ${games.length - stalemates} à 6 étoiles (${pct(games.lengt
 P(`Combats PvE (bot attaque Empire): ${pveAttacks}, gagnés ${pct(pveWins, pveAttacks)}`);
 P(`Défenses vs Empire: ${defenses}, gagnées ${pct(defWins, defenses)}`);
 P(`Combats PvP entre bots: ${pvpTotal} (${(pvpTotal / games.length).toFixed(1)}/partie)`);
+const feints = games.reduce((a, g) => a + (g.combatStats.feints || 0), 0);
+const feintsWon = games.reduce((a, g) => a + (g.combatStats.feintsWon || 0), 0);
+const folds = games.reduce((a, g) => a + (g.combatStats.folds || 0), 0);
+P(`Psychologie: ${feints} feintes (${pct(feintsWon, feints)} réussies), ${folds} folds défensifs`);
 P(`Rencontres résolues par les bots: ${encountersTotal} (${(encountersTotal / games.length).toFixed(1)}/partie, 9 jetons max)`);
 P(`Rails posés par les bots (Gares): ${games.reduce((a, g) => a + (g.railsBuilt || 0), 0)} (${(games.reduce((a, g) => a + (g.railsBuilt || 0), 0) / games.length).toFixed(1)}/partie, +2 rails Empire au setup)`);
 if (AB) P(`⚗ Mode A/B actif: ${AB}`);
@@ -453,6 +529,29 @@ FACTION_IDS.forEach(f => {
   const d = byFaction[f];
   P(`  ${FACTIONS[f].name.padEnd(16)} ${String(d.games).padStart(4)} parties | win ${pct(d.wins, d.games).padStart(6)} | déclenche fin ${pct(d.triggers, d.games).padStart(6)} | score moy ${avg(d.scores).toFixed(1).padStart(6)} | étoiles moy ${avg(d.stars).toFixed(2)}`);
 });
+P(`\n── Win rate par profil stratégique (difficulté: ${DIFFICULTY}${UNIFORM_BOTS ? ', uniformBots' : ''}) ──`);
+Object.entries(byProfile).forEach(([k, d]) => {
+  if (d.games === 0) return;
+  const pr = BOT_PROFILES[k];
+  P(`  ${(pr.icon + ' ' + pr.name).padEnd(16)} ${String(d.games).padStart(4)} sièges | win ${pct(d.wins, d.games).padStart(6)} | score moy ${avg(d.scores).toFixed(1).padStart(6)} | étoiles ${avg(d.stars).toFixed(2)} | pop ${avg(d.pops).toFixed(1)}`);
+});
+P(`\n── Meilleur profil par faction (win% par profil, ≥30 sièges) ──`);
+FACTION_IDS.forEach(f => {
+  const rows = Object.keys(BOT_PROFILES)
+    .map(k => ({ k, ...(byFactionProfile[`${f}|${k}`] || { games: 0, wins: 0 }) }))
+    .filter(r => r.games >= 30)
+    .sort((a, b) => b.wins / b.games - a.wins / a.games);
+  if (rows.length === 0) return;
+  P(`  ${FACTIONS[f].name.padEnd(16)} ${rows.map(r => `${BOT_PROFILES[r.k].icon}${BOT_PROFILES[r.k].name} ${pct(r.wins, r.games)} (${r.games})`).join(' · ')}`);
+});
+
+P(`\n── Décomposition du score final (moyennes) ──`);
+FACTION_IDS.forEach(f => {
+  const d = byFaction[f];
+  if (d.games === 0) return;
+  P(`  ${FACTIONS[f].name.padEnd(16)} pop ${avg(d.pops).toFixed(1).padStart(4)} | terr ${avg(d.terrs).toFixed(1).padStart(4)} | ⭐pts ${avg(d.starScores).toFixed(1).padStart(5)} | 🗺pts ${avg(d.terScores).toFixed(1).padStart(5)} | 📦pts ${avg(d.resScores).toFixed(1).padStart(4)} | 💰 ${avg(d.coins).toFixed(1).padStart(5)}`);
+});
+
 P(`\n── Usage des capacités par faction ──`);
 FACTION_IDS.forEach(f => {
   const d = byFaction[f];

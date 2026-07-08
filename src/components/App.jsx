@@ -19,11 +19,12 @@ import SetupScreen from './SetupScreen.jsx';
 import { countRes, spendRes, getWorkerHexes } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
-import { getValidMoves } from '../logic/movement.js';
+import { getValidMoves, findPathWaypoints } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer } from '../logic/player.js';
 import { botTurn } from '../logic/bot.js';
-import { applyBotPvpAfterMove, servitudeOnDisplace } from '../logic/pvpBots.js';
+import { BOT_PROFILES, assignBotProfile, BOT_NOISE, MAP_META_THREAT, playerStanding } from '../logic/botProfiles.js';
+import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../logic/pvpBots.js';
 import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { applyPlanTop, getPlanBottomBonus } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
@@ -35,6 +36,7 @@ export default function App(){
   const[selMat,setSelMat]=useState(null);
   const[numBots,setNumBots]=useState(2);
   const[randomMap,setRandomMap]=useState(false);
+  const[difficulty,setDifficulty]=useState("normal");
   const[players,setPlayers]=useState([]);
   const[currentP,setCurrentP]=useState(0);
   const[turn,setTurn]=useState(1);
@@ -52,6 +54,8 @@ export default function App(){
   const[encounterTokens,setEncounterTokens]=useState(new Set(CURRENT_MAP.encounterHexes));
   const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
   const[moveSource,setMoveSource]=useState(null);
+  const[carryOnMove,setCarryOnMove]=useState(true); // 🚚 emporter ouvriers/ressources au Move
+  const[routeDrop,setRouteDrop]=useState(null); // 📦 dépose en route: {mids,destHex,endAfter}
   const[preActionSnapshot,setPreActionSnapshot]=useState(null); // snapshot of player[0] before action, for undo
   const[tradePicks,setTradePicks]=useState([]); // for Trade: array of picked resource types (0-2)
   const[hovHex,setHovHex]=useState(null);
@@ -256,7 +260,12 @@ export default function App(){
     const availF=FACTION_IDS.filter(f=>!usedFactions.includes(f));
     const availM=MATS.map(m=>m.id).filter(id=>!usedMats.includes(id));
     for(let i=0;i<numBots&&i<availF.length;i++){
-      ps.push(createPlayer(availF[i],availM[i%availM.length],true));
+      const bot=createPlayer(availF[i],availM[i%availM.length],true);
+      // Profil stratégique (bâtisseur/blitz/thésauriseur/équilibré) + bruit
+      // décisionnel selon la difficulté choisie au setup
+      bot.botProfile=assignBotProfile(bot.faction,difficulty);
+      bot.botNoise=BOT_NOISE[difficulty]??3;
+      ps.push(bot);
       usedFactions.push(availF[i]);usedMats.push(availM[i%availM.length]);
     }
     const shuffled=shuffleArray(OBJECTIVES);
@@ -267,7 +276,11 @@ export default function App(){
     });
     setPlayers(ps);setPhase("playing");setCurrentP(0);setTurn(1);turnRef.current=1;
     addLog(`⚔ ${ps.length} joueurs`);
-    ps.forEach(p=>{const f=FACTIONS[p.faction];addLog(`${p.isBot?"🤖":"👤"} ${f.name} (${p.matName})  ⚡${p.power} 🃏${p.combatCards} ♥${p.pop} 💰${p.coins}`);});
+    ps.forEach(p=>{
+      const f=FACTIONS[p.faction];
+      const prof=p.isBot?BOT_PROFILES[p.botProfile]:null;
+      addLog(`${p.isBot?"🤖":"👤"} ${f.name} (${p.matName})${prof?` ${prof.icon} ${prof.name}`:""}  ⚡${p.power} 🃏${p.combatCards} ♥${p.pop} 💰${p.coins}`);
+    });
     // Auto-center on player's hero
     const heroHex=hMap[ps[0].hero];
     if(heroHex){
@@ -276,7 +289,7 @@ export default function App(){
       const y=Math.max(MAP_BASE.y,Math.min(MAP_BASE.y+MAP_BASE.h-zh,heroHex.ry-zh/2));
       setMapView({x,y,w:zw,h:zh});
     }
-  },[selFaction,selMat,numBots,randomMap,addLog]);
+  },[selFaction,selMat,numBots,randomMap,difficulty,addLog]);
 
   const revealObjective=useCallback((objIdx)=>{
     const p=players[0];if(!p||p.objectiveRevealed)return;
@@ -348,7 +361,7 @@ export default function App(){
         }
       }
       // Reset commerceUsed for human player at start of new turn
-      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],commerceUsed:false};return n;});
+      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],commerceUsed:false,importUsed:false};return n;});
       turnRef.current=turn+1;setCurrentP(0);setTurn(t=>t+1);setBotRunning(false);addLog(`── Tour ${turn+1} ──`);logSnap("Début",players[0]);
       return;
     }
@@ -356,18 +369,36 @@ export default function App(){
     const timer=setTimeout(()=>{
       // Build enemy hexes set for this bot (all hexes with other factions' units)
       const botEnemyHexes=new Set();
-      // PvP : hex des unités combattantes adverses (bots ET joueur humain — la
-      // défense du joueur est interactive via le modal de combat)
-      const attackable=new Set();
+      // PvP : hex des unités combattantes adverses → force défensive estimée
+      // (l'IA n'attaque que sur avantage réel)
+      const attackable=new Map();
+      const hexLoot=new Map();
+      // Méta-stratégie : menace par hex = a priori de la faction sur cette
+      // carte + bonus si son propriétaire mène la partie (harceler le leader)
+      const hexThreat=new Map();
+      const standings=players.map((op,oi)=>oi===cp?-1:playerStanding(op));
+      const leaderIdx=standings.indexOf(Math.max(...standings));
       players.forEach((op,oi)=>{
         if(oi===cp)return;
         botEnemyHexes.add(op.hero);
         op.mechs.forEach(m=>botEnemyHexes.add(m.hexId));
         op.workers.forEach(w=>botEnemyHexes.add(w.hexId));
-        attackable.add(op.hero);
-        op.mechs.forEach(m=>attackable.add(m.hexId));
+        const strength=op.power+(op.combatCards||0)*2;
+        attackable.set(op.hero,Math.max(attackable.get(op.hero)||0,strength));
+        op.mechs.forEach(m=>attackable.set(m.hexId,Math.max(attackable.get(m.hexId)||0,strength)));
+        // Butin par hex : les tas de ressources attirent les raids (le
+        // vainqueur d'un combat prend les ressources du hex)
+        Object.entries(op.resources||{}).forEach(([hid,res])=>{
+          const total=Object.values(res).reduce((a,b)=>a+b,0);
+          if(total>0)hexLoot.set(parseInt(hid),(hexLoot.get(parseInt(hid))||0)+total);
+        });
+        const threat=Math.min(6,(MAP_META_THREAT[op.faction]||0)+(oi===leaderIdx?3:0));
+        if(threat>0){
+          [op.hero,...op.mechs.map(m=>m.hexId),...op.workers.map(w=>w.hexId)]
+            .forEach(hid=>hexThreat.set(hid,Math.max(hexThreat.get(hid)||0,threat)));
+        }
       });
-      const botCtx={attackable,forbidden:new Set(),encounterHexes:encounterTokens};
+      const botCtx={attackable,hexLoot,hexThreat,forbidden:new Set(),encounterHexes:encounterTokens};
       let result=botTurn(players[cp],empire,botEnemyHexes,rails,botCtx);
       let p=result.player;const logs=[...result.logs];
       // ── BOT COMBAT: check if bot moved onto Empire mecha ──
@@ -425,9 +456,16 @@ export default function App(){
         if(displaced.length>0){
           const ohb=HOME_BASES[n[oi].faction];
           const ohbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ohb.rx)**2+(h.ry-ohb.ry)**2);const db=best?Math.sqrt((best.rx-ohb.rx)**2+(best.ry-ohb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+          const dispHexes=[...new Set(displaced.map(w=>w.hexId))];
           n[oi]={...n[oi],workers:n[oi].workers.map(w=>botHexes.has(w.hexId)&&!defended(w.hexId)?{...w,hexId:ohbHex.id}:w)};
           // Bot loses pop for displacing workers
           n[cp]={...n[cp],pop:Math.max(0,(n[cp].pop||0)-displaced.length)};
+          // Pillage : le magot des hexes pris passe au nouvel occupant
+          const deepResB=(pl)=>{const r={};Object.entries(pl.resources).forEach(([k,v])=>{r[k]={...v};});return r;};
+          const loserB={...n[oi],resources:deepResB(n[oi])};
+          const winnerB={...n[cp],resources:deepResB(n[cp])};
+          dispHexes.forEach(hid=>transferHexResources(loserB,winnerB,hid));
+          n[oi]=loserB;n[cp]=winnerB;
           logs.push(`🏃 ${displaced.length} ouvrier(s) ${FACTIONS[n[oi].faction].name} renvoyé(s) ! (-${displaced.length} Pop ${FACTIONS[n[cp].faction].name})`);
           const servB=servitudeOnDisplace(n[cp],displaced[0].hexId);
           if(servB.captured){n[cp]=servB.player;logs.push(`⛓🤖 Servitude ! ${FACTIONS[n[cp].faction].name} capture un ouvrier (${n[cp].capturedWorkers}/2)`);}
@@ -457,9 +495,14 @@ export default function App(){
         const atk=n[cp];
         const atkUnits=(atk.hero===clashHex?1:0)+atk.mechs.filter(m=>m.hexId===clashHex).length;
         const atkCB=getCombatBonus(atk,clashHex,true,human.combatCards);
-        // Le bot engage secrètement puissance + cartes (déduits à la résolution)
-        const botSpend=Math.min(Math.floor(atk.power*0.7)+1,7,atk.power);
-        const botCards=Math.min(atk.combatCards,atkUnits+atkCB.cardBonus);
+        // Le bot engage secrètement puissance + cartes (déduits à la résolution).
+        // FEINTE : très supérieur en visible, il mise parfois le minimum en
+        // pariant que vous ne miserez rien (« perdu d'avance ») — à vous de voir…
+        const humanVis=Math.min(human.power,7)+human.combatCards*2;
+        const botVis=Math.min(atk.power,7)+atkCB.powerBonus+Math.min(atk.combatCards,atkUnits+atkCB.cardBonus)*2;
+        const botFeints=botVis>=humanVis+8&&Math.random()<0.35;
+        const botSpend=botFeints?Math.min(1,atk.power):Math.min(Math.floor(atk.power*0.7)+1,7,atk.power);
+        const botCards=botFeints?0:Math.min(atk.combatCards,atkUnits+atkCB.cardBonus);
         humanDefense={type:"pvp_defense",hexId:clashHex,enemyIdx:cp,phase:"choose",powerSpend:0,cardsSpend:0,botSpend,botCards,resumeCp:cp+1};
         logs.push(`⚔ ${FACTIONS[atk.faction].name} vous attaque sur #${clashHex} ! Défendez-vous.`);
       }
@@ -701,6 +744,23 @@ export default function App(){
     addLog(`🏛 Commerce Impérial : -1 ${resType} → ${reward==="coins"?"+1💰":"+1🃏"}`);
   },[me,addLog]);
 
+  // Import Impérial (Dominion) : le commerce dans l'autre sens — 2$ → 1
+  // ressource au choix (1×/tour). Corrige le goulot structurel de sa
+  // péninsule (pétrole+métal : ni Build ni Enlist natifs).
+  const doImportImperial=useCallback((resType)=>{
+    if(!me||me.faction!=="dominion"||me.importUsed||me.coins<2)return;
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0],resources:{...n[0].resources}};
+      Object.keys(p.resources).forEach(k=>{p.resources[k]={...p.resources[k]};});
+      const wHex=p.workers.length>0?String(p.workers[0].hexId):String(p.hero);
+      if(!p.resources[wHex])p.resources[wHex]={};
+      p.resources[wHex][resType]=(p.resources[wHex][resType]||0)+1;
+      p.coins-=2;p.importUsed=true;
+      n[0]=p;return n;
+    });
+    addLog(`🏛 Import Impérial : -2💰 → +1 ${resType}`);
+  },[me,addLog]);
+
   const validMoves=useMemo(()=>{
     if(!moveSource||!me)return new Set();
     let moves=getValidMoves(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails);
@@ -844,21 +904,28 @@ export default function App(){
       
       if(moveSource.unitType==="hero"){
         p.hero=hexId;
-        // Hero carries resources (not workers)
-        const tr=transportUnits(p, fromHex, hexId, "hero");
+        // Hero carries resources (not workers) — sauf si l'emport est désactivé
+        const tr=transportUnits(p, fromHex, hexId, "hero", {carryRes:carryOnMove});
         p=tr.player;
         if(tr.carried.resTypes.length>0) transportLog=` 📦${tr.carried.resTypes.join(",")}`;
       }
       else if(moveSource.unitType==="mech"){
         p.mechs=p.mechs.map(m=>m.id===moveSource.unitId?{...m,hexId}:m);
-        // Mech carries workers + resources
-        const tr=transportUnits(p, fromHex, hexId, "mech");
+        // Mech carries workers + resources — 🚚 désactivé = les ouvriers et
+        // ressources restent (stratégie d'expansion : le mech continue seul)
+        const tr=transportUnits(p, fromHex, hexId, "mech", {carryWorkers:carryOnMove,carryRes:carryOnMove});
         p=tr.player;
         if(tr.carried.workers>0) transportLog+=` 👷×${tr.carried.workers}`;
         if(tr.carried.resTypes.length>0) transportLog+=` 📦${tr.carried.resTypes.join(",")}`;
       }
       else if(moveSource.unitType==="worker"){
         p.workers=p.workers.map(w=>w.id===moveSource.unitId?{...w,hexId}:w);
+        // L'ouvrier emporte les ressources de son hex (règle Scythe) si demandé
+        if(carryOnMove){
+          const tr=transportUnits(p, fromHex, hexId, "worker");
+          p=tr.player;
+          if(tr.carried.resTypes.length>0) transportLog=` 📦${tr.carried.resTypes.join(",")}`;
+        }
       }
       
       p.movesLeft=(me.movesLeft||2)-1;p.movedUnits=[...(me.movedUnits||[]),moveSource.unitId];
@@ -874,14 +941,20 @@ export default function App(){
             const ehb=HOME_BASES[ep.faction];
             const ehbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ehb.rx)**2+(h.ry-ehb.ry)**2);const db=best?Math.sqrt((best.rx-ehb.rx)**2+(best.ry-ehb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
             displaced+=enemyWorkersHere.length;
-            // Retreat enemy workers to their home base
+            // Retreat enemy workers to their home base + PILLAGE : leur magot
+            // sur le hex passe au joueur (motivation au combat du design)
+            const looted={};
             setPlayers(prev=>{
               const n=[...prev];
-              n[pi]={...n[pi],workers:n[pi].workers.map(w=>w.hexId===hexId?{...w,hexId:ehbHex.id}:w)};
-              // Enemy drops resources on hex (stay for winner)
+              const deepResH=(pl)=>{const r={};Object.entries(pl.resources).forEach(([k,v])=>{r[k]={...v};});return r;};
+              const loserH={...n[pi],workers:n[pi].workers.map(w=>w.hexId===hexId?{...w,hexId:ehbHex.id}:w),resources:deepResH(n[pi])};
+              Object.entries(loserH.resources[String(hexId)]||{}).forEach(([rt,q])=>{looted[rt]=q;});
+              transferHexResources(loserH,p,hexId);
+              n[pi]=loserH;
               return n;
             });
-            addLog(`🏃 ${enemyWorkersHere.length} ouvrier(s) ${FACTIONS[ep.faction].name} renvoyé(s) !`);
+            const lootTxt=Object.entries(looted).map(([rt,q])=>`${q}${rt}`).join(",");
+            addLog(`🏃 ${enemyWorkersHere.length} ouvrier(s) ${FACTIONS[ep.faction].name} renvoyé(s) !${lootTxt?` 💰 Pillage: ${lootTxt}`:""}`);
           }
         }
         if(displaced>0){
@@ -969,12 +1042,26 @@ export default function App(){
         }
       }
       
-      if(p.movedUnits.length>=2){addLog(`✅ Mouvement terminé`);endHumanTurn(myMat.topRow.indexOf("Move"));}
+      // ── DÉPOSE EN ROUTE (mech) : le trajet a des hexes intermédiaires ? ──
+      // Permet les passe-passe : déposer un ouvrier à mi-chemin, laisser du
+      // matériel au passage et continuer (relais de mechas, expansion…)
+      let dropOffer=null;
+      if(moveSource.unitType==="mech"&&carryOnMove){
+        const mids=findPathWaypoints(fromHex,hexId,me.faction,me.unlockedAbilities||[],me,rails)
+          .filter(hid=>{const h=hMap[hid];return h&&h.t!=="lac"&&h.t!=="marecage";});
+        const hasCargo=p.workers.some(w=>w.hexId===hexId)||Object.keys(p.resources[String(hexId)]||{}).length>0;
+        if(mids.length>0&&hasCargo){
+          dropOffer={mids,destHex:hexId,endAfter:p.movedUnits.length>=2};
+          setRouteDrop(dropOffer);
+          addLog(`📦 Dépose en route possible (passage par ${mids.map(m=>`#${m}`).join(", ")})`);
+        }
+      }
+      if(p.movedUnits.length>=2){addLog(`✅ Mouvement terminé`);if(!dropOffer)endHumanTurn(myMat.topRow.indexOf("Move"));}
       return;
     }
     if(moveSource){setMoveSource(null);return;}
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -1164,11 +1251,18 @@ export default function App(){
       const enemyUnitsOnHex=(enemy.hero===combat.hexId?1:0)+enemy.mechs.filter(m=>m.hexId===combat.hexId).length;
       const enemyCBonus=getCombatBonus(enemy, combat.hexId, false, me.combatCards);
       const botCardSlots=enemyUnitsOnHex+enemyCBonus.cardBonus;
+      // Psychologie : dominé en visible (votre stock ⚡+🃏 affiché), le bot
+      // préfère parfois ne RIEN miser et garder ses munitions (fold) — mais
+      // pas toujours : votre feinte peut donc échouer contre lui !
+      const humanVisible=Math.min(me.power,7)+me.combatCards*2;
+      const botVisible=Math.min(enemy.power,7)+enemyCBonus.powerBonus+Math.min(enemy.combatCards,botCardSlots)*2;
+      const botFold=botVisible+6<=humanVisible&&Math.random()<0.5;
       // Ability bonus adds to the total but is NOT spent from the power track
-      const botPower=Math.min(Math.floor(Math.random()*Math.min(enemy.power,4)),7,enemy.power);
-      const botCards=Math.min(Math.floor(Math.random()*(enemy.combatCards+1)),botCardSlots);
+      const botPower=botFold?0:Math.min(Math.floor(enemy.power*0.6),7,enemy.power);
+      const botCards=botFold?0:Math.min(enemy.combatCards,botCardSlots);
       const enemyTotal=botPower+enemyCBonus.powerBonus+(botCards*2);
       const win=playerTotal>=enemyTotal; // attacker wins ties
+      if(botFold)addLog(`🫱 ${ef.name} ne mise rien (dominé en visible — munitions gardées)`);
       
       let bonusLog="";
       if(enemyCBonus.name&&(enemyCBonus.powerBonus>0||enemyCBonus.cardBonus>0)) bonusLog=` [${enemyCBonus.name}]`;
@@ -1481,7 +1575,7 @@ export default function App(){
 
   // ══════════ SETUP SCREEN ══════════
   if(phase==="setup"){
-    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} randomMap={randomMap} setRandomMap={setRandomMap} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
+    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} randomMap={randomMap} setRandomMap={setRandomMap} difficulty={difficulty} setDifficulty={setDifficulty} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
   }
 
   // (pick_objective phase removed — player keeps both objectives per Scythe rules)
@@ -1511,10 +1605,13 @@ export default function App(){
       });
       const territories=unitHexes.size;
       // Factory = 3 extra territories if controlled
-      const factoryBonus=unitHexes.has(22)?3:0;
-      // Resources — rule: only resources on territories you control are scored
+      // Règle originale : l'Usine compte 3 territoires EN TOUT (1 + bonus 2)
+      const factoryBonus=unitHexes.has(22)?2:0;
+      // Resources — rule: only resources on territories you control are scored,
+      // plafonnées à 12 (mesuré par simulation : la thésaurisation illimitée
+      // faisait de l'Acadiane un coffre-fort à 61% de winrate — voir rapport)
       let totalRes=0;Object.entries(p.resources).forEach(([hid,r])=>{if(unitHexes.has(parseInt(hid)))Object.values(r).forEach(n=>totalRes+=n);});
-      const resPairs=Math.floor(totalRes/2);
+      const resPairs=Math.floor(Math.min(totalRes,BALANCE.resScoringCap)/2);
       const starScore=p.stars*starMult;
       const terScore=(territories+factoryBonus+flagBonus)*terMult;
       const resScore=resPairs*resMult;
@@ -1944,6 +2041,43 @@ export default function App(){
                 </div>
               )}
 
+              {/* 📦 DÉPOSE EN ROUTE (mech) — passe-passe stratégiques */}
+              {routeDrop&&!combat&&!encounter&&(()=>{
+                const destKey=String(routeDrop.destHex);
+                const wAtDest=(me?.workers||[]).filter(w=>w.hexId===routeDrop.destHex).length;
+                const resAtDest=Object.entries(me?.resources?.[destKey]||{}).filter(([,q])=>q>0);
+                const dropWorker=(mid)=>{
+                  setPlayers(prev=>{const n=[...prev];const p2={...n[0],workers:[...n[0].workers]};
+                    const wi=p2.workers.findIndex(w=>w.hexId===routeDrop.destHex);
+                    if(wi>=0)p2.workers[wi]={...p2.workers[wi],hexId:mid};
+                    n[0]=p2;return n;});
+                  addLog(`📦 Ouvrier déposé sur #${mid} au passage`);
+                };
+                const dropRes=(mid)=>{
+                  setPlayers(prev=>{const n=[...prev];const p2={...n[0],resources:{...n[0].resources}};
+                    Object.keys(p2.resources).forEach(k=>{p2.resources[k]={...p2.resources[k]};});
+                    const src=p2.resources[destKey]||{};
+                    if(!p2.resources[String(mid)])p2.resources[String(mid)]={};
+                    Object.entries(src).forEach(([rt,q])=>{p2.resources[String(mid)][rt]=(p2.resources[String(mid)][rt]||0)+q;});
+                    delete p2.resources[destKey];
+                    n[0]=p2;return n;});
+                  addLog(`📦 Ressources déposées sur #${mid} au passage`);
+                };
+                return(
+                <div style={{padding:"16px",background:"linear-gradient(180deg,#141a10,var(--bg2))",borderRadius:10,border:"1px solid var(--gold-dim)",animation:"slideUp 0.35s ease",marginBottom:10}}>
+                  <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,fontSize:13,marginBottom:6}}>📦 Dépose en route — le mech est passé par {routeDrop.mids.map(m=>`#${m}`).join(", ")}</div>
+                  <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:8,fontStyle:"italic"}}>Déposez des ouvriers ou du matériel sur un hex de passage (expansion, relais, dépôt avant bataille)</div>
+                  {routeDrop.mids.map(mid=>(
+                    <div key={mid} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center"}}>
+                      <span style={{fontSize:12,color:"var(--text)",minWidth:36}}>#{mid}</span>
+                      <button disabled={wAtDest<1} onClick={()=>dropWorker(mid)} className="act-btn" style={{fontSize:11,opacity:wAtDest<1?0.4:1}}>● Déposer 1 ouvrier ({wAtDest} dispo)</button>
+                      <button disabled={resAtDest.length===0} onClick={()=>dropRes(mid)} className="act-btn" style={{fontSize:11,opacity:resAtDest.length===0?0.4:1}}>📦 Déposer les ressources ({resAtDest.map(([rt,q])=>`${q}${rt}`).join(",")||"—"})</button>
+                    </div>
+                  ))}
+                  <button onClick={()=>{const end=routeDrop.endAfter;setRouteDrop(null);if(end)endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginTop:6,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Continuer ▶</button>
+                </div>);
+              })()}
+
               {/* ENCOUNTER */}
               {encounter&&(
                 <div style={{padding:"20px",background:"linear-gradient(180deg,#1a1608,var(--bg2))",borderRadius:10,border:"1px solid var(--rust)",animation:"slideUp 0.35s ease"}}>
@@ -2176,6 +2310,14 @@ export default function App(){
                     {me.workers.filter(w=>!(me.movedUnits||[]).includes(w.id)).map(w=><button key={w.id} onClick={()=>doMove("worker",w.id,w.hexId)} className="act-btn" style={{borderColor:myFaction.color+"66"}}>● #{w.hexId}</button>)}
                     {me.mechs.filter(m=>!(me.movedUnits||[]).includes(m.id)).map(m=><button key={m.id} onClick={()=>doMove("mech",m.id,m.hexId)} className="act-btn" style={{borderColor:myFaction.color+"66"}}>⬡ #{m.hexId}</button>)}
                   </div>
+                  {/* 🚚 Choix d'emport (règle Scythe : le transport est optionnel) —
+                      désactivé, le mech laisse ouvriers+ressources tenir le terrain */}
+                  <button onClick={()=>setCarryOnMove(c=>!c)} className="act-btn" style={{marginTop:8,width:"100%",fontSize:12,
+                    background:carryOnMove?"rgba(201,168,76,0.12)":"transparent",
+                    border:carryOnMove?"1px solid var(--gold)":"1px solid var(--border)",
+                    color:carryOnMove?"var(--gold)":"var(--text-muted)"}}>
+                    🚚 Emporter ouvriers & ressources : {carryOnMove?"OUI":"NON (les laisser sur place)"}
+                  </button>
                   {moveSource&&<div style={{color:"#C9A84C",fontSize:11,marginTop:8,fontStyle:"italic"}}>Sélectionnez un hex doré sur la carte</div>}
                   {/* PACK UP — Nations free building move */}
                   {me.faction==="nations"&&(me.unlockedAbilities||[]).includes(3)&&(me.buildings||[]).length>0&&!me.packUpUsed&&!moveSource&&(()=>{
@@ -2349,6 +2491,17 @@ export default function App(){
           })()}
           {me.faction==="dominion"&&me.commerceUsed&&isMyTurn&&!combat&&!selAction&&!pendingBottom&&(
             <div style={{padding:"6px 16px",borderTop:"1px solid var(--border)",fontSize:12,color:"var(--text-dim)"}}>🏛 Commerce Impérial utilisé ce tour</div>
+          )}
+          {/* Import Impérial — Dominion : 2$ → 1 ressource (1×/tour) */}
+          {me.faction==="dominion"&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&!me.importUsed&&me.coins>=2&&BALANCE.imperialImport&&(
+            <div style={{padding:"8px 16px",borderTop:"1px solid #882020",fontSize:12,background:"rgba(200,30,30,0.04)"}}>
+              <div style={{color:"#cc3030",fontWeight:600,marginBottom:6,fontSize:12}}>🏛 Import Impérial (1×/tour) — acheter 1 ressource pour 2💰 :</div>
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {["metal","bois","nourriture","petrole"].map(r=>(
+                  <button key={r} onClick={()=>doImportImperial(r)} className="act-btn" style={{fontSize:12,padding:"8px 12px",borderColor:"#882020"}}>-2💰 →1 {r}</button>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* Rail placement mode indicator */}
