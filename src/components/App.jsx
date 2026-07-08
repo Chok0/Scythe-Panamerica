@@ -124,15 +124,21 @@ export default function App(){
   const handleMapPointerDown=useCallback((e)=>{
     if(e.button>1)return;
     const mv=mapViewRef.current;
-    panStart.current={cx:e.clientX,cy:e.clientY,vx:mv.x,vy:mv.y,moved:false,pid:e.pointerId};
-    try{e.currentTarget.setPointerCapture(e.pointerId);}catch{}
+    // NE PAS capturer ici : un capture au pointerdown redirige aussi le `click`
+    // vers le SVG et casse le onClick des hexes. On capture seulement quand un
+    // vrai drag démarre (seuil franchi dans pointermove).
+    panStart.current={cx:e.clientX,cy:e.clientY,vx:mv.x,vy:mv.y,moved:false,pid:e.pointerId,el:e.currentTarget};
   },[]);
 
   const handleMapPointerMove=useCallback((e)=>{
     const ps=panStart.current;if(!ps)return;
     const dx0=e.clientX-ps.cx,dy0=e.clientY-ps.cy;
     if(!ps.moved&&Math.abs(dx0)<dragThreshold&&Math.abs(dy0)<dragThreshold)return;
-    ps.moved=true;
+    if(!ps.moved){
+      ps.moved=true;
+      // Drag confirmé → on capture pour que le pan ne décroche jamais
+      try{ps.el&&ps.el.setPointerCapture(ps.pid);}catch{}
+    }
     if(!isPanning)setIsPanning(true);
     const svg=mapRef.current;if(!svg)return;
     const rect=svg.getBoundingClientRect();
@@ -144,7 +150,7 @@ export default function App(){
   const handleMapPointerUp=useCallback((e)=>{
     const ps=panStart.current;
     wasDragging.current=!!(ps&&ps.moved);
-    if(ps&&ps.pid!=null&&e&&e.currentTarget){try{e.currentTarget.releasePointerCapture(ps.pid);}catch{}}
+    if(ps&&ps.moved&&ps.pid!=null&&ps.el){try{ps.el.releasePointerCapture(ps.pid);}catch{}}
     setIsPanning(false);panStart.current=null;
   },[]);
 
@@ -2494,6 +2500,26 @@ export default function App(){
           </div>
         )}
 
+        {/* ── Bonus de bâtiments (meeple → bonus libéré une fois construit) ── */}
+        <div style={{padding:"5px 8px",borderBottom:"1px solid var(--border)",flexShrink:0,display:"flex",gap:4}}>
+          {BUILDING_TYPES.map(bt=>{
+            const built=(me.buildings||[]).some(b=>b.type===bt.type);
+            return(
+              <div key={bt.type} title={`${bt.name} — ${bt.effect}${built?" (actif)":" (à construire)"}`} style={{
+                flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:1,padding:"3px 2px",borderRadius:4,
+                background:built?"rgba(122,170,85,0.14)":"rgba(0,0,0,0.25)",
+                border:built?"1px solid rgba(122,170,85,0.5)":"1px dashed var(--border-dark)",
+                opacity:built?1:0.5,transition:"all 0.2s",
+              }}>
+                <span style={{fontSize:15,filter:built?"none":"grayscale(1)"}}>{bt.icon}</span>
+                <span style={{fontSize:8.5,color:built?"#8fbf6a":"var(--text-muted)",fontWeight:700,textAlign:"center",lineHeight:1}}>
+                  {bt.type==="arsenal"?"+1⚡ Bols.":bt.type==="memorial"?"+1❤ Bols.":bt.type==="gare"?"🛤 Rails":"+1 Prod."}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+
         {/* Star tracker (toggled) */}
         {showStars&&(()=>{
           const stars=[
@@ -2557,6 +2583,10 @@ export default function App(){
                 }[bottomAction]||{prog:"",max:false};
                 const hasRes=bc?countRes(me,bc.res)>=bc.qty:false;
                 const bottomPay=bc?Array(bc.qty).fill(bc.res):[];
+                // $ libéré à chaque cube d'upgrade posé ici (icône, pas chiffre)
+                const upBonus=(mat?.bottomCosts||[])[i]?.bonus||0;
+                // Cubes d'upgrade encore posables ici → autant de -1 sur le coût
+                const reducAvail=Math.max(0,maxBot-cubesBot);
                 // Action group separator: strong between pairs (after index 1), light between actions within a pair (after index 0, 2)
                 const isGroupEnd=i===1;
                 const isLastAction=i===3;
@@ -2586,11 +2616,19 @@ export default function App(){
                     {/* BOTTOM ACTION */}
                     <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(14,12,8,0.6),rgba(10,9,6,0.8))"}}>
                       <div style={{minWidth:0,flex:1}}>
-                        <div style={{fontSize:10,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"var(--text-dim)",marginBottom:3}}>{bottomAction}</div>
-                        <ActionRow pay={bottomPay} gain={[bottomAction==="Upgrade"?"power":bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":"pop"]} compact />
+                        <div style={{fontSize:10,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"var(--text-dim)",marginBottom:3,display:"flex",alignItems:"center",gap:5}}>
+                          {bottomAction}
+                          {/* Recrue posée ici → bonus ongoing actif (soi + voisins) */}
+                          {(me.enlistMap||[])[i]&&<span title={`Recrue : ${ENLIST_ONGOING[i].label} quand vous/voisins faites ${bottomAction}`} style={{fontSize:9,padding:"1px 5px",borderRadius:8,background:"rgba(90,122,106,0.3)",border:"1px solid #5a9a7a",color:"#8fd0b0",fontWeight:700}}>🤝{ENLIST_ONGOING[i].icon}</span>}
+                        </div>
+                        {/* Coût (icônes) → gain concret : pièces libérées par l'upgrade */}
+                        <ActionRow pay={bottomPay} gain={upBonus>0?Array(upBonus).fill("coins"):[bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":bottomAction==="Enlist"?"pop":"power"]} compact />
                       </div>
                       <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3}}>
+                        {/* Emplacements de cube d'upgrade : chaque cube posé = -1 coût.
+                            reducAvail visibles = réductions encore possibles ici */}
                         <CubeSlots total={maxBot} filled={cubesBot} />
+                        {reducAvail>0&&<span title={`${reducAvail} réduction(s) de coût possible(s) via Upgrade`} style={{fontSize:9,color:"#4caf50",whiteSpace:"nowrap"}}>↓-{reducAvail} poss.</span>}
                         <span style={{fontSize:10,fontWeight:600,color:bottomData.max?"var(--success)":"var(--text-muted)",whiteSpace:"nowrap"}}>{bottomData.max?"✓ max":bottomData.prog}</span>
                       </div>
                     </div>
