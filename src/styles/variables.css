@@ -22,10 +22,11 @@
   --copper:     #b08060;   /* cuivre */
 
   /* ── TEXTE ── */
-  --text:       #e8dcc4;   /* encre claire */
-  --text2:      #c8b898;   /* encre secondaire */
-  --text-dim:   #a89878;   /* atténué */
-  --text-muted: #6a5c44;   /* discret */
+  /* Contraste relevé (lisibilité) : dim ≈ 4.5:1 et muted ≈ 3:1 sur --bg2 */
+  --text:       #ede2cc;   /* encre claire */
+  --text2:      #cfc0a2;   /* encre secondaire */
+  --text-dim:   #b5a584;   /* atténué */
+  --text-muted: #8d7c5e;   /* discret */
   --text-ghost: #4a3e2e;   /* fantôme */
 
   /* ── BORDURES ── */

@@ -64,7 +64,7 @@ const HexResIcon = React.memo(({ cx, cy, resType }) => {
   return null;
 });
 
-export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory }) => {
+export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory, isSrc }) => {
   const t = TERRAINS[hex.t];
   const isWater = hex.t === "lac" || hex.t === "marecage";
   return (
@@ -95,6 +95,13 @@ export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory }) => 
         </polygon>
         <polygon points={hPts(hex.rx, hex.ry)} fill="none" stroke="#5A1A1A" strokeWidth={1} opacity={0.1}>
           <animate attributeName="opacity" values="0.05;0.15;0.05" dur="3s" repeatCount="indefinite" />
+        </polygon>
+      </>}
+      {/* Movable-unit overlay — gold pulse: click this hex to pick the unit to move */}
+      {isSrc && <>
+        <polygon points={hPts(hex.rx, hex.ry)} fill="rgba(212,178,84,0.18)" stroke="none" style={{ pointerEvents: "none" }} />
+        <polygon points={hPts(hex.rx, hex.ry, HS - 2)} fill="none" stroke="#e6c96a" strokeWidth={2.5} opacity={0.9} style={{ pointerEvents: "none" }}>
+          <animate attributeName="opacity" values="0.4;0.95;0.4" dur="1.4s" repeatCount="indefinite" />
         </polygon>
       </>}
       {/* Valid move overlay — bright enough to read on the light painted hexes */}

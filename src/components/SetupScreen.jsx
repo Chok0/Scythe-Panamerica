@@ -8,7 +8,14 @@ const DIFFICULTIES = [
   { key: "difficile", label: "Difficile", desc: "meilleur profil connu, sans erreur" },
 ];
 
-export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, randomMap, setRandomMap, difficulty, setDifficulty, startGame, onShowRules }) {
+export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, randomMap, setRandomMap, difficulty, setDifficulty, empireEnabled, setEmpireEnabled, startGame, onShowRules }) {
+  const randomFaction = () => setSelFaction(FACTION_IDS[Math.floor(Math.random() * FACTION_IDS.length)]);
+  const randomMat = () => setSelMat(MATS[Math.floor(Math.random() * MATS.length)].id);
+  const diceBtnStyle = {
+    padding: "4px 12px", fontSize: 11, letterSpacing: 1, borderRadius: 4,
+    background: "transparent", color: "var(--gold-dim)", border: "1px solid var(--border)",
+    fontFamily: "'Bitter',serif", fontWeight: 700, cursor: "pointer",
+  };
   return (
     <div style={{minHeight:"100vh",background:"linear-gradient(170deg, #1A1710 0%, #1A1710 30%, #1a1610 60%, #1A1710 100%)",color:"var(--text)",display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 16px",position:"relative",overflow:"auto"}}>
       <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"repeating-linear-gradient(0deg,transparent,transparent 1px,rgba(201,168,76,0.012) 1px,rgba(201,168,76,0.012) 2px)",pointerEvents:"none"}}/>
@@ -56,17 +63,31 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
           {DIFFICULTIES.find(d=>d.key===difficulty)?.desc}
         </div>
 
-        <button onClick={()=>setRandomMap(r=>!r)} style={{
-          marginBottom:32,padding:"10px 24px",fontSize:12,letterSpacing:2,
-          background:randomMap?"rgba(201,168,76,0.12)":"transparent",
-          color:randomMap?"var(--gold)":"var(--text-muted)",
-          border:randomMap?"1px solid var(--gold)":"1px solid var(--border)",
-          borderRadius:4,fontFamily:"'Bitter',serif",fontWeight:700,
-        }}>
-          🗺 Carte {randomMap?"PROCÉDURALE":"classique"} {randomMap?"— nouvelle carte à chaque partie":""}
-        </button>
+        <div style={{display:"flex",gap:10,marginBottom:32,flexWrap:"wrap",justifyContent:"center"}}>
+          <button onClick={()=>setRandomMap(r=>!r)} style={{
+            padding:"10px 24px",fontSize:12,letterSpacing:2,
+            background:randomMap?"rgba(201,168,76,0.12)":"transparent",
+            color:randomMap?"var(--gold)":"var(--text-muted)",
+            border:randomMap?"1px solid var(--gold)":"1px solid var(--border)",
+            borderRadius:4,fontFamily:"'Bitter',serif",fontWeight:700,
+          }}>
+            🗺 Carte {randomMap?"PROCÉDURALE":"classique"} {randomMap?"— nouvelle carte à chaque partie":""}
+          </button>
+          <button onClick={()=>setEmpireEnabled(e=>!e)} title="Les mechas de l'Empire patrouillent la carte et attaquent en fin de tour" style={{
+            padding:"10px 24px",fontSize:12,letterSpacing:2,
+            background:empireEnabled?"rgba(200,56,40,0.12)":"transparent",
+            color:empireEnabled?"#e04838":"var(--text-muted)",
+            border:empireEnabled?"1px solid #8b2020":"1px solid var(--border)",
+            borderRadius:4,fontFamily:"'Bitter',serif",fontWeight:700,
+          }}>
+            🤖 Bots de l'Empire : {empireEnabled?"ACTIVÉS":"désactivés"}
+          </button>
+        </div>
 
-        <div style={{color:"var(--gold-dim)",fontSize:12,marginBottom:12,letterSpacing:4,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Votre Faction</div>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+          <div style={{color:"var(--gold-dim)",fontSize:12,letterSpacing:4,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Votre Faction</div>
+          <button onClick={randomFaction} style={diceBtnStyle}>🎲 Aléatoire</button>
+        </div>
         <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,width:"100%",marginBottom:32}}>
           {FACTION_IDS.map(fid=>{const f=FACTIONS[fid];return(
             <button key={fid} onClick={()=>setSelFaction(fid)} className="fade-in" style={{
@@ -93,7 +114,10 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
         </div>
 
         {selFaction&&(<>
-          <div style={{color:"var(--gold-dim)",fontSize:12,marginBottom:12,letterSpacing:4,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Plateau Joueur</div>
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+            <div style={{color:"var(--gold-dim)",fontSize:12,letterSpacing:4,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Plateau Joueur</div>
+            <button onClick={randomMat} style={diceBtnStyle}>🎲 Aléatoire</button>
+          </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:8,width:"100%",marginBottom:32}}>
             {MATS.map(pm=>(
               <button key={pm.id} onClick={()=>setSelMat(pm.id)} className="fade-in" style={{
