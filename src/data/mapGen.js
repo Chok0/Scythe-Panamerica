@@ -1,22 +1,33 @@
-// Générateur de cartes procédurales + règles de non-acceptation.
+// Générateur de cartes procédurales + règles de non-acceptation (v2).
 //
 // Principe : la géométrie (43 hexagones, ids/coordonnées) est fixe — on
 // redistribue les TERRAINS (même répartition que la carte d'origine), on
 // retrace les RIVIÈRES et on replace les jetons RENCONTRE. Une carte n'est
-// acceptée que si elle passe toutes les règles ci-dessous ; sinon on en
-// génère une autre (rejection sampling).
+// acceptée que si elle passe toutes les règles ; sinon on répare puis on
+// régénère (rejection sampling).
+//
+// PHILOSOPHIE (alignée sur le Scythe original) : les factions PEUVENT
+// démarrer enfermées sur un îlot de quelques hexagones — c'est un pattern
+// voulu du jeu de base, compensé par la lenteur initiale. La sortie se
+// gagne : mecha Riverwalk (traversée vers les terrains de la faction) ou
+// Gare + rails (notre équivalent de la Mine). Ce qui est interdit, c'est
+// l'ABSENCE de sortie.
 //
 // RÈGLES DE NON-ACCEPTATION (une carte est REJETÉE si…) :
-//  R1 pocket    — un départ de faction est enfermé : < 8 hexes atteignables
-//                 sans traverser de rivière (la Confédération de la carte
-//                 d'origine échoue à cette règle : poche de 3 hexes !)
-//  R2 resources — un départ n'a pas ≥ 3 types de ressources différents ET
-//                 ≥ 1 village atteignables en ≤ 3 pas sans rivière
-//  R3 factory   — Rouge River (hex 22) n'est pas atteignable par toutes les
-//                 factions (connectivité terrestre, rivières ignorées)
-//  R4 fairness  — écart d'ouverture > 2,5× entre factions (hexes atteignables
-//                 en 3 pas sans rivière)
-//  R5 lakes     — un bloc de > 3 lacs adjacents (mur d'eau)
+//  R1 escape    — une faction n'a AUCUNE sortie de son îlot : aucune rivière
+//                 du bord de l'îlot ne débouche sur un terrain de sa
+//                 capacité Riverwalk (les rails restent un plan B universel,
+//                 mais la sortie « native » doit exister)
+//  R2 potential — en IGNORANT les rivières (potentiel une fois sorti), moins
+//                 de 3 types de ressources ou pas de village à ≤ 3 pas
+//  R3 factory   — Rouge River inaccessible par continuité terrestre
+//  R4 fairness  — écart d'ouverture > 4× entre factions (3 pas, rivières
+//                 bloquantes) — tolérant : les îlots sont permis, pas
+//                 l'enfermement d'un seul joueur sur 1-2 hexes quand les
+//                 autres ont la plaine
+//  R5 diversité — « non-proximité » : plus de 2 hexagones du MÊME terrain
+//                 adjacents (cluster ≥ 3) — le plateau maintient la
+//                 diversité locale des terrains
 //  R6 rivers    — nombre de rivières hors de [24, 46]
 //  R7 empire    — un hex de départ de l'Empire (22,15,23,26,27,30) est un
 //                 lac ou un marécage
@@ -84,21 +95,35 @@ const reachable = (fromId, hexes, adj, riverSet, blockRivers, maxDepth = Infinit
   return seen;
 };
 
+// L'îlot de départ a-t-il une sortie « native » ? (rivière du bord débouchant
+// sur un terrain de la capacité Riverwalk de la faction)
+const hasRiverwalkEscape = (fid, pocket, map, adj, riverSet) => {
+  const hM = Object.fromEntries(map.hexes.map(h => [h.id, h]));
+  const rw = FACTIONS[fid]?.riverwalk || [];
+  for (const id of pocket) {
+    for (const nb of adj[id] || []) {
+      if (pocket.has(nb)) continue;
+      const t = hM[nb]?.t;
+      if (!t || t === "lac" || t === "marecage") continue;
+      if (riverSet.has(`${Math.min(id, nb)}-${Math.max(id, nb)}`) && rw.includes(t)) return true;
+    }
+  }
+  return false;
+};
+
 /**
- * Génère une carte candidate — placement GUIDÉ pour converger vite :
+ * Génère une carte candidate — placement guidé :
  *  - lacs/marécages jamais sur les hexes Empire ni sur les hexes de départ
- *  - un village garanti à ≤ 2 pas de chaque base de faction
- *  - pas de rivière sur les arêtes touchant un hex de départ de héros
+ *  - un village garanti à ≤ 2 pas de chaque base (en ignorant les rivières)
+ *  - les rivières sont libres PARTOUT (les îlots de départ sont un pattern
+ *    voulu du jeu original — seule l'absence de sortie est interdite)
  */
 export const generateMap = (rand, name = "procedurale") => {
   const adjGeo = computeAdj(GEOMETRY);
-  // Hexes de départ approximatifs (les plus proches de chaque base, terrain ignoré)
   const startIds = Object.values(HOME_BASES).map(hb =>
     GEOMETRY.map(g => ({ g, d: Math.hypot(g.rx - hb.rx, g.ry - hb.ry) })).sort((a, b) => a.d - b.d)[0].g.id);
-  const nearStart = new Set(startIds);
-  startIds.forEach(id => (adjGeo[id] || []).forEach(nb => nearStart.add(nb)));
 
-  // 1) Placement de l'eau (lacs + marécages) hors Empire / départs
+  // 1) Eau (lacs + marécages) hors Empire / départs
   const waterPool = TERRAIN_POOL.filter(t => t === "lac" || t === "marecage");
   const landPool = shuffleWith(TERRAIN_POOL.filter(t => t !== "lac" && t !== "marecage"), rand);
   const waterForbidden = new Set([...EMPIRE_HEX_IDS, ...startIds]);
@@ -107,7 +132,7 @@ export const generateMap = (rand, name = "procedurale") => {
   const terrainById = {};
   waterPool.forEach((t, i) => { if (waterCandidates[i]) terrainById[waterCandidates[i].id] = t; });
 
-  // 2) Villages : en réserver un à ≤ 2 pas de chaque base
+  // 2) Villages : un à ≤ 2 pas de chaque base
   const villages = landPool.filter(t => t === "village");
   const others = shuffleWith(landPool.filter(t => t !== "village"), rand);
   let vi = 0;
@@ -128,15 +153,13 @@ export const generateMap = (rand, name = "procedurale") => {
   const hexes = GEOMETRY.map(g => ({ ...g, t: g.id === FACTORY_ID ? "factory" : terrainById[g.id] }));
   const adj = computeAdj(hexes);
 
-  // 4) Rivières : jamais sur une arête touchant un hex de départ de héros
+  // 4) Rivières : libres partout (îlots permis), densité proche de l'original
   const edges = [];
   Object.entries(adj).forEach(([a, list]) => list.forEach(b => { if (+a < b) edges.push([+a, b]); }));
-  const startBlocked = new Set(startIds);
-  const eligible = edges.filter(([a, b]) => !startBlocked.has(a) && !startBlocked.has(b));
   const target = 28 + Math.floor(rand() * 10); // 28-37
-  const rivers = shuffleWith(eligible, rand).slice(0, target);
+  const rivers = shuffleWith(edges, rand).slice(0, target);
 
-  // Rencontres : 9 hexes terrestres, non-usine, en évitant les paires adjacentes
+  // Rencontres : 9 hexes terrestres, non-usine, jamais adjacents entre eux
   const landIds = hexes.filter(h => h.t !== "lac" && h.t !== "factory").map(h => h.id);
   const encounterHexes = [];
   for (const id of shuffleWith(landIds, rand)) {
@@ -165,11 +188,13 @@ export const validateMap = (map) => {
   const openness = {};
   Object.keys(HOME_BASES).forEach(fid => {
     const start = heroStart(fid);
-    // R1 — poche verrouillée par les rivières
     const pocket = reachable(start, map.hexes, adj, riverSet, true);
-    if (pocket.size < 8) reasons.push(`R1 pocket: ${FACTIONS[fid].name} enfermé (${pocket.size} hexes sans rivière)`);
-    // R2 — accès aux ressources en ≤ 3 pas
-    const near = reachable(start, map.hexes, adj, riverSet, true, 3);
+    // R1 — l'îlot est permis, l'absence de sortie ne l'est pas :
+    // ouvert (≥ 8 hexes) OU sortie Riverwalk native
+    if (pocket.size < 8 && !hasRiverwalkEscape(fid, pocket, map, adj, riverSet))
+      reasons.push(`R1 escape: ${FACTIONS[fid].name} sans sortie Riverwalk de son îlot (${pocket.size} hexes)`);
+    // R2 — potentiel du voisinage en ignorant les rivières
+    const near = reachable(start, map.hexes, adj, riverSet, false, 3);
     const resTypes = new Set();
     let hasVillage = false;
     near.forEach(id => {
@@ -177,29 +202,32 @@ export const validateMap = (map) => {
       if (res === "ouvriers") hasVillage = true;
       else if (res) resTypes.add(res);
     });
-    if (resTypes.size < 3) reasons.push(`R2 resources: ${FACTIONS[fid].name} n'a que ${resTypes.size} types de ressources en 3 pas`);
-    if (!hasVillage) reasons.push(`R2 resources: ${FACTIONS[fid].name} sans village en 3 pas`);
-    // R3 — usine atteignable (terre, rivières ignorées)
+    if (resTypes.size < 3) reasons.push(`R2 potential: ${FACTIONS[fid].name} n'a que ${resTypes.size} types de ressources en 3 pas (rivières ignorées)`);
+    if (!hasVillage) reasons.push(`R2 potential: ${FACTIONS[fid].name} sans village en 3 pas`);
+    // R3 — usine atteignable (continuité terrestre)
     const landReach = reachable(start, map.hexes, adj, riverSet, false);
     if (!landReach.has(FACTORY_ID)) reasons.push(`R3 factory: inaccessible depuis ${FACTIONS[fid].name}`);
     openness[fid] = reachable(start, map.hexes, adj, riverSet, true, 3).size;
   });
-  // R4 — équité d'ouverture
+  // R4 — équité d'ouverture, tolérante (les îlots sont normaux)
   const vals = Object.values(openness);
-  if (Math.max(...vals) > 2.5 * Math.max(1, Math.min(...vals)))
-    reasons.push(`R4 fairness: ouverture ${Math.min(...vals)}–${Math.max(...vals)} hexes (écart > 2,5×)`);
-  // R5 — murs de lacs
-  const lakes = map.hexes.filter(h => h.t === "lac").map(h => h.id);
-  const lakeSet = new Set(lakes);
-  const seenL = new Set();
-  for (const l of lakes) {
-    if (seenL.has(l)) continue;
-    let cluster = 0; const q = [l]; seenL.add(l);
-    while (q.length) {
-      const cur = q.pop(); cluster++;
-      (adj[cur] || []).forEach(nb => { if (lakeSet.has(nb) && !seenL.has(nb)) { seenL.add(nb); q.push(nb); } });
+  if (Math.max(...vals) > 4 * Math.max(1, Math.min(...vals)))
+    reasons.push(`R4 fairness: ouverture ${Math.min(...vals)}–${Math.max(...vals)} hexes (écart > 4×)`);
+  // R5 — « non-proximité » : jamais 3+ hexes du même terrain connectés
+  {
+    const seen = new Set();
+    outer:
+    for (const h of map.hexes) {
+      if (h.t === "factory" || seen.has(h.id)) continue;
+      let cluster = 0; const q = [h.id]; const local = new Set([h.id]);
+      while (q.length) {
+        const cur = q.pop(); cluster++; seen.add(cur);
+        for (const nb of adj[cur] || []) {
+          if (!local.has(nb) && hM[nb]?.t === h.t) { local.add(nb); q.push(nb); }
+        }
+      }
+      if (cluster >= 3) { reasons.push(`R5 diversité: ${cluster} hexes « ${h.t} » collés`); break outer; }
     }
-    if (cluster > 3) { reasons.push(`R5 lakes: bloc de ${cluster} lacs adjacents`); break; }
   }
   // R6 — densité de rivières
   if (map.rivers.length < 24 || map.rivers.length > 46) reasons.push(`R6 rivers: ${map.rivers.length} rivières hors [24,46]`);
@@ -212,24 +240,37 @@ export const validateMap = (map) => {
   return { ok: reasons.length === 0, reasons };
 };
 
-/** Réparation ciblée : retire des rivières autour des poches enfermées (R1/R4). */
-const repairRivers = (map) => {
+/** Réparations ciblées : sortie Riverwalk manquante (R1) ou clusters de terrain (R5). */
+const repairMap = (map, rand) => {
   const adj = computeAdj(map.hexes);
-  for (let pass = 0; pass < 20; pass++) {
+  for (let pass = 0; pass < 24; pass++) {
     const v = validateMap(map);
-    const pocketReason = v.reasons.find(r => r.startsWith("R1") || r.startsWith("R4"));
-    if (!pocketReason) return map;
+    if (v.ok) return map;
     const riverSet = new Set(map.rivers.map(([a, b]) => `${Math.min(a, b)}-${Math.max(a, b)}`));
-    // Trouver la faction enfermée et retirer une rivière au bord de sa poche
-    let removed = false;
-    for (const fid of Object.keys(HOME_BASES)) {
-      const start = nearestLandHexes(map.hexes, HOME_BASES[fid], 1)[0];
-      const pocket = reachable(start, map.hexes, adj, riverSet, true);
-      if (pocket.size >= 8) continue;
-      const boundary = map.rivers.findIndex(([a, b]) => pocket.has(a) !== pocket.has(b));
-      if (boundary >= 0) { map.rivers.splice(boundary, 1); removed = true; break; }
+    const hM = Object.fromEntries(map.hexes.map(h => [h.id, h]));
+    const r1 = v.reasons.find(r => r.startsWith("R1"));
+    const r5 = v.reasons.find(r => r.startsWith("R5"));
+    if (r1) {
+      // Ouvrir une sortie : retirer une rivière du bord de l'îlot enfermé
+      let repaired = false;
+      for (const fid of Object.keys(HOME_BASES)) {
+        const start = nearestLandHexes(map.hexes, HOME_BASES[fid], 1)[0];
+        const pocket = reachable(start, map.hexes, adj, riverSet, true);
+        if (pocket.size >= 8 || hasRiverwalkEscape(fid, pocket, map, adj, riverSet)) continue;
+        const boundary = map.rivers.findIndex(([a, b]) => pocket.has(a) !== pocket.has(b));
+        if (boundary >= 0) { map.rivers.splice(boundary, 1); repaired = true; break; }
+      }
+      if (!repaired) return map;
+    } else if (r5) {
+      // Casser un cluster : échanger un hex du cluster avec un hex lointain d'un autre terrain
+      const t = r5.match(/« (\w+) »/)?.[1];
+      const cluster = map.hexes.find(h => h.t === t && (adj[h.id] || []).filter(nb => hM[nb]?.t === t).length >= 2);
+      const swap = shuffleWith(map.hexes.filter(h => h.t !== t && h.t !== "factory" && h.t !== "lac" && h.t !== "marecage" && !(adj[h.id] || []).some(nb => hM[nb]?.t === t)), rand)[0];
+      if (!cluster || !swap) return map;
+      const tmp = cluster.t; cluster.t = swap.t; swap.t = tmp;
+    } else {
+      return map;
     }
-    if (!removed) return map;
   }
   return map;
 };
@@ -238,7 +279,7 @@ const repairRivers = (map) => {
 export const generateAcceptedMap = (rand, maxTries = 40) => {
   let lastReasons = [];
   for (let i = 1; i <= maxTries; i++) {
-    const map = repairRivers(generateMap(rand, `proc-${i}`));
+    const map = repairMap(generateMap(rand, `proc-${i}`), rand);
     const v = validateMap(map);
     if (v.ok) return { map, tries: i, lastReasons: [] };
     lastReasons = v.reasons;

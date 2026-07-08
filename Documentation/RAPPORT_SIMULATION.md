@@ -34,43 +34,50 @@ adoucir les paliers (×4/×3/×2) — testable au simulateur en 5 minutes.
 
 ## 3. Cartes procédurales — ta carte vs les générées
 
-### Règles de non-acceptation (implémentées dans `src/data/mapGen.js`)
+### Règles de non-acceptation v2 (`src/data/mapGen.js`)
 
-Une carte générée est **rejetée** si :
-- **R1 pocket** — un départ est enfermé par les rivières (< 8 hexes accessibles
-  sans riverwalk). *La carte actuelle échoue à cette règle : la Confédération
-  démarre dans une poche de 3 hexes.*
-- **R2 resources** — moins de 3 types de ressources ou pas de village à ≤ 3 pas
-  d'un départ.
-- **R3 factory** — Rouge River inaccessible pour une faction.
-- **R4 fairness** — écart d'« ouverture » > 2,5× entre factions.
-- **R5 lakes** — bloc de plus de 3 lacs adjacents.
+Philosophie alignée sur le Scythe original : **les îlots de départ de 3 hexes
+sont un pattern voulu** (la plupart des factions du jeu de base démarrent
+enfermées, sauf Togawa/Albion) — la sortie se gagne par Deploy (Riverwalk) ou
+Gare/rails (notre Mine). Ce qui est interdit, c'est l'ABSENCE de sortie.
+
+Une carte est **rejetée** si :
+- **R1 escape** — une faction n'a *aucune* sortie native de son îlot : aucune
+  rivière du bord ne débouche sur un terrain de sa capacité Riverwalk (îlot OK,
+  cul-de-sac définitif interdit).
+- **R2 potential** — en ignorant les rivières (le potentiel une fois sorti) :
+  moins de 3 types de ressources ou pas de village à ≤ 3 pas.
+- **R3 factory** — Rouge River inaccessible par continuité terrestre.
+- **R4 fairness** — écart d'ouverture > 4× entre factions (tolérant : îlots
+  normaux, un joueur seul sur 2 hexes face à des plaines ouvertes, non).
+- **R5 diversité (« non-proximité »)** — plus de 2 hexagones du même terrain
+  adjacents : le plateau maintient la diversité locale des terrains.
 - **R6 rivers** — nombre de rivières hors [24, 46].
 - **R7 empire** — un mecha de l'Empire démarrerait sur un lac/marécage.
 
-Génération **guidée** (eau jamais sur les départs/Empire, village garanti près
-de chaque base, pas de rivière sur les arêtes des hexes de départ) + réparation
-(retrait des rivières qui enferment) → carte acceptée en ~3 essais.
+Génération guidée (eau jamais sur les départs/Empire, village à ≤ 2 pas de
+chaque base, rivières libres partout — les îlots émergent naturellement) +
+réparation ciblée (ouvrir une sortie, casser un cluster) → acceptée en ~2 essais.
+**La carte actuelle passe ces règles** (sa poche Confédération a bien une
+sortie Riverwalk vers la plaine, et elle respecte la non-proximité).
 
-### Verdict (`--mapSearch 12 --games 60`, 780 parties + 60 sur l'actuelle)
+### Verdict (`--mapSearch 12 --games 60`)
 
-| Rang | Carte | Équilibre σ(winrate) | Winrates | Finies | Médiane |
-|---|---|---|---|---|---|
-| 1 | carte-4 | **0,093** | 14–39 % | 100 % | 34 |
-| 2 | carte-12 | 0,120 | 5–41 % | 97 % | 36 |
-| … | cartes 1-11 | 0,144–0,209 | — | 97-100 % | 32-36 |
-| **13 (dernière)** | **panamerica (actuelle)** | **0,239** | 3–62 % | 97 % | 35 |
+| Rang | Carte | Équilibre σ(winrate) | Winrates | Finies |
+|---|---|---|---|---|
+| 1 | carte-4 | **0,120** | 16–50 % | 100 % |
+| 2 | carte-5 | 0,125 | 16–53 % | 97 % |
+| 3–8 | cartes générées | 0,160–0,178 | — | 95-100 % |
+| **9** | **panamerica (actuelle)** | **0,179** | 6–58 % | 100 % |
+| 10–13 | cartes générées | 0,195–0,207 | — | 95-98 % |
 
-**Les 12 cartes procédurales validées sont toutes plus équilibrées que la carte
-actuelle.** L'intuition était juste : la carte d'origine favorise
-structurellement certaines factions (poches de rivières asymétriques, mix de
-ressources inégal autour des bases). Le classement complet + la meilleure carte
-sont dans `Documentation/cartes_procedurales_classement.json`.
+Avec les règles authentiques, la carte actuelle est **dans la norme** (9ᵉ/13) ;
+le générateur trouve tout de même mieux (σ 0,120). Classement + meilleure carte
+dans `Documentation/cartes_procedurales_classement.json`.
 
-**En jeu** : le setup propose désormais « 🗺 Carte procédurale » — une carte
-neuve, validée par les règles ci-dessus, à chaque partie (Empire, rencontres et
-départs replacés automatiquement). 300 parties simulées en mode carte aléatoire :
-0 crash, 0 invariant violé.
+**En jeu** : le setup propose « 🗺 Carte procédurale » — carte neuve validée à
+chaque partie (Empire, rencontres, départs replacés). 300 parties simulées en
+mode carte aléatoire : 0 crash, 0 invariant violé.
 
 ## 4. Audit des cartes (questions posées)
 
@@ -103,24 +110,25 @@ ressources) — à resserrer si les parties réelles le confirment.
 
 ## 5. Batch final — LE résultat clé
 
-600 parties carte classique + 300 parties cartes procédurales (98 % finies,
+600 parties carte classique + 300 parties cartes procédurales v2 (98 % finies,
 médiane ~35 rounds, 0 crash / 0 invariant) :
 
-| Faction | Carte actuelle | **Cartes procédurales** |
+| Faction | Carte actuelle (fixe) | **Rotation de cartes procédurales** |
 |---|---|---|
-| Acadiane | 65,6 % | **35,9 %** |
-| Nations | 38,8 % | 26,3 % |
-| Frente | 36,7 % | 29,0 % |
-| Bayou | 10,5 % | **36,1 %** |
-| Confédération | 9,1 % | **24,7 %** |
-| Dominion | 10,5 % | 22,4 % |
+| Acadiane | 65,6 % | **34,4 %** |
+| Nations | 38,8 % | 24,7 % |
+| Frente | 36,7 % | 32,9 % |
+| Bayou | 10,5 % | **32,4 %** |
+| Confédération | 9,1 % | **23,7 %** |
+| Dominion | 10,5 % | 26,5 % |
 
-**Sur cartes procédurales validées, toutes les factions jouent entre 22 et
-36 %.** La quasi-totalité du déséquilibre entre factions venait donc de la
-CARTE (poches de rivières, mix de ressources autour des bases), pas des
-capacités des factions. La carte actuelle porte l'Acadiane (région
-toundra/plaine ouverte) et enterre Bayou/Confédération (pas de métal,
-poche de rivières).
+**En rotation de cartes procédurales, toutes les factions jouent entre 24 et
+34 %** (même avec les îlots authentiques permis). L'essentiel du déséquilibre
+mesuré entre factions vient donc de la GÉOGRAPHIE FIXE (quelle faction profite
+de quelle région), pas des capacités : chaque carte individuelle favorise
+quelqu'un, la rotation égalise. La carte actuelle, elle, favorise durablement
+l'Acadiane (région toundra/plaine) et pénalise Bayou/Confédération (pas de
+métal proche, sortie d'îlot plus coûteuse).
 
 ## 6. Historique des bugs trouvés par simulation (12, tous corrigés)
 
