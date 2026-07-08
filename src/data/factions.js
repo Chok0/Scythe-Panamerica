@@ -5,6 +5,10 @@ export const FACTIONS = {
     name: "Confédération", color: "#808080", hero: "J. Cole", companion: "Dixie",
     power: 4, cards: 1, workerHex: [36, 32], riverwalk: ["plaine", "village"], rwName: "Gué",
     ability: "Servitude",
+    // Compensation asymétrique (façon Scythe original) mesurée par simulation :
+    // sans elle, le trio Conf/Bayou/Dominion finit pauvre (≈2,5$) et à pop de
+    // palier 1 → tout son score est amputé. Voir RAPPORT_SIMULATION.md.
+    startBonus: { coins: 4, pop: 3 },
     fObj: {
       name: "Le Joug", desc: "2 ouvriers capturés + 3+ hex avec ouvriers",
       check: p => (p.capturedWorkers || 0) >= 2 && p.workers.length >= 3,
@@ -55,6 +59,7 @@ export const FACTIONS = {
     name: "Bayou", color: "#7B2D8B", hero: "Cap. Zeke", companion: "Croc",
     power: 2, cards: 3, workerHex: [35, 28], riverwalk: ["desert", "village"], rwName: "Mangrove",
     ability: "Chimère", deployAltRes: "bois", deployAltName: "Bois flotté",
+    startBonus: { coins: 3, pop: 2 },
     fObj: {
       name: "Le Prédateur", desc: "1 mecha capturé + 2 Empire détruits",
       check: p => (p.capturedMech || 0) >= 1 && (p.empireKills || 0) >= 2,
@@ -64,6 +69,7 @@ export const FACTIONS = {
     name: "Dominion", color: "#CC2222", hero: "Col. Whitfield", companion: "Sterling",
     power: 3, cards: 2, workerHex: [0, 4], riverwalk: ["foret", "plaine"], rwName: "Queen's Road",
     ability: "Commerce Impérial", isExtension: true,
+    startBonus: { coins: 3, pop: 2 },
     fObj: {
       name: "Le Tribut", desc: "10+ pièces via Commerce Impérial",
       check: p => (p.imperialCoins || 0) >= 10,

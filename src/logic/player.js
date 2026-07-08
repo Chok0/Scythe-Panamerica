@@ -11,7 +11,11 @@ export const createPlayer = (factionId, matId, isBot) => {
   }, null);
   return {
     faction: factionId, matId, isBot,
-    power: f.power, combatCards: f.cards, pop: pm.pop, coins: pm.coins,
+    power: f.power, combatCards: f.cards,
+    // startBonus : compensation asymétrique des factions mal dotées (mesurée
+    // par simulation — voir factions.js et RAPPORT_SIMULATION.md)
+    pop: Math.min(pm.pop + (f.startBonus?.pop || 0), 18),
+    coins: pm.coins + (f.startBonus?.coins || 0),
     stars: 0, hero: heroHex.id,
     workers: (CURRENT_MAP.starts?.[factionId]?.workerHex ?? f.workerHex).map((hid, i) => ({ id: `${factionId}_w${i}`, hexId: hid })),
     mechs: [], resources: {}, lastCol: null, buildings: [], encounters: 0,

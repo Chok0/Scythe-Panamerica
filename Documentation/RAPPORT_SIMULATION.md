@@ -1,8 +1,79 @@
 # Rapport de simulation — parties bot vs bot
 
-> `npm run sim -- --games 500 --seed 42` · **v5** : carte physique v2
-> (péninsules de départ pour les 6 factions) + IA stratégique alignée sur le
-> corpus Scythe (course aux 6 étoiles, enlist tôt, ≤2 upgrades, palier de pop).
+> `npm run sim -- --games 500 --seed 42` · **v6** : profils stratégiques des
+> bots + niveaux de difficulté + méta-stratégie de plateau + équilibrage
+> appliqué (plafond de ressources, compensations de départ).
+
+## 0-v6. Profils stratégiques, difficulté, méta — et l'équilibrage qui en découle
+
+### Les bots ne jouent plus tous pareil (la grande limite des bots Steam)
+
+`src/logic/botProfiles.js` : chaque bot tire un **profil** (pondéré par
+faction) qui oriente toutes ses décisions — colonnes, agressivité, cibles,
+bâtiments, enlists, gestion de la pop :
+
+| Profil | Idée | Winrate/siège (500 parties) |
+|---|---|---|
+| ⚖ Équilibré | le plan du corpus (enlist tôt, Speed mech, palier pop 7+) | 29,7 % |
+| 🏛 Bâtisseur | moteur de popularité : enlist pop, Mémorial+Bolster, course aux rencontres, palier 13+ | 31,2 % |
+| ⚔ Blitzkrieg | remplir ses étoiles vite et harceler (attaque à force égale, dès le début) | 20,8 % |
+| 📦 Thésauriseur | produire/empiler, pacifiste, palier de pop | 35,6 % |
+
+**Les 4 profils sont viables** et chaque faction a ses affinités mesurées
+(Bayou-blitz 25,3 %, Acadiane-bâtisseur 47,5 %, Frente-thésauriseur 56,2 %…).
+**3 niveaux de difficulté** au setup : facile (profil aléatoire + gros bruit
+décisionnel), normal (tirage pondéré par faction), difficile (meilleur profil,
+sans bruit). Le bruit rend les bots faillibles sans tricher.
+
+### Méta-stratégie de plateau (« attaquer la Crimée tôt »)
+
+`MAP_META_THREAT` (a priori mesuré : Acadiane 3, Frente/Nations 2) + détection
+du **leader dynamique** (étoiles/pop/pièces) → les bots harcèlent la faction
+avantagée et le leader (bonus de ciblage sur ses hexes, raids sur son
+économie). « Couvrir ses arrières » : un bot à ≤ 4 de puissance n'attaque plus
+(surextension = contre-attaque). Effet mesurable : les captures Servitude
+passent de 0,65 à 1,0/partie, PvP 3,8/partie (×2).
+
+### Le contre naturel de la thésaurisation + verdicts A/B
+
+La v5 avait identifié l'Acadiane « coffre-fort » (61 % de winrate, 33 pts de
+ressources empilées derrière ses rivières). Trois contre-mesures testées :
+
+| Levier | Effet sur Acadiane | Décision |
+|---|---|---|
+| Raids attirés par le butin (`hexLoot`) | 67,8 → 61,1 % (les raids nourrissent White Flag) | ✅ gardé (bon pour le jeu) |
+| White Flag +1 pop | 61,1 → 60,4 % — toujours pas le moteur | ❌ rejeté |
+| **Plafond de scoring : 12 ressources** (`BALANCE.resScoringCap`) | **61,1 → 41,0 %**, tous les autres remontent | ✅ appliqué |
+
+Et pour le trio pauvre (diagnostic v5 : ~2,5 $, pop palier 1), **compensation
+asymétrique de départ** façon Scythe original (`factions.js startBonus`,
+mesurée en A/B) : Confédération +4 $ +3 pop, Bayou +3 $ +2 pop, Dominion
++3 $ +2 pop.
+
+### Résultat final v6 (500 parties, seed 42)
+
+| Faction | v4 (départ) | **v6** |
+|---|---|---|
+| Acadiane | 65,6 % | **44,2 %** |
+| Frente | 36,7 % | 38,1 % |
+| Nations | 38,8 % | 37,5 % |
+| Bayou | 10,5 % | **21,3 %** |
+| Confédération | 9,1 % | **20,1 %** |
+| Dominion | 10,5 % | 10,7 % |
+
+99,2 % de parties finies à 6 étoiles, ~41 rounds, 0 crash / 0 invariant.
+Reste ouvert : le **Dominion** (~11 %) — son goulot n'est ni la pop ni la
+pièce (testé : commerce ×2 sans effet), probablement son tempo d'étoiles
+(2,7-3,2 étoiles) ; et l'Acadiane encore ~6 pts au-dessus du peloton.
+
+### Transport (audité + complété)
+
+Mech emporte ouvriers+ressources, héros les ressources (déjà codé) ; ajouts :
+**choix d'emport** au Move humain (🚚 OUI/NON — laisser les ouvriers tenir le
+terrain), **ouvriers porteurs** (emportent les ressources s'ils sont la
+dernière unité du hex), bots : le mech **n'embarque plus les ouvriers en fin
+de partie** (expansion de territoire) ni vers un combat. Pas encore : la
+dépose en cours de route (notre moteur est cible-à-cible, pas trajet).
 
 ## 0. v5 — Carte physique v2 + IA stratégique
 

@@ -6,6 +6,8 @@ import { countRes, spendRes, getWorkerHexes } from './resources.js';
 import { canPayProduce, payProduce } from './production.js';
 import { getValidMoves } from './movement.js';
 import { transportUnits } from './transport.js';
+import { BOT_PROFILES } from './botProfiles.js';
+import { BALANCE } from '../data/balance.js';
 
 // ══════════════════════════════════════════════════════
 // Strategic Bot AI — based on Scythe competitive strategy
@@ -38,7 +40,7 @@ const neededResources = (p) => {
 };
 
 // Score a column choice based on strategic value
-const scoreColumn = (p, col, empire, enemyHexes, rails) => {
+const scoreColumn = (p, col, empire, enemyHexes, rails, prof) => {
   const action = p.topRow[col];
   const f = FACTIONS[p.faction];
   const phase = getPhase(p);
@@ -72,6 +74,14 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
     }
     else if (bottomAction === "Build") score += 8;
     else if (bottomAction === "Upgrade") { if (upgradeWorthIt) score += 5; else score -= 20; }
+    // Blitz : priorité absolue aux bottoms à une action de leur étoile
+    if (prof.starRush) {
+      const oneAway = bottomAction === "Upgrade" ? (p.upgrades || 0) === 5
+        : bottomAction === "Deploy" ? p.mechs.length === 3
+        : bottomAction === "Build" ? (p.buildings || []).length === 3
+        : (p.recruits || 0) === 3;
+      if (oneAway) score += prof.starRush;
+    }
   } else if (bottomMaxed) {
     // Colonne au bottom épuisé : le top seul doit vraiment valoir le coup
     score -= 8;
@@ -80,7 +90,7 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
   // Top action value
   if (action === "Produce") {
     if (canPayProduce(p)) {
-      score += 10;
+      score += 10 + prof.produceBoost;
       // High value early game for resource generation
       if (phase === "early") score += 8;
       // More workers = more production value
@@ -102,14 +112,15 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
       if (canBottom && !bottomMaxed) score += 4;
       // Also good for getting pop in late game
       if (phase === "late") score += 3;
-      // Corpus : maintenir un palier de pop correct (7-12) — sous 7, tout le
-      // score final est amputé (multiplicateurs ×3/×2/×1) et Produce à 5+
-      // ouvriers coûte 1 pop (à 0 pop l'économie se bloque)
-      if (p.pop < 7 && (p.stars >= 1 || p.workers.length >= 5)) score += 5;
+      // Maintenir le palier de pop du profil — sous le palier 7, tout le score
+      // final est amputé (multiplicateurs ×3/×2/×1) et Produce à 5+ ouvriers
+      // coûte 1 pop (à 0 pop l'économie se bloque)
+      if (p.pop < prof.popTarget && (p.stars >= 1 || p.workers.length >= 5)) score += prof.tradePopBoost;
+      if (prof.chasePopStar && p.pop >= 13 && !p.starPop) score += 6;
     }
   } else if (action === "Bolster") {
     if (p.coins >= 1) {
-      score += 5;
+      score += 5 + prof.bolsterBoost;
       // Value increases if we have Arsenal/Memorial buildings
       if ((p.buildings || []).some(b => b.type === "arsenal")) score += 3;
       if ((p.buildings || []).some(b => b.type === "memorial")) score += 3;
@@ -119,7 +130,7 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
       if (p.power >= 13) score += 5;
     }
   } else if (action === "Move") {
-    score += 7;
+    score += 7 + (prof.moveBoost || 0);
     // Ouvriers empilés (≥3 sur un hex) : le Move de désempilage est prioritaire
     const stacks = {};
     p.workers.forEach(w => { stacks[w.hexId] = (stacks[w.hexId] || 0) + 1; });
@@ -138,7 +149,7 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
 // Choose best hex to move toward (strategic targeting)
 // ctx: { attackable:Set (hex des unités combattantes d'autres BOTS), forbidden:Set
 // (hex des unités combattantes du joueur humain — jamais ciblées), encounterHexes:Set }
-const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx) => {
+const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) => {
   if (validMoves.length === 0) return null;
 
   // Estimation de notre force de combat pour décider d'attaquer
@@ -164,16 +175,36 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx) => {
     if (purpose === "worker" && enemyHexes && enemyHexes.has(hexId)) s -= 15;
     if (purpose === "hero" || purpose === "mech") {
       if (ctx && ctx.attackable && ctx.attackable.has(hexId)) {
-        // Combat PvP : attaquer seulement sur avantage réel (corpus : viser les
-        // unités isolées / les 2v1, pas les forteresses)
+        // Combat PvP : l'agressivité dépend du profil — l'équilibré attaque
+        // sur avantage réel (corpus : unités isolées / 2v1), le blitz à force
+        // égale et dès le début, le bâtisseur/thésauriseur presque jamais
         const defStrength = ctx.attackable.get ? (ctx.attackable.get(hexId) || 0) : 0;
-        if (myStrength >= defStrength + 2 && wantCombatStar && getPhase(p) !== "early") s += 9 + Math.min(4, myStrength - defStrength);
+        // Butin : le vainqueur prend les ressources du hex — les gros tas des
+        // thésauriseurs attirent les raids (contre naturel de la thésaurisation)
+        const loot = ctx.hexLoot ? Math.min(6, ctx.hexLoot.get(hexId) || 0) : 0;
+        // Méta : harceler la faction avantagée sur cette carte / le leader
+        // de la partie (« attaquer la Crimée tôt pour la ralentir »)
+        const threat = ctx.hexThreat ? (ctx.hexThreat.get(hexId) || 0) : 0;
+        // Couvrir ses arrières : à court de puissance, une attaque expose à la
+        // contre-attaque (on ne pourra pas défendre le terrain gagné)
+        const overextended = p.power <= 4 && !prof.earlyAttack;
+        if (!overextended && myStrength >= defStrength + prof.aggroMargin && (wantCombatStar || prof.earlyAttack) && (prof.earlyAttack || getPhase(p) !== "early"))
+          // Étoiles de combat pleines : le blitz continue à harceler (déni de
+          // territoire et pillage de ressources), moitié moins motivé
+          s += (wantCombatStar ? prof.attackReward : Math.floor(prof.attackReward / 2)) + Math.min(4, myStrength - defStrength) + loot + threat;
         else s -= 12;
       } else if (enemyHexes && enemyHexes.has(hexId)) {
         // Hex avec seulement des ouvriers ennemis : déplacement possible mais coûte de la pop
         // Servitude : la Confédération y gagne un ouvrier → elle les chasse activement
         if (p.faction === "confederation" && (p.capturedWorkers || 0) < 2 && p.pop >= 2) s += 6;
         else s -= 4;
+        // Raid : un gros tas de ressources sur un hex d'ouvriers vaut le coût en
+        // pop pour les profils agressifs — prendre le hex neutralise le magot
+        // du thésauriseur au scoring ; ralentir l'économie du leader compte aussi
+        const wLoot = ctx && ctx.hexLoot ? (ctx.hexLoot.get(hexId) || 0) : 0;
+        const wThreat = ctx && ctx.hexThreat ? (ctx.hexThreat.get(hexId) || 0) : 0;
+        if (wLoot >= 3 && prof.aggroMargin <= 2 && p.pop >= 3) s += Math.min(8, wLoot);
+        if (wThreat >= 3 && prof.aggroMargin <= 2 && p.pop >= 3) s += Math.floor(wThreat / 2);
       }
     }
 
@@ -182,7 +213,8 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx) => {
     if (!myHexes.has(hexId)) s += 2; // new territory
 
     // Move toward encounter tokens (hero only — rule: seuls les personnages font des rencontres)
-    if (purpose === "hero" && ctx && ctx.encounterHexes && ctx.encounterHexes.has(hexId)) s += 7;
+    // Le bâtisseur fait la course aux jetons (gains de pop des rencontres)
+    if (purpose === "hero" && ctx && ctx.encounterHexes && ctx.encounterHexes.has(hexId)) s += prof.encounterPull;
 
     // Move toward Rouge River if haven't visited
     if (purpose === "hero" && hexId === 22 && !p.rrVisited) s += 1;
@@ -195,13 +227,14 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx) => {
   return bestHex || validMoves[Math.floor(Math.random() * validMoves.length)];
 };
 
-// Choose which building to construct based on phase
-const pickBuilding = (p, availBuildings) => {
+// Choose which building to construct based on phase (or profile order)
+const pickBuilding = (p, availBuildings, prof) => {
   const phase = getPhase(p);
-  // Priority: Moulin early, Gare mid, Arsenal/Memorial late
-  const priority = phase === "early" ? ["moulin", "gare", "arsenal", "memorial"]
+  // Priority: Moulin early, Gare mid, Arsenal/Memorial late — sauf ordre imposé
+  // par le profil (ex. bâtisseur : Mémorial d'abord pour la pop au Bolster)
+  const priority = (prof && prof.buildPriority) || (phase === "early" ? ["moulin", "gare", "arsenal", "memorial"]
     : phase === "mid" ? ["gare", "moulin", "memorial", "arsenal"]
-    : ["memorial", "arsenal", "gare", "moulin"];
+    : ["memorial", "arsenal", "gare", "moulin"]);
   for (const t of priority) {
     const b = availBuildings.find(bt => bt.type === t);
     if (b) return b;
@@ -231,11 +264,16 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const p = { ...player, workers: [...player.workers], mechs: [...player.mechs], resources: { ...player.resources } };
   const logs = [];
 
+  // ── Profil stratégique + bruit décisionnel (niveau de difficulté) ──
+  const prof = BOT_PROFILES[p.botProfile] || BOT_PROFILES.equilibre;
+  const noise = p.botNoise || 0;
+
   // ── STRATEGIC COLUMN SELECTION ──
   const cols = [0, 1, 2, 3].filter(c => c !== p.lastCol);
   let bestCol = cols[0], bestScore = -999;
   for (const col of cols) {
-    const s = scoreColumn(p, col, empire, enemyHexes, rails);
+    const s = scoreColumn(p, col, empire, enemyHexes, rails, prof)
+      + (noise ? (Math.random() * 2 - 1) * noise : 0);
     if (s > bestScore) { bestScore = s; bestCol = col; }
   }
   const col = bestCol;
@@ -266,7 +304,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     const validHero = getValidMoves(p.hero, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
     if (validHero.length > 0) {
       const fromHex = p.hero;
-      const target = pickMoveTarget(validHero, p, empire, enemyHexes, "hero", ctx);
+      const target = pickMoveTarget(validHero, p, empire, enemyHexes, "hero", ctx, prof);
       p.hero = target;
       const tr = transportUnits(p, fromHex, target, "hero");
       Object.assign(p, { resources: tr.player.resources });
@@ -296,18 +334,36 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       // Workers avoid enemies
       if (enemyHexes) wv = wv.filter(id => !enemyHexes.has(id));
       if (wv.length > 0) {
-        const wt = pickMoveTarget(wv, p, empire, enemyHexes, "worker", ctx);
+        const wt = pickMoveTarget(wv, p, empire, enemyHexes, "worker", ctx, prof);
+        const fromW = p.workers[wi].hexId;
         p.workers[wi] = { ...p.workers[wi], hexId: wt };
-        logs.push(`🤖 ${f.name}: Ouv. → #${wt}`);
+        // L'ouvrier emporte les ressources de son hex s'il est la dernière
+        // unité à le quitter (sinon elles seraient perdues au scoring)
+        const lastOnHex = p.hero !== fromW
+          && !p.workers.some((w, j) => j !== wi && w.hexId === fromW)
+          && !p.mechs.some(m => m.hexId === fromW);
+        if (lastOnHex) {
+          const tr = transportUnits(p, fromW, wt, "worker");
+          Object.assign(p, { resources: tr.player.resources });
+          if (tr.carried.resTypes.length > 0) logs.push(`🤖 ${f.name}: Ouv. → #${wt} 📦${tr.carried.resTypes.join(",")}`);
+          else logs.push(`🤖 ${f.name}: Ouv. → #${wt}`);
+        } else {
+          logs.push(`🤖 ${f.name}: Ouv. → #${wt}`);
+        }
       }
     } else if (p.mechs.length > 0) {
       const mi = Math.floor(Math.random() * p.mechs.length);
       const fromHex = p.mechs[mi].hexId;
       const mv = getValidMoves(fromHex, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
       if (mv.length > 0) {
-        const mt = pickMoveTarget(mv, p, empire, enemyHexes, "mech", ctx);
+        const mt = pickMoveTarget(mv, p, empire, enemyHexes, "mech", ctx, prof);
         p.mechs[mi] = { ...p.mechs[mi], hexId: mt };
-        const tr = transportUnits(p, fromHex, mt, "mech");
+        // Stratégie classique d'expansion : en fin de partie le mech laisse
+        // les ouvriers tenir le territoire et continue seul ; il ne les
+        // embarque pas non plus vers un combat
+        const isAttack = ctx && ctx.attackable && ctx.attackable.has(mt);
+        const carryWorkers = getPhase(p) !== "late" && !isAttack;
+        const tr = transportUnits(p, fromHex, mt, "mech", { carryWorkers });
         Object.assign(p, { workers: tr.player.workers, resources: tr.player.resources });
         let tl = "";
         if (tr.carried.workers > 0) tl += ` 👷×${tr.carried.workers}`;
@@ -341,7 +397,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       // Pick best 2 hexes : d'abord ceux qui produisent une ressource MANQUANTE
       // pour un bottom, puis villages (si sous le cap), puis autres ressources
       const needP = neededResources(p);
-      const prodCap = getPhase(p) === "early" ? 5 : 8;
+      const prodCap = getPhase(p) === "early" ? prof.maxWorkersEarly : 8;
       const hexScore = (hidStr) => {
         const h = hMap[parseInt(hidStr)];
         if (!h) return 0;
@@ -355,8 +411,9 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       const hexIds = Object.keys(byHex)
         .sort((a, b) => hexScore(b) - hexScore(a))
         .slice(0, 2);
-      // Worker cap: 5 early (Stegmaier's rule), then push to 8 for the star
-      const workerCap = getPhase(p) === "early" ? 5 : 8;
+      // Régime d'ouvriers : 5 en early (règle du corpus), puis 8 pour l'étoile
+      // — le thésauriseur sort tous ses ouvriers tout de suite
+      const workerCap = getPhase(p) === "early" ? prof.maxWorkersEarly : 8;
       hexIds.forEach(hidStr => {
         const hid = parseInt(hidStr); const hex = hMap[hid]; const t = TERRAINS[hex.t]; let wc = byHex[hidStr].length;
         const hasMoulin = (p.buildings || []).some(b => b.type === "moulin" && b.hexId === hid);
@@ -373,7 +430,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       logs.push(`🤖 ${f.name}: Produce`);
     }
   } else if (action === "Trade") {
-    if (p.coins >= 1 && ((p.pop >= 13 && !p.starPop) || (p.pop < 7 && (p.stars >= 1 || p.workers.length >= 5)))) {
+    if (p.coins >= 1 && ((prof.chasePopStar && p.pop >= 13 && !p.starPop) || (p.pop < prof.popTarget && (p.stars >= 1 || p.workers.length >= 5)))) {
       // Push toward the 18-pop star once in the top popularity tier
       p.coins--; p.pop = Math.min(p.pop + 1, 18);
       logs.push(`🤖 ${f.name}: +1 Pop`);
@@ -467,7 +524,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       const avail = BUILDING_TYPES.filter(bt => !(p.buildings || []).some(b => b.type === bt.type));
       if (wh.length > 0 && avail.length > 0) {
         const sp = spendRes(p, bc.res, bc.qty); Object.assign(p, { resources: sp.resources });
-        const building = pickBuilding(p, avail);
+        const building = pickBuilding(p, avail, prof);
         p.buildings = [...(p.buildings || []), { type: building.type, hexId: wh[0] }];
         bottomDone = true;
         if (p.buildings.length >= 4 && !p.starBuildings) { p.stars++; p.starBuildings = true; logs.push(`⭐ ${f.name}: 4 bâtiments !`); }
@@ -494,8 +551,9 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       const sp = spendRes(p, bc.res, bc.qty); Object.assign(p, { resources: sp.resources });
       p.recruits = (p.recruits || 0) + 1;
       bottomDone = true;
-      // Strategic enlist: prioritize power > coins > pop > cards
-      const priority = [0, 1, 2, 3]; // power, coins, pop, cards
+      // Priorité d'enlist du profil (équilibré : puissance > pièces > pop > cartes ;
+      // bâtisseur : pop d'abord ; blitz : puissance puis cartes)
+      const priority = prof.enlistPriority || [0, 1, 2, 3];
       const freeSlots = priority.filter(ci => !(p.enlistMap || [])[ci]);
       if (freeSlots.length > 0) {
         const pick = freeSlots[0]; // highest priority available
@@ -535,8 +593,12 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       if (bc && countRes(p, bc.res) <= bc.qty) reserved.add(bc.res);
     });
     const available = resTypes.filter(r => countRes(p, r) >= 1 && !reserved.has(r));
-    if (available.length > 0) {
+    // Débit du comptoir : 2 conversions/tour (BALANCE.imperialRate) — le
+    // Dominion transforme son surplus en pièces, qui scorent directement
+    let conversions = BALANCE.imperialRate || 1;
+    while (conversions-- > 0 && available.length > 0) {
       const pick = available[available.length - 1];
+      if (countRes(p, pick) < 1) { available.pop(); conversions++; continue; }
       const sp = spendRes(p, pick, 1); Object.assign(p, { resources: sp.resources });
       // Strategic choice: coins early/mid, cards if combat imminent
       if (p.combatCards < 2 && Math.random() < 0.4) {

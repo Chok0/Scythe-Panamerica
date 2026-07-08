@@ -2,7 +2,13 @@ import React from 'react';
 import { FACTIONS, FACTION_IDS } from '../data/factions.js';
 import { MATS } from '../data/mats.js';
 
-export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, randomMap, setRandomMap, startGame, onShowRules }) {
+const DIFFICULTIES = [
+  { key: "facile", label: "Facile", desc: "bots imprévisibles et sous-optimaux" },
+  { key: "normal", label: "Normal", desc: "chaque bot tire un profil adapté à sa faction" },
+  { key: "difficile", label: "Difficile", desc: "meilleur profil connu, sans erreur" },
+];
+
+export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, randomMap, setRandomMap, difficulty, setDifficulty, startGame, onShowRules }) {
   return (
     <div style={{minHeight:"100vh",background:"linear-gradient(170deg, #1A1710 0%, #1A1710 30%, #1a1610 60%, #1A1710 100%)",color:"var(--text)",display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 16px",position:"relative",overflow:"auto"}}>
       <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"repeating-linear-gradient(0deg,transparent,transparent 1px,rgba(201,168,76,0.012) 1px,rgba(201,168,76,0.012) 2px)",pointerEvents:"none"}}/>
@@ -31,6 +37,23 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
               boxShadow:numBots===n?"0 0 20px rgba(201,168,76,0.3),inset 0 1px 0 rgba(255,255,255,0.2)":"none",
             }}>{n}</button>
           ))}
+        </div>
+
+        <div style={{color:"var(--gold-dim)",fontSize:12,marginBottom:10,letterSpacing:4,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Difficulté des bots</div>
+        <div style={{display:"flex",gap:8,marginBottom:8}}>
+          {DIFFICULTIES.map(d=>(
+            <button key={d.key} onClick={()=>setDifficulty(d.key)} style={{
+              padding:"8px 20px",fontSize:12,letterSpacing:2,textTransform:"uppercase",fontWeight:700,
+              background:difficulty===d.key?"linear-gradient(135deg,var(--gold),#a08030)":"transparent",
+              color:difficulty===d.key?"var(--bg)":"var(--text-muted)",
+              border:difficulty===d.key?"none":"1px solid var(--border)",
+              borderRadius:4,fontFamily:"'Bitter',serif",
+              boxShadow:difficulty===d.key?"0 0 20px rgba(201,168,76,0.3)":"none",
+            }}>{d.label}</button>
+          ))}
+        </div>
+        <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:28,fontStyle:"italic"}}>
+          {DIFFICULTIES.find(d=>d.key===difficulty)?.desc}
         </div>
 
         <button onClick={()=>setRandomMap(r=>!r)} style={{
