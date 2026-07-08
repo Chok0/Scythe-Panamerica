@@ -27,7 +27,7 @@ import { botTurn } from '../logic/bot.js';
 import { BOT_PROFILES, assignBotProfile, BOT_NOISE, MAP_META_THREAT, playerStanding } from '../logic/botProfiles.js';
 import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../logic/pvpBots.js';
 import { resolveBotEncounter } from '../logic/botEncounters.js';
-import { applyPlanTop, getPlanBottomBonus } from '../logic/planEffects.js';
+import { getPlanBottomBonus, auraPowerCount } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
 import { ActionRow, CubeSlots, RESOURCE_ICONS } from './svg/ActionIcons.jsx';
 
@@ -80,6 +80,8 @@ export default function App(){
   const mapRef=useRef(null);
 
   const me=players[0];const myFaction=me?FACTIONS[me.faction]:null;const myMat=me?MATS.find(m=>m.id===me.matId):null;
+  // Plan « Réseau Neuronal » (mass_move) : 3 déplacements par action Move au lieu de 2
+  const moveLimit=me?.factoryCard?.topBonus==="mass_move"?3:2;
 
   useEffect(()=>{if(logRef.current)logRef.current.scrollTop=logRef.current.scrollHeight;},[log]);
 
@@ -372,7 +374,7 @@ export default function App(){
         }
       }
       // Reset commerceUsed for human player at start of new turn
-      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],commerceUsed:false,importUsed:false};return n;});
+      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],commerceUsed:false,importUsed:false,planTopUsed:false};return n;});
       turnRef.current=turn+1;setCurrentP(0);setTurn(t=>t+1);setBotRunning(false);addLog(`── Tour ${turn+1} ──`);logSnap("Début",players[0]);
       return;
     }
@@ -652,7 +654,7 @@ export default function App(){
     if(source&&source.source==="encounter"){
       // Resume movement check after encounter mech ability pick
       const moved=(me.movedUnits||[]).length;
-      if(moved>=2){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
+      if(moved>=moveLimit){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
     }
   },[pendingAbility,me,addLog,finishBottom,endHumanTurn,myMat]);
 
@@ -680,8 +682,8 @@ export default function App(){
     addLog(`🏗 ${bt.name} construit sur #${targetHex} (-${effectiveQty} ${cost.res})`);
     if((me.buildings||[]).length+1>=4)addLog(`⭐ 4 Bâtiments construits !`);
     if(buildingType==="gare"){
-      setRailPlacement({remaining:3,fromHex:null});
-      addLog(`🚂 Posez 3 segments de rail (cliquez 2 hex adjacents par segment)`);
+      setRailPlacement({remaining:3,fromHex:null,gareHex:targetHex});
+      addLog(`🚂 Posez 3 segments de rail depuis la Gare ou un rail existant (pas sur lac/marécage)`);
       return;
     }
     finishBottom(2);
@@ -772,9 +774,39 @@ export default function App(){
     addLog(`🏛 Import Impérial : -2💰 → +1 ${resType}`);
   },[me,addLog]);
 
+  // ── PLAN « Five Dollar Day » (pop_worker) : action libre 1×/tour, -2$ → +2 Pop +1 ouvrier ──
+  const doPlanPopWorker=useCallback(()=>{
+    if(!me||me.factoryCard?.topBonus!=="pop_worker"||me.planTopUsed||me.coins<2)return;
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0],workers:[...n[0].workers]};
+      p.coins-=2;p.pop=Math.min(p.pop+2,18);
+      if(p.workers.length<8)p.workers.push({id:`${p.faction}_w${p.workers.length}`,hexId:p.hero});
+      p.planTopUsed=true;
+      n[0]=p;return n;
+    });
+    addLog(`⚙ Five Dollar Day : -2$ → +2 Pop${me.workers.length<8?" +1 ouvrier":""}`);
+  },[me,addLog]);
+
+  // ── PLAN « River Rouge Special » (teleport_res) : 1×/tour, rapatrier les ressources d'un hex vers le héros ──
+  const doPlanTeleportRes=useCallback((fromHid)=>{
+    if(!me||me.factoryCard?.topBonus!=="teleport_res"||me.planTopUsed)return;
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0],resources:{...n[0].resources}};
+      Object.keys(p.resources).forEach(k=>{p.resources[k]={...p.resources[k]};});
+      const src=p.resources[String(fromHid)]||{};
+      const destKey=String(p.hero);
+      if(!p.resources[destKey])p.resources[destKey]={};
+      Object.entries(src).forEach(([rt,q])=>{p.resources[destKey][rt]=(p.resources[destKey][rt]||0)+q;});
+      delete p.resources[String(fromHid)];
+      p.planTopUsed=true;
+      n[0]=p;return n;
+    });
+    addLog(`⚙ River Rouge Special : ressources de #${fromHid} téléportées vers le héros (#${me.hero})`);
+  },[me,addLog]);
+
   const validMoves=useMemo(()=>{
     if(!moveSource||!me)return new Set();
-    let moves=getValidMoves(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails);
+    let moves=getValidMoves(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails,moveSource.unitType);
     // Workers cannot enter hexes with any enemy units
     if(moveSource.unitType==="worker"){
       const enemyHexes=new Set();
@@ -794,7 +826,7 @@ export default function App(){
   const movableUnits=useMemo(()=>{
     const m=new Map();
     if(!me||selAction!=="Move")return m;
-    if((me.movedUnits||[]).length>=2)return m;
+    if((me.movedUnits||[]).length>=moveLimit)return m;
     const moved=new Set(me.movedUnits||[]);
     const add=(hid,u)=>{if(!m.has(hid))m.set(hid,[]);m.get(hid).push(u);};
     if(!moved.has("hero"))add(me.hero,{type:"hero",id:"hero",icon:"★",label:myFaction?.hero||"Héros"});
@@ -844,19 +876,32 @@ export default function App(){
     setClickRipple({hexId,key:Date.now()});
     
     // ── RAIL PLACEMENT MODE ──
+    // Règles : chaque segment part de la Gare ou d'un hex déjà relié au réseau
+    // (réseau connexe, pas de pose « offensive » isolée) et jamais sur lac/marécage
     if(railPlacement){
+      const railHexes=new Set([railPlacement.gareHex]);
+      rails.forEach(([a,b])=>{railHexes.add(a);railHexes.add(b);});
       if(!railPlacement.fromHex){
         // First click: select starting hex of rail segment
+        if(!railHexes.has(hexId)){
+          addLog(`⚠ Le rail doit partir de la Gare (#${railPlacement.gareHex}) ou d'un rail existant`);
+          return;
+        }
         setRailPlacement(prev=>({...prev,fromHex:hexId}));
         addLog(`🚂 Rail depuis #${hexId} — cliquez un hex adjacent`);
         return;
       } else {
-        // Second click: must be adjacent to fromHex
+        // Second click: must be adjacent to fromHex, on land
         const from=railPlacement.fromHex;
         const isAdj=(ADJ[from]||[]).includes(hexId);
         if(!isAdj||hexId===from){
           addLog(`⚠ Choisissez un hex adjacent à #${from}`);
           setRailPlacement(prev=>({...prev,fromHex:null}));
+          return;
+        }
+        const toT=hMap[hexId]?.t;
+        if(toT==="lac"||toT==="marecage"){
+          addLog(`⚠ Pas de rail sur ${toT==="lac"?"un lac":"un marécage"}`);
           return;
         }
         // Check no duplicate rail
@@ -953,8 +998,19 @@ export default function App(){
         }
       }
       
-      p.movesLeft=(me.movesLeft||2)-1;p.movedUnits=[...(me.movedUnits||[]),moveSource.unitId];
-      
+      p.movesLeft=(me.movesLeft||moveLimit)-1;p.movedUnits=[...(me.movedUnits||[]),moveSource.unitId];
+
+      // ── PLAN « Iron Horse » (move_mine) : chaque déplacement mine 1 ressource du terrain d'arrivée ──
+      if(me.factoryCard?.topBonus==="move_mine"){
+        const destT=TERRAINS[hMap[hexId]?.t];
+        if(destT?.res&&destT.res!=="ouvriers"){
+          const hid=String(hexId);
+          if(!p.resources[hid])p.resources[hid]={};
+          p.resources[hid][destT.res]=(p.resources[hid][destT.res]||0)+1;
+          addLog(`⚙ ${me.factoryCard.name}: +1 ${destT.res} miné sur #${hexId}`);
+        }
+      }
+
       // ── SCYTHE RULE: displace enemy workers when hero/mech enters (no combat) ──
       const movingCombat2=moveSource.unitType==="hero"||moveSource.unitType==="mech";
       if(movingCombat2){
@@ -1076,12 +1132,12 @@ export default function App(){
           .filter(hid=>{const h=hMap[hid];return h&&h.t!=="lac"&&h.t!=="marecage";});
         const hasCargo=p.workers.some(w=>w.hexId===hexId)||Object.keys(p.resources[String(hexId)]||{}).length>0;
         if(mids.length>0&&hasCargo){
-          dropOffer={mids,destHex:hexId,endAfter:p.movedUnits.length>=2};
+          dropOffer={mids,destHex:hexId,endAfter:p.movedUnits.length>=moveLimit};
           setRouteDrop(dropOffer);
           addLog(`📦 Dépose en route possible (passage par ${mids.map(m=>`#${m}`).join(", ")})`);
         }
       }
-      if(p.movedUnits.length>=2){addLog(`✅ Mouvement terminé`);if(!dropOffer)endHumanTurn(myMat.topRow.indexOf("Move"));}
+      if(p.movedUnits.length>=moveLimit){addLog(`✅ Mouvement terminé`);if(!dropOffer)endHumanTurn(myMat.topRow.indexOf("Move"));}
       return;
     }
     // ── SÉLECTION D'UNITÉ AU CLIC (action Move) : cliquer le pion à déplacer ──
@@ -1201,7 +1257,7 @@ export default function App(){
           }
         }
         if(!isDefender){
-          p.movesLeft=(me.movesLeft||2)-1;p.movedUnits=[...(me.movedUnits||[]),combat.moveData.unitId];
+          p.movesLeft=(me.movesLeft||moveLimit)-1;p.movedUnits=[...(me.movedUnits||[]),combat.moveData.unitId];
         }
         n[0]=p;return n;
       });
@@ -1263,7 +1319,7 @@ export default function App(){
           // Pop loss for displacing enemy workers
           const wfWorkersOnHex=n[combat.enemyIdx].workers.filter(w=>w.hexId===combat.hexId).length;
           if(wfWorkersOnHex>0)n[0].pop=Math.max(0,n[0].pop-wfWorkersOnHex);
-          n[0].movesLeft=(me.movesLeft||2)-1;n[0].movedUnits=[...(me.movedUnits||[]),combat.moveData.unitId];
+          n[0].movesLeft=(me.movesLeft||moveLimit)-1;n[0].movedUnits=[...(me.movedUnits||[]),combat.moveData.unitId];
           // Defender retreats + gains 2 pop
           n[combat.enemyIdx]={...n[combat.enemyIdx],workers:[...n[combat.enemyIdx].workers],mechs:[...n[combat.enemyIdx].mechs],resources:{...n[combat.enemyIdx].resources}};
           Object.keys(prev[combat.enemyIdx].resources).forEach(k=>{n[combat.enemyIdx].resources[k]={...prev[combat.enemyIdx].resources[k]};});
@@ -1277,7 +1333,7 @@ export default function App(){
         const wfWorkerCount=enemy.workers.filter(w=>w.hexId===combat.hexId).length;
         addLog(`⭐ Étoile combat ${(me.combatWins||0)+1}/2 (White Flag) !${wfWorkerCount>0?` ♥ -${wfWorkerCount} Pop (ouvriers déplacés)`:""}`);
         setCombat(null);
-        if((me.movedUnits||[]).length+1>=2){setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
+        if((me.movedUnits||[]).length+1>=moveLimit){setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
         return;
       }
       
@@ -1358,7 +1414,7 @@ export default function App(){
           if(db.combatWins<=2&&!db[`starCombat${db.combatWins}`]){db.stars++;db[`starCombat${db.combatWins}`]=true;}
           n[combat.enemyIdx]=db;
         }
-        n[0].movesLeft=(me.movesLeft||2)-1;n[0].movedUnits=[...(me.movedUnits||[]),combat.moveData.unitId];
+        n[0].movesLeft=(me.movesLeft||moveLimit)-1;n[0].movedUnits=[...(me.movedUnits||[]),combat.moveData.unitId];
         return n;
       });
       
@@ -1417,8 +1473,8 @@ export default function App(){
     
     setCombat(null);
     // Check if movement is done
-    const newMovesLeft=(me.movesLeft||2)-1;
-    if((me.movedUnits||[]).length+1>=2){
+    const newMovesLeft=(me.movesLeft||moveLimit)-1;
+    if((me.movedUnits||[]).length+1>=moveLimit){
       addLog(`✅ Mouvement terminé`);
       // Need to trigger endHumanTurn after state updates
       setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);
@@ -1481,7 +1537,7 @@ export default function App(){
       n[0]=p;return n;
     });
     setCombat(null);
-    if((me.movedUnits||[]).length>=2){
+    if((me.movedUnits||[]).length>=moveLimit){
       setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);
     }
   },[combat,me,addLog,endHumanTurn,myMat]);
@@ -1508,7 +1564,7 @@ export default function App(){
     }
     // Resume movement check
     const moved=(me.movedUnits||[]).length;
-    if(moved>=2){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
+    if(moved>=moveLimit){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
   },[encounter,me,addLog,endHumanTurn,myMat]);
 
   // ── ROUGE RIVER — PICK FACTORY CARD ──
@@ -1523,11 +1579,11 @@ export default function App(){
     addLog(`⚙ Plan choisi: ${card.name} (${card.type==="tesla"?"Tesla":"Ford"}) — ${card.desc}`);
     setRougeRiver(null);
     const moved=(me.movedUnits||[]).length;
-    if(moved>=2){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
+    if(moved>=moveLimit){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
   },[rougeRiver,me,addLog,endHumanTurn,myMat]);
 
   const doMove=(unitType,unitId,fromHex)=>{
-    if(!me.movesLeft)setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:2,movedUnits:[]};return n;});
+    if(!me.movesLeft)setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:moveLimit,movedUnits:[]};return n;});
     setMoveSource({unitType,unitId,fromHex});setSelHex(null);setUnitPicker(null);
   };
 
@@ -1539,8 +1595,10 @@ export default function App(){
     setPlayers(prev=>{const n=[...prev];const p={...n[0]};p.coins--;
       if(type==="power"){
         const bonus=hasArsenal?1:0;
-        p.power=Math.min(p.power+2+bonus,16);
-        addLog(`💪 -1$ → +${2+bonus} Pui${hasArsenal?" (Arsenal +1)":""}`);}
+        // Plan « L'Onde Tesla » : +1 Pui par mecha proche du héros
+        const aura=auraPowerCount(p,hMap);
+        p.power=Math.min(p.power+2+bonus+aura,16);
+        addLog(`💪 -1$ → +${2+bonus+aura} Pui${hasArsenal?" (Arsenal +1)":""}${aura>0?` (Onde Tesla +${aura})`:""}`);}
       else{p.combatCards++;addLog(`🃏 -1$ → +1 CC`);}
       if(hasMemorial){p.pop=Math.min(p.pop+1,18);addLog(`🪦 Mémorial: +1 Pop`);}
       n[0]=p;return n;});
@@ -1567,8 +1625,11 @@ export default function App(){
         // Moulin building: +1 production on this hex (as if +1 worker)
         const hasMoulin=(p.buildings||[]).some(b=>b.type==="moulin"&&b.hexId===hid);
         if(hasMoulin)wCount++;
-        if(hex.t==="village"){if(p.workers.length<8){for(let i=0;i<wCount&&p.workers.length<8;i++)p.workers.push({id:`${p.faction}_w${p.workers.length}`,hexId:hid});addLog(`👷 +ouv. #${hid}${hasMoulin?" (Moulin +1)":""}`);}}
-        else if(t.res&&t.res!=="ouvriers"){if(!p.resources[hidStr])p.resources[hidStr]={};p.resources[hidStr][t.res]=(p.resources[hidStr][t.res]||0)+wCount;addLog(`🏭 +${wCount} ${t.res} #${hid}${hasMoulin?" (Moulin +1)":""}`);}
+        // Plan « Model M » : production doublée sur chaque hex
+        const hasModelM=p.factoryCard?.topBonus==="produce_x2";
+        if(hasModelM)wCount*=2;
+        if(hex.t==="village"){if(p.workers.length<8){for(let i=0;i<wCount&&p.workers.length<8;i++)p.workers.push({id:`${p.faction}_w${p.workers.length}`,hexId:hid});addLog(`👷 +ouv. #${hid}${hasMoulin?" (Moulin +1)":""}${hasModelM?" (Model M ×2)":""}`);}}
+        else if(t.res&&t.res!=="ouvriers"){if(!p.resources[hidStr])p.resources[hidStr]={};p.resources[hidStr][t.res]=(p.resources[hidStr][t.res]||0)+wCount;addLog(`🏭 +${wCount} ${t.res} #${hid}${hasMoulin?" (Moulin +1)":""}${hasModelM?" (Model M ×2)":""}`);}
       });n[0]=p;return n;});
     if(costLabel!=="Gratuit")addLog(`💳 ${costLabel}`);
     endHumanTurn(myMat.topRow.indexOf("Produce"));
@@ -1903,7 +1964,7 @@ export default function App(){
               const exists=rails.some(([a,b])=>(a===railPlacement.fromHex&&b===aid)||(a===aid&&b===railPlacement.fromHex));
               if(exists)return null;
               const toH=hMap[aid];
-              if(!toH)return null;
+              if(!toH||toH.t==="lac"||toH.t==="marecage")return null;
               return <line key={`rp${aid}`} x1={fromH.rx} y1={fromH.ry} x2={toH.rx} y2={toH.ry} stroke="#C9A84C" strokeWidth={6} strokeLinecap="round" opacity={0.3} strokeDasharray="4 3"><animate attributeName="opacity" values="0.15;0.55;0.15" dur="1.2s" repeatCount="indefinite"/></line>;
             });
           })()}
@@ -2263,6 +2324,17 @@ export default function App(){
           </div>
         )}
 
+        {/* ── Plan d'usine actif (Rouge River) ── */}
+        {me.factoryCard&&(
+          <div style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:11,display:"flex",gap:6,alignItems:"flex-start",background:me.factoryCard.type==="tesla"?"rgba(123,45,139,0.07)":"rgba(58,106,154,0.07)"}}>
+            <span>⚙</span>
+            <div style={{minWidth:0}}>
+              <span style={{fontWeight:700,fontFamily:"var(--font-title)",color:me.factoryCard.type==="tesla"?"#b080e0":"#8aa0b8"}}>{me.factoryCard.name}</span>
+              <div style={{color:"var(--text-dim)",fontSize:10.5,lineHeight:1.45}}>{me.factoryCard.desc}</div>
+            </div>
+          </div>
+        )}
+
         {/* Star tracker (toggled) */}
         {showStars&&(()=>{
           const stars=[
@@ -2299,7 +2371,8 @@ export default function App(){
           {isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&!pendingBottom&&(
             <div style={{display:"flex",flexDirection:"column",gap:0}}>
               {myMat.topRow.map((action,i)=>{
-                const disabled=me.lastCol===i;
+                // Plan « Le Blueprint Perdu » : peut rejouer la même colonne deux tours de suite
+                const disabled=me.lastCol===i&&me.factoryCard?.topBonus!=="copy_top";
                 const bottomAction=BOTTOM[i];
                 const costs=getBottomCost(me);
                 const bc=costs[i];
@@ -2375,7 +2448,7 @@ export default function App(){
             <div style={{padding:"12px 16px",fontSize:12,animation:"slideUp 0.25s ease"}}>
               {selAction==="Move"&&(
                 <div>
-                  <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:14}}>Déplacement ({(me.movedUnits||[]).length}/2)</div>
+                  <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:14}}>Déplacement ({(me.movedUnits||[]).length}/{moveLimit})</div>
                   <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+1};return n;});addLog(`💰 +1$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner 1$ (pas de déplacement)</button>
                   {!moveSource&&(
                     <div style={{padding:"10px 12px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:12,color:"var(--gold)",lineHeight:1.5}}>
@@ -2395,6 +2468,17 @@ export default function App(){
                     color:carryOnMove?"var(--gold)":"var(--text-muted)"}}>
                     🚚 Emporter ouvriers & ressources : {carryOnMove?"OUI":"NON (les laisser sur place)"}
                   </button>
+                  {/* Plan « River Rouge Special » : téléporter les ressources d'un hex vers le héros */}
+                  {me.factoryCard?.topBonus==="teleport_res"&&!me.planTopUsed&&!moveSource&&(()=>{
+                    const resHexes=Object.entries(me.resources).filter(([hid,r])=>parseInt(hid)!==me.hero&&Object.values(r).some(q=>q>0));
+                    if(resHexes.length===0)return null;
+                    return <div style={{marginTop:8}}>
+                      <div style={{fontSize:11,color:"#8aa0b8",marginBottom:4}}>⚙ River Rouge Special (1×/tour) — téléporter vers le héros (#{me.hero}) :</div>
+                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                        {resHexes.map(([hid,r])=><button key={hid} onClick={()=>doPlanTeleportRes(parseInt(hid))} className="act-btn" style={{fontSize:11,borderColor:"#4a5a6a"}}>#{hid} · {Object.entries(r).filter(([,q])=>q>0).map(([rt,q])=>`${q} ${rt.slice(0,4)}`).join(", ")}</button>)}
+                      </div>
+                    </div>;
+                  })()}
                   {moveSource&&<div style={{color:"#C9A84C",fontSize:12,marginTop:8,fontStyle:"italic"}}>
                     {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:moveSource.unitType==="mech"?"⬡ Mecha":"● Ouvrier"} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts), ou une autre de vos unités pour changer.
                   </div>}
@@ -2416,8 +2500,8 @@ export default function App(){
                     </div>;
                   })()}
                   {me.packUpUsed&&me.faction==="nations"&&<div style={{marginTop:6,fontSize:10,color:"var(--text-muted)"}}>📦 Pack Up utilisé ce tour</div>}
-                  {(me.movedUnits||[]).length>0&&(me.movedUnits||[]).length<2&&(
-                    <button onClick={()=>{addLog("✅ Mouvement terminé");endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginTop:8,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Terminer ({(me.movedUnits||[]).length}/2)</button>
+                  {(me.movedUnits||[]).length>0&&(me.movedUnits||[]).length<moveLimit&&(
+                    <button onClick={()=>{addLog("✅ Mouvement terminé");endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginTop:8,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Terminer ({(me.movedUnits||[]).length}/{moveLimit})</button>
                   )}
                 </div>
               )}
@@ -2463,7 +2547,16 @@ export default function App(){
             const workerHexes=getWorkerHexes(me);
             const maxed=ba==="Upgrade"?(me.upgrades||0)>=6:ba==="Deploy"?me.mechs.length>=4:ba==="Build"?(me.buildings||[]).length>=4:ba==="Enlist"?(me.recruits||0)>=4:false;
             const availBuildings=BUILDING_TYPES.filter(bt=>!(me.buildings||[]).some(b=>b.type===bt.type));
-            const buildableHexes=workerHexes.filter(h=>!(me.buildings||[]).some(b=>b.hexId===h));
+            const isLand=(h)=>{const hx=hMap[h];return hx&&hx.t!=="lac"&&hx.t!=="marecage";};
+            // Plan « L'Onde Tesla » (build_no_worker) : un héros/mecha suffit pour construire
+            const buildBase=me.factoryCard?.bottomBonus==="build_no_worker"
+              ?[...new Set([...workerHexes,me.hero,...me.mechs.map(m=>m.hexId)])].filter(isLand)
+              :workerHexes;
+            const buildableHexes=buildBase.filter(h=>!(me.buildings||[]).some(b=>b.hexId===h));
+            // Plan « Réseau Neuronal » (deploy_adjacency) : Deploy aussi sur les hex adjacents aux ouvriers
+            const deployHexes=me.factoryCard?.bottomBonus==="deploy_adjacency"
+              ?[...new Set(workerHexes.flatMap(h=>[h,...(ADJ[h]||[])]))].filter(isLand)
+              :workerHexes;
             const mat=MATS.find(m=>m.id===me.matId);
             return(
               <div style={{padding:"12px 16px",borderTop:"1px solid var(--border)",animation:"slideUp 0.25s ease"}}>
@@ -2511,7 +2604,7 @@ export default function App(){
                   const metalCount=countRes(me,"metal");const boisCount=countRes(me,"bois");
                   const qty=bc.qty;
                   const hasMetal=metalCount>=qty;const hasBois=boisCount>=qty;
-                  if(!deployAlt) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{workerHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn">⬡ #{hid}</button>)}</div>:<div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
+                  if(!deployAlt) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn">⬡ #{hid}</button>)}</div>:<div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
                   // Nations: Esprit Sauvage — choose metal or bois
                   if(!hasMetal&&!hasBois) return <div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de métal ni de bois</div>;
                   if(!bottomPick||!bottomPick.deployRes) return <div>
@@ -2523,7 +2616,7 @@ export default function App(){
                   </div>;
                   return <div>
                     <div style={{fontSize:10,color:"var(--brass)",marginBottom:4}}>Deploy avec {bottomPick.deployRes} :</div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{workerHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid,bottomPick.deployRes)} className="act-btn">⬡ #{hid}</button>)}</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid,bottomPick.deployRes)} className="act-btn">⬡ #{hid}</button>)}</div>
                     <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:12,opacity:0.7,minHeight:36}}>← Autre ressource</button>
                   </div>;
                 })()}
@@ -2583,12 +2676,20 @@ export default function App(){
             </div>
           )}
 
+          {/* Plan « Five Dollar Day » — action libre 1×/tour */}
+          {me.factoryCard?.topBonus==="pop_worker"&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&!me.planTopUsed&&me.coins>=2&&(
+            <div style={{padding:"8px 16px",borderTop:"1px solid #3a5a7a",fontSize:12,background:"rgba(58,106,154,0.05)"}}>
+              <div style={{color:"#8aa0b8",fontWeight:600,marginBottom:6}}>⚙ Five Dollar Day (1×/tour)</div>
+              <button onClick={doPlanPopWorker} className="act-btn" style={{width:"100%",borderColor:"#4a5a6a"}}>-2💰 → +2♥ Pop{me.workers.length<8?" + 1👷 ouvrier (sur le héros)":""}</button>
+            </div>
+          )}
+
           {/* Rail placement mode indicator */}
           {railPlacement&&(
             <div style={{padding:"8px 16px",borderTop:"1px solid #6a5030",background:"rgba(100,80,48,0.08)",fontSize:12}}>
               <div style={{color:"#a08050",fontWeight:700,marginBottom:4}}>🚂 Pose de rails ({railPlacement.remaining}/3 restants)</div>
               {railPlacement.fromHex===null?
-                <div style={{color:"var(--text-dim)",fontSize:11}}>Cliquez un hex de départ pour le segment</div>:
+                <div style={{color:"var(--text-dim)",fontSize:11}}>Cliquez un hex de départ : la Gare (#{railPlacement.gareHex}) ou un rail existant</div>:
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   <span style={{color:"#C9A84C",fontSize:11}}>Depuis #{railPlacement.fromHex} → cliquez un hex adjacent</span>
                   <button onClick={()=>setRailPlacement(prev=>({...prev,fromHex:null}))} className="act-btn" style={{fontSize:10,padding:"4px 10px"}}>Annuler</button>

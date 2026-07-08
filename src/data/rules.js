@@ -61,7 +61,7 @@ export const RULES = [
       },
       {
         title: "Réseau de Rails",
-        content: "Un réseau ferroviaire partagé entre tous les joueurs. Construire une Gare pose 3 segments de rails. Les rails permettent le déplacement instantané entre hex connectés. L'Empire possède aussi ses propres rails."
+        content: "Un réseau ferroviaire partagé entre tous les joueurs. Construire une Gare pose 3 segments de rails : chaque segment doit partir de la Gare ou d'un rail existant (réseau connexe), jamais sur un lac ou un marécage. Les rails permettent le déplacement instantané entre hex connectés. L'Empire possède aussi ses propres rails."
       },
       {
         title: "Rouge River & Plans",
@@ -143,7 +143,7 @@ export const RULES = [
       },
       {
         title: "Rails",
-        content: "Les rails (réseau partagé) permettent le déplacement instantané entre les hex reliés. Construire une Gare pose 3 segments de rails."
+        content: "Les rails (réseau partagé) permettent le déplacement instantané entre les hex reliés. Construire une Gare pose 3 segments de rails, connectés à la Gare ou au réseau existant, jamais sur lac/marécage."
       }
     ]
   },

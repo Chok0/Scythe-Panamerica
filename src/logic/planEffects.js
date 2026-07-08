@@ -1,100 +1,21 @@
-// Tesla/Ford Plan Effects — applies bonuses when player has a factory card
-// Each plan has a topBonus (affects top-row actions) and bottomBonus (affects bottom-row actions)
+// Tesla/Ford Plan Effects — bonuses granted by the Rouge River factory card.
+// Each plan has a topBonus (top-row actions) and bottomBonus (bottom-row actions).
+// Top bonuses are wired directly at each action site:
+//   produce_x2 → doProduce, move_3/remote_move/mech_sprint → getValidMoves,
+//   move_mine → handleHexClick (après déplacement), aura_power → doBolster,
+//   pop_worker & teleport_res → actions libres (flag planTopUsed, 1×/tour),
+//   copy_top → lève la restriction « pas 2× la même colonne », mass_move → moveLimit 3.
 
-// Apply top-row plan bonus after a top action is taken
-// Returns { player, logs } with any modifications
-export const applyPlanTop = (player, action, logs = []) => {
-  const card = player.factoryCard;
-  if (!card) return { player, logs };
-
-  const p = { ...player };
-
-  switch (card.topBonus) {
-    case "produce_x2":
-      // Model M: already produced — grant +1 resource on each production hex
-      // (applied after normal produce, adds bonus resources)
-      if (action === "Produce") {
-        logs.push(`⚙ ${card.name}: Production doublée !`);
-        // Flag for produce handler to double output
-        p._planDoubleProduction = true;
-      }
-      break;
-
-    case "move_3":
-      // Trimotor: Move up to 3 hexes (ignore rivers)
-      if (action === "Move") {
-        p._planMoveBonus = 1; // +1 extra move
-        logs.push(`⚙ ${card.name}: +1 déplacement supplémentaire`);
-      }
-      break;
-
-    case "teleport_res":
-      // River Rouge Special: After Move, can teleport resources from any hex to current
-      if (action === "Move") {
-        p._planTeleportRes = true;
-        logs.push(`⚙ ${card.name}: Téléportation de ressources activée`);
-      }
-      break;
-
-    case "move_mine":
-      // Iron Horse: Move action also mines 1 free resource on destination
-      if (action === "Move") {
-        p._planFreeMine = true;
-        logs.push(`⚙ ${card.name}: Mine gratuite au déplacement`);
-      }
-      break;
-
-    case "pop_worker":
-      // Five Dollar Day: Pay 2$ for +2 Pop + 1 worker
-      // This is an alternative action — handled in action UI
-      break;
-
-    case "remote_move":
-      // Golem: Move a mech up to 2 hexes at distance (without hero)
-      if (action === "Move") {
-        p._planRemoteMove = true;
-        logs.push(`⚙ ${card.name}: Déplacement distant activé`);
-      }
-      break;
-
-    case "aura_power":
-      // L'Onde Tesla: +1 power for each mech within 2 hexes of hero
-      if (action === "Bolster") {
-        const heroHex = p.hero;
-        const nearMechs = p.mechs.filter(m => {
-          // Simple distance check (would need proper hex distance)
-          return Math.abs(m.hexId - heroHex) <= 5;
-        }).length;
-        if (nearMechs > 0) {
-          p.power = Math.min(p.power + nearMechs, 16);
-          logs.push(`⚙ ${card.name}: +${nearMechs} Pui (aura)`);
-        }
-      }
-      break;
-
-    case "mech_sprint":
-      // Éclair: Mechs can move 4 hexes this turn
-      if (action === "Move") {
-        p._planMechSprint = true;
-        logs.push(`⚙ ${card.name}: Sprint mecha (4 hex)`);
-      }
-      break;
-
-    case "copy_top":
-      // Le Blueprint Perdu: Can copy any other top-row action
-      // Handled in action selection UI
-      break;
-
-    case "mass_move":
-      // Réseau Neuronal: Move ALL mechs 1 hex simultaneously
-      if (action === "Move") {
-        p._planMassMove = true;
-        logs.push(`⚙ ${card.name}: Déplacement de masse activé`);
-      }
-      break;
-  }
-
-  return { player: p, logs };
+// L'Onde Tesla (aura_power): nombre de mechas à ≤2 anneaux du héros.
+// Distance en pixels sur la grille fixe : 1 anneau ≈ 137px → seuil 290px.
+export const auraPowerCount = (player, hMap) => {
+  if (player.factoryCard?.topBonus !== "aura_power") return 0;
+  const hero = hMap[player.hero];
+  if (!hero) return 0;
+  return player.mechs.filter(m => {
+    const h = hMap[m.hexId];
+    return h && Math.hypot(h.rx - hero.rx, h.ry - hero.ry) <= 290;
+  }).length;
 };
 
 // Apply bottom-row plan bonus when a bottom action is performed

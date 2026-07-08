@@ -586,6 +586,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
           for (let ri = 0; ri < 3; ri++) {
             const adjH = (ADJ[railFrom] || []).filter(id => {
               const h = hMap[id]; if (!h) return false;
+              if (h.t === "lac" || h.t === "marecage") return false; // R6: pas de rail sur l'eau
               return !rails.some(([a, b]) => (a === railFrom && b === id) || (a === id && b === railFrom));
             });
             if (adjH.length > 0) {
