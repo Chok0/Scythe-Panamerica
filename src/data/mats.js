@@ -1,19 +1,22 @@
+// bottomCosts : chaque plateau a un profil de coûts DISTINCT (bases 2-4,
+// façon Scythe original) — avant v0.10, Atelier/Pionnier/Terroir partageaient
+// les mêmes bases [2,3,3,3] et seuls les bonus $ différaient.
 export const MATS = [
   { id: 1, name: "Fordisme", pop: 2, coins: 4, topRow: ["Move", "Bolster", "Produce", "Trade"],
     topCubes: [1, 2, 1, 2], bottomSlots: [1, 1, 2, 2],
     bottomCosts: [{ res: "petrole", base: 3, bonus: 0 }, { res: "metal", base: 3, bonus: 1 }, { res: "bois", base: 2, bonus: 2 }, { res: "nourriture", base: 3, bonus: 2 }] },
   { id: 2, name: "Atelier", pop: 2, coins: 5, topRow: ["Trade", "Produce", "Bolster", "Move"],
     topCubes: [2, 1, 2, 1], bottomSlots: [2, 2, 1, 1],
-    bottomCosts: [{ res: "petrole", base: 2, bonus: 1 }, { res: "metal", base: 3, bonus: 1 }, { res: "bois", base: 3, bonus: 2 }, { res: "nourriture", base: 3, bonus: 2 }] },
+    bottomCosts: [{ res: "petrole", base: 2, bonus: 1 }, { res: "metal", base: 4, bonus: 0 }, { res: "bois", base: 3, bonus: 3 }, { res: "nourriture", base: 2, bonus: 1 }] },
   { id: 3, name: "Pionnier", pop: 2, coins: 6, topRow: ["Move", "Trade", "Produce", "Bolster"],
     topCubes: [2, 1, 1, 2], bottomSlots: [2, 1, 1, 2],
-    bottomCosts: [{ res: "petrole", base: 2, bonus: 1 }, { res: "metal", base: 3, bonus: 2 }, { res: "bois", base: 3, bonus: 1 }, { res: "nourriture", base: 3, bonus: 2 }] },
+    bottomCosts: [{ res: "petrole", base: 3, bonus: 2 }, { res: "metal", base: 2, bonus: 1 }, { res: "bois", base: 4, bonus: 0 }, { res: "nourriture", base: 3, bonus: 3 }] },
   { id: 4, name: "Forge", pop: 3, coins: 6, topRow: ["Trade", "Bolster", "Move", "Produce"],
     topCubes: [1, 2, 2, 1], bottomSlots: [1, 2, 2, 1],
-    bottomCosts: [{ res: "petrole", base: 3, bonus: 2 }, { res: "metal", base: 2, bonus: 1 }, { res: "bois", base: 2, bonus: 2 }, { res: "nourriture", base: 3, bonus: 1 }] },
+    bottomCosts: [{ res: "petrole", base: 4, bonus: 3 }, { res: "metal", base: 2, bonus: 0 }, { res: "bois", base: 3, bonus: 1 }, { res: "nourriture", base: 3, bonus: 2 }] },
   { id: 5, name: "Terroir", pop: 4, coins: 7, topRow: ["Move", "Trade", "Bolster", "Produce"],
     topCubes: [2, 1, 2, 1], bottomSlots: [2, 1, 2, 1],
-    bottomCosts: [{ res: "petrole", base: 2, bonus: 1 }, { res: "metal", base: 3, bonus: 1 }, { res: "bois", base: 3, bonus: 2 }, { res: "nourriture", base: 3, bonus: 2 }] },
+    bottomCosts: [{ res: "petrole", base: 2, bonus: 0 }, { res: "metal", base: 3, bonus: 2 }, { res: "bois", base: 4, bonus: 2 }, { res: "nourriture", base: 2, bonus: 1 }] },
 ];
 
 export const BOTTOM = ["Upgrade", "Deploy", "Build", "Enlist"];

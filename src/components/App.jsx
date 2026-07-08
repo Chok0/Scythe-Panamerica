@@ -18,7 +18,7 @@ import RulesPage from './RulesPage.jsx';
 import AmbientSound from './AmbientSound.jsx';
 import SetupScreen from './SetupScreen.jsx';
 import { countRes, spendRes, getWorkerHexes } from '../logic/resources.js';
-import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
+import { canPayProduce, payProduce, getProduceCost, produceCostLabel, PRODUCE_TIERS } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
 import { getValidMoves, findPathWaypoints } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
@@ -835,6 +835,36 @@ export default function App(){
     return m;
   },[me,selAction,myFaction]);
 
+  // Cibles cliquables sur la carte pour les actions bottom Deploy/Build
+  // (en plus des boutons du panneau : cliquer l'hex surligné place directement)
+  const actionTargets=useMemo(()=>{
+    const none={type:null,hexes:new Set()};
+    if(!me||!pendingBottom)return none;
+    const workerHexes=getWorkerHexes(me);
+    const isLand=(h)=>{const hx=hMap[h];return hx&&hx.t!=="lac"&&hx.t!=="marecage";};
+    if(pendingBottom.action==="Deploy"&&me.mechs.length<4){
+      const bc=getBottomCost(me)[1];
+      const qty=Math.max(0,bc.qty-getPlanBottomBonus(me,"Deploy").costReduction);
+      const deployAlt=FACTIONS[me.faction]?.deployAltRes;
+      const res=deployAlt?bottomPick?.deployRes:bc.res; // faction à ressource alternative : attendre le choix métal/bois
+      if(!res||countRes(me,res)<qty)return none;
+      const hexes=me.factoryCard?.bottomBonus==="deploy_adjacency"
+        ?[...new Set(workerHexes.flatMap(h=>[h,...(ADJ[h]||[])]))].filter(isLand)
+        :workerHexes;
+      return{type:"deploy",res:deployAlt?res:undefined,hexes:new Set(hexes)};
+    }
+    if(pendingBottom.action==="Build"&&bottomPick?.building&&(me.buildings||[]).length<4){
+      const bc=getBottomCost(me)[2];
+      const qty=Math.max(0,bc.qty-getPlanBottomBonus(me,"Build").costReduction);
+      if(countRes(me,bc.res)<qty)return none;
+      const base=me.factoryCard?.bottomBonus==="build_no_worker"
+        ?[...new Set([...workerHexes,me.hero,...me.mechs.map(m=>m.hexId)])].filter(isLand)
+        :workerHexes;
+      return{type:"build",hexes:new Set(base.filter(h=>!(me.buildings||[]).some(b=>b.hexId===h)))};
+    }
+    return none;
+  },[me,pendingBottom,bottomPick]);
+
   // Automatic stars for the human player (bots handle these in botTurn)
   useEffect(()=>{
     if(phase!=="playing"||players.length===0)return;
@@ -1140,6 +1170,12 @@ export default function App(){
       if(p.movedUnits.length>=moveLimit){addLog(`✅ Mouvement terminé`);if(!dropOffer)endHumanTurn(myMat.topRow.indexOf("Move"));}
       return;
     }
+    // ── CIBLES D'ACTION BOTTOM : Deploy/Build en cliquant l'hex sur la carte ──
+    if(pendingBottom&&actionTargets.type&&actionTargets.hexes.has(hexId)){
+      if(actionTargets.type==="deploy")doDeploy(hexId,actionTargets.res);
+      else doBuild(hexId,bottomPick.building.type);
+      return;
+    }
     // ── SÉLECTION D'UNITÉ AU CLIC (action Move) : cliquer le pion à déplacer ──
     if(selAction==="Move"&&movableUnits.has(hexId)){
       const units=movableUnits.get(hexId);
@@ -1151,7 +1187,7 @@ export default function App(){
     if(moveSource){setMoveSource(null);return;}
     setUnitPicker(null);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -1635,18 +1671,22 @@ export default function App(){
     endHumanTurn(myMat.topRow.indexOf("Produce"));
   };
 
+  // Trade en 2 temps : on remplit 2 emplacements (mêmes ou différents), puis
+  // on CONFIRME — l'état est visible, rien ne part sans validation
   const doTradePick=(resType)=>{
     if(!me||me.coins<1){addLog("⚠ Pas d'$");return;}
-    const newPicks=[...tradePicks,resType];
-    if(newPicks.length<2){setTradePicks(newPicks);return;}
-    // 2 picks done — apply trade
+    setTradePicks(prev=>prev.length>=2?prev:[...prev,resType]);
+  };
+  const doTradeConfirm=()=>{
+    if(!me||me.coins<1||tradePicks.length!==2)return;
+    const picks=[...tradePicks];
     const workerHex=me.workers.length>0?me.workers[0].hexId:me.hero;
     setPlayers(prev=>{const n=[...prev];const p={...n[0],resources:{...n[0].resources}};const hid=String(workerHex);
       if(!p.resources[hid])p.resources[hid]={};
-      newPicks.forEach(r=>{p.resources[hid][r]=(p.resources[hid][r]||0)+1;});
+      picks.forEach(r=>{p.resources[hid][r]=(p.resources[hid][r]||0)+1;});
       p.coins--;n[0]=p;return n;});
-    const label=newPicks[0]===newPicks[1]?`+2 ${newPicks[0]}`:`+1 ${newPicks[0]}, +1 ${newPicks[1]}`;
-    addLog(`💰 -1$ → ${label}`);setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));
+    const label=picks[0]===picks[1]?`+2 ${picks[0]}`:`+1 ${picks[0]}, +1 ${picks[1]}`;
+    addLog(`💰 -1$ → ${label} (sur #${workerHex})`);setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));
   };
 
   const allHexContents=useMemo(()=>{
@@ -1972,7 +2012,7 @@ export default function App(){
           {HEXES.map(hex=>{
             const isV=validMoves.has(hex.id);const isSel=selHex===hex.id;const isHov=hovHex===hex.id;
             const isFactory=hex.t==="factory";
-            const isSrc=!moveSource&&movableUnits.has(hex.id);
+            const isSrc=(!moveSource&&movableUnits.has(hex.id))||actionTargets.hexes.has(hex.id);
             const isBonusTile=structureBonus&&hex.t!=="lac"&&hex.t!=="marecage"&&hex.t!=="factory"&&structureBonus.check(hex.id);
             return(<g key={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
               <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc}/>
@@ -2380,11 +2420,15 @@ export default function App(){
                 const cubesTop=(me.cubesOnTop||[])[i]||0;
                 const cubesBot=(me.cubesOnBottom||[])[i]||0;
                 const maxBot=(mat?.bottomSlots||[])[i]||0;
+                // Coût de Produce VISIBLE sur la carte d'action : croît avec le
+                // nombre d'ouvriers sortis (4+ → ⚡, 6+ → ♥, 8 → $)
+                const pc=getProduceCost(me.workers.length);
+                const producePay=[...Array(pc.pui).fill("power"),...Array(pc.pop).fill("pop"),...Array(pc.coins).fill("coins")];
                 const topActionRow={
                   Move:{pay:[],gain:["worker","worker"],altGain:null,label:"Move"},
                   Bolster:{pay:["coins"],gain:["power","power"],altGain:["combatCards"],label:"Bolster"},
                   Trade:{pay:["coins"],gain:["metal","metal"],altGain:["pop"],label:"Trade"},
-                  Produce:{pay:[],gain:["nourriture","nourriture"],altGain:null,label:"Produce"},
+                  Produce:{pay:producePay,gain:["nourriture","nourriture"],altGain:null,label:"Produce"},
                 }[action]||{pay:[],gain:[],altGain:null,label:action};
                 const bottomData={
                   Upgrade:{prog:`${me.upgrades||0}/6`,max:(me.upgrades||0)>=6},
@@ -2516,25 +2560,59 @@ export default function App(){
               {selAction==="Produce"&&(<div>
                 <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:14}}>Production (max 2 hex)</div>
                 {(()=>{
-                  const nw=me.workers.length;const costStr=produceCostLabel(nw);const canPay=canPayProduce(me);const c=getProduceCost(nw);
+                  const nw=me.workers.length;const costStr=produceCostLabel(nw);const canPay=canPayProduce(me);
                   return(<div>
-                    <div style={{fontSize:11,color:canPay?"var(--text-dim)":"#ff5555",marginBottom:6}}>Coût: {costStr} ({nw} ouv.)</div>
+                    {/* Jauge des paliers de coût — le palier courant est surligné */}
+                    <div style={{display:"flex",gap:4,marginBottom:8}}>
+                      {PRODUCE_TIERS.map(t=>{
+                        const active=nw>=t.min&&nw<=t.max;
+                        return <div key={t.label} style={{flex:1,textAlign:"center",padding:"5px 4px",borderRadius:5,fontSize:10.5,lineHeight:1.4,
+                          border:active?"1px solid var(--gold)":"1px solid var(--border)",
+                          background:active?"rgba(212,178,84,0.12)":"transparent",
+                          color:active?"var(--gold)":"var(--text-muted)"}}>
+                          <div style={{fontWeight:700}}>{t.label} 👷</div>
+                          <div>{t.cost}</div>
+                        </div>;
+                      })}
+                    </div>
+                    <div style={{fontSize:12,color:canPay?"var(--text-dim)":"#ff5555",marginBottom:6}}>Coût actuel : {costStr} ({nw} ouvrier{nw>1?"s":""})</div>
                     {canPay?<button onClick={doProduce} className="act-btn" style={{width:"100%"}}>⚒ Produire</button>:<div style={{color:"#8A3030"}}>Insuffisant</div>}
                   </div>);
                 })()}
               </div>)}
-              {selAction==="Trade"&&(<div>
-                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:14}}>Commerce (1$){tradePicks.length>0&&<span style={{fontWeight:400,fontSize:12,marginLeft:8}}>— choix {tradePicks.length}/2 : {tradePicks.map(r=>({metal:"⚙",bois:"🪵",nourriture:"🌽",petrole:"🛢"}[r])).join(" ")}</span>}</div>
+              {selAction==="Trade"&&(()=>{
+                const RES_ICO={metal:"⚙",bois:"🪵",nourriture:"🌽",petrole:"🛢"};
+                return(<div>
+                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:14}}>Commerce (1$)</div>
                 {me.coins<1?<div style={{color:"#8A3030",fontSize:12}}>Pas assez d'$</div>:
                 <div>
-                  <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>Choisissez 2 ressources (même type ou différentes)</div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                    {["metal","bois","nourriture","petrole"].map(r=><button key={r} onClick={()=>doTradePick(r)} className="act-btn" style={{flex:1,minWidth:60}}>{({metal:"⚙",bois:"🪵",nourriture:"🌽",petrole:"🛢"})[r]} {r}</button>)}
+                  <div style={{fontSize:12,color:"var(--text-dim)",marginBottom:6}}>Choisissez 2 ressources (même type ou différentes) :</div>
+                  {/* 2 emplacements visibles — l'état de la sélection ne peut pas être raté */}
+                  <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+                    {[0,1].map(i=>(
+                      <div key={i} style={{width:42,height:42,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:tradePicks[i]?20:13,
+                        border:tradePicks[i]?"2px solid var(--gold)":"2px dashed var(--border-dark)",
+                        background:tradePicks[i]?"rgba(212,178,84,0.12)":"transparent",
+                        color:tradePicks[i]?"var(--text)":"var(--text-muted)"}}>
+                        {tradePicks[i]?RES_ICO[tradePicks[i]]:i+1}
+                      </div>
+                    ))}
+                    <span style={{fontSize:11,color:"var(--text-dim)",flex:1}}>
+                      {tradePicks.length===0?"Cliquez 2 ressources ci-dessous":tradePicks.length===1?"Choisissez la 2e ressource":"Prêt — confirmez l'échange"}
+                    </span>
+                    {tradePicks.length>0&&<button onClick={()=>setTradePicks([])} className="act-btn" style={{fontSize:11,padding:"6px 10px",minHeight:36,opacity:0.8}}>↩</button>}
                   </div>
-                  {tradePicks.length>0&&<button onClick={()=>setTradePicks([])} className="act-btn" style={{width:"100%",fontSize:11,opacity:0.7,marginBottom:6}}>↩ Recommencer le choix</button>}
-                  <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité</button>
+                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
+                    {["metal","bois","nourriture","petrole"].map(r=><button key={r} onClick={()=>doTradePick(r)} disabled={tradePicks.length>=2} className="act-btn" style={{flex:1,minWidth:60,opacity:tradePicks.length>=2?0.4:1}}>{RES_ICO[r]} {r}</button>)}
+                  </div>
+                  {tradePicks.length===2&&(
+                    <button onClick={doTradeConfirm} className="act-btn" style={{width:"100%",marginBottom:6,background:"#3a6a3a",color:"#fff",border:"none",fontWeight:700}}>
+                      💰 Échanger : -1$ → {tradePicks[0]===tradePicks[1]?`+2 ${tradePicks[0]}`:`+1 ${tradePicks[0]}, +1 ${tradePicks[1]}`}
+                    </button>
+                  )}
+                  <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité (à la place)</button>
                 </div>}
-              </div>)}
+              </div>);})()}
               <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:12,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
             </div>
           )}

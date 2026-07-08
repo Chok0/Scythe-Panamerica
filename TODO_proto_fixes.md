@@ -32,6 +32,17 @@
 | BLD | **Building effects** — Arsenal +1⚡ Bolster, Mémorial +1♥ Bolster, Moulin +1 Produce sur hex | ✅ Joueur + Bot |
 | ANI | **Animations** — hex ripple, panel slideUp, combat entrance, btn hover/press, log slide, bot pulse | ✅ |
 
+### ✅ Corrections de jouabilité (v0.11)
+| Sujet | Correction |
+|-------|-----------|
+| **Trade 2 ressources** | UI à 2 emplacements visibles + bouton Confirmer (avant : auto-appliqué, sélection peu claire) |
+| **Coût croissant de Produce** | Seuils corrigés : 4+ ouvriers → 1⚡, 6+ → +1♥, 8 → +1$ (avant : 3/5/7, ne matchait pas la règle) |
+| **Repère visuel Produce** | Jauge des 4 paliers dans le panneau + coût dynamique affiché sur la carte d'action |
+| **Coûts bottom par plateau** | Bases rendues distinctes (2-4) pour les 5 plateaux (avant : Atelier/Pionnier/Terroir partageaient [2,3,3,3]) + affichage au setup |
+| **Deploy/Build au clic** | Cliquer l'hex surligné sur la carte place directement le mecha/bâtiment (en plus des boutons) |
+| **Mechas distincts** | Fond hexagonal teinté couleur de faction + corps du mecha Frente recoloré (avant : Frente/Nations paraissaient bruns/identiques) |
+| **Riverwalk par faction** | Vérifié discriminant par terrain (déjà OK) + affiché au setup (ex. Bayou → Désert & Village) |
+
 ## 🔧 Fixes restants
 
 ### ✅ Toutes les faction abilities — IMPLÉMENTÉES (6/6)

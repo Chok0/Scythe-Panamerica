@@ -158,8 +158,12 @@ export const UnitToken = React.memo(({ type, cx, cy, color, label, icon, faction
       return `${r * Math.cos(a)},${r * Math.sin(a)}`;
     }).join(" ");
     if (FactionIcon) {
+      // Fond hexagonal teinté par la couleur de faction : donne à chaque mecha
+      // un disque nettement coloré, distinguable même quand l'art interne de
+      // l'icône utilise des couleurs de matériau (bois/cuivre) peu contrastées
       return wrap(<>
-        <polygon points={pts} fill="rgba(6,5,3,0.8)" stroke={color} strokeWidth={2} />
+        <polygon points={pts} fill="rgba(6,5,3,0.9)" stroke={color} strokeWidth={2.5} />
+        <polygon points={pts} fill={color} opacity={0.28} stroke="none" />
         <FactionIcon cx={0} cy={0} size={34} color={color} />
       </>);
     }
