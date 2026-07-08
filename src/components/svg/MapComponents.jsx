@@ -11,10 +11,10 @@ import { FACTION_ICON_MAP, HERO_ICON_MAP, WORKER_ICON_MAP } from './FactionIcons
 // SVG resource icons for hex overlay — hard black/white, high contrast
 // ═══════════════════════════════════════════════════════════════════
 const HexResIcon = React.memo(({ cx, cy, resType }) => {
-  const s = 17; // icon size on hex — discreet marker, must not fight the art
+  const s = 22; // icône de ressource — renforcée (les hex sont désaturés dessous)
   const x = cx - s / 2, y = cy - s / 2;
-  const col = "rgba(20,14,8,0.5)";
-  const sw = "1.7";
+  const col = "rgba(14,10,5,0.9)"; // trait plus dense → l'icône ressort nettement
+  const sw = "2";
   if (resType === "metal") return (
     <g transform={`translate(${x},${y})`} style={{ pointerEvents: "none" }}>
       <svg width={s} height={s} viewBox="0 0 16 16" fill="none" stroke={col} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" overflow="visible">
@@ -78,7 +78,10 @@ export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory, isSrc
       {/* Texture pattern overlay */}
       <polygon points={hPts(hex.rx, hex.ry)} fill={`url(#tp-${hex.t})`} opacity={isWater ? 0.5 : 0.7} style={{ pointerEvents: "none" }} />
       {/* Terrain decorations */}
-      <g opacity={0.85}><TerrainDecor hex={hex} /></g>
+      <g opacity={0.72}><TerrainDecor hex={hex} /></g>
+      {/* Voile de désaturation : atténue la couleur du terrain pour que les
+          pions et l'icône de ressource ressortent (demande de lisibilité) */}
+      <polygon points={hPts(hex.rx, hex.ry)} fill="rgba(26,22,15,0.32)" style={{ pointerEvents: "none" }} />
       {/* Cream board line between hexes (printed-board separation) */}
       <polygon points={hPts(hex.rx, hex.ry, HS - 1)} fill="none"
         stroke={isSel ? "#e6c96a" : isHov ? "#e0d2a8" : "#d8c9a3"}
@@ -86,8 +89,12 @@ export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory, isSrc
         opacity={isSel ? 0.95 : isHov ? 0.7 : 0.4}
         style={{ pointerEvents: "none" }}
       />
-      {/* Resource SVG icon — top of hex so units don't cover it */}
-      {t.res && <HexResIcon cx={hex.rx} cy={hex.ry - 24} resType={t.res} />}
+      {/* Resource SVG icon — top of hex so units don't cover it.
+          Disque clair derrière l'icône pour un contraste net sur tout terrain */}
+      {t.res && <>
+        <circle cx={hex.rx} cy={hex.ry - 24} r={15} fill="rgba(232,220,196,0.82)" stroke="rgba(14,10,5,0.5)" strokeWidth={1} style={{ pointerEvents: "none" }} />
+        <HexResIcon cx={hex.rx} cy={hex.ry - 24} resType={t.res} />
+      </>}
       {/* Factory special: subtle pulsing ring */}
       {isFactory && <>
         <polygon points={hPts(hex.rx, hex.ry, HS + 4)} fill="none" stroke="#8A2A2A" strokeWidth={0.6} opacity={0.2} strokeDasharray="5 3">

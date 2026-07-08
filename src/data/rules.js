@@ -252,13 +252,13 @@ export const RULES = [
     icon: "🤝",
     sections: [
       {
-        title: "Bonus Ongoing",
-        content: "Quand vous recrutez un enrôlé, vous choisissez une colonne du bas. Désormais, chaque fois que vous OU un voisin de table effectuez cette action du bas, vous recevez le bonus :",
+        title: "Bonus immédiat + Bonus permanent",
+        content: "Recruter sur une colonne donne DEUX bonus (comme dans Scythe) : un bonus immédiat une fois, puis un bonus permanent d'un type différent. Le bonus permanent se déclenche chaque fois que vous OU un voisin de table effectuez cette action du bas :",
         list: [
-          "Colonne Upgrade — +1 Puissance",
-          "Colonne Deploy — +1 Pièce",
-          "Colonne Build — +1 Popularité",
-          "Colonne Enlist — +1 Carte Combat"
+          "Upgrade — immédiat +2 Pièces, puis permanent +1 Puissance",
+          "Deploy — immédiat +2 Popularité, puis permanent +1 Pièce",
+          "Build — immédiat +2 Cartes, puis permanent +1 Popularité",
+          "Enlist — immédiat +2 Puissance, puis permanent +1 Carte Combat"
         ]
       }
     ]

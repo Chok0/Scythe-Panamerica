@@ -64,6 +64,8 @@ export default function App(){
   const[tradePicks,setTradePicks]=useState([]); // for Trade: array of picked resource types (0-2)
   const[hovHex,setHovHex]=useState(null);
   const[clickRipple,setClickRipple]=useState(null); // {hexId, key} for ripple animation
+  const[showOpponents,setShowOpponents]=useState(false); // barre du haut dépliée : ressources + étoiles adverses
+  const[floaters,setFloaters]=useState([]); // animations de gain : {id,icon,color,x,y,label}
   const[log,setLog]=useState([]);
   const[botRunning,setBotRunning]=useState(false);
   const[showStars,setShowStars]=useState(false);
@@ -115,11 +117,15 @@ export default function App(){
     });
   },[]);
 
-  // Drag pan — left-click drag
+  // Drag pan — left-click drag.
+  // setPointerCapture : tous les pointermove/up vont au SVG même si le curseur
+  // passe sur un hex enfant ou sort brièvement du cadre → le pan ne décroche
+  // jamais (c'était le bug : onPointerLeave coupait le drag).
   const handleMapPointerDown=useCallback((e)=>{
     if(e.button>1)return;
     const mv=mapViewRef.current;
-    panStart.current={cx:e.clientX,cy:e.clientY,vx:mv.x,vy:mv.y,moved:false};
+    panStart.current={cx:e.clientX,cy:e.clientY,vx:mv.x,vy:mv.y,moved:false,pid:e.pointerId};
+    try{e.currentTarget.setPointerCapture(e.pointerId);}catch{}
   },[]);
 
   const handleMapPointerMove=useCallback((e)=>{
@@ -135,8 +141,10 @@ export default function App(){
     setMapView(prev=>({...prev,x:ps.vx-dx0*scaleX,y:ps.vy-dy0*scaleY}));
   },[isPanning]);
 
-  const handleMapPointerUp=useCallback(()=>{
-    wasDragging.current=!!(panStart.current&&panStart.current.moved);
+  const handleMapPointerUp=useCallback((e)=>{
+    const ps=panStart.current;
+    wasDragging.current=!!(ps&&ps.moved);
+    if(ps&&ps.pid!=null&&e&&e.currentTarget){try{e.currentTarget.releasePointerCapture(ps.pid);}catch{}}
     setIsPanning(false);panStart.current=null;
   },[]);
 
@@ -708,12 +716,16 @@ export default function App(){
     setBottomPick(null);
   },[me,addLog]);
 
-  // ── BOTTOM-ROW: ENLIST (pick bottom col to assign recruit → immediate + ongoing bonus) ──
+  // ── BOTTOM-ROW: ENLIST (recrue sur une colonne → bonus immédiat + ongoing) ──
+  // Règle Scythe : le bonus IMMÉDIAT (une fois) est d'un type DIFFÉRENT du
+  // bonus PERMANENT de la recrue. On garde l'ongoing fixé par colonne
+  // (Upgrade⚡ Deploy💰 Build❤ Enlist🃏) et on décale le bonus immédiat d'un
+  // cran (cyclique) : « gagne X maintenant, Y à chaque fois ensuite ».
   const ENLIST_BONUSES=[
-    {id:0,col:0,icon:"⚡",label:"+2 Puissance",apply:p=>{p.power=Math.min(p.power+2,16);}},
-    {id:1,col:1,icon:"💰",label:"+2 Pièces",apply:p=>{p.coins+=2;}},
-    {id:2,col:2,icon:"♥",label:"+2 Popularité",apply:p=>{p.pop=Math.min(p.pop+2,18);}},
-    {id:3,col:3,icon:"🃏",label:"+2 Cartes",apply:p=>{p.combatCards+=2;}},
+    {id:0,col:0,icon:"💰",label:"+2 Pièces",svgKey:"coins",apply:p=>{p.coins+=2;}},
+    {id:1,col:1,icon:"♥",label:"+2 Popularité",svgKey:"pop",apply:p=>{p.pop=Math.min(p.pop+2,18);}},
+    {id:2,col:2,icon:"🃏",label:"+2 Cartes",svgKey:"combatCards",apply:p=>{p.combatCards+=2;}},
+    {id:3,col:3,icon:"⚡",label:"+2 Puissance",svgKey:"power",apply:p=>{p.power=Math.min(p.power+2,16);}},
   ];
   const doEnlist=useCallback((colIdx)=>{
     if(!me||(me.recruits||0)>=4)return;
@@ -803,6 +815,48 @@ export default function App(){
     });
     addLog(`⚙ River Rouge Special : ressources de #${fromHid} téléportées vers le héros (#${me.hero})`);
   },[me,addLog]);
+
+  // ── ANIMATIONS DE GAIN (floaters) ──────────────────────────────────
+  // Un système basé sur les deltas de stats : tout gain (action, bonus enlist
+  // ongoing, bonus de bâtiment au Bolster…) fait « pop » l'icône correspondante.
+  // Joueur → près de la barre du haut ; adversaires → mini au-dessus de leur base.
+  const prevStatsRef=useRef(null);
+  const spawnFloater=useCallback((icon,color,x,y,mini)=>{
+    const id=`${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
+    setFloaters(f=>[...f,{id,icon,color,x,y,mini}]);
+    setTimeout(()=>setFloaters(f=>f.filter(z=>z.id!==id)),1500);
+  },[]);
+  useEffect(()=>{
+    if(phase!=="playing"||players.length===0){prevStatsRef.current=null;return;}
+    const FKEYS=[["coins","🪙","var(--gold)"],["pop","❤","#e0708a"],["power","⚡","#e0603a"],["combatCards","🃏","#c0b0d8"],["stars","⭐","#e8c860"]];
+    const snap=players.map(p=>({coins:p.coins,pop:p.pop,power:p.power,combatCards:p.combatCards,stars:p.stars}));
+    const prev=prevStatsRef.current;
+    if(prev&&prev.length===snap.length){
+      const rect=mapRef.current?.getBoundingClientRect();
+      const mv=mapViewRef.current;
+      players.forEach((p,pi)=>{
+        const pr=prev[pi];if(!pr)return;
+        let stack=0;
+        FKEYS.forEach(([k,icon,color])=>{
+          const d=snap[pi][k]-pr[k];
+          if(d>0&&d<=12){
+            if(pi===0){
+              const bx=window.innerWidth*0.34+stack*30;
+              spawnFloater(`+${d>1?d:""}${icon}`,color,bx,54,false);
+            } else if(rect&&mv){
+              const hb=HOME_BASES[p.faction];
+              const sx=rect.left+(hb.rx-mv.x)/mv.w*rect.width;
+              const sy=rect.top+(hb.ry-mv.y)/mv.h*rect.height;
+              if(sx>rect.left&&sx<rect.right&&sy>rect.top&&sy<rect.bottom)
+                spawnFloater(`+${d>1?d:""}${icon}`,color,sx+stack*16,sy-24,true);
+            }
+            stack++;
+          }
+        });
+      });
+    }
+    prevStatsRef.current=snap;
+  },[players,phase,spawnFloater]);
 
   const validMoves=useMemo(()=>{
     if(!moveSource||!me)return new Set();
@@ -1825,6 +1879,32 @@ export default function App(){
   const isMyTurn=currentP===0&&!botRunning;
   const selHexData=selHex!==null?hMap[selHex]:null;
 
+  // Ressources d'un joueur → pills (partagé barre du haut / panneau adversaires)
+  const playerStats=(p)=>{
+    const tot=(t)=>{let s=0;Object.values(p.resources).forEach(r=>{if(r[t])s+=r[t];});return s;};
+    return[
+      {svgKey:"coins",val:p.coins,color:"var(--gold)",label:"$"},
+      {svgKey:"combatCards",val:p.combatCards,color:"#bbaacc",label:"CC"},
+      {svgKey:"metal",val:tot("metal"),color:"#99aabb",label:"Mét"},
+      {svgKey:"bois",val:tot("bois"),color:"#7aaa55",label:"Bois"},
+      {svgKey:"nourriture",val:tot("nourriture"),color:"#d4b050",label:"Nour"},
+      {svgKey:"petrole",val:tot("petrole"),color:"#8a90a0",label:"Pét"},
+      {svgKey:"worker",val:p.workers.length,color:"#c89966",label:"Ouv"},
+      {svgKey:"mech",val:p.mechs.length,color:"#99aabb",label:"Mech"},
+    ];
+  };
+  // Progression des 6 étoiles (voies d'étoiles Scythe) pour n'importe quel joueur
+  const starMilestones=(p)=>[
+    {icon:"⬆",label:"Upg",done:(p.upgrades||0)>=6,prog:`${p.upgrades||0}/6`},
+    {icon:"⬡",label:"Mech",done:p.mechs.length>=4,prog:`${p.mechs.length}/4`},
+    {icon:"🏗",label:"Bât",done:(p.buildings||[]).length>=4,prog:`${(p.buildings||[]).length}/4`},
+    {icon:"🤝",label:"Recr",done:(p.recruits||0)>=4,prog:`${p.recruits||0}/4`},
+    {icon:"⚔",label:"Cbt",done:(p.combatWins||0)>=2,prog:`${Math.min(p.combatWins||0,2)}/2`},
+    {icon:"👷",label:"Ouv",done:p.workers.length>=8,prog:`${p.workers.length}/8`},
+    {icon:"♥",label:"Pop",done:p.pop>=18,prog:`${p.pop}/18`},
+    {icon:"⚡",label:"Pui",done:p.power>=16,prog:`${p.power}/16`},
+  ];
+
 
   return(
     <div style={{height:"100vh",display:"grid",gridTemplateRows:"var(--top-h) 1fr",gridTemplateColumns:"var(--left-w) 1fr var(--right-w)",background:"var(--bg)",color:"var(--text)",overflow:"hidden"}}>
@@ -1844,28 +1924,22 @@ export default function App(){
         <div style={{width:1,height:28,background:"var(--border-light)",flexShrink:0}}/>
         {/* Resource counters — SVG icons */}
         {(()=>{
-          const totalRes=(t)=>{let s=0;Object.values(me.resources).forEach(r=>{if(r[t])s+=r[t];});return s;};
-          const stats=[
-            {svgKey:"coins",val:me.coins,color:"var(--gold)",label:"$"},
-            {svgKey:"combatCards",val:me.combatCards,color:"#bbaacc",label:"CC"},
-            {svgKey:"metal",val:totalRes("metal"),color:"#99aabb",label:"Mét"},
-            {svgKey:"bois",val:totalRes("bois"),color:"#7aaa55",label:"Bois"},
-            {svgKey:"nourriture",val:totalRes("nourriture"),color:"#d4b050",label:"Nour"},
-            {svgKey:"petrole",val:totalRes("petrole"),color:"#8a90a0",label:"Pét"},
-            {svgKey:"worker",val:me.workers.length,color:"#c89966",label:"Ouv"},
-            {svgKey:"mech",val:me.mechs.length,color:"#99aabb",label:"Mech"},
-          ];
+          const stats=playerStats(me);
           return stats.map((s,i)=>{
             const Icon=RESOURCE_ICONS[s.svgKey];
             return(
             <div key={i} className="res-pill" title={s.label}>
-              <span className="res-icon" style={{display:"flex",alignItems:"center"}}>{Icon?<Icon size={13} color={s.color}/>:s.svgKey}</span>
+              <span className="res-icon" style={{display:"flex",alignItems:"center"}}>{Icon?<Icon size={19} color={s.color}/>:s.svgKey}</span>
               <span className="res-val" style={{color:s.color}}>{s.val}</span>
             </div>
           );});
         })()}
         {/* Stars - right side */}
-        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4}}>
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6}}>
+          {players.length>1&&<button onClick={()=>setShowOpponents(s=>!s)} title="Voir les adversaires" style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:6,fontSize:13,fontWeight:700,background:showOpponents?"rgba(200,112,64,0.18)":"rgba(200,112,64,0.06)",color:"var(--rust)",border:"1px solid var(--border-dark)",fontFamily:"var(--font-title)"}}>
+            👥 {players.length-1}
+            <span style={{fontSize:9,transform:showOpponents?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
+          </button>}
           {me.factoryCard&&<div style={{fontSize:12,padding:"4px 10px",borderRadius:4,background:me.factoryCard.type==="tesla"?"#7050a022":"#4a5a6a22",border:me.factoryCard.type==="tesla"?"1px solid #7050a0":"1px solid #4a5a6a",color:me.factoryCard.type==="tesla"?"#b080e0":"#8aa0b8"}} title={me.factoryCard.desc}>{me.factoryCard.name}</div>}
           {(me.fragments||0)>0&&<div style={{fontSize:12,padding:"4px 10px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:"#a080d0"}}>{me.fragments}/2 frag.</div>}
           <button onClick={()=>setShowStars(s=>!s)} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 12px",borderRadius:6,fontSize:13,fontWeight:700,background:showStars?"var(--gold)":"rgba(255,215,0,0.08)",color:showStars?"var(--bg)":"#C9A84C",border:"1px solid rgba(255,215,0,0.3)",fontFamily:"var(--font-title)"}}>
@@ -1874,6 +1948,51 @@ export default function App(){
           <button onClick={()=>setShowRules(true)} title="Regles du jeu" style={{padding:"5px 10px",borderRadius:6,fontSize:13,fontWeight:700,background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)",fontFamily:"var(--font-title)"}}>?</button>
         </div>
       </div>
+
+      {/* ═══ BARRE DÉPLIABLE : RESSOURCES + ÉTOILES DES ADVERSAIRES ═══ */}
+      {showOpponents&&players.length>1&&(
+        <div style={{position:"fixed",top:"var(--top-h)",left:0,right:0,zIndex:40,
+          background:"linear-gradient(180deg,#241c11,#181206)",borderBottom:"2px solid var(--panel-edge)",
+          boxShadow:"0 8px 24px rgba(0,0,0,0.6)",padding:"10px 16px",animation:"slideDown 0.2s ease",
+          display:"flex",flexDirection:"column",gap:8,maxHeight:"70vh",overflowY:"auto"}}>
+          {players.slice(1).map((op,idx)=>{
+            const of=FACTIONS[op.faction];const oi=idx+1;const active=oi===currentP;
+            return(
+              <div key={op.faction} style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",
+                padding:"6px 10px",borderRadius:8,background:active?"rgba(200,112,64,0.08)":"rgba(255,255,255,0.02)",
+                borderLeft:`4px solid ${of.color}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,minWidth:150}}>
+                  <div style={{width:30,height:30,borderRadius:"50%",background:of.color+"22",border:`2px solid ${of.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,color:of.color,fontFamily:"var(--font-title)"}}>{of.name[0]}</div>
+                  <div style={{lineHeight:1.2}}>
+                    <div style={{fontSize:13,fontWeight:700,color:of.color,fontFamily:"var(--font-title)"}}>{of.name}{op.isBot?" 🤖":""}{active?" ◀":""}</div>
+                    <div style={{fontSize:10,color:"var(--text-dim)"}}>{op.matName} · ⭐{op.stars}/6</div>
+                  </div>
+                </div>
+                {/* Ressources */}
+                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                  {playerStats(op).map((s,i)=>{const Icon=RESOURCE_ICONS[s.svgKey];return(
+                    <div key={i} className="res-pill" title={s.label} style={{minWidth:40,padding:"3px 7px"}}>
+                      <span style={{display:"flex",alignItems:"center"}}>{Icon?<Icon size={15} color={s.color}/>:null}</span>
+                      <span className="res-val" style={{color:s.color,fontSize:14}}>{s.val}</span>
+                    </div>
+                  );})}
+                </div>
+                {/* Étoiles — progression des 6 voies */}
+                <div style={{display:"flex",gap:3,marginLeft:"auto",flexWrap:"wrap"}}>
+                  {starMilestones(op).map((m,i)=>(
+                    <div key={i} title={`${m.label} ${m.prog}`} style={{display:"flex",alignItems:"center",gap:2,padding:"2px 5px",borderRadius:4,fontSize:10,
+                      background:m.done?"rgba(232,200,96,0.15)":"rgba(255,255,255,0.03)",
+                      border:m.done?"1px solid rgba(232,200,96,0.4)":"1px solid var(--border)"}}>
+                      <span>{m.done?"⭐":m.icon}</span>
+                      <span style={{color:m.done?"#e8c860":"var(--text-muted)",fontFamily:"var(--font-mono)"}}>{m.prog}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* ═══ LEFT: POWER + POPULARITY TRACKS ═══ */}
       <div style={{display:"flex",gap:4,background:"linear-gradient(180deg,#241d12,#171209 60%,#100c07)",borderRight:"1px solid var(--panel-edge)",boxShadow:"inset -1px 0 0 rgba(216,201,163,0.06)",padding:"4px 4px",overflow:"hidden"}}>
@@ -1932,7 +2051,7 @@ export default function App(){
         <div style={{position:"absolute",bottom:6,left:8,zIndex:5,fontSize:10,color:"var(--text-muted)",opacity:0.5,pointerEvents:"none"}}>Glisser: panoramique · Molette/pinch: zoom</div>
         {/* SVG Map */}
         <svg ref={mapRef} viewBox={`${mapView.x} ${mapView.y} ${mapView.w} ${mapView.h}`} style={{width:"100%",height:"100%",display:"block",minHeight:"100%"}}
-          onPointerDown={handleMapPointerDown} onPointerMove={handleMapPointerMove} onPointerUp={handleMapPointerUp} onPointerLeave={handleMapPointerUp}
+          onPointerDown={handleMapPointerDown} onPointerMove={handleMapPointerMove} onPointerUp={handleMapPointerUp} onPointerCancel={handleMapPointerUp}
           onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
           <defs>
             {Object.entries(TERRAINS).map(([key,t])=>(
@@ -2869,6 +2988,21 @@ export default function App(){
           </>}
         </div>
       </div>
+
+      {/* ═══ FLOATERS — animations de gain (pièces/cœurs/puissance qui pop) ═══ */}
+      {floaters.length>0&&(
+        <div style={{position:"fixed",inset:0,pointerEvents:"none",zIndex:50}}>
+          {floaters.map(f=>(
+            <div key={f.id} className="floater" style={{
+              position:"absolute",left:f.x,top:f.y,transform:"translate(-50%,-50%)",
+              fontSize:f.mini?13:22,fontWeight:900,color:f.color,
+              textShadow:"0 1px 3px rgba(0,0,0,0.9),0 0 6px rgba(0,0,0,0.6)",
+              fontFamily:"var(--font-title)",whiteSpace:"nowrap",
+            }}>{f.icon}</div>
+          ))}
+        </div>
+      )}
+
       <AmbientSound />
     </div>
   );
