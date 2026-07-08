@@ -10,12 +10,12 @@ export const ENCOUNTERS = [
   { id: 2, name: "Le Pont Coupé", desc: "Le pont est détruit. Des villageois tentent de traverser.",
     choices: [
       { label: "Reconstruire", icon: "♥", desc: "-1 bois, +3 pop", effect: p => { if (countRes(p, "bois") >= 1) { const sp = spendRes(p, "bois", 1); p.resources = sp.resources; } p.pop = Math.min(p.pop + 3, 18); } },
-      { label: "Taxer", icon: "💰", desc: "+3$", effect: p => { p.coins += 3; } },
+      { label: "Taxer", icon: "💰", desc: "-1 pop, +3$", available: p => p.pop >= 1, effect: p => { p.pop = Math.max(0, p.pop - 1); p.coins += 3; } },
       { label: "Contourner", icon: "🃏", desc: "+2 cartes combat", effect: p => { p.combatCards += 2; } },
     ] },
   { id: 3, name: "La Mine Abandonnée", desc: "Une mine oubliée, pleine de ressources... ou de dangers.",
     choices: [
-      { label: "Explorer", icon: "⚙", desc: "+3 métal", effect: p => { const h = String(p.hero); if (!p.resources[h]) p.resources[h] = {}; p.resources[h].metal = (p.resources[h].metal || 0) + 3; } },
+      { label: "Explorer", icon: "⚙", desc: "-1 pop, +3 métal", available: p => p.pop >= 1, effect: p => { p.pop = Math.max(0, p.pop - 1); const h = String(p.hero); if (!p.resources[h]) p.resources[h] = {}; p.resources[h].metal = (p.resources[h].metal || 0) + 3; } },
       { label: "Embaucher", icon: "👷", desc: "+1 ouvrier ici", effect: p => { if (p.workers.length < 8) p.workers.push({ id: `${p.faction}_w${p.workers.length}`, hexId: p.hero }); } },
       { label: "Dynamiter", icon: "⚡", desc: "+3 puissance", effect: p => { p.power = Math.min(p.power + 3, 16); } },
     ] },
@@ -23,7 +23,7 @@ export const ENCOUNTERS = [
     choices: [
       { label: "Accueillir", icon: "♥", desc: "+3 pop, +1 ouvrier", effect: p => { p.pop = Math.min(p.pop + 3, 18); if (p.workers.length < 8) p.workers.push({ id: `${p.faction}_w${p.workers.length}`, hexId: p.hero }); } },
       { label: "Recruter", icon: "🃏", desc: "+1 carte, +1 puissance", effect: p => { p.combatCards++; p.power = Math.min(p.power + 1, 16); } },
-      { label: "Ignorer", icon: "💰", desc: "+2$", effect: p => { p.coins += 2; } },
+      { label: "Ignorer", icon: "💰", desc: "-1 pop, +2$", available: p => p.pop >= 1, effect: p => { p.pop = Math.max(0, p.pop - 1); p.coins += 2; } },
     ] },
   { id: 5, name: "Le Prêcheur au Carrefour", desc: "Un prédicateur harangue une foule. Milice ou messie ?",
     choices: [
@@ -51,20 +51,20 @@ export const ENCOUNTERS = [
     ] },
   { id: 9, name: "Le Champ de Pétrole", desc: "Du pétrole jaillit du sol. Sacré pour les uns, fortune pour les autres.",
     choices: [
-      { label: "Extraire", icon: "🛢", desc: "+3 pétrole", effect: p => { const h = String(p.hero); if (!p.resources[h]) p.resources[h] = {}; p.resources[h].petrole = (p.resources[h].petrole || 0) + 3; } },
+      { label: "Extraire", icon: "🛢", desc: "-1 pop, +3 pétrole", available: p => p.pop >= 1, effect: p => { p.pop = Math.max(0, p.pop - 1); const h = String(p.hero); if (!p.resources[h]) p.resources[h] = {}; p.resources[h].petrole = (p.resources[h].petrole || 0) + 3; } },
       { label: "Protéger", icon: "♥", desc: "+3 pop", effect: p => { p.pop = Math.min(p.pop + 3, 18); } },
-      { label: "Vendre", icon: "💰", desc: "+4$", effect: p => { p.coins += 4; } },
+      { label: "Vendre", icon: "💰", desc: "-2 pop, +4$", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); p.coins += 4; } },
     ] },
   { id: 10, name: "Le Télégraphe Fantôme", desc: "Un appareil crépite des messages codés. Qui écoute ?",
     choices: [
-      { label: "Décrypter", icon: "🃏", desc: "+3 cartes combat", effect: p => { p.combatCards += 3; } },
+      { label: "Décrypter", icon: "🃏", desc: "-1$, +3 cartes combat", available: p => p.coins >= 1, effect: p => { p.coins--; p.combatCards += 3; } },
       { label: "Transmettre", icon: "♥", desc: "+2 pop, +1$", effect: p => { p.pop = Math.min(p.pop + 2, 18); p.coins++; } },
       { label: "Détruire", icon: "⚡", desc: "+2 puissance", effect: p => { p.power = Math.min(p.power + 2, 16); } },
     ] },
   { id: 11, name: "Le Cimetière de Mechas", desc: "Des dizaines de colosses rouillés. Mémoire ou ferraille ?",
     choices: [
       { label: "Démonter", icon: "⚙", desc: "+3 métal", effect: p => { const h = String(p.hero); if (!p.resources[h]) p.resources[h] = {}; p.resources[h].metal = (p.resources[h].metal || 0) + 3; } },
-      { label: "Mémorial", icon: "♥", desc: "+4 pop", effect: p => { p.pop = Math.min(p.pop + 4, 18); } },
+      { label: "Mémorial", icon: "♥", desc: "-2$, +4 pop", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.pop = Math.min(p.pop + 4, 18); } },
       { label: "Fouiller", icon: "🃏", desc: "+2 cartes, +1 puissance", effect: p => { p.combatCards += 2; p.power = Math.min(p.power + 1, 16); } },
     ] },
   { id: 12, name: "La Contrebandière", desc: "Elle vend de tout. Armes, nourriture, secrets.",
@@ -77,19 +77,19 @@ export const ENCOUNTERS = [
     choices: [
       { label: "Activer", icon: "⚡", desc: "+3 puissance", effect: p => { p.power = Math.min(p.power + 3, 16); } },
       { label: "Distribuer", icon: "♥", desc: "+2 pop, +1 ouvrier", effect: p => { p.pop = Math.min(p.pop + 2, 18); if (p.workers.length < 8) p.workers.push({ id: `${p.faction}_w${p.workers.length}`, hexId: p.hero }); } },
-      { label: "Revendre", icon: "💰", desc: "+4$", effect: p => { p.coins += 4; } },
+      { label: "Revendre", icon: "💰", desc: "-1 pop, +4$", available: p => p.pop >= 1, effect: p => { p.pop = Math.max(0, p.pop - 1); p.coins += 4; } },
     ] },
   { id: 14, name: "Les Enfants du Mecha", desc: "Des orphelins vivent dans la carcasse d'un mecha géant.",
     choices: [
-      { label: "Adopter", icon: "♥", desc: "+4 pop", effect: p => { p.pop = Math.min(p.pop + 4, 18); } },
-      { label: "Former", icon: "👷", desc: "+2 ouvriers", effect: p => { for (let i = 0; i < 2 && p.workers.length < 8; i++) p.workers.push({ id: `${p.faction}_w${p.workers.length}`, hexId: p.hero }); } },
+      { label: "Adopter", icon: "♥", desc: "-2$, +4 pop", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.pop = Math.min(p.pop + 4, 18); } },
+      { label: "Former", icon: "👷", desc: "-1$, +2 ouvriers", available: p => p.coins >= 1, effect: p => { p.coins--; for (let i = 0; i < 2 && p.workers.length < 8; i++) p.workers.push({ id: `${p.faction}_w${p.workers.length}`, hexId: p.hero }); } },
       { label: "Passer", icon: "💰", desc: "+2$, +1 carte", effect: p => { p.coins += 2; p.combatCards++; } },
     ] },
   { id: 15, name: "Le Dernier Gouverneur", desc: "Il offre sa reddition. Que faites-vous de son pouvoir ?",
     choices: [
       { label: "Accepter", icon: "♥", desc: "+3 pop, +2$", effect: p => { p.pop = Math.min(p.pop + 3, 18); p.coins += 2; } },
       { label: "Exiger", icon: "⚡", desc: "+3 puissance, +1 carte", effect: p => { p.power = Math.min(p.power + 3, 16); p.combatCards++; } },
-      { label: "Exiler", icon: "💰", desc: "+5$", effect: p => { p.coins += 5; } },
+      { label: "Exiler", icon: "💰", desc: "-2 pop, +5$", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); p.coins += 5; } },
     ] },
 ];
 

@@ -1,5 +1,5 @@
 import { FACTIONS } from '../data/factions.js';
-import { HEXES, HOME_BASES } from '../data/hexes.js';
+import { HEXES, HOME_BASES, CURRENT_MAP } from '../data/hexes.js';
 import { MATS } from '../data/mats.js';
 
 export const createPlayer = (factionId, matId, isBot) => {
@@ -13,7 +13,7 @@ export const createPlayer = (factionId, matId, isBot) => {
     faction: factionId, matId, isBot,
     power: f.power, combatCards: f.cards, pop: pm.pop, coins: pm.coins,
     stars: 0, hero: heroHex.id,
-    workers: f.workerHex.map((hid, i) => ({ id: `${factionId}_w${i}`, hexId: hid })),
+    workers: (CURRENT_MAP.starts?.[factionId]?.workerHex ?? f.workerHex).map((hid, i) => ({ id: `${factionId}_w${i}`, hexId: hid })),
     mechs: [], resources: {}, lastCol: null, buildings: [], encounters: 0,
     unlockedAbilities: [],
     topRow: pm.topRow, matName: pm.name,

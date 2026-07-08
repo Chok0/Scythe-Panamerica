@@ -1,4 +1,10 @@
-export const HEXES = [
+// Carte du jeu — supporte le chargement dynamique (cartes procédurales).
+// Les exports HEXES/RIVERS/hMap/ADJ/RSET sont des bindings ES vivants :
+// loadMap() les réassigne et TOUTE la logique (mouvement, bots, scoring…)
+// voit la nouvelle carte sans autre changement.
+
+// ── Géométrie fixe : 43 hexagones (ids et coordonnées immuables) ──
+const DEFAULT_HEXES = [
   { id: 0, rx: 265, ry: 103, t: "toundra" }, { id: 1, rx: 501, ry: 103, t: "montagne" }, { id: 2, rx: 737, ry: 103, t: "toundra" },
   { id: 3, rx: 146, ry: 171, t: "marecage" }, { id: 4, rx: 382, ry: 171, t: "village" }, { id: 5, rx: 618, ry: 171, t: "lac" }, { id: 6, rx: 855, ry: 171, t: "plaine" },
   { id: 7, rx: 265, ry: 240, t: "plaine" }, { id: 8, rx: 501, ry: 240, t: "toundra" }, { id: 9, rx: 737, ry: 240, t: "foret" },
@@ -14,7 +20,7 @@ export const HEXES = [
   { id: 46, rx: 500, ry: 923, t: "village" }, { id: 47, rx: 855, ry: 855, t: "lac" },
 ];
 
-export const RIVERS = [
+const DEFAULT_RIVERS = [
   [0, 3], [0, 7], [4, 7], [4, 8], [3, 10], [7, 10], [17, 21], [17, 25],
   [23, 28], [31, 35], [35, 38], [38, 45], [7, 14], [14, 21],
   [25, 32], [25, 29], [21, 29], [26, 29], [29, 33], [33, 36], [36, 40], [40, 46],
@@ -31,16 +37,12 @@ export const HOME_BASES = {
   dominion: { rx: 395, ry: 65 },
 };
 
-// Lookup map: hexId → hex object
-export const hMap = Object.fromEntries(HEXES.map(h => [h.id, h]));
-
-// Adjacency map (computed once)
-export const ADJ = (() => {
+const computeAdj = (hexes) => {
   const a = {};
-  HEXES.forEach(h => { a[h.id] = []; });
-  for (let i = 0; i < HEXES.length; i++) {
-    for (let j = i + 1; j < HEXES.length; j++) {
-      const ha = HEXES[i], hb = HEXES[j];
+  hexes.forEach(h => { a[h.id] = []; });
+  for (let i = 0; i < hexes.length; i++) {
+    for (let j = i + 1; j < hexes.length; j++) {
+      const ha = hexes[i], hb = hexes[j];
       if (Math.sqrt((ha.rx - hb.rx) ** 2 + (ha.ry - hb.ry) ** 2) < 160) {
         a[ha.id].push(hb.id);
         a[hb.id].push(ha.id);
@@ -48,8 +50,36 @@ export const ADJ = (() => {
     }
   }
   return a;
-})();
+};
 
-// River set for fast lookup
-export const RSET = new Set(RIVERS.map(([a, b]) => `${Math.min(a, b)}-${Math.max(a, b)}`));
+// ── Carte par défaut (celle dessinée à la main) ──
+export const DEFAULT_MAP = {
+  name: "panamerica",
+  hexes: DEFAULT_HEXES,
+  rivers: DEFAULT_RIVERS,
+  encounterHexes: [2, 4, 14, 16, 20, 27, 29, 35, 41],
+  // starts: null → workerHex statiques de factions.js
+  starts: null,
+};
+
+// ── Bindings vivants (réassignés par loadMap) ──
+export let HEXES = [];
+export let RIVERS = [];
+export let hMap = {};
+export let ADJ = {};
+export let RSET = new Set();
+export let CURRENT_MAP = DEFAULT_MAP;
+
 export const hasR = (a, b) => RSET.has(`${Math.min(a, b)}-${Math.max(a, b)}`);
+
+/** Charge une carte (par défaut ou générée) — toute la logique suit via les bindings. */
+export const loadMap = (map) => {
+  CURRENT_MAP = map;
+  HEXES = map.hexes;
+  RIVERS = map.rivers;
+  hMap = Object.fromEntries(map.hexes.map(h => [h.id, h]));
+  ADJ = computeAdj(map.hexes);
+  RSET = new Set(map.rivers.map(([a, b]) => `${Math.min(a, b)}-${Math.max(a, b)}`));
+};
+
+loadMap(DEFAULT_MAP);

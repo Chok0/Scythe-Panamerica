@@ -4,10 +4,12 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { TERRAINS } from '../data/terrains.js';
 import { FACTIONS, FACTION_IDS } from '../data/factions.js';
-import { HEXES, RIVERS, HOME_BASES, hMap, ADJ } from '../data/hexes.js';
+import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, CURRENT_MAP, DEFAULT_MAP, loadMap } from '../data/hexes.js';
+import { generateAcceptedMap } from '../data/mapGen.js';
 import { getCombatBonus } from '../data/combat.js';
+import { BALANCE } from '../data/balance.js';
 import { EMPIRE_START, EMPIRE_RAILS, drawEmpireCombat } from '../data/empire.js';
-import { ENCOUNTERS, ENCOUNTER_HEXES } from '../data/encounters.js';
+import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA } from '../data/plans.js';
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, applyEnlistOngoing } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
@@ -21,6 +23,8 @@ import { getValidMoves } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer } from '../logic/player.js';
 import { botTurn } from '../logic/bot.js';
+import { applyBotPvpAfterMove, servitudeOnDisplace } from '../logic/pvpBots.js';
+import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { applyPlanTop, getPlanBottomBonus } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
 import { ActionRow, CubeSlots, RESOURCE_ICONS } from './svg/ActionIcons.jsx';
@@ -30,6 +34,7 @@ export default function App(){
   const[selFaction,setSelFaction]=useState(null);
   const[selMat,setSelMat]=useState(null);
   const[numBots,setNumBots]=useState(2);
+  const[randomMap,setRandomMap]=useState(false);
   const[players,setPlayers]=useState([]);
   const[currentP,setCurrentP]=useState(0);
   const[turn,setTurn]=useState(1);
@@ -44,7 +49,7 @@ export default function App(){
   const[combat,setCombat]=useState(null); // {type:"pvp"|"pve", hexId, enemyIdx?, empireId?, empireCard?, phase:"choose"|"reward", powerSpend:0, cardsSpend:0}
   const[encounter,setEncounter]=useState(null); // {card, hexId}
   const[rougeRiver,setRougeRiver]=useState(null); // {cards:[]}
-  const[encounterTokens,setEncounterTokens]=useState(new Set(ENCOUNTER_HEXES));
+  const[encounterTokens,setEncounterTokens]=useState(new Set(CURRENT_MAP.encounterHexes));
   const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
   const[moveSource,setMoveSource]=useState(null);
   const[preActionSnapshot,setPreActionSnapshot]=useState(null); // snapshot of player[0] before action, for undo
@@ -234,6 +239,18 @@ export default function App(){
 
   const startGame=useCallback(()=>{
     if(!selFaction||!selMat)return;
+    // Carte : procédurale (validée par les règles de non-acceptation) ou celle d'origine
+    if(randomMap){
+      const gen=generateAcceptedMap(Math.random);
+      loadMap(gen.map);
+      addLog(`🗺 Carte procédurale générée (${gen.tries} essai${gen.tries>1?"s":""})`);
+    } else {
+      loadMap(DEFAULT_MAP);
+    }
+    setEncounterTokens(new Set(CURRENT_MAP.encounterHexes));
+    setEmpire(Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])));
+    setRails([...EMPIRE_RAILS]);
+    setRrVisitors(0);
     const usedFactions=[selFaction];const usedMats=[selMat];
     const ps=[createPlayer(selFaction,selMat,false)];
     const availF=FACTION_IDS.filter(f=>!usedFactions.includes(f));
@@ -259,7 +276,7 @@ export default function App(){
       const y=Math.max(MAP_BASE.y,Math.min(MAP_BASE.y+MAP_BASE.h-zh,heroHex.ry-zh/2));
       setMapView({x,y,w:zw,h:zh});
     }
-  },[selFaction,selMat,numBots,addLog]);
+  },[selFaction,selMat,numBots,randomMap,addLog]);
 
   const revealObjective=useCallback((objIdx)=>{
     const p=players[0];if(!p||p.objectiveRevealed)return;
@@ -339,13 +356,19 @@ export default function App(){
     const timer=setTimeout(()=>{
       // Build enemy hexes set for this bot (all hexes with other factions' units)
       const botEnemyHexes=new Set();
+      // PvP : hex des unités combattantes adverses (bots ET joueur humain — la
+      // défense du joueur est interactive via le modal de combat)
+      const attackable=new Set();
       players.forEach((op,oi)=>{
         if(oi===cp)return;
         botEnemyHexes.add(op.hero);
         op.mechs.forEach(m=>botEnemyHexes.add(m.hexId));
         op.workers.forEach(w=>botEnemyHexes.add(w.hexId));
+        attackable.add(op.hero);
+        op.mechs.forEach(m=>attackable.add(m.hexId));
       });
-      let result=botTurn(players[cp],empire,botEnemyHexes,rails);
+      const botCtx={attackable,forbidden:new Set(),encounterHexes:encounterTokens};
+      let result=botTurn(players[cp],empire,botEnemyHexes,rails,botCtx);
       let p=result.player;const logs=[...result.logs];
       // ── BOT COMBAT: check if bot moved onto Empire mecha ──
       const botHeroHex=p.hero;
@@ -389,53 +412,89 @@ export default function App(){
           p.hero=bhbHex.id;
         }
       }
-      setPlayers(prev=>{
-        const n=[...prev];n[cp]=p;
-        // ── SCYTHE RULE: bot hero/mech displaces other players' workers ──
-        const botHexes=new Set([p.hero,...p.mechs.map(m=>m.hexId)]);
-        for(let oi=0;oi<n.length;oi++){
-          if(oi===cp)continue;
-          const displaced=n[oi].workers.filter(w=>botHexes.has(w.hexId));
-          if(displaced.length>0){
-            const ohb=HOME_BASES[n[oi].faction];
-            const ohbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ohb.rx)**2+(h.ry-ohb.ry)**2);const db=best?Math.sqrt((best.rx-ohb.rx)**2+(best.ry-ohb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
-            n[oi]={...n[oi],workers:n[oi].workers.map(w=>botHexes.has(w.hexId)?{...w,hexId:ohbHex.id}:w)};
-            // Bot loses pop for displacing workers
-            n[cp]={...n[cp],pop:Math.max(0,(n[cp].pop||0)-displaced.length)};
-            logs.push(`🏃 ${displaced.length} ouvrier(s) ${FACTIONS[n[oi].faction].name} renvoyé(s) ! (-${displaced.length} Pop ${FACTIONS[n[cp].faction].name})`);
-          }
-          // ── TRAP TRIGGER: bot hero/mech lands on enemy Frente trap ──
-          if(n[oi].faction==="frente"){
-            (n[oi].trapTokens||[]).forEach((trap,ti)=>{
-              if(botHexes.has(trap.hexId)&&!trap.disarmed){
-                const penalty=Math.min(n[cp].power||0,3);
-                n[cp]={...n[cp],power:Math.max(0,(n[cp].power||0)-penalty)};
-                n[oi]={...n[oi],trapTokens:[...n[oi].trapTokens]};
-                n[oi].trapTokens[ti]={...n[oi].trapTokens[ti],disarmed:true};
-                logs.push(`💥 Trap Frente sur #${trap.hexId} ! ${FACTIONS[n[cp].faction].name} -${penalty}⚡`);
-              }
-            });
-          }
+      // Copie locale des joueurs : déplacements, pièges, PvP bot↔bot, rencontre, enlist
+      let n=[...players];n[cp]=p;
+      // ── SCYTHE RULE: bot hero/mech displaces other players' workers ──
+      const botHexes=new Set([p.hero,...p.mechs.map(m=>m.hexId)]);
+      for(let oi=0;oi<n.length;oi++){
+        if(oi===cp)continue;
+        // Rule: workers retreat only when ALONE on the hex — if their hero/mechs
+        // defend it, a combat resolves instead (they retreat with the loser)
+        const defended=(hid)=>n[oi].hero===hid||n[oi].mechs.some(m=>m.hexId===hid);
+        const displaced=n[oi].workers.filter(w=>botHexes.has(w.hexId)&&!defended(w.hexId));
+        if(displaced.length>0){
+          const ohb=HOME_BASES[n[oi].faction];
+          const ohbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ohb.rx)**2+(h.ry-ohb.ry)**2);const db=best?Math.sqrt((best.rx-ohb.rx)**2+(best.ry-ohb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+          n[oi]={...n[oi],workers:n[oi].workers.map(w=>botHexes.has(w.hexId)&&!defended(w.hexId)?{...w,hexId:ohbHex.id}:w)};
+          // Bot loses pop for displacing workers
+          n[cp]={...n[cp],pop:Math.max(0,(n[cp].pop||0)-displaced.length)};
+          logs.push(`🏃 ${displaced.length} ouvrier(s) ${FACTIONS[n[oi].faction].name} renvoyé(s) ! (-${displaced.length} Pop ${FACTIONS[n[cp].faction].name})`);
+          const servB=servitudeOnDisplace(n[cp],displaced[0].hexId);
+          if(servB.captured){n[cp]=servB.player;logs.push(`⛓🤖 Servitude ! ${FACTIONS[n[cp].faction].name} capture un ouvrier (${n[cp].capturedWorkers}/2)`);}
         }
-        // ── ENLIST ONGOING: bot did a bottom action → trigger for self + neighbors ──
-        if(result.bottomCol>=0){
-          const enlistResult=applyEnlistOngoing(n,cp,result.bottomCol,FACTIONS);
-          enlistResult.logs.forEach(l=>logs.push(l));
-          for(let ei=0;ei<enlistResult.players.length;ei++){n[ei]=enlistResult.players[ei];}
+        // ── TRAP TRIGGER: bot hero/mech lands on enemy Frente trap ──
+        if(n[oi].faction==="frente"){
+          (n[oi].trapTokens||[]).forEach((trap,ti)=>{
+            if(botHexes.has(trap.hexId)&&!trap.disarmed){
+              const penalty=Math.min(n[cp].power||0,3);
+              n[cp]={...n[cp],power:Math.max(0,(n[cp].power||0)-penalty)};
+              n[oi]={...n[oi],trapTokens:[...n[oi].trapTokens]};
+              n[oi].trapTokens[ti]={...n[oi].trapTokens[ti],disarmed:true};
+              logs.push(`💥 Trap Frente sur #${trap.hexId} ! ${FACTIONS[n[cp].faction].name} -${penalty}⚡`);
+            }
+          });
         }
-        return n;
-      });
+      }
+      // ── PVP ENTRE BOTS : combats résolus à la fin de l'action Move (règle p.22) ──
+      const pvp=applyBotPvpAfterMove(n,cp,(oi)=>n[oi].isBot);
+      n=pvp.players;pvp.logs.forEach(l=>logs.push(l));
+      // ── PVP BOT → JOUEUR : le bot a engagé le combat, le joueur défend via le modal ──
+      const human=n[0];
+      const botCombatHexes2=new Set([n[cp].hero,...n[cp].mechs.map(m=>m.hexId)]);
+      const clashHex=[human.hero,...human.mechs.map(m=>m.hexId)].find(h=>botCombatHexes2.has(h));
+      let humanDefense=null;
+      if(clashHex!==undefined&&!human.isBot){
+        const atk=n[cp];
+        const atkUnits=(atk.hero===clashHex?1:0)+atk.mechs.filter(m=>m.hexId===clashHex).length;
+        const atkCB=getCombatBonus(atk,clashHex,true,human.combatCards);
+        // Le bot engage secrètement puissance + cartes (déduits à la résolution)
+        const botSpend=Math.min(Math.floor(atk.power*0.7)+1,7,atk.power);
+        const botCards=Math.min(atk.combatCards,atkUnits+atkCB.cardBonus);
+        humanDefense={type:"pvp_defense",hexId:clashHex,enemyIdx:cp,phase:"choose",powerSpend:0,cardsSpend:0,botSpend,botCards,resumeCp:cp+1};
+        logs.push(`⚔ ${FACTIONS[atk.faction].name} vous attaque sur #${clashHex} ! Défendez-vous.`);
+      }
+      // ── RENCONTRE BOT : héros sur un jeton, après les combats (règle p.24) ──
+      if(encounterTokens.has(n[cp].hero)){
+        const encHex=n[cp].hero;
+        const er=resolveBotEncounter(n[cp]);
+        n[cp]=er.player;logs.push(er.log);
+        setEncounterTokens(prev=>{const s=new Set(prev);s.delete(encHex);return s;});
+      }
+      // ── ENLIST ONGOING: bot did a bottom action → trigger for self + neighbors ──
+      if(result.bottomCol>=0){
+        const enlistResult=applyEnlistOngoing(n,cp,result.bottomCol,FACTIONS);
+        enlistResult.logs.forEach(l=>logs.push(l));
+        for(let ei=0;ei<enlistResult.players.length;ei++){n[ei]=enlistResult.players[ei];}
+      }
       // Apply bot-placed rails (from Gare build)
       // Capture the array before deleting: the setRails updater runs after this code
-      if(p._pendingRails&&p._pendingRails.length>0){
-        const newRails=[...p._pendingRails];
-        delete p._pendingRails;
+      if(n[cp]._pendingRails&&n[cp]._pendingRails.length>0){
+        const newRails=[...n[cp]._pendingRails];
+        n[cp]={...n[cp]};delete n[cp]._pendingRails;
         setRails(prev=>[...prev,...newRails]);
       }
-      addLogs(logs);setCurrentP(cp+1);
+      setPlayers(n);
+      addLogs(logs);
+      if(humanDefense){
+        // Pause de la chaîne des bots : reprise dans resolveCombat (resumeCp)
+        setBotRunning(false);
+        setCombat(humanDefense);
+      } else {
+        setCurrentP(cp+1);
+      }
     },350);
     return()=>clearTimeout(timer);
-  },[botRunning,currentP,players,phase,empire,turn,addLog,addLogs]);
+  },[botRunning,currentP,players,phase,empire,turn,rails,encounterTokens,addLog,addLogs]);
 
   // After top-row → show bottom-row option
   const endHumanTurn=useCallback((col)=>{
@@ -829,6 +888,9 @@ export default function App(){
           // Lose 1 pop per displaced worker
           p.pop=Math.max(0,p.pop-displaced);
           addLog(`♥ -${displaced} Pop (ouvriers déplacés)`);
+          // Servitude (Confédération) : capturer un des ouvriers chassés
+          const serv=servitudeOnDisplace(p,hexId);
+          if(serv.captured){p=serv.player;addLog(`⛓ Servitude ! Ouvrier capturé (-2 Pop, ${p.capturedWorkers}/2)`);}
         }
       }
       
@@ -917,12 +979,80 @@ export default function App(){
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
     if(!combat||!me)return;
-    // Player combat ability bonus (attacker if player moved, defender if empire attacked)
-    const isDefender=!!combat.empireAttacks;
+    // Player combat ability bonus (attacker if player moved, defender if attacked)
+    const isDefender=!!combat.empireAttacks||combat.type==="pvp_defense";
     const playerCBonus=getCombatBonus(me, combat.hexId, !isDefender);
     const playerTotal=combat.powerSpend + playerCBonus.powerBonus + (combat.cardsSpend*2);
     if(playerCBonus.name&&(playerCBonus.powerBonus>0||playerCBonus.cardBonus>0)){
       addLog(`🛡 ${playerCBonus.name}: ${playerCBonus.powerBonus>0?`+${playerCBonus.powerBonus}⚡ `:""}${playerCBonus.cardBonus>0?`+${playerCBonus.cardBonus}🃏`:""}`);
+    }
+
+    // ── PVP DEFENSE : un bot attaque le joueur (il a engagé secrètement ses forces) ──
+    if(combat.type==="pvp_defense"){
+      const atkIdx=combat.enemyIdx;
+      const attacker=players[atkIdx];const af=FACTIONS[attacker.faction];
+      const atkCB=getCombatBonus(attacker,combat.hexId,true,me.combatCards);
+      const attackerTotal=combat.botSpend+atkCB.powerBonus+(combat.botCards*2);
+      const win=playerTotal>attackerTotal; // l'attaquant remporte les égalités
+      addLog(`⚔ ${af.name}: ${attackerTotal} (${combat.botSpend}⚡+${combat.botCards}🃏) vs vous: ${playerTotal} (${combat.powerSpend}⚡+${combat.cardsSpend}🃏)`);
+      const myHb=HOME_BASES[me.faction];
+      const myHbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-myHb.rx)**2+(h.ry-myHb.ry)**2);const db=best?Math.sqrt((best.rx-myHb.rx)**2+(best.ry-myHb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+      const atkHb=HOME_BASES[attacker.faction];
+      const atkHbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-atkHb.rx)**2+(h.ry-atkHb.ry)**2);const db=best?Math.sqrt((best.rx-atkHb.rx)**2+(best.ry-atkHb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+      setPlayers(prev=>{
+        const n=[...prev];
+        n[0]={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
+        Object.keys(prev[0].resources).forEach(k=>{n[0].resources[k]={...prev[0].resources[k]};});
+        n[atkIdx]={...n[atkIdx],workers:[...n[atkIdx].workers],mechs:[...n[atkIdx].mechs],resources:{...n[atkIdx].resources}};
+        Object.keys(prev[atkIdx].resources).forEach(k=>{n[atkIdx].resources[k]={...prev[atkIdx].resources[k]};});
+        n[0].power-=combat.powerSpend;n[0].combatCards-=combat.cardsSpend;
+        n[atkIdx].power-=combat.botSpend;n[atkIdx].combatCards-=combat.botCards;
+        if(win){
+          // Le joueur repousse l'attaquant : retraite totale du bot + étoile défenseur
+          if(n[atkIdx].hero===combat.hexId)n[atkIdx].hero=atkHbHex.id;
+          n[atkIdx].mechs=n[atkIdx].mechs.map(m=>m.hexId===combat.hexId?{...m,hexId:atkHbHex.id}:m);
+          n[atkIdx].workers=n[atkIdx].workers.map(w=>w.hexId===combat.hexId?{...w,hexId:atkHbHex.id}:w);
+          n[0].combatWins=(n[0].combatWins||0)+1;
+          if(n[0].combatWins<=2&&!n[0][`starCombat${n[0].combatWins}`]){n[0].stars++;n[0][`starCombat${n[0].combatWins}`]=true;}
+          if(attackerTotal>=1)n[atkIdx].combatCards++;
+        } else {
+          // Le bot prend le hex : retraite totale du joueur, ressources transférées
+          const displaced=n[0].workers.filter(w=>w.hexId===combat.hexId).length;
+          if(n[0].hero===combat.hexId)n[0].hero=myHbHex.id;
+          n[0].mechs=n[0].mechs.map(m=>m.hexId===combat.hexId?{...m,hexId:myHbHex.id}:m);
+          n[0].workers=n[0].workers.map(w=>w.hexId===combat.hexId?{...w,hexId:myHbHex.id}:w);
+          const key=String(combat.hexId);const lostRes=n[0].resources[key];
+          if(lostRes){
+            if(!n[atkIdx].resources[key])n[atkIdx].resources[key]={};
+            Object.entries(lostRes).forEach(([rt,q])=>{n[atkIdx].resources[key][rt]=(n[atkIdx].resources[key][rt]||0)+q;});
+            delete n[0].resources[key];
+          }
+          if(displaced>0)n[atkIdx].pop=Math.max(0,n[atkIdx].pop-displaced);
+          n[atkIdx].combatWins=(n[atkIdx].combatWins||0)+1;
+          if(n[atkIdx].combatWins<=2&&!n[atkIdx][`starCombat${n[atkIdx].combatWins}`]){n[atkIdx].stars++;n[atkIdx][`starCombat${n[atkIdx].combatWins}`]=true;}
+          if(playerTotal>=1)n[0].combatCards++;
+          // Capacités post-combat de l'attaquant vainqueur
+          if(n[atkIdx].faction==="bayou"&&(n[atkIdx].unlockedAbilities||[]).includes(2)){
+            const loot=Math.min(n[0].coins||0,2);
+            if(loot>0){n[atkIdx].coins+=loot;n[0].coins-=loot;}
+          }
+          if(n[atkIdx].faction==="bayou"&&!n[atkIdx].chimereUsed&&prev[0].mechs.some(m=>m.hexId===combat.hexId)){
+            n[atkIdx].mechs=[...n[atkIdx].mechs,{id:`${n[atkIdx].faction}_chimere`,hexId:combat.hexId}];
+            n[atkIdx].chimereUsed=true;n[atkIdx].capturedMech=(n[atkIdx].capturedMech||0)+1;
+          }
+          if(n[atkIdx].faction==="confederation"&&displaced>0&&n[atkIdx].pop>=2&&(n[atkIdx].capturedWorkers||0)<2){
+            n[atkIdx].pop=Math.max(0,n[atkIdx].pop-2);
+            n[atkIdx].workers=[...n[atkIdx].workers,{id:`${n[atkIdx].faction}_serv${n[atkIdx].workers.length}`,hexId:combat.hexId}];
+            n[atkIdx].capturedWorkers=(n[atkIdx].capturedWorkers||0)+1;
+          }
+        }
+        return n;
+      });
+      addLog(win?`🛡 Vous repoussez ${af.name} ! ⭐ Étoile de combat.`:`❌ ${af.name} prend #${combat.hexId}... Retraite vers la base.`);
+      setCombat(null);
+      // Reprise de la chaîne des bots
+      setCurrentP(combat.resumeCp);setBotRunning(true);
+      return;
     }
 
     if(combat.type==="pve"){
@@ -995,7 +1125,7 @@ export default function App(){
       // ── WHITE FLAG CHECK (Acadiane defender with slot 2) ──
       if(enemy.faction==="acadiane"&&(enemy.unlockedAbilities||[]).includes(2)&&Math.random()<0.5){
         // Acadiane refuses combat: retreat + 2 pop, attacker gets hex + resources + star for free
-        addLog(`🏳 ${ef.name} active White Flag ! Retraite volontaire + 2 Pop.`);
+        addLog(`🏳 ${ef.name} active White Flag ! Retraite volontaire + ${BALANCE.whiteFlagPop} Pop.`);
         const ehb=HOME_BASES[enemy.faction];
         const ehbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ehb.rx)**2+(h.ry-ehb.ry)**2);const db=best?Math.sqrt((best.rx-ehb.rx)**2+(best.ry-ehb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
         setPlayers(prev=>{
@@ -1020,7 +1150,7 @@ export default function App(){
           n[combat.enemyIdx].mechs=n[combat.enemyIdx].mechs.map(m=>m.hexId===combat.hexId?{...m,hexId:ehbHex.id}:m);
           n[combat.enemyIdx].workers=n[combat.enemyIdx].workers.map(w=>w.hexId===combat.hexId?{...w,hexId:ehbHex.id}:w);
           delete n[combat.enemyIdx].resources[String(combat.hexId)];
-          n[combat.enemyIdx].pop=Math.min((n[combat.enemyIdx].pop||0)+2,18);
+          n[combat.enemyIdx].pop=Math.min((n[combat.enemyIdx].pop||0)+BALANCE.whiteFlagPop,18);
           return n;
         });
         const wfWorkerCount=enemy.workers.filter(w=>w.hexId===combat.hexId).length;
@@ -1078,12 +1208,27 @@ export default function App(){
           if(n[combat.enemyIdx].hero===combat.hexId)n[combat.enemyIdx].hero=ehbHex.id;
           n[combat.enemyIdx].mechs=n[combat.enemyIdx].mechs.map(m=>m.hexId===combat.hexId?{...m,hexId:ehbHex.id}:m);
           n[combat.enemyIdx].workers=n[combat.enemyIdx].workers.map(w=>w.hexId===combat.hexId?{...w,hexId:ehbHex.id}:w);
-          // Loser loses resources on hex
-          delete n[combat.enemyIdx].resources[String(combat.hexId)];
+          // Rule: the winner takes control of the resources on the hex
+          const lostRes=n[combat.enemyIdx].resources[String(combat.hexId)];
+          if(lostRes){
+            const key=String(combat.hexId);
+            if(!n[0].resources[key])n[0].resources[key]={};
+            Object.entries(lostRes).forEach(([rt,q])=>{n[0].resources[key][rt]=(n[0].resources[key][rt]||0)+q;});
+            delete n[combat.enemyIdx].resources[key];
+          }
+          // Rule: the loser draws 1 combat card if they revealed at least 1 power
+          if(enemyTotal>=1)n[combat.enemyIdx].combatCards++;
         } else {
           // Attacker loses: retreat to HB
           if(combat.moveData.unitType==="hero")n[0].hero=hbHex.id;
           else if(combat.moveData.unitType==="mech")n[0].mechs=n[0].mechs.map(m=>m.id===combat.moveData.unitId?{...m,hexId:hbHex.id}:m);
+          // Rule: the loser (player) draws 1 combat card if they revealed at least 1 power
+          if(playerTotal>=1)n[0].combatCards++;
+          // Rule: the winner — even defending — gains a combat star (max 2)
+          const db={...n[combat.enemyIdx]};
+          db.combatWins=(db.combatWins||0)+1;
+          if(db.combatWins<=2&&!db[`starCombat${db.combatWins}`]){db.stars++;db[`starCombat${db.combatWins}`]=true;}
+          n[combat.enemyIdx]=db;
         }
         n[0].movesLeft=(me.movesLeft||2)-1;n[0].movedUnits=[...(me.movedUnits||[]),combat.moveData.unitId];
         return n;
@@ -1151,6 +1296,42 @@ export default function App(){
       setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);
     }
   },[combat,me,players,empire,myFaction,myMat,addLog,endHumanTurn]);
+
+  // ── WHITE FLAG (Acadiane défenseur, slot 2) : céder le hex sans combattre ──
+  const resolveWhiteFlag=useCallback(()=>{
+    if(!combat||combat.type!=="pvp_defense"||!me)return;
+    const atkIdx=combat.enemyIdx;
+    const af=FACTIONS[players[atkIdx].faction];
+    const myHb=HOME_BASES[me.faction];
+    const myHbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-myHb.rx)**2+(h.ry-myHb.ry)**2);const db=best?Math.sqrt((best.rx-myHb.rx)**2+(best.ry-myHb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+    setPlayers(prev=>{
+      const n=[...prev];
+      n[0]={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
+      Object.keys(prev[0].resources).forEach(k=>{n[0].resources[k]={...prev[0].resources[k]};});
+      n[atkIdx]={...n[atkIdx],resources:{...n[atkIdx].resources}};
+      Object.keys(prev[atkIdx].resources).forEach(k=>{n[atkIdx].resources[k]={...prev[atkIdx].resources[k]};});
+      const displaced=n[0].workers.filter(w=>w.hexId===combat.hexId).length;
+      if(n[0].hero===combat.hexId)n[0].hero=myHbHex.id;
+      n[0].mechs=n[0].mechs.map(m=>m.hexId===combat.hexId?{...m,hexId:myHbHex.id}:m);
+      n[0].workers=n[0].workers.map(w=>w.hexId===combat.hexId?{...w,hexId:myHbHex.id}:w);
+      n[0].pop=Math.min((n[0].pop||0)+BALANCE.whiteFlagPop,18);
+      const key=String(combat.hexId);const lostRes=n[0].resources[key];
+      if(lostRes){
+        if(!n[atkIdx].resources[key])n[atkIdx].resources[key]={};
+        Object.entries(lostRes).forEach(([rt,q])=>{n[atkIdx].resources[key][rt]=(n[atkIdx].resources[key][rt]||0)+q;});
+        delete n[0].resources[key];
+      }
+      if(displaced>0)n[atkIdx]={...n[atkIdx],pop:Math.max(0,n[atkIdx].pop-displaced)};
+      const ab={...n[atkIdx]};
+      ab.combatWins=(ab.combatWins||0)+1;
+      if(ab.combatWins<=2&&!ab[`starCombat${ab.combatWins}`]){ab.stars++;ab[`starCombat${ab.combatWins}`]=true;}
+      n[atkIdx]=ab;
+      return n;
+    });
+    addLog(`🏳 White Flag ! Vous cédez #${combat.hexId} à ${af.name} (+${BALANCE.whiteFlagPop} Pop, aucune dépense).`);
+    setCombat(null);
+    setCurrentP(combat.resumeCp);setBotRunning(true);
+  },[combat,me,players,addLog]);
 
   // ── PVE REWARD ──
   const claimReward=useCallback((reward)=>{
@@ -1300,7 +1481,7 @@ export default function App(){
 
   // ══════════ SETUP SCREEN ══════════
   if(phase==="setup"){
-    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
+    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} randomMap={randomMap} setRandomMap={setRandomMap} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
   }
 
   // (pick_objective phase removed — player keeps both objectives per Scythe rules)
@@ -1331,8 +1512,8 @@ export default function App(){
       const territories=unitHexes.size;
       // Factory = 3 extra territories if controlled
       const factoryBonus=unitHexes.has(22)?3:0;
-      // Resources
-      let totalRes=0;Object.values(p.resources).forEach(r=>Object.values(r).forEach(n=>totalRes+=n));
+      // Resources — rule: only resources on territories you control are scored
+      let totalRes=0;Object.entries(p.resources).forEach(([hid,r])=>{if(unitHexes.has(parseInt(hid)))Object.values(r).forEach(n=>totalRes+=n);});
       const resPairs=Math.floor(totalRes/2);
       const starScore=p.stars*starMult;
       const terScore=(territories+factoryBonus+flagBonus)*terMult;
@@ -1413,7 +1594,7 @@ export default function App(){
     <div style={{height:"100vh",display:"grid",gridTemplateRows:"var(--top-h) 1fr",gridTemplateColumns:"var(--left-w) 1fr var(--right-w)",background:"var(--bg)",color:"var(--text)",overflow:"hidden"}}>
 
       {/* ═══ TOP RESOURCE BAR ═══ */}
-      <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",padding:"6px 16px",gap:10,background:"var(--bg-topbar)",borderBottom:"1px solid var(--border)",flexShrink:0,height:"var(--top-h)",overflow:"hidden"}}>
+      <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",padding:"6px 16px",gap:10,background:"linear-gradient(180deg,#282013,#1c150c)",borderBottom:"1px solid var(--panel-edge)",boxShadow:"inset 0 -1px 0 rgba(216,201,163,0.07)",flexShrink:0,height:"var(--top-h)",overflow:"hidden"}}>
         {/* Faction badge */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginRight:4,flexShrink:0}}>
           <div style={{width:36,height:36,borderRadius:"50%",background:myFaction.color+"22",border:`2px solid ${myFaction.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:myFaction.color,fontFamily:"var(--font-title)"}}>{myFaction.name[0]}</div>
@@ -1459,7 +1640,7 @@ export default function App(){
       </div>
 
       {/* ═══ LEFT: POWER + POPULARITY TRACKS ═══ */}
-      <div style={{display:"flex",gap:4,background:"linear-gradient(180deg,var(--bg-panel),#0a0906)",borderRight:"1px solid var(--border)",padding:"4px 4px",overflow:"hidden"}}>
+      <div style={{display:"flex",gap:4,background:"linear-gradient(180deg,#241d12,#171209 60%,#100c07)",borderRight:"1px solid var(--panel-edge)",boxShadow:"inset -1px 0 0 rgba(216,201,163,0.06)",padding:"4px 4px",overflow:"hidden"}}>
         {/* Power track */}
         <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
           <div style={{fontSize:8,color:"var(--rust)",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pui</div>
@@ -1594,27 +1775,17 @@ export default function App(){
           {/* Hexes */}
           {HEXES.map(hex=>{
             const isV=validMoves.has(hex.id);const isSel=selHex===hex.id;const isHov=hovHex===hex.id;
-            const units=allHexContents[hex.id]||[];
-            const empHere=Object.entries(empire).filter(([_,hid])=>hid===hex.id);
             const isFactory=hex.t==="factory";
             return(<g key={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
               <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory}/>
               {/* Terrain label removed — TerrainDecor provides visual identification */}
               <text x={hex.rx} y={hex.ry+32} textAnchor="middle" fontSize={6.5} fill="#4a4030" opacity={0.2} style={{fontFamily:"var(--font-map)",pointerEvents:"none"}}>#{hex.id}</text>
-              {units.length>0&&(()=>{const fc=units[0].factionId;const c=FACTIONS[fc]?.color||"#888";return <FactionHalo cx={hex.rx} cy={hex.ry+6} color={c} r={22}/>;})()}
-              {units.map((u,ui)=>{
-                const ox=(ui-(units.length-1)/2)*22;
-                return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}/>;
-              })}
               {(()=>{
                 const pRes=players.reduce((acc,pl)=>{const r=pl.resources[String(hex.id)];if(r)Object.entries(r).forEach(([rt,cnt])=>{acc[rt]=(acc[rt]||0)+cnt;});return acc;},{});
                 return Object.entries(pRes).map(([rt,cnt],ri)=>
                   <ResourceToken key={rt} cx={hex.rx+26} cy={hex.ry-22+ri*18} resType={rt} count={cnt}/>
                 );
               })()}
-              {empHere.map(([eid],ei)=>
-                <EmpireMecha key={eid} cx={hex.rx-16+ei*16} cy={hex.ry-20} eid={eid}/>
-              )}
               {/* Faction tokens: Traps (Frente) + Comptoirs (Acadiane) */}
               {players.map(pl=>{
                 // Traps — hidden marker (skull if active, X if disarmed)
@@ -1650,6 +1821,29 @@ export default function App(){
               })()}
             </g>);
           })}
+          {/* ── COUCHE UNITÉS : plate et animée (les pions glissent entre les hexes) ── */}
+          <g style={{pointerEvents:"none"}}>
+            {Object.entries(allHexContents).map(([hidStr,units])=>{
+              const hex=hMap[hidStr];if(!hex||units.length===0)return null;
+              const c=FACTIONS[units[0].factionId]?.color||"#888";
+              return <FactionHalo key={`halo${hidStr}`} cx={hex.rx} cy={hex.ry+6} color={c} r={22}/>;
+            })}
+            {Object.entries(allHexContents).flatMap(([hidStr,units])=>{
+              const hex=hMap[hidStr];if(!hex)return [];
+              return units.map((u,ui)=>{
+                const ox=(ui-(units.length-1)/2)*22;
+                return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}/>;
+              });
+            })}
+            {(()=>{
+              const byHex={};
+              Object.entries(empire).forEach(([eid,hid])=>{(byHex[hid]=byHex[hid]||[]).push(eid);});
+              return Object.entries(byHex).flatMap(([hidStr,eids])=>{
+                const hex=hMap[hidStr];if(!hex)return [];
+                return eids.map((eid,ei)=><EmpireMecha key={eid} cx={hex.rx-16+ei*16} cy={hex.ry-20} eid={eid}/>);
+              });
+            })()}
+          </g>
           {/* Hex click ripple */}
           {clickRipple&&(()=>{
             const rh=hMap[clickRipple.hexId];
@@ -1689,7 +1883,7 @@ export default function App(){
                   ?(combat.moveData.unitType==="hero"?1:0)+me.mechs.filter(m=>m.hexId===combat.hexId).length+(combat.moveData.unitType==="mech"?1:0)
                   :(me.hero===combat.hexId?1:0)+me.mechs.filter(m=>m.hexId===combat.hexId).length;
                 // Combat ability bonus (slot 2)
-                const isAttacker=!combat.empireAttacks;
+                const isAttacker=!combat.empireAttacks&&combat.type!=="pvp_defense";
                 const cBonus=getCombatBonus(me, combat.hexId, isAttacker);
                 const maxCards=Math.min(me.combatCards, combatUnits + cBonus.cardBonus);
                 const total=combat.powerSpend + cBonus.powerBonus + (combat.cardsSpend*2);
@@ -1701,8 +1895,8 @@ export default function App(){
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
                       <div style={{width:50,height:50,borderRadius:"50%",background:isPve?"rgba(180,30,15,0.2)":"rgba(200,100,30,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,border:isPve?"2px solid #1A3A6A":"2px solid "+(ef?ef.color:"#888"),flexShrink:0}}>⚔</div>
                       <div>
-                        <div style={{fontFamily:"var(--font-title)",color:isPve?"#2A5A8A":ef.color,fontSize:18,fontWeight:700}}>{isPve?combat.empireCard.name:`Combat vs ${ef.name}`}</div>
-                        <div style={{fontSize:12,color:"var(--text-muted)",marginTop:3}}>{isPve?`Force Empire: ${combat.empireCard.power}`:"L'adversaire choisit secrètement…"}</div>
+                        <div style={{fontFamily:"var(--font-title)",color:isPve?"#2A5A8A":ef.color,fontSize:18,fontWeight:700}}>{isPve?combat.empireCard.name:combat.type==="pvp_defense"?`${ef.name} vous attaque !`:`Combat vs ${ef.name}`}</div>
+                        <div style={{fontSize:12,color:"var(--text-muted)",marginTop:3}}>{isPve?`Force Empire: ${combat.empireCard.power}`:combat.type==="pvp_defense"?"Ses forces sont engagées en secret — défendez le territoire":"L'adversaire choisit secrètement…"}</div>
                       </div>
                     </div>
                     <div style={{marginBottom:14}}>
@@ -1724,6 +1918,9 @@ export default function App(){
                       {isPve&&<span style={{fontSize:16,fontWeight:700,marginLeft:"auto",color:total>=combat.empireCard.power?"var(--success)":"#ff4444"}}>{total>=combat.empireCard.power?"✓":"✗"} vs {combat.empireCard.power}</span>}
                     </div>
                     <button onClick={resolveCombat} style={{width:"100%",padding:"14px",fontSize:15,fontWeight:700,fontFamily:"var(--font-title)",letterSpacing:3,textTransform:"uppercase",background:"linear-gradient(135deg,var(--danger),#8b1515)",color:"#fff",border:"none",borderRadius:10,boxShadow:"0 3px 20px rgba(200,56,40,0.4)"}}>⚔ Combattre</button>
+                    {combat.type==="pvp_defense"&&me.faction==="acadiane"&&(me.unlockedAbilities||[]).includes(2)&&(
+                      <button onClick={resolveWhiteFlag} style={{width:"100%",marginTop:8,padding:"11px",fontSize:12,fontWeight:700,fontFamily:"var(--font-title)",letterSpacing:2,textTransform:"uppercase",background:"transparent",color:"var(--text-dim)",border:"1px solid var(--border-dark)",borderRadius:10}}>🏳 White Flag — céder le hex, +2 Popularité</button>
+                    )}
                   </div>
                 );
               })()}
@@ -1758,8 +1955,10 @@ export default function App(){
                     </div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                    {encounter.card.choices.map((c,ci)=>(
-                      <button key={ci} onClick={()=>resolveEncounter(ci)} className="enc-card">
+                    {encounter.card.choices.map((c,ci)=>{
+                      const locked=c.available&&!c.available(me);
+                      return(
+                      <button key={ci} onClick={()=>{if(!locked)resolveEncounter(ci);}} className="enc-card" disabled={locked} style={locked?{opacity:0.35,cursor:"not-allowed"}:undefined}>
                         <div style={{display:"flex",alignItems:"center",gap:10}}>
                           <span style={{fontSize:20,width:28,textAlign:"center"}}>{c.icon}</span>
                           <div style={{flex:1}}>
@@ -1769,7 +1968,7 @@ export default function App(){
                           <span style={{fontSize:16,color:"var(--gold-dim)"}}>›</span>
                         </div>
                       </button>
-                    ))}
+                    );})}
                   </div>
                 </div>
               )}
@@ -1838,7 +2037,7 @@ export default function App(){
       </div>
 
       {/* ═══ RIGHT PANEL: SCOREBOARD + ACTIONS + DROPDOWNS ═══ */}
-      <div style={{display:"flex",flexDirection:"column",background:"linear-gradient(180deg,var(--bg-panel),#0a0906)",borderLeft:"1px solid var(--border)",overflow:"hidden"}}>
+      <div style={{display:"flex",flexDirection:"column",background:"linear-gradient(180deg,#241d12,#171209 60%,#100c07)",borderLeft:"1px solid var(--panel-edge)",boxShadow:"inset 1px 0 0 rgba(216,201,163,0.06)",overflow:"hidden"}}>
 
         {/* ── Scoreboard ── */}
         <div style={{padding:"6px 8px",borderBottom:"1px solid var(--border)",flexShrink:0}}>
@@ -1933,7 +2132,7 @@ export default function App(){
                     transition:"all 0.2s ease",
                   }}>
                     {/* TOP ACTION */}
-                    <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(30,27,20,0.8),rgba(22,20,14,0.6))"}}>
+                    <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(46,37,22,0.75),rgba(30,24,14,0.6))"}}>
                       <div style={{minWidth:0,flex:1}}>
                         <div style={{fontSize:11,fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",color:"var(--rust)",marginBottom:4,fontFamily:"var(--font-title)"}}>{action}</div>
                         <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact />
@@ -2087,15 +2286,15 @@ export default function App(){
                   </div>;
                 })()}
                 {ba==="Deploy"&&!maxed&&(()=>{
-                  const isNations=me.faction==="nations";
+                  const deployAlt=FACTIONS[me.faction]?.deployAltRes;
                   const metalCount=countRes(me,"metal");const boisCount=countRes(me,"bois");
                   const qty=bc.qty;
                   const hasMetal=metalCount>=qty;const hasBois=boisCount>=qty;
-                  if(!isNations) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{workerHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn">⬡ #{hid}</button>)}</div>:<div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
+                  if(!deployAlt) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{workerHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn">⬡ #{hid}</button>)}</div>:<div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
                   // Nations: Esprit Sauvage — choose metal or bois
                   if(!hasMetal&&!hasBois) return <div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de métal ni de bois</div>;
                   if(!bottomPick||!bottomPick.deployRes) return <div>
-                    <div style={{fontSize:10,color:"var(--brass)",marginBottom:6}}>🌿 Esprit Sauvage — déployer avec :</div>
+                    <div style={{fontSize:10,color:"var(--brass)",marginBottom:6}}>🌿 {FACTIONS[me.faction].deployAltName||FACTIONS[me.faction].ability} — déployer avec :</div>
                     <div style={{display:"flex",gap:6}}>
                       {hasMetal&&<button onClick={()=>setBottomPick({deployRes:"metal"})} className="act-btn" style={{flex:1}}>⚙ Métal ({metalCount})</button>}
                       {hasBois&&<button onClick={()=>setBottomPick({deployRes:"bois"})} className="act-btn" style={{flex:1,borderColor:"#5a8a3a"}}>🪵 Bois ({boisCount})</button>}

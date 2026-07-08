@@ -15,6 +15,28 @@ import { transportUnits } from './transport.js';
 // Evaluate game phase: early (0-2 stars), mid (3-4), late (5+)
 const getPhase = (p) => p.stars >= 5 ? "late" : p.stars >= 3 ? "mid" : "early";
 
+// Bottom action maxed out? (no more stars/progress from it)
+const isBottomMaxed = (p, bottomAction) =>
+  bottomAction === "Upgrade" ? (p.upgrades || 0) >= 6
+    : bottomAction === "Deploy" ? p.mechs.length >= 4
+    : bottomAction === "Build" ? (p.buildings || []).length >= 4
+    : (p.recruits || 0) >= 4;
+
+// Ressources manquantes pour les actions bottom encore utiles → { resType: qtyManquante }
+// C'est le coeur de la planification : production et déplacements d'ouvriers visent ces types
+const neededResources = (p) => {
+  const costs = getBottomCost(p);
+  const need = {};
+  BOTTOM.forEach((ba, ci) => {
+    if (isBottomMaxed(p, ba)) return;
+    const bc = costs[ci];
+    if (!bc) return;
+    const missing = bc.qty - countRes(p, bc.res);
+    if (missing > 0) need[bc.res] = Math.max(need[bc.res] || 0, missing);
+  });
+  return need;
+};
+
 // Score a column choice based on strategic value
 const scoreColumn = (p, col, empire, enemyHexes, rails) => {
   const action = p.topRow[col];
@@ -26,7 +48,8 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
   let score = 0;
 
   // Can we afford the bottom action?
-  const canBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && p.faction === "nations" && countRes(p, "bois") >= bc.qty));
+  const altRes = FACTIONS[p.faction]?.deployAltRes;
+  const canBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && altRes && countRes(p, altRes) >= bc.qty));
   const bottomMaxed = bottomAction === "Upgrade" ? (p.upgrades || 0) >= 6
     : bottomAction === "Deploy" ? p.mechs.length >= 4
     : bottomAction === "Build" ? (p.buildings || []).length >= 4
@@ -45,6 +68,9 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
     }
     else if (bottomAction === "Build") score += 8;
     else if (bottomAction === "Upgrade") score += 5;
+  } else if (bottomMaxed) {
+    // Colonne au bottom épuisé : le top seul doit vraiment valoir le coup
+    score -= 8;
   }
 
   // Top action value
@@ -56,6 +82,14 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
       // More workers = more production value
       const wHexes = new Set(p.workers.map(w => w.hexId));
       score += Math.min(wHexes.size, 2) * 3;
+      // Planification : produire vaut plus si nos ouvriers sont sur des hex
+      // qui produisent les ressources dont nos bottoms ont besoin
+      const need = neededResources(p);
+      for (const hid of wHexes) {
+        const h = hMap[hid];
+        const res = h && TERRAINS[h.t]?.res;
+        if (res && need[res]) { score += 5; break; }
+      }
     }
   } else if (action === "Trade") {
     if (p.coins >= 1) {
@@ -90,8 +124,16 @@ const scoreColumn = (p, col, empire, enemyHexes, rails) => {
 };
 
 // Choose best hex to move toward (strategic targeting)
-const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose) => {
+// ctx: { attackable:Set (hex des unités combattantes d'autres BOTS), forbidden:Set
+// (hex des unités combattantes du joueur humain — jamais ciblées), encounterHexes:Set }
+const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx) => {
   if (validMoves.length === 0) return null;
+
+  // Estimation de notre force de combat pour décider d'attaquer
+  const myStrength = p.power + (p.combatCards || 0) * 3;
+  const wantCombatStar = (p.combatWins || 0) < 2;
+  // Planification : les ouvriers convergent vers les ressources manquantes des bottoms
+  const need = neededResources(p);
 
   let bestHex = null, bestScore = -999;
   for (const hexId of validMoves) {
@@ -103,18 +145,30 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose) => {
     // Resource hex value
     if (t && t.res && t.res !== "ouvriers") s += 3;
     if (t && t.res === "ouvriers" && p.workers.length < 5) s += 4;
+    // Hex produisant une ressource dont un bottom a besoin : priorité forte pour les ouvriers
+    if (purpose === "worker" && t && t.res && need[t.res]) s += 8;
 
     // Avoid enemy hexes for workers (displacement risk)
     if (purpose === "worker" && enemyHexes && enemyHexes.has(hexId)) s -= 15;
-    // Heroes/mechs also avoid enemy hexes (no bot-initiated combat implemented)
-    if ((purpose === "hero" || purpose === "mech") && enemyHexes && enemyHexes.has(hexId)) s -= 10;
+    if (purpose === "hero" || purpose === "mech") {
+      if (ctx && ctx.attackable && ctx.attackable.has(hexId)) {
+        // Combat PvP possible : attaque si on est fort et qu'une étoile est en jeu
+        if (myStrength >= 8 && wantCombatStar && getPhase(p) !== "early") s += 9;
+        else s -= 12;
+      } else if (enemyHexes && enemyHexes.has(hexId)) {
+        // Hex avec seulement des ouvriers ennemis : déplacement possible mais coûte de la pop
+        // Servitude : la Confédération y gagne un ouvrier → elle les chasse activement
+        if (p.faction === "confederation" && (p.capturedWorkers || 0) < 2 && p.pop >= 2) s += 6;
+        else s -= 4;
+      }
+    }
 
     // Move toward uncontrolled resource hexes
     const myHexes = new Set([p.hero, ...p.workers.map(w => w.hexId), ...p.mechs.map(m => m.hexId)]);
     if (!myHexes.has(hexId)) s += 2; // new territory
 
-    // Move toward encounters
-    if (purpose === "hero" && hex.encounter && !p.encDone) s += 5;
+    // Move toward encounter tokens (hero only — rule: seuls les personnages font des rencontres)
+    if (purpose === "hero" && ctx && ctx.encounterHexes && ctx.encounterHexes.has(hexId)) s += 7;
 
     // Move toward Rouge River if haven't visited
     if (purpose === "hero" && hexId === 22 && !p.rrVisited) s += 4;
@@ -155,8 +209,11 @@ const pickUpgradeDest = (p, validBottoms, mat) => {
   return validBottoms.sort((a, b) => (priority[a] ?? 2) - (priority[b] ?? 2))[0];
 };
 
-export const botTurn = (player, empire, enemyHexes, rails) => {
+export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const f = FACTIONS[player.faction];
+  // Hex des unités combattantes du joueur humain : jamais ciblés (le PvP bot↔humain
+  // nécessiterait une défense interactive — seul le PvP bot↔bot est auto-résolu)
+  const forbidden = (ctx && ctx.forbidden) || new Set();
   const p = { ...player, workers: [...player.workers], mechs: [...player.mechs], resources: { ...player.resources } };
   const logs = [];
 
@@ -192,10 +249,10 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
     }
 
     // Move hero strategically
-    const validHero = getValidMoves(p.hero, p.faction, p.unlockedAbilities || [], p, rails);
+    const validHero = getValidMoves(p.hero, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
     if (validHero.length > 0) {
       const fromHex = p.hero;
-      const target = pickMoveTarget(validHero, p, empire, enemyHexes, "hero");
+      const target = pickMoveTarget(validHero, p, empire, enemyHexes, "hero", ctx);
       p.hero = target;
       const tr = transportUnits(p, fromHex, target, "hero");
       Object.assign(p, { resources: tr.player.resources });
@@ -221,16 +278,16 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
       // Workers avoid enemies
       if (enemyHexes) wv = wv.filter(id => !enemyHexes.has(id));
       if (wv.length > 0) {
-        const wt = pickMoveTarget(wv, p, empire, enemyHexes, "worker");
+        const wt = pickMoveTarget(wv, p, empire, enemyHexes, "worker", ctx);
         p.workers[wi] = { ...p.workers[wi], hexId: wt };
         logs.push(`🤖 ${f.name}: Ouv. → #${wt}`);
       }
     } else if (p.mechs.length > 0) {
       const mi = Math.floor(Math.random() * p.mechs.length);
       const fromHex = p.mechs[mi].hexId;
-      const mv = getValidMoves(fromHex, p.faction, p.unlockedAbilities || [], p, rails);
+      const mv = getValidMoves(fromHex, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
       if (mv.length > 0) {
-        const mt = pickMoveTarget(mv, p, empire, enemyHexes, "mech");
+        const mt = pickMoveTarget(mv, p, empire, enemyHexes, "mech", ctx);
         p.mechs[mi] = { ...p.mechs[mi], hexId: mt };
         const tr = transportUnits(p, fromHex, mt, "mech");
         Object.assign(p, { workers: tr.player.workers, resources: tr.player.resources });
@@ -263,14 +320,22 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
     if (!canPayProduce(p)) { logs.push(`🤖 ${f.name}: (coût prod.)`); } else {
       payProduce(p);
       const byHex = {}; p.workers.forEach(w => { if (!byHex[w.hexId]) byHex[w.hexId] = []; byHex[w.hexId].push(w); });
-      // Pick best 2 hexes (prefer resource hexes, limit workers to 5 total)
+      // Pick best 2 hexes : d'abord ceux qui produisent une ressource MANQUANTE
+      // pour un bottom, puis villages (si sous le cap), puis autres ressources
+      const needP = neededResources(p);
+      const prodCap = getPhase(p) === "early" ? 5 : 8;
+      const hexScore = (hidStr) => {
+        const h = hMap[parseInt(hidStr)];
+        if (!h) return 0;
+        const res = TERRAINS[h.t]?.res;
+        let s = 0;
+        if (res && needP[res]) s += 10;
+        else if (res === "ouvriers" && p.workers.length < prodCap) s += 6;
+        else if (res && res !== "ouvriers") s += 3;
+        return s + byHex[hidStr].length;
+      };
       const hexIds = Object.keys(byHex)
-        .sort((a, b) => {
-          const ha = hMap[parseInt(a)], hb = hMap[parseInt(b)];
-          const ra = ha && TERRAINS[ha.t]?.res ? 1 : 0;
-          const rb = hb && TERRAINS[hb.t]?.res ? 1 : 0;
-          return rb - ra || byHex[b].length - byHex[a].length;
-        })
+        .sort((a, b) => hexScore(b) - hexScore(a))
         .slice(0, 2);
       // Worker cap: 5 early (Stegmaier's rule), then push to 8 for the star
       const workerCap = getPhase(p) === "early" ? 5 : 8;
@@ -334,7 +399,8 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
   const bottomAction = BOTTOM[col];
   const botCosts = getBottomCost(p);
   const bc = botCosts[col];
-  const canAffordBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && p.faction === "nations" && countRes(p, "bois") >= bc.qty));
+  const altResB = FACTIONS[p.faction]?.deployAltRes;
+  const canAffordBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && altResB && countRes(p, altResB) >= bc.qty));
   let bottomDone = false;
   if (canAffordBottom) {
     if (bottomAction === "Upgrade" && (p.upgrades || 0) < 6) {
@@ -359,7 +425,7 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
     } else if (bottomAction === "Deploy" && p.mechs.length < 4) {
       const wh = getWorkerHexes(p);
       if (wh.length > 0) {
-        const deployRes = (p.faction === "nations" && countRes(p, bc.res) < bc.qty) ? "bois" : bc.res;
+        const deployRes = (altResB && countRes(p, bc.res) < bc.qty) ? altResB : bc.res;
         const sp = spendRes(p, deployRes, bc.qty); Object.assign(p, { resources: sp.resources });
         // Deploy on worker hex closest to center (strategic position)
         const centerX = 500, centerY = 500;
@@ -441,9 +507,17 @@ export const botTurn = (player, empire, enemyHexes, rails) => {
   // ── DOMINION COMMERCE IMPÉRIAL ──
   if (p.faction === "dominion") {
     const resTypes = ["metal", "bois", "nourriture", "petrole"];
-    const available = resTypes.filter(r => countRes(p, r) >= 1);
+    // Ne convertir QUE le surplus : jamais une ressource requise par un bottom
+    // non maxé (sinon le Dominion cannibalise sa propre course aux étoiles)
+    const reserved = new Set();
+    const costsD = getBottomCost(p);
+    BOTTOM.forEach((ba, ci) => {
+      if (isBottomMaxed(p, ba)) return;
+      const bc = costsD[ci];
+      if (bc && countRes(p, bc.res) <= bc.qty) reserved.add(bc.res);
+    });
+    const available = resTypes.filter(r => countRes(p, r) >= 1 && !reserved.has(r));
     if (available.length > 0) {
-      // Prefer spending least useful resource
       const pick = available[available.length - 1];
       const sp = spendRes(p, pick, 1); Object.assign(p, { resources: sp.resources });
       // Strategic choice: coins early/mid, cards if combat imminent

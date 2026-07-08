@@ -1,143 +1,139 @@
 # Rapport de simulation — parties bot vs bot
 
-> Généré avec `scripts/simulate.mjs` — 500 parties, seed 42, cap 150 rounds.
-> Reproductible : `npm run sim -- --games 500 --seed 42`
+> `npm run sim -- --games 600 --seed 42` · **v4** : équilibrage appliqué après
+> A/B, cartes procédurales avec règles de non-acceptation, audit des cartes
+> usine/rencontre.
 
 ## 1. Le harnais
 
-`scripts/simulate.mjs` fait jouer des parties complètes **bot contre bot, sans UI**,
-en réutilisant la vraie logique du jeu (`src/logic`, `src/data`) et en répliquant
-la boucle d'orchestration d'`App.jsx` : tours de bots, combats PvE contre l'Empire
-(attaque et défense), déplacement d'ouvriers ennemis, pièges Frente, bonus enlist
-(soi + voisins), pose de rails par la Gare, fin immédiate à 6 étoiles, scoring final.
-
-- **RNG seedé** (`--seed`) → chaque partie est reproductible pour déboguer.
-- **Invariants vérifiés à chaque tour** : puissance/popularité/pièces/cartes dans
-  les bornes, ressources jamais négatives, unités sur des hex existants,
-  conservation des 6 cubes d'upgrade, plafonds (8 ouvriers, 4 mechas +chimère,
-  6 upgrades, 4 recrues, 4 bâtiments). Toute violation ou exception est loggée.
-- Options : `--games N`, `--seed S`, `--maxRounds R`, `--verbose` (journal de la
-  1ʳᵉ partie), `--dump fichier.ndjson` (une ligne JSON par partie pour analyse).
-
-### Limites à garder en tête
-
-- **Aucun combat PvP entre bots** (non implémenté dans le jeu) : les parties
-  bot-vs-bot sont des courses sans interaction militaire. Les étoiles de combat,
-  Servitude (Confédération), la Chimère PvP (Bayou), Flibuste et White Flag
-  n'existent pas dans ces parties.
-- Les **rencontres** et **Rouge River** sont réservées au joueur humain.
-- Les bots jouent des heuristiques simples — les chiffres mesurent « le jeu tel
-  que joué par les bots », pas l'équilibre théorique entre bons joueurs.
-
-## 2. Bugs trouvés par la simulation (corrigés)
-
-| Bug | Symptôme | Correctif |
-|---|---|---|
-| **Puissance négative** | Le bonus d'ability de combat (Cavaliers +2, Discipline +2…) était *dépensé* de la piste de puissance en plus d'être ajouté au total → `power = -2` (3 sites dans App.jsx : attaque PvE bot, défense PvE bot, défense PvP bot) | Le bonus s'ajoute au total de combat mais n'est plus déduit de la piste |
-| **Impasse économique des bots** | À 0 pièce **et** 0 puissance, un bot ne peut plus ni Produce (coût pui), ni Bolster/Trade (coût $) → il erre en Move pour l'éternité (≈70 % de parties sans fin au départ) | Le bot applique la règle Scythe « Move ou +1$ » : il prend la pièce quand il est fauché |
-| **Règle d'égalité incohérente** | Défenseur *humain* contre l'Empire : égalité = victoire ; défenseur *bot* : égalité = défaite | Alignée : le défenseur gagne l'égalité dans les deux cas |
-| **Étoile 8 ouvriers inatteignable pour les bots** | Le bot plafonnait ses ouvriers à 5 pour toujours | Cap 5 en début de partie, puis 8 |
-
-Après correctifs : **0 crash et 0 violation d'invariant sur 500 parties** (~55 000 tours de bot).
-
-## 3. Résultats (500 parties, 2 à 5 joueurs)
-
-### Durée et fins de partie
-
-| Métrique | Valeur |
-|---|---|
-| Parties finies à 6 étoiles | **49,6 %** (durée moyenne 64,6 rounds, médiane 61) |
-| Parties arrêtées au cap de 150 rounds | 50,4 % |
-| Le déclencheur des 6 étoiles gagne au score | 67,7 % des cas |
-| Écart moyen 1ᵉʳ–2ᵉ | 42,5 pts (très large → parties déséquilibrées) |
-| Attaques bot → Empire | 3 012 (34 % gagnées) |
-| Défenses vs Empire | 4 130, soit **~8 par partie** (39 % gagnées) |
-
-### Taux de victoire par faction (1ᵉʳ au score)
-
-| Faction | Win | Déclenche la fin | Score moyen | Étoiles moy. |
-|---|---|---|---|---|
-| **Acadiane** | **67,5 %** | 23,4 % | **99,7** | 4,11 |
-| Frente Libre | 37,9 % | **42,2 %** | 57,3 | **4,69** |
-| Dominion | 30,2 % | 0,0 % | 62,0 | 1,69 |
-| Nations Souv. | 20,1 % | 16,2 % | 39,7 | 3,06 |
-| Confédération | 9,4 % | 2,0 % | 33,5 | 2,06 |
-| Bayou | 8,3 % | 2,7 % | 30,2 | 1,75 |
-
-### Par plateau joueur (équilibré, léger avantage Terroir)
-
-| Plateau | Win | Score moyen |
-|---|---|---|
-| Terroir | 34,1 % | 58,2 |
-| Atelier | 30,2 % | 52,5 |
-| Forge | 29,4 % | 54,7 |
-| Fordisme | 29,1 % | 55,3 |
-| Pionnier | 21,3 % | 47,4 |
-
-### Provenance des étoiles
-
-| Étoile | % des joueurs | % des vainqueurs |
-|---|---|---|
-| 4 mechas | 61,3 % | 55,0 % |
-| 4 bâtiments | 41,8 % | 67,6 % |
-| 4 recrues | 36,8 % | 68,0 % |
-| Objectif secret | 36,7 % | 46,8 % |
-| Objectif de faction | 40,2 % | 46,4 % |
-| 6 upgrades | 33,1 % | 53,4 % |
-| Libérateur (3 Empire) | 20,1 % | 31,2 % |
-| 8 ouvriers | 10,5 % | 19,4 % |
-| Puissance 16 | 4,7 % | 5,8 % |
-| Popularité 18 | 3,3 % | 10,8 % |
-
-## 4. Analyse d'équilibrage
-
-1. **Le scoring récompense l'accumulation infinie de ressources.** Le score moyen
-   des vainqueurs (92,6) se décompose en : ressources **45,7** > territoires 20,2 >
-   étoiles 13,7 > pièces 13,1. L'Acadiane finit avec ~115 ressources en stock.
-   Dans le Scythe original la partie s'arrête assez vite pour que ça reste marginal ;
-   ici, avec des parties longues, la production brute écrase tout.
-   *Pistes : plafonner les ressources comptées au scoring (ex. max 20), ou ne
-   compter que les ressources sur des hex contrôlés par des unités.*
-
-2. **Acadiane sur-performe massivement** (67,5 % de victoires) : production
-   pétrole/nourriture idéale pour ses bottoms, +4 comptoirs comptés au territoire,
-   objectif de faction facile (4 comptoirs + héros sur lac, trivial avec Submerge).
-   *Pistes : comptoirs comptés seulement s'ils ne sont pas adjacents entre eux,
-   ou objectif de faction durci.*
-
-3. **Confédération et Bayou sont structurellement faibles sans PvP** : leurs
-   abilities (Servitude = capture d'ouvriers en PvP, Chimère = capture de mecha)
-   et l'objectif de faction Confédération (2 ouvriers capturés) supposent des
-   combats joueur-contre-joueur… qui n'existent pas entre bots. Contre un humain
-   qui ne les attaque pas, même problème.
-   *Piste : implémenter le combat PvP initié par les bots (le plus gros manque
-   du jeu actuellement), ou donner un déclencheur PvE à ces abilities.*
-
-4. **Dominion = « riche mais sans étoiles »** : 0 % de fins déclenchées, 1,69
-   étoile en moyenne, mais 30 % de victoires uniquement grâce aux pièces du
-   Commerce Impérial (48 pièces en moyenne). Son moteur est linéaire dans le
-   temps : plus la partie dure, plus il gagne. Équilibré seulement si les
-   parties sont courtes.
-
-5. **L'Empire harcèle beaucoup** : ~8 défenses subies par partie, qui drainent
-   la puissance des bots (et donc Produce). C'est une pression PvE intéressante
-   mais elle ralentit nettement la course aux étoiles.
-
-6. **Étoiles Puissance 16 / Popularité 18 quasi inaccessibles** (< 5 %) — la
-   puissance est siphonnée par les combats Empire et la popularité n'a pas de
-   moteur dédié. À surveiller aussi côté joueur humain.
-
-7. **Les plateaux joueur sont raisonnablement équilibrés** (21–34 %), Terroir
-   devant (départ 4 pop / 7 pièces), Pionnier derrière.
-
-## 5. Relancer / approfondir
+`scripts/simulate.mjs` : parties complètes bot-vs-bot sans UI, avec la vraie
+logique du jeu (PvP, PvE Empire, rencontres, rails, enlist, scoring conforme).
+RNG seedé, invariants vérifiés à chaque tour (exit 1 si crash/violation → CI).
 
 ```bash
-npm run sim                                  # 200 parties rapides
-npm run sim -- --games 1000 --seed 7         # gros échantillon
-npm run sim -- --games 5 --verbose           # journal détaillé de la partie 1
-npm run sim -- --games 500 --dump games.ndjson  # données par partie (JSON)
+npm run sim -- --games 600 --seed 42        # batch standard
+npm run sim -- --randomMap                  # une carte procédurale par partie
+npm run sim -- --mapSearch 12 --games 60    # évaluer 12 cartes + l'actuelle
+npm run sim -- --ab wf1|bayouBois|noFlagBonus   # expériences A/B
 ```
 
-Le script sort en code 1 si un crash ou une violation d'invariant survient —
-utilisable tel quel en CI comme test de non-régression de la game loop.
+## 2. Équilibrage : testé en A/B, puis appliqué ou rejeté
+
+| Hypothèse | Résultat A/B (400 parties, même seed) | Décision |
+|---|---|---|
+| **White Flag +1 pop** (au lieu de +2) | Acadiane 65,6 % → 65,8 % — aucun effet (les combats sont trop rares pour que ce soit son moteur) | ❌ rejeté |
+| **fObj Acadiane durci** (comptoirs non adjacents entre eux) | Acadiane 65,6 % → **58,1 %** | ✅ appliqué (`factions.js`) |
+| **Bayou : Deploy payable en bois** (« Bois flotté ») | Bayou 2,2 % → **8,4 %**, capacités mech 1,9 → 3,1/4, et Acadiane -5 pts par concurrence | ✅ appliqué |
+| **Servitude sur déplacement** (capture d'un ouvrier chassé, -2 pop, max 2) + le bot Confédération chasse les hexes d'ouvriers | captures 0,05 → 0,26/partie ; fObj « Le Joug » atteignable | ✅ appliqué (demande) |
+| **Comptoirs hors scoring** (contrôle) | Acadiane → 56,6 % — les comptoirs ne pèsent que ~9 pts | mesure, pas de changement |
+
+Le vrai moteur de l'Acadiane reste la **popularité** (11,5 finale vs 4,9 les
+autres ; le palier pop multiplie tout le score ×5/×4/×3). Le classement pop des
+factions = exactement le classement des winrates. Piste suivante si besoin :
+adoucir les paliers (×4/×3/×2) — testable au simulateur en 5 minutes.
+
+## 3. Cartes procédurales — ta carte vs les générées
+
+### Règles de non-acceptation v2 (`src/data/mapGen.js`)
+
+Philosophie alignée sur le Scythe original : **les îlots de départ de 3 hexes
+sont un pattern voulu** (la plupart des factions du jeu de base démarrent
+enfermées, sauf Togawa/Albion) — la sortie se gagne par Deploy (Riverwalk) ou
+Gare/rails (notre Mine). Ce qui est interdit, c'est l'ABSENCE de sortie.
+
+Une carte est **rejetée** si :
+- **R1 escape** — une faction n'a *aucune* sortie native de son îlot : aucune
+  rivière du bord ne débouche sur un terrain de sa capacité Riverwalk (îlot OK,
+  cul-de-sac définitif interdit).
+- **R2 potential** — en ignorant les rivières (le potentiel une fois sorti) :
+  moins de 3 types de ressources ou pas de village à ≤ 3 pas.
+- **R3 factory** — Rouge River inaccessible par continuité terrestre.
+- **R4 fairness** — écart d'ouverture > 4× entre factions (tolérant : îlots
+  normaux, un joueur seul sur 2 hexes face à des plaines ouvertes, non).
+- **R5 diversité (« non-proximité »)** — plus de 2 hexagones du même terrain
+  adjacents : le plateau maintient la diversité locale des terrains.
+- **R6 rivers** — nombre de rivières hors [24, 46].
+- **R7 empire** — un mecha de l'Empire démarrerait sur un lac/marécage.
+
+Génération guidée (eau jamais sur les départs/Empire, village à ≤ 2 pas de
+chaque base, rivières libres partout — les îlots émergent naturellement) +
+réparation ciblée (ouvrir une sortie, casser un cluster) → acceptée en ~2 essais.
+**La carte actuelle passe ces règles** (sa poche Confédération a bien une
+sortie Riverwalk vers la plaine, et elle respecte la non-proximité).
+
+### Verdict (`--mapSearch 12 --games 60`)
+
+| Rang | Carte | Équilibre σ(winrate) | Winrates | Finies |
+|---|---|---|---|---|
+| 1 | carte-4 | **0,120** | 16–50 % | 100 % |
+| 2 | carte-5 | 0,125 | 16–53 % | 97 % |
+| 3–8 | cartes générées | 0,160–0,178 | — | 95-100 % |
+| **9** | **panamerica (actuelle)** | **0,179** | 6–58 % | 100 % |
+| 10–13 | cartes générées | 0,195–0,207 | — | 95-98 % |
+
+Avec les règles authentiques, la carte actuelle est **dans la norme** (9ᵉ/13) ;
+le générateur trouve tout de même mieux (σ 0,120). Classement + meilleure carte
+dans `Documentation/cartes_procedurales_classement.json`.
+
+**En jeu** : le setup propose « 🗺 Carte procédurale » — carte neuve validée à
+chaque partie (Empire, rencontres, départs replacés). 300 parties simulées en
+mode carte aléatoire : 0 crash, 0 invariant violé.
+
+## 4. Audit des cartes (questions posées)
+
+### Cartes usine (Ford/Tesla) — partiellement développées
+
+- ✅ 10 cartes en données, sélection à Rouge River (premier arrivé voit le plus
+  de cartes), badge sur la barre du joueur.
+- ✅ Bonus « bottom » branchés : réductions de coût / pièces sur
+  Upgrade/Deploy/Build/Enlist (`getPlanBottomBonus`).
+- ❌ Actions « top » : **stubs** — `applyPlanTop` n'est jamais appelé (les flags
+  `_planMoveBonus`, `_planDoubleProduction`… ne sont consommés nulle part).
+- ❌ Les bots ne visitent jamais Rouge River (contenu réservé à l'humain).
+- ⚠ Écart au modèle original : la règle en fait une **5ᵉ section du plateau
+  joueur** (une vraie colonne d'action avec « déplacer 1 unité deux fois ») —
+  c'est le bon design cible, chantier notable (nécessite de généraliser le
+  système de colonnes).
+
+### Cartes rencontre — rééquilibrées vers l'original
+
+L'original (28 cartes) fait **payer** les grosses options (pièces ou
+popularité : « vos choix impactent la façon dont le peuple vous perçoit ») et
+rend une option **indisponible** si son coût est impayable. Notre proto (15
+cartes) distribuait des cadeaux gratuits (+4 pop, +5 $, +3 ressources…).
+
+Passe appliquée : **11 options fortes coûtent désormais des pièces ou de la
+popularité**, avec `available(p)` — option grisée dans l'UI si impayable, et
+les bots ne choisissent que parmi les options payables (règle p.24). Reste
+plus généreux que l'original (gains posés sur le hex ✅, mais pas de coûts en
+ressources) — à resserrer si les parties réelles le confirment.
+
+## 5. Batch final — LE résultat clé
+
+600 parties carte classique + 300 parties cartes procédurales v2 (98 % finies,
+médiane ~35 rounds, 0 crash / 0 invariant) :
+
+| Faction | Carte actuelle (fixe) | **Rotation de cartes procédurales** |
+|---|---|---|
+| Acadiane | 65,6 % | **34,4 %** |
+| Nations | 38,8 % | 24,7 % |
+| Frente | 36,7 % | 32,9 % |
+| Bayou | 10,5 % | **32,4 %** |
+| Confédération | 9,1 % | **23,7 %** |
+| Dominion | 10,5 % | 26,5 % |
+
+**En rotation de cartes procédurales, toutes les factions jouent entre 24 et
+34 %** (même avec les îlots authentiques permis). L'essentiel du déséquilibre
+mesuré entre factions vient donc de la GÉOGRAPHIE FIXE (quelle faction profite
+de quelle région), pas des capacités : chaque carte individuelle favorise
+quelqu'un, la rotation égalise. La carte actuelle, elle, favorise durablement
+l'Acadiane (région toundra/plaine) et pénalise Bayou/Confédération (pas de
+métal proche, sortie d'îlot plus coûteuse).
+
+## 6. Historique des bugs trouvés par simulation (12, tous corrigés)
+
+v1 : puissance négative · impasse économique bots · égalité défenseur ·
+étoile 8 ouvriers bots — v2 : scoring ressources non contrôlées · pioche du
+vaincu · transfert de ressources · étoile défenseur — v3 : ouvriers déplacés
+sur hex défendu · Dominion cannibale — v4 : générateur de cartes (fallback
+silencieux corrigé), rencontres gratuites vs règle du coût obligatoire.
