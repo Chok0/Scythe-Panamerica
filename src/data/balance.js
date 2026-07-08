@@ -2,6 +2,12 @@
 // Le simulateur peut les modifier au lancement (--ab wf1, --ab bayouBois…)
 // pour mesurer l'impact d'un nerf/buff avant de changer la valeur par défaut ici.
 export const BALANCE = {
+  // White Flag actif ? (--ab wfOff pour mesurer sa contribution au winrate)
+  whiteFlagEnabled: true,
+  // Dominion façon Rusviet (l'îlot de départ est identique à celui des
+  // Rusviet de l'original, réputés forts par leur CAPACITÉ à rejouer la même
+  // action) : autorisé à rejouer la même colonne. (--ab domSame pour tester)
+  dominionRelentless: false,
   // Pop gagnée par l'Acadiane quand elle refuse un combat (White Flag).
   // Était 2 : moteur de popularité illimité identifié comme driver principal
   // de son winrate (65,7%) par la simulation — voir RAPPORT_SIMULATION.md.

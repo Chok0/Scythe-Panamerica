@@ -1605,7 +1605,8 @@ export default function App(){
       });
       const territories=unitHexes.size;
       // Factory = 3 extra territories if controlled
-      const factoryBonus=unitHexes.has(22)?3:0;
+      // Règle originale : l'Usine compte 3 territoires EN TOUT (1 + bonus 2)
+      const factoryBonus=unitHexes.has(22)?2:0;
       // Resources — rule: only resources on territories you control are scored,
       // plafonnées à 12 (mesuré par simulation : la thésaurisation illimitée
       // faisait de l'Acadiane un coffre-fort à 61% de winrate — voir rapport)

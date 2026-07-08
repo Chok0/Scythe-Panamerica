@@ -285,7 +285,9 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const noise = p.botNoise || 0;
 
   // ── STRATEGIC COLUMN SELECTION ──
-  const cols = [0, 1, 2, 3].filter(c => c !== p.lastCol);
+  // Dominion « Relentless » (test Rusviet) : peut rejouer la même colonne
+  const canRepeat = p.faction === "dominion" && BALANCE.dominionRelentless;
+  const cols = [0, 1, 2, 3].filter(c => canRepeat || c !== p.lastCol);
   let bestCol = cols[0], bestScore = -999;
   for (const col of cols) {
     const s = scoreColumn(p, col, empire, enemyHexes, rails, prof)

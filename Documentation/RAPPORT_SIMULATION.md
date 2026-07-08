@@ -1,8 +1,54 @@
 # Rapport de simulation — parties bot vs bot
 
-> `npm run sim -- --games 500 --seed 42` · **v7** : magot pillable (plafond
-> retiré), feinte/fold au combat, mechs mobiles + dépose en route, Import
-> Impérial du Dominion.
+> `npm run sim -- --games 500 --seed 42` · **v8** : diagnostic Acadiane bouclé
+> (départ asymétrique), fix scoring Rouge River, verdict Rusviet pour le
+> Dominion.
+
+## 0-v8. Pourquoi un tel succès de l'Acadiane ? (diagnostic final)
+
+Question posée : elle n'est pas enfermée, les rails passent les rivières, on
+peut l'attaquer — alors pourquoi ~55 % ? Batterie A/B (400 parties chacune,
+même seed, baseline 57,5 %) :
+
+| Hypothèse testée | Winrate Acadiane | Verdict |
+|---|---|---|
+| White Flag désactivé (`--ab wfOff`) | 54,5 % | ≈3 pts — PAS le moteur |
+| 1 carte combat au départ (au lieu de 3) | 51,9 % | −6 pts, secondaire |
+| **−2$ / −2 pop au départ** | **44,8 %** | −13 pts — LE levier |
+| Les deux combinés | **39,8 %** | dans le peloton |
+
+Le moteur n'est donc ni la protection (White Flag), ni la géographie : c'est
+son **économie de tête de course** — la seule péninsule à 3 types de
+ressources, convertie en palier de pop 3 (multiplicateurs max) + magot. La
+réponse fidèle à l'original (les fiches de faction y ont des départs
+asymétriques) : **l'Acadiane démarre pauvre et discrète** — 1 carte combat,
+−2$/−2 pop sur les valeurs du plateau joueur (`factions.js startBonus`,
+annulable en `--ab acadRestore`).
+
+**Dominion / Rusviet** : l'îlot du Dominion est bien le jumeau de celui des
+Rusviet (village + toundra/pétrole + montagne/métal). Testé : leur capacité
+signature « rejouer la même action » (`--ab domSame`) fait CHUTER le bot à
+10 % (elle casse son alternance Produce→bottom — les Rusviet sont forts entre
+des mains humaines, pas dans une heuristique). Sa compensation reste l'Import
+Impérial (v7), qui l'amène à ~15 %.
+
+**Fix de règle au passage** : Rouge River comptait 1 territoire + 3 de bonus
+= 4 équivalents-territoires au scoring ; l'original dit « l'Usine compte
+3 territoires EN TOUT » → bonus corrigé à 2 (sim + jeu).
+
+### Batch final v8 (500 parties, seed 42)
+
+| Faction | Début de session (v4) | **v8** |
+|---|---|---|
+| Acadiane | 65,6 % | **40,2 %** |
+| Nations | 38,8 % | 39,7 % |
+| Frente | 36,7 % | 33,4 % |
+| Confédération | 9,1 % | **18,7 %** |
+| Bayou | 10,5 % | **17,6 %** |
+| Dominion | 10,5 % | **15,2 %** |
+
+99,4 % finies à 6 étoiles, ~39 rounds, 0 crash / 0 invariant, 119 feintes
+(82 % réussies) + 252 folds, 4 profils viables (18,8–33,1 %).
 
 ## 0-v7. Le magot, la feinte, le trajet — et le Dominion réparé
 

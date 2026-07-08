@@ -59,6 +59,12 @@ if (ABS.has('dom2')) BALANCE.imperialRate = 2;
 if (ABS.has('noDomImport')) BALANCE.imperialImport = false;
 //   --ab resCap12    → réactive le plafond de scoring des ressources à 12 (comparaison)
 if (ABS.has('resCap12')) BALANCE.resScoringCap = 12;
+//   --ab wfOff       → désactive complètement le White Flag (diagnostic Acadiane)
+if (ABS.has('wfOff')) BALANCE.whiteFlagEnabled = false;
+//   --ab acadRestore → annule le handicap de départ Acadiane v8 (contrôle)
+if (ABS.has('acadRestore')) { FACTIONS.acadiane.cards = 3; delete FACTIONS.acadiane.startBonus; }
+//   --ab domSame     → Dominion façon Rusviet : peut rejouer la même colonne
+if (ABS.has('domSame')) BALANCE.dominionRelentless = true;
 //   --ab noTrioBoost → retire la compensation de départ Conf/Bayou/Dominion (contrôle)
 if (ABS.has('noTrioBoost')) ['confederation', 'bayou', 'dominion'].forEach(f => { delete FACTIONS[f].startBonus; });
 //   --ab legacyMap   → carte v1 d'origine (avant retouches péninsules)
@@ -110,7 +116,8 @@ const scorePlayer = (p) => {
   });
   if (ABS.has('noFlagBonus')) flagBonus = 0;
   const territories = unitHexes.size;
-  const factoryBonus = unitHexes.has(22) ? 3 : 0;
+  // Règle originale : l'Usine compte 3 territoires EN TOUT (1 + bonus 2)
+  const factoryBonus = unitHexes.has(22) ? 2 : 0;
   // Règle : seules les ressources sur des territoires contrôlés comptent au scoring
   let totalRes = 0;
   Object.entries(p.resources).forEach(([hid, r]) => {

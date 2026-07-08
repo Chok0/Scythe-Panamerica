@@ -43,8 +43,12 @@ export const FACTIONS = {
   },
   acadiane: {
     name: "Acadiane", color: "#228B22", hero: "M. Thibodeau", companion: "Brume",
-    power: 1, cards: 3, workerHex: [2, 6], riverwalk: ["foret", "village"], rwName: "Portage",
+    // Départ asymétrique mesuré (v8) : la meilleure productrice du plateau
+    // (péninsule à 3 ressources) démarre pauvre et discrète — 1 carte combat
+    // et -2$/-2 pop sur le plateau joueur (57,5 % → 39,8 % de winrate)
+    power: 1, cards: 1, workerHex: [2, 6], riverwalk: ["foret", "village"], rwName: "Portage",
     ability: "Comptoir",
+    startBonus: { coins: -2, pop: -2 },
     fObj: {
       name: "Réseau Invisible", desc: "4 Comptoirs non adjacents entre eux + héros sur un Lac",
       // Nerf mesuré par simulation (65,6% → 58,1% de winrate) : le réseau doit être étalé

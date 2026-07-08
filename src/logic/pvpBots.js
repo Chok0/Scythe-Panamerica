@@ -77,7 +77,7 @@ export const resolveBotPvp = (playersArr, attIdx, defIdx, hexId) => {
   const af = FACTIONS[att.faction], df = FACTIONS[def.faction];
 
   // ── White Flag (Acadiane défenseur, slot 2) : 50% → retraite volontaire + 2 pop ──
-  if (def.faction === "acadiane" && (def.unlockedAbilities || []).includes(2) && Math.random() < 0.5) {
+  if (BALANCE.whiteFlagEnabled && def.faction === "acadiane" && (def.unlockedAbilities || []).includes(2) && Math.random() < 0.5) {
     const displaced = retreatAll(def, hexId);
     def.pop = Math.min((def.pop || 0) + BALANCE.whiteFlagPop, 18);
     transferHexResources(def, att, hexId);
