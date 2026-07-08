@@ -14,8 +14,10 @@ export const createPlayer = (factionId, matId, isBot) => {
     power: f.power, combatCards: f.cards,
     // startBonus : compensation asymétrique des factions mal dotées (mesurée
     // par simulation — voir factions.js et RAPPORT_SIMULATION.md)
-    pop: Math.max(0, Math.min(pm.pop + (f.startBonus?.pop || 0), 18)),
-    coins: Math.max(0, pm.coins + (f.startBonus?.coins || 0)),
+    // startAbs : valeurs de départ ABSOLUES imprimées sur la fiche de faction
+    // (prioritaires sur le plateau joueur) ; sinon plateau + startBonus (≥0)
+    pop: f.startAbs?.pop ?? Math.max(0, Math.min(pm.pop + (f.startBonus?.pop || 0), 18)),
+    coins: f.startAbs?.coins ?? Math.max(0, pm.coins + (f.startBonus?.coins || 0)),
     stars: 0, hero: heroHex.id,
     workers: (CURRENT_MAP.starts?.[factionId]?.workerHex ?? f.workerHex).map((hid, i) => ({ id: `${factionId}_w${i}`, hexId: hid })),
     mechs: [], resources: {}, lastCol: null, buildings: [], encounters: 0,

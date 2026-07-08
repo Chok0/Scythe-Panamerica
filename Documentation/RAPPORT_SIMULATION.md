@@ -3,25 +3,30 @@
 > `npm run sim -- --games 500 --seed 42` · **v9** : équilibrage final par
 > stats de départ asymétriques (façon fiches de faction de l'original).
 
-## 0-v9. Équilibrage par stats de départ — l'état final
+## 0-v9. Équilibrage par stats de départ — l'état final (imprimable)
 
-3 itérations mesurées (400 parties chacune) + validation croisée sur 3 seeds
-indépendants. Les modificateurs (affichés sur les cartes de faction au setup,
-appliqués aux valeurs du plateau joueur) :
+Contrainte physique posée : **aucune valeur négative** sur les fiches. Deux
+mécanismes imprimables, tous deux canon dans l'original :
+- **bonus positifs** appliqués au plateau joueur (« +7 pièces, +5 pop ») ;
+- **valeurs absolues** qui REMPLACENT celles du plateau (« commence avec
+  2 pièces et 1 popularité ») — comme la puissance et les cartes de faction.
+
+6 itérations mesurées (400 parties chacune) + validation croisée sur 3 seeds :
 
 | Faction | ⚡ | 🃏 | 💰 | ♥ | Winrate (moy. 3 seeds) |
 |---|---|---|---|---|---|
-| Acadiane | 1 | 1 | **−3** | **−3** | ~36 % |
-| Frente | 2 | 3 | — | — | ~31 % |
-| Nations | 3 | 2 | **−2** | **−1** | ~30 % |
-| Bayou | 2 | 3 | **+6** | **+4** | ~27 % |
-| Confédération | 4 | 1 | **+5** | **+4** | ~25 % |
-| Dominion | 3 | 2 | **+6** | **+3** | ~21 % |
+| Frente | 2 | 3 | +2 | +2 | ~32 % |
+| Bayou | 2 | 3 | +8 | +6 | ~31 % |
+| Nations | 3 | 2 | — | — | ~30 % |
+| Confédération | 4 | 1 | +7 | +6 | ~29 % |
+| Acadiane | 1 | 1 | **= 2** | **= 1** | ~28 % |
+| Dominion | 3 | 2 | +8 | +5 | ~23 % |
 
-Sur les seeds 42 / 7 / 123 : toutes les factions jouent entre **19 et 38 %**
+Sur les seeds 42 / 7 / 123 : toutes les factions entre **20,5 et 34,9 %**
 (contre 5,8–67,8 % en début de chantier). La logique est celle de l'original :
 la géographie est inégale par design (péninsules plus ou moins riches), les
-fiches de départ compensent.
+fiches de départ compensent — et l'Acadiane, seule faction à 3 ressources,
+démarre pauvre et discrète en valeurs absolues.
 
 ## 0-v8. Pourquoi un tel succès de l'Acadiane ? (diagnostic final)
 

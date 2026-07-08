@@ -8,7 +8,7 @@ export const FACTIONS = {
     // Compensation asymétrique (façon Scythe original) mesurée par simulation :
     // sans elle, le trio Conf/Bayou/Dominion finit pauvre (≈2,5$) et à pop de
     // palier 1 → tout son score est amputé. Voir RAPPORT_SIMULATION.md.
-    startBonus: { coins: 5, pop: 4 },
+    startBonus: { coins: 7, pop: 6 },
     fObj: {
       name: "Le Joug", desc: "2 ouvriers capturés + 3+ hex avec ouvriers",
       check: p => (p.capturedWorkers || 0) >= 2 && p.workers.length >= 3,
@@ -18,6 +18,7 @@ export const FACTIONS = {
     name: "Frente Libre", color: "#A05020", hero: "E. Rojas", companion: "Trueno",
     power: 2, cards: 3, workerHex: [41, 45], riverwalk: ["sierra", "desert"], rwName: "Sentier",
     ability: "Tierra Minada",
+    startBonus: { coins: 2, pop: 2 },
     fObj: {
       name: "Terre Libérée", desc: "4 Traps + 3 ouvriers sur Sierras/Déserts",
       check: p => (p.trapTokens || []).length >= 4 && p.workers.filter(w => {
@@ -30,8 +31,7 @@ export const FACTIONS = {
     name: "Nations Souv.", color: "#20B2AA", hero: "Aiyana", companion: "Koda",
     power: 3, cards: 2, workerHex: [10, 17], riverwalk: ["plaine", "foret"], rwName: "Piste",
     ability: "Esprit Sauvage", deployAltRes: "bois", deployAltName: "Esprit Sauvage",
-    startBonus: { coins: -2, pop: -1 },
-    fObj: {
+        fObj: {
       name: "Le Grand Retour", desc: "5+ hex Plaine/Forêt contrôlés",
       check: p => {
         const u = new Set([p.hero, ...p.workers.map(w => w.hexId), ...p.mechs.map(m => m.hexId)]);
@@ -44,13 +44,14 @@ export const FACTIONS = {
   },
   acadiane: {
     name: "Acadiane", color: "#228B22", hero: "M. Thibodeau", companion: "Brume",
-    // Départ asymétrique mesuré (v8) : la meilleure productrice du plateau
-    // (péninsule à 3 ressources) démarre pauvre et discrète — 1 carte combat
-    // et -2$/-2 pop sur le plateau joueur (57,5 % → 39,8 % de winrate)
+    // Départ asymétrique mesuré (v9) : la meilleure productrice du plateau
+    // (péninsule à 3 ressources) démarre pauvre et discrète. Valeurs ABSOLUES
+    // sur la fiche (imprimables, jamais négatives) : 2 pièces, 1 popularité,
+    // quel que soit le plateau joueur.
     power: 1, cards: 1, workerHex: [2, 6], riverwalk: ["foret", "village"], rwName: "Portage",
     ability: "Comptoir",
-    startBonus: { coins: -3, pop: -3 },
-    fObj: {
+    startAbs: { coins: 2, pop: 1 },
+        fObj: {
       name: "Réseau Invisible", desc: "4 Comptoirs non adjacents entre eux + héros sur un Lac",
       // Nerf mesuré par simulation (65,6% → 58,1% de winrate) : le réseau doit être étalé
       check: p => {
@@ -64,7 +65,7 @@ export const FACTIONS = {
     name: "Bayou", color: "#7B2D8B", hero: "Cap. Zeke", companion: "Croc",
     power: 2, cards: 3, workerHex: [35, 28], riverwalk: ["desert", "village"], rwName: "Mangrove",
     ability: "Chimère", deployAltRes: "bois", deployAltName: "Bois flotté",
-    startBonus: { coins: 6, pop: 4 },
+    startBonus: { coins: 8, pop: 6 },
     fObj: {
       name: "Le Prédateur", desc: "1 mecha capturé + 2 Empire détruits",
       check: p => (p.capturedMech || 0) >= 1 && (p.empireKills || 0) >= 2,
@@ -74,7 +75,7 @@ export const FACTIONS = {
     name: "Dominion", color: "#CC2222", hero: "Col. Whitfield", companion: "Sterling",
     power: 3, cards: 2, workerHex: [0, 4], riverwalk: ["foret", "plaine"], rwName: "Queen's Road",
     ability: "Commerce Impérial", isExtension: true,
-    startBonus: { coins: 6, pop: 3 },
+    startBonus: { coins: 8, pop: 5 },
     fObj: {
       name: "Le Tribut", desc: "10+ pièces via Commerce Impérial",
       check: p => (p.imperialCoins || 0) >= 10,
