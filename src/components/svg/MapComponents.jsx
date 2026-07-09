@@ -77,11 +77,12 @@ export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory, isSrc
       />
       {/* Texture pattern overlay */}
       <polygon points={hPts(hex.rx, hex.ry)} fill={`url(#tp-${hex.t})`} opacity={isWater ? 0.5 : 0.7} style={{ pointerEvents: "none" }} />
-      {/* Terrain decorations */}
-      <g opacity={0.72}><TerrainDecor hex={hex} /></g>
-      {/* Voile de désaturation : atténue la couleur du terrain pour que les
-          pions et l'icône de ressource ressortent (demande de lisibilité) */}
-      <polygon points={hPts(hex.rx, hex.ry)} fill="rgba(26,22,15,0.32)" style={{ pointerEvents: "none" }} />
+      {/* Voile léger UNIQUEMENT sur les bords (vignette interne) : assombrit le
+          pourtour du hex pour la lecture des pions, tout en laissant vivre la
+          couleur peinte du terrain au centre → rendu plus organique. */}
+      <polygon points={hPts(hex.rx, hex.ry)} fill={`url(#hexvig)`} style={{ pointerEvents: "none" }} />
+      {/* Terrain decorations (peintes, denses) — au-dessus du voile de bord */}
+      <g opacity={0.92}><TerrainDecor hex={hex} /></g>
       {/* Cream board line between hexes (printed-board separation) */}
       <polygon points={hPts(hex.rx, hex.ry, HS - 1)} fill="none"
         stroke={isSel ? "#e6c96a" : isHov ? "#e0d2a8" : "#d8c9a3"}

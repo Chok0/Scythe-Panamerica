@@ -1965,6 +1965,10 @@ export default function App(){
       {svgKey:"mech",val:p.mechs.length,color:"#99aabb",label:"Mech"},
     ];
   };
+  // Vocabulaire couplé façon Scythe (en-tête de chaque cellule d'action)
+  const FR_TOP={Move:"Déplacer",Bolster:"Soutien",Trade:"Commerce",Produce:"Produire"};
+  const FR_BOT={Upgrade:"Améliorer",Deploy:"Déployer",Build:"Construire",Enlist:"Enrôler"};
+
   // Étoiles à obtenir (pour le joueur) : icône + nom + progression + exigence.
   // Utilisé par la rangée de la barre du haut ET le panneau détail façon Steam.
   const starList=[
@@ -2144,6 +2148,38 @@ export default function App(){
           </div>
           <div style={{fontSize:16,fontWeight:700,color:"var(--brass)",marginTop:4,fontFamily:"var(--font-title)"}}>{me.pop}</div>
         </div>
+        {/* ── BARÈME DE SCORE par palier de popularité (aide-mémoire fidèle à
+              Scythe) : ⭐ étoiles / 🗺 territoires / 📦 paires de ressources.
+              Aligné sur les 3 bandes de la piste (le palier actif est surligné). ── */}
+        {(()=>{
+          const curTier=me.pop<=6?0:me.pop<=12?1:2;
+          const bands=[
+            {t:2,range:"13-18",star:5,ter:4,res:3},
+            {t:1,range:"7-12",star:4,ter:3,res:2},
+            {t:0,range:"0-6",star:3,ter:2,res:1},
+          ];
+          return(
+            <div style={{width:42,display:"flex",flexDirection:"column",alignItems:"stretch",paddingTop:14,paddingBottom:24}}>
+              <div style={{fontSize:7,color:"var(--gold-dim)",textAlign:"center",letterSpacing:0.5,marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>$/pt</div>
+              <div style={{flex:1,display:"grid",gridTemplateRows:"1fr 1fr 1fr",gap:3}}>
+                {bands.map(b=>{const active=b.t===curTier;return(
+                  <div key={b.t} title={`Popularité ${b.range} : chaque ⭐ vaut ${b.star}$, chaque territoire ${b.ter}$, chaque paire de ressources ${b.res}$`}
+                    style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",gap:1,borderRadius:4,padding:"2px 3px",
+                      background:active?"rgba(212,178,84,0.16)":"rgba(255,255,255,0.02)",
+                      border:active?"1px solid var(--gold)":"1px solid var(--border)"}}>
+                    <div style={{fontSize:7,color:active?"var(--gold)":"var(--text-muted)",textAlign:"center",fontFamily:"var(--font-mono)",fontWeight:700}}>{b.range}</div>
+                    <div style={{display:"flex",justifyContent:"space-around",fontSize:9,fontWeight:800,fontFamily:"var(--font-mono)",color:active?"#e8dcc4":"var(--text-dim)"}}>
+                      <span title="par étoile" style={{color:active?"var(--gold)":"var(--gold-dim)"}}>⭐{b.star}</span>
+                    </div>
+                    <div style={{display:"flex",justifyContent:"space-around",fontSize:9,fontWeight:800,fontFamily:"var(--font-mono)",color:active?"#e8dcc4":"var(--text-dim)"}}>
+                      <span title="par territoire">🗺{b.ter}</span><span title="par paire de ressources">📦{b.res}</span>
+                    </div>
+                  </div>
+                );})}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* ═══ CENTER: MAP + OVERLAYS ═══ */}
@@ -2184,6 +2220,13 @@ export default function App(){
             <radialGradient id="empire-aura"><stop offset="0%" stopColor="#1A3A6A" stopOpacity="0.4"/><stop offset="50%" stopColor="#ff0000" stopOpacity="0.1"/><stop offset="100%" stopColor="#ff0000" stopOpacity="0"/></radialGradient>
             <radialGradient id="mapvig" cx="50%" cy="47%" r="60%"><stop offset="0%" stopColor="transparent"/><stop offset="80%" stopColor="rgba(10,8,4,1)" stopOpacity="0.06"/><stop offset="100%" stopColor="rgba(10,8,4,1)" stopOpacity="0.3"/></radialGradient>
             <radialGradient id="mapbg" cx="50%" cy="45%" r="75%"><stop offset="0%" stopColor="#26211a"/><stop offset="70%" stopColor="#1c1812"/><stop offset="100%" stopColor="#12100a"/></radialGradient>
+            {/* Vignette interne par hex : centre transparent (terrain visible),
+                bords assombris (lecture des pions) — rendu peint/organique */}
+            <radialGradient id="hexvig" cx="50%" cy="46%" r="60%">
+              <stop offset="0%" stopColor="#140f08" stopOpacity="0"/>
+              <stop offset="62%" stopColor="#140f08" stopOpacity="0"/>
+              <stop offset="100%" stopColor="#140f08" stopOpacity="0.42"/>
+            </radialGradient>
           </defs>
           <rect x="20" y="20" width="980" height="990" fill="url(#mapbg)"/>
           <rect x="20" y="20" width="980" height="990" fill="url(#mapvig)"/>
@@ -2674,51 +2717,45 @@ export default function App(){
                 return(
                   <React.Fragment key={action}>
                   <button onClick={()=>{if(!disabled){pushHistory();setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
-                    onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background="rgba(200,112,64,0.06)";}}
-                    onMouseLeave={e=>{e.currentTarget.style.background=disabled?"rgba(0,0,0,0.3)":"transparent";}}
+                    onMouseEnter={e=>{if(!disabled)e.currentTarget.style.borderColor=myFaction?.color||"var(--rust)";}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border-dark)";}}
                     style={{
-                    padding:0,background:disabled?"rgba(0,0,0,0.3)":"transparent",
-                    border:"none",
+                    padding:0,margin:"0 8px 8px",borderRadius:8,overflow:"hidden",textAlign:"left",
+                    background:disabled?"rgba(0,0,0,0.4)":"rgba(255,255,255,0.025)",
+                    border:"1px solid var(--border-dark)",
                     color:disabled?"var(--text-muted)":"var(--text)",
-                    opacity:disabled?0.2:1,cursor:disabled?"not-allowed":"pointer",
-                    display:"flex",flexDirection:"column",
-                    transition:"all 0.2s ease",
+                    opacity:disabled?0.4:1,cursor:disabled?"not-allowed":"pointer",
+                    display:"flex",flexDirection:"column",transition:"border-color 0.15s ease",
                   }}>
-                    {/* TOP ACTION */}
-                    <div style={{padding:"9px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(46,37,22,0.75),rgba(30,24,14,0.6))"}}>
-                      <div style={{minWidth:0,flex:1}}>
-                        <div style={{fontSize:13,fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",color:"var(--rust)",marginBottom:4,fontFamily:"var(--font-title)"}}>{action}</div>
-                        <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact />
-                      </div>
-                      <CubeSlots total={cubesTop} filled={cubesTop} />
+                    {/* EN-TÊTE : nom couplé (action haut · action bas) façon Scythe */}
+                    <div style={{padding:"6px 10px",display:"flex",alignItems:"center",gap:6,background:"linear-gradient(180deg,rgba(66,52,30,0.7),rgba(44,35,20,0.55))",borderBottom:"1px solid var(--border)"}}>
+                      <span style={{fontSize:13,fontWeight:800,color:disabled?"var(--text-muted)":"var(--rust-light)",fontFamily:"var(--font-title)"}}>{FR_TOP[action]||action}</span>
+                      <span style={{fontSize:12,color:"var(--text-muted)"}}>·</span>
+                      <span style={{fontSize:12,fontWeight:700,color:"var(--text-dim)",fontFamily:"var(--font-title)"}}>{FR_BOT[bottomAction]||bottomAction}</span>
+                      {disabled&&<span style={{marginLeft:"auto",fontSize:10,color:"var(--text-muted)",fontStyle:"italic"}}>joué</span>}
                     </div>
-                    {/* INNER SEPARATOR (top↔bottom within same column) */}
-                    <div style={{height:2,background:`linear-gradient(90deg,transparent,${myFaction?.color||"var(--gold)"}66,transparent)`}}/>
-                    {/* BOTTOM ACTION */}
-                    <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(14,12,8,0.6),rgba(10,9,6,0.8))"}}>
-                      <div style={{minWidth:0,flex:1}}>
-                        <div style={{fontSize:12,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"var(--text-dim)",marginBottom:3,display:"flex",alignItems:"center",gap:5}}>
-                          {bottomAction}
-                          {/* Recrue posée ici → bonus ongoing actif (soi + voisins) */}
-                          {(me.enlistMap||[])[i]!=null&&<span title={`Recrue posée : ${ENLIST_ONGOING[(me.enlistMap||[])[i]].label} quand vous/voisins faites ${bottomAction}`} style={{fontSize:9,padding:"1px 5px",borderRadius:8,background:"rgba(90,122,106,0.3)",border:"1px solid #5a9a7a",color:"#8fd0b0",fontWeight:700}}>🤝{ENLIST_ONGOING[(me.enlistMap||[])[i]].icon}</span>}
-                        </div>
-                        {/* Coût (icônes) → gain concret : pièces libérées par l'upgrade */}
+                    {/* RANGÉE HAUT */}
+                    <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:8,fontWeight:800,letterSpacing:1,color:"#c89a5a",background:"rgba(200,150,80,0.12)",border:"1px solid rgba(200,150,80,0.3)",borderRadius:4,padding:"3px 4px",writingMode:"vertical-rl",transform:"rotate(180deg)",lineHeight:1}}>HAUT</span>
+                      <div style={{flex:1,minWidth:0}}><ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact /></div>
+                      <div title="Cubes disponibles sur cette action" style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}><CubeSlots total={cubesTop} filled={cubesTop} /></div>
+                    </div>
+                    {/* RANGÉE BAS */}
+                    <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8,background:"rgba(0,0,0,0.28)",borderTop:"1px solid var(--border)"}}>
+                      <span style={{fontSize:8,fontWeight:800,letterSpacing:1,color:"#7a9aca",background:"rgba(90,130,180,0.12)",border:"1px solid rgba(90,130,180,0.3)",borderRadius:4,padding:"3px 4px",writingMode:"vertical-rl",transform:"rotate(180deg)",lineHeight:1}}>BAS</span>
+                      <div style={{flex:1,minWidth:0}}>
+                        {/* Coût (rouge) → gain concret (pièces libérées par l'upgrade) */}
                         <ActionRow pay={bottomPay} gain={upBonus>0?Array(upBonus).fill("coins"):[bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":bottomAction==="Enlist"?"pop":"power"]} compact />
                       </div>
                       <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3}}>
-                        {/* Emplacements de cube d'upgrade : chaque cube posé = -1 coût.
-                            reducAvail visibles = réductions encore possibles ici */}
-                        <CubeSlots total={maxBot} filled={cubesBot} />
-                        {reducAvail>0&&<span title={`${reducAvail} réduction(s) de coût possible(s) via Upgrade`} style={{fontSize:10,color:"#4caf50",whiteSpace:"nowrap"}}>↓-{reducAvail} poss.</span>}
-                        <span style={{fontSize:11,fontWeight:600,color:bottomData.max?"var(--success)":"var(--text-muted)",whiteSpace:"nowrap"}}>{bottomData.max?"✓ max":bottomData.prog}</span>
+                        {/* Recrue posée sur cette action (enrôlement) */}
+                        {(me.enlistMap||[])[i]!=null&&<span title={`Recrue : ${ENLIST_ONGOING[(me.enlistMap||[])[i]].label} quand vous/voisins faites ${FR_BOT[bottomAction]}`} style={{fontSize:10,padding:"1px 5px",borderRadius:8,background:"rgba(90,122,106,0.35)",border:"1px solid #5a9a7a",color:"#8fd0b0",fontWeight:700}}>🤝{ENLIST_ONGOING[(me.enlistMap||[])[i]].icon}</span>}
+                        <div title={`${cubesBot}/${maxBot} cube(s) d'amélioration posé(s) — chaque cube -1 coût`}><CubeSlots total={maxBot} filled={cubesBot} /></div>
+                        {reducAvail>0&&<span title={`${reducAvail} réduction(s) de coût encore possible(s) via Améliorer`} style={{fontSize:10,color:"#5cb85c",whiteSpace:"nowrap"}}>↓{reducAvail}</span>}
+                        <span style={{fontSize:11,fontWeight:700,color:bottomData.max?"var(--success)":"var(--gold-dim)",whiteSpace:"nowrap"}}>{bottomData.max?"✓ max":bottomData.prog}</span>
                       </div>
                     </div>
                   </button>
-                  {/* GROUP SEPARATOR: strong between action pairs, light within pair */}
-                  {!isLastAction&&(isGroupEnd
-                    ?<div style={{height:6,background:"var(--bg)",borderTop:"2px solid var(--rust-dark)",borderBottom:"1px solid var(--border)",opacity:0.7}}/>
-                    :<div style={{height:1,background:"var(--border)"}}/>
-                  )}
                   </React.Fragment>
                 );
               })}
