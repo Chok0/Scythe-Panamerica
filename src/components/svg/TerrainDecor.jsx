@@ -34,39 +34,48 @@ export const TerrainDecor = React.memo(({ hex }) => {
   const rng = seededRand(hex.id * 137 + hex.rx);
   const cx = hex.rx, cy = hex.ry;
 
-  // Forest — cluster of pines with trunks, darker at the back
+  // Forest — dense pine stand, painted in depth layers (arrière sombre → avant clair)
   if (hex.t === "foret") {
     const trees = [];
-    const spots = [[-24, 8], [-8, -8], [10, 12], [24, -2], [2, 24], [-18, 26]];
-    spots.forEach(([dx, dy], i) => {
-      const s = 11 + rng() * 5;
-      trees.push(<Pine key={i} x={cx + dx + rng() * 4} y={cy + dy} s={s} dark="#1e3a16" light="#33582a" />);
-    });
+    // rangée arrière (petits, sombres) → rangée avant (grands, clairs)
+    const back = [[-30, -6], [-14, -12], [2, -14], [18, -12], [30, -4]];
+    const mid = [[-26, 8], [-10, 4], [8, 6], [24, 8], [34, 16]];
+    const front = [[-20, 24], [-2, 28], [16, 24], [30, 30], [-32, 20]];
+    back.forEach(([dx, dy], i) => trees.push(<Pine key={"b" + i} x={cx + dx + rng() * 3} y={cy + dy} s={10 + rng() * 3} dark="#16300f" light="#26471d" />));
+    mid.forEach(([dx, dy], i) => trees.push(<Pine key={"m" + i} x={cx + dx + rng() * 3} y={cy + dy} s={12 + rng() * 4} dark="#1e3a16" light="#356028" />));
+    front.forEach(([dx, dy], i) => trees.push(<Pine key={"f" + i} x={cx + dx + rng() * 3} y={cy + dy} s={14 + rng() * 5} dark="#264a1c" light="#427a34" />));
     return <g style={{ pointerEvents: "none" }}>{trees}</g>;
   }
-  // Mountain — grey peaks with snow caps
+  // Mountain — chaîne de pics gris avec neige, crête d'arrière-plan
   if (hex.t === "montagne") {
     return (<g style={{ pointerEvents: "none" }}>
-      <Peak x={cx - 14} y={cy + 8} s={17} base="#565650" lit="#b8b8ac" snow />
-      <Peak x={cx + 13} y={cy + 12} s={13} base="#62625a" lit="#c4c4b6" snow />
-      <Peak x={cx + 2} y={cy - 12} s={11} base="#4e4e46" lit="#a8a89a" snow={false} />
+      {/* crête arrière (silhouette douce) */}
+      <path d={`M${cx - 38} ${cy + 6} L${cx - 20} ${cy - 14} L${cx - 4} ${cy + 2} L${cx + 12} ${cy - 18} L${cx + 30} ${cy - 2} L${cx + 40} ${cy + 8} Z`} fill="#3e3e38" opacity={0.55} />
+      <Peak x={cx - 20} y={cy + 12} s={20} base="#565650" lit="#b8b8ac" snow />
+      <Peak x={cx + 16} y={cy + 16} s={16} base="#62625a" lit="#c4c4b6" snow />
+      <Peak x={cx + 2} y={cy - 8} s={14} base="#4e4e46" lit="#a8a89a" snow />
+      <Peak x={cx - 34} y={cy + 20} s={11} base="#52524a" lit="#aeaea2" snow={false} />
     </g>);
   }
-  // Sierra — warm rocky ridges, no snow
+  // Sierra — crêtes rocheuses chaudes, sans neige, chaîne étagée
   if (hex.t === "sierra") {
     return (<g style={{ pointerEvents: "none" }}>
-      <Peak x={cx - 13} y={cy + 6} s={15} base="#6b5232" lit="#c9a870" snow={false} />
-      <Peak x={cx + 12} y={cy + 12} s={12} base="#75593a" lit="#d4b47c" snow={false} />
-      <path d={`M${cx - 28} ${cy + 22} Q${cx} ${cy + 14} ${cx + 28} ${cy + 22}`} fill="none" stroke="#5e4a2e" strokeWidth="1.4" opacity={0.5} />
+      <path d={`M${cx - 38} ${cy + 8} L${cx - 18} ${cy - 10} L${cx} ${cy + 4} L${cx + 18} ${cy - 14} L${cx + 38} ${cy + 8} Z`} fill="#5e4a2e" opacity={0.5} />
+      <Peak x={cx - 18} y={cy + 10} s={18} base="#6b5232" lit="#c9a870" snow={false} />
+      <Peak x={cx + 15} y={cy + 15} s={15} base="#75593a" lit="#d4b47c" snow={false} />
+      <Peak x={cx + 2} y={cy - 6} s={12} base="#5e4a2e" lit="#b89050" snow={false} />
+      <path d={`M${cx - 34} ${cy + 26} Q${cx} ${cy + 16} ${cx + 34} ${cy + 26}`} fill="none" stroke="#5e4a2e" strokeWidth="1.6" opacity={0.5} />
     </g>);
   }
-  // Village — clustered roofed houses
+  // Village — hameau plus dense, chemin serpentant
   if (hex.t === "village") {
     return (<g style={{ pointerEvents: "none" }}>
-      <House x={cx - 14} y={cy + 4} s={13} wall="#d9b48a" roof="#7d3f24" />
-      <House x={cx + 12} y={cy + 12} s={11} wall="#cfa87e" roof="#6b3520" />
-      <House x={cx + 4} y={cy - 12} s={10} wall="#e0bd94" roof="#8a4a2a" />
-      <path d={`M${cx - 26} ${cy + 26} Q${cx} ${cy + 18} ${cx + 26} ${cy + 26}`} fill="none" stroke="#6b4228" strokeWidth="1.6" opacity={0.4} />
+      <path d={`M${cx - 34} ${cy + 30} Q${cx - 10} ${cy + 10} ${cx + 8} ${cy + 20} T${cx + 34} ${cy + 6}`} fill="none" stroke="#8a6038" strokeWidth="2.4" opacity={0.35} />
+      <House x={cx - 20} y={cy + 6} s={14} wall="#d9b48a" roof="#7d3f24" />
+      <House x={cx + 14} y={cy + 14} s={12} wall="#cfa87e" roof="#6b3520" />
+      <House x={cx + 2} y={cy - 12} s={11} wall="#e0bd94" roof="#8a4a2a" />
+      <House x={cx - 6} y={cy + 22} s={10} wall="#d4ac80" roof="#733a20" />
+      <House x={cx + 26} y={cy - 4} s={9} wall="#e4c298" roof="#8f4e2c" />
     </g>);
   }
   // Lake — waves + light reflection
@@ -101,29 +110,37 @@ export const TerrainDecor = React.memo(({ hex }) => {
       <ellipse cx={cx - 14} cy={cy - 4} rx={5} ry={1.8} fill="#e8d090" opacity={0.4} />
     </g>);
   }
-  // Fields — curved furrow rows + haystack
+  // Fields — sillons courbes denses + 2 meules + parcelles
   if (hex.t === "champs") {
     return (<g style={{ pointerEvents: "none" }}>
-      {[0, 1, 2, 3, 4].map(i => <path key={i} d={`M${cx - 26} ${cy - 14 + i * 8} Q${cx} ${cy - 18 + i * 8} ${cx + 26} ${cy - 14 + i * 8}`} fill="none" stroke="#8a7025" strokeWidth="1.2" opacity={0.5} />)}
-      <ellipse cx={cx + 16} cy={cy - 16} rx={6} ry={4.4} fill="#d9bc62" stroke="#8a7025" strokeWidth="0.8" />
+      {[0, 1, 2, 3, 4, 5, 6].map(i => <path key={i} d={`M${cx - 34} ${cy - 20 + i * 7} Q${cx} ${cy - 24 + i * 7} ${cx + 34} ${cy - 20 + i * 7}`} fill="none" stroke="#8a7025" strokeWidth="1.3" opacity={0.5} />)}
+      <ellipse cx={cx + 18} cy={cy - 18} rx={6.5} ry={4.8} fill="#d9bc62" stroke="#8a7025" strokeWidth="0.9" />
+      <ellipse cx={cx - 20} cy={cy + 18} rx={5} ry={3.6} fill="#cdb058" stroke="#8a7025" strokeWidth="0.8" />
     </g>);
   }
-  // Plains — grass tufts
+  // Plains — herbes touffues + quelques buissons
   if (hex.t === "plaine") {
     const tufts = [];
-    [[-18, 2], [0, -10], [16, 6], [-6, 18], [20, -14], [-24, -12]].forEach(([dx, dy], i) => {
-      tufts.push(<path key={i} d={`M${cx + dx - 3} ${cy + dy}q1.5 -5 3 0m0 0q1.5 -5 3 0`} fill="none" stroke="#6b6828" strokeWidth="1.2" opacity={0.6} />);
+    [[-26, 2], [-12, -12], [2, -6], [16, 8], [28, -8], [-6, 18], [22, 20], [-22, 22], [10, -18], [-30, -14]].forEach(([dx, dy], i) => {
+      tufts.push(<path key={i} d={`M${cx + dx - 3} ${cy + dy}q1.5 -5 3 0m0 0q1.5 -5 3 0`} fill="none" stroke="#6b6828" strokeWidth="1.3" opacity={0.6} />);
     });
+    tufts.push(<ellipse key="bush1" cx={cx - 14} cy={cy + 6} rx={5} ry={3.5} fill="#5a7030" opacity={0.5} />);
+    tufts.push(<ellipse key="bush2" cx={cx + 18} cy={cy - 2} rx={4} ry={3} fill="#657a38" opacity={0.45} />);
     return <g style={{ pointerEvents: "none" }}>{tufts}</g>;
   }
-  // Tundra — snow patches + sparse dead trees
+  // Tundra — plaques de neige + rochers + arbres morts épars
   if (hex.t === "toundra") {
     return (<g style={{ pointerEvents: "none" }}>
-      <ellipse cx={cx - 10} cy={cy + 8} rx={12} ry={4.4} fill="#dde4ea" opacity={0.4} />
-      <ellipse cx={cx + 14} cy={cy - 6} rx={8} ry={3} fill="#dde4ea" opacity={0.35} />
-      <line x1={cx - 16} y1={cy - 4} x2={cx - 16} y2={cy - 16} stroke="#3e4a56" strokeWidth="1.3" />
-      <line x1={cx - 16} y1={cy - 12} x2={cx - 20} y2={cy - 15} stroke="#3e4a56" strokeWidth="1" />
-      <line x1={cx - 16} y1={cy - 9} x2={cx - 12} y2={cy - 13} stroke="#3e4a56" strokeWidth="1" />
+      <ellipse cx={cx - 12} cy={cy + 10} rx={16} ry={5.4} fill="#dde4ea" opacity={0.42} />
+      <ellipse cx={cx + 16} cy={cy - 4} rx={11} ry={4} fill="#dde4ea" opacity={0.36} />
+      <ellipse cx={cx + 6} cy={cy + 22} rx={9} ry={3.4} fill="#dde4ea" opacity={0.3} />
+      <ellipse cx={cx + 20} cy={cy + 14} rx={4} ry={2.6} fill="#8b8f96" opacity={0.5} />
+      <ellipse cx={cx - 24} cy={cy - 8} rx={3.4} ry={2.2} fill="#7e838a" opacity={0.5} />
+      <g stroke="#3e4a56" strokeWidth="1.3">
+        <line x1={cx - 16} y1={cy - 4} x2={cx - 16} y2={cy - 18} />
+        <line x1={cx - 16} y1={cy - 14} x2={cx - 21} y2={cy - 18} strokeWidth="1" />
+        <line x1={cx - 16} y1={cy - 10} x2={cx - 11} y2={cy - 15} strokeWidth="1" />
+      </g>
     </g>);
   }
   // Factory (Rouge River) — dark industrial building with chimneys + gear

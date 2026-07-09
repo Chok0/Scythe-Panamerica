@@ -2220,6 +2220,13 @@ export default function App(){
             <radialGradient id="empire-aura"><stop offset="0%" stopColor="#1A3A6A" stopOpacity="0.4"/><stop offset="50%" stopColor="#ff0000" stopOpacity="0.1"/><stop offset="100%" stopColor="#ff0000" stopOpacity="0"/></radialGradient>
             <radialGradient id="mapvig" cx="50%" cy="47%" r="60%"><stop offset="0%" stopColor="transparent"/><stop offset="80%" stopColor="rgba(10,8,4,1)" stopOpacity="0.06"/><stop offset="100%" stopColor="rgba(10,8,4,1)" stopOpacity="0.3"/></radialGradient>
             <radialGradient id="mapbg" cx="50%" cy="45%" r="75%"><stop offset="0%" stopColor="#26211a"/><stop offset="70%" stopColor="#1c1812"/><stop offset="100%" stopColor="#12100a"/></radialGradient>
+            {/* Vignette interne par hex : centre transparent (terrain visible),
+                bords assombris (lecture des pions) — rendu peint/organique */}
+            <radialGradient id="hexvig" cx="50%" cy="46%" r="60%">
+              <stop offset="0%" stopColor="#140f08" stopOpacity="0"/>
+              <stop offset="62%" stopColor="#140f08" stopOpacity="0"/>
+              <stop offset="100%" stopColor="#140f08" stopOpacity="0.42"/>
+            </radialGradient>
           </defs>
           <rect x="20" y="20" width="980" height="990" fill="url(#mapbg)"/>
           <rect x="20" y="20" width="980" height="990" fill="url(#mapvig)"/>
