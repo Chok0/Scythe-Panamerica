@@ -9,18 +9,12 @@
 // - l'attaquant vainqueur perd 1 popularité par ouvrier adverse forcé à la retraite
 // Utilisé par App.jsx (tours de bots) et scripts/simulate.mjs.
 import { FACTIONS } from '../data/factions.js';
-import { HEXES, HOME_BASES } from '../data/hexes.js';
+import { HEXES, HOME_BASES, homeBaseHex } from '../data/hexes.js';
 import { getCombatBonus } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
 
-const hbHexOf = (factionId) => {
-  const hb = HOME_BASES[factionId];
-  return HEXES.reduce((best, h) => {
-    const d = Math.sqrt((h.rx - hb.rx) ** 2 + (h.ry - hb.ry) ** 2);
-    const db = best ? Math.sqrt((best.rx - hb.rx) ** 2 + (best.ry - hb.ry) ** 2) : Infinity;
-    return d < db && h.t !== "lac" && h.t !== "marecage" ? h : best;
-  }, null);
-};
+// Hex de base (drapeau) de la faction — cible des retraites
+const hbHexOf = (factionId) => homeBaseHex(factionId);
 
 const unitsOnHex = (p, hexId) => (p.hero === hexId ? 1 : 0) + p.mechs.filter(m => m.hexId === hexId).length;
 

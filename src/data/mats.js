@@ -39,11 +39,14 @@ export const BUILDING_TYPES = [
   { type: "moulin", name: "Moulin", icon: "🌀", effect: "Hex produit +1 (Produce)" },
 ];
 
+// Les 4 recrues PERMANENTES (bonus ongoing). Décorrélées de la colonne : le
+// joueur choisit LAQUELLE poser sur quelle action bottom (chacune 1×/partie).
+// `col` n'est plus qu'un indice de recrue par défaut (ordre d'affichage).
 export const ENLIST_ONGOING = [
-  { col: 0, icon: "⚡", label: "+1 Puissance", apply: p => { p.power = Math.min(p.power + 1, 16); } },
-  { col: 1, icon: "💰", label: "+1 Pièce", apply: p => { p.coins += 1; } },
-  { col: 2, icon: "♥", label: "+1 Popularité", apply: p => { p.pop = Math.min(p.pop + 1, 18); } },
-  { col: 3, icon: "🃏", label: "+1 Carte Combat", apply: p => { p.combatCards += 1; } },
+  { col: 0, icon: "⚡", label: "+1 Puissance", svgKey: "power", apply: p => { p.power = Math.min(p.power + 1, 16); } },
+  { col: 1, icon: "💰", label: "+1 Pièce", svgKey: "coins", apply: p => { p.coins += 1; } },
+  { col: 2, icon: "♥", label: "+1 Popularité", svgKey: "pop", apply: p => { p.pop = Math.min(p.pop + 1, 18); } },
+  { col: 3, icon: "🃏", label: "+1 Carte Combat", svgKey: "combatCards", apply: p => { p.combatCards += 1; } },
 ];
 
 // applyEnlistOngoing needs FACTIONS — takes it as parameter to avoid circular deps
@@ -59,8 +62,10 @@ export const applyEnlistOngoing = (playersArr, actorIdx, bottomCol, FACTIONS) =>
   n.forEach((p, pi) => { if (p.factoryCard?.bottomBonus === "enlist_extended") recipients.add(pi); });
   [...recipients].forEach(pi => {
     const p = n[pi];
-    if ((p.enlistMap || [])[bottomCol]) {
-      const bonus = ENLIST_ONGOING[bottomCol];
+    // recrue posée sur cette colonne (indice 0-3), décorrélée de la colonne
+    const recruitIdx = (p.enlistMap || [])[bottomCol];
+    if (recruitIdx != null) {
+      const bonus = ENLIST_ONGOING[recruitIdx];
       if (bonus) {
         bonus.apply(p);
         const actor = FACTIONS[n[actorIdx].faction]?.name || "?";

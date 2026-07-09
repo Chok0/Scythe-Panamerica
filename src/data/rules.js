@@ -126,6 +126,10 @@ export const RULES = [
         content: "Chaque unité peut se déplacer d'1 hex par action Move. Vous ne pouvez pas traverser les rivières sauf avec Riverwalk (capacité de mecha) ou certains plans. Les lacs sont infranchissables."
       },
       {
+        title: "La Base (drapeau)",
+        content: "Votre héros démarre sur votre base — un « hex invisible » sous votre drapeau, hors du plateau. Il en sort au 1er déplacement (vers l'hex terrestre adjacent). Toute unité vaincue au combat y retourne (sauf capacité spéciale de recul). Seul le propriétaire peut entrer sur sa base ; elle ne compte pas comme territoire au score."
+      },
+      {
         title: "Riverwalk",
         content: "Chaque faction a une capacité de traversée de rivière spécifique, débloquée avec un mecha :",
         list: [

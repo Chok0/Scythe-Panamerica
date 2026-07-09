@@ -466,7 +466,8 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       // — le thésauriseur sort tous ses ouvriers tout de suite
       const workerCap = getPhase(p) === "early" ? prof.maxWorkersEarly : 8;
       hexIds.forEach(hidStr => {
-        const hid = parseInt(hidStr); const hex = hMap[hid]; const t = TERRAINS[hex.t]; let wc = byHex[hidStr].length;
+        const hid = parseInt(hidStr); const hex = hMap[hid]; const t = TERRAINS[hex?.t]; let wc = byHex[hidStr].length;
+        if (!t) return; // hex de base (ouvrier retraité) ou hex invalide : pas de production
         const hasMoulin = (p.buildings || []).some(b => b.type === "moulin" && b.hexId === hid);
         if (hasMoulin) wc++;
         if (hex.t === "village" && p.workers.length < workerCap) {
@@ -606,20 +607,24 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       // Priorité d'enlist du profil (équilibré : puissance > pièces > pop > cartes ;
       // bâtisseur : pop d'abord ; blitz : puissance puis cartes)
       const priority = prof.enlistPriority || [0, 1, 2, 3];
-      const freeSlots = priority.filter(ci => !(p.enlistMap || [])[ci]);
-      if (freeSlots.length > 0) {
-        const pick = freeSlots[0]; // highest priority available
-        p.enlistMap = [...(p.enlistMap || [false, false, false, false])];
-        p.enlistMap[pick] = true;
-        // Bonus immédiat décalé d'un cran vs l'ongoing (règle Scythe) : voir ENLIST_BONUSES dans App.jsx
+      p.enlistMap = [...(p.enlistMap || [null, null, null, null])];
+      // Colonne libre = bonus immédiat de section ; recrue libre = bonus permanent.
+      // Les deux sont choisis INDÉPENDAMMENT (décorrélés, règle Scythe).
+      const freeCols = priority.filter(ci => p.enlistMap[ci] == null);
+      const freeRecruits = priority.filter(ri => !p.enlistMap.includes(ri));
+      if (freeCols.length > 0 && freeRecruits.length > 0) {
+        const col = freeCols[0];            // section prioritaire (bonus immédiat)
+        const recruit = freeRecruits[0];    // recrue prioritaire (bonus permanent)
+        p.enlistMap[col] = recruit;
+        // Bonus immédiat de la section (décorrélé de la recrue) : voir ENLIST_BONUSES
         const imm = [
           pp => { pp.coins += 2; },                          // Upgrade → 💰
           pp => { pp.pop = Math.min(pp.pop + 2, 18); },      // Deploy → ❤
           pp => { pp.combatCards += 2; },                    // Build → 🃏
           pp => { pp.power = Math.min(pp.power + 2, 16); },  // Enlist → ⚡
-        ][pick];
+        ][col];
         if (imm) imm(p);
-        logs.push(`🤖 ${f.name}: Enlist → ${BOTTOM[pick]} (${ENLIST_ONGOING[pick].icon})`);
+        logs.push(`🤖 ${f.name}: Enlist ${BOTTOM[col]} → recrue ${ENLIST_ONGOING[recruit].icon}`);
       }
       if (p.recruits >= 4 && !p.starRecruits) { p.stars++; p.starRecruits = true; logs.push(`⭐ ${f.name}: 4 recrues !`); }
     }

@@ -1,4 +1,7 @@
-# TODO — Panamerica Proto v0.8 Fixes
+# TODO — Panamerica Proto (v0.8 → v0.11)
+
+> **État : TODO vidée.** Tous les chantiers demandés sont livrés (voir la section
+> « TODO vidée » plus bas). Ce document reste comme historique + notes d'architecture.
 
 ## ✅ Fixes appliqués (v0.8-fixed → v0.9)
 
@@ -43,7 +46,22 @@
 | **Mechas distincts** | Fond hexagonal teinté couleur de faction + corps du mecha Frente recoloré (avant : Frente/Nations paraissaient bruns/identiques) |
 | **Riverwalk par faction** | Vérifié discriminant par terrain (déjà OK) + affiché au setup (ex. Bayou → Désert & Village) |
 
-## 🔧 Fixes restants
+## 🎉 TODO vidée — tous les chantiers demandés sont faits
+
+Plus aucun chantier en attente. Les deux derniers ont été livrés :
+
+| # | Élément | Livré |
+|---|---------|-------|
+| CARDS | **Cartes de combat valuées** | ✅ Module `logic/cards.js` (deck 1-5, moyenne 2,5). Matérialisation paresseuse : `combatCards` reste le compteur (gains inchangés), la main `cardHand` est réconciliée au besoin. Côté JOUEUR : la contribution au combat = somme des valeurs des cartes engagées (les plus fortes d'abord), modale affichant la main + cartes jouées surlignées ; viewer au clic sur 🃏 (décompte par valeur). Bots inchangés (compteur×2) → simulation valide, équilibre préservé (win rates identiques). |
+| UNDO | **Annuler / refaire** | ✅ Pile de snapshots de l'état de jeu poussée avant chaque coup humain (sélection d'action + chaque sous-déplacement), vidée au passage aux bots (pas d'undo par-delà les tirages aléatoires de l'IA). Boutons ↶/↷ dans la barre. Clonage préservant les objets porteurs de fonctions (objectifs). |
+
+### Idées libres (non demandées, pour plus tard)
+- Cartes valuées côté BOTS (retirer l'asymétrie humain/bot) → nécessiterait un re-tuning de la simulation.
+- Undo par-delà le tour des bots via rejeu à seed déterministe.
+- Icônes Scythe officielles (PNG) à la place des emoji.
+- Visualisation du tour du bot : surligner le hex qu'il choisit / tracer son déplacement (le scoreboard pulse déjà le bot actif).
+
+## 🔧 Historique des fixes
 
 ### ✅ Toutes les faction abilities — IMPLÉMENTÉES (6/6)
 ### ✅ Toutes les mech abilities — IMPLÉMENTÉES (24/24 + Pack Up)
@@ -83,12 +101,6 @@
 | T5 Réseau Neuronal | 3 déplacements par action Move | Deploy sur hex adjacent aux ouvriers |
 
 Note : les bots ne visitent pas Rouge River, donc les plans ne concernent que le joueur humain.
-
-### Priorité basse (polish uniquement)
-
-| # | Élément | Détail |
-|---|---------|--------|
-| IC | **Icônes Scythe** | Remplacer les emoji par les vrais PNG depuis regledujeu.fr |
 
 ## 📝 Notes d'architecture
 

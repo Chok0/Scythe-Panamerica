@@ -122,7 +122,7 @@ export function OrPill() {
 
 // ═══ ActionRow — PAY → GAIN layout ═══
 export function ActionRow({ pay = [], gain = [], altGain, compact = false }) {
-  const sqSize = compact ? 20 : 24;
+  const sqSize = compact ? 23 : 26;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
       {pay.length > 0 && <>

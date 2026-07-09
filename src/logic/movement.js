@@ -53,6 +53,8 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails, 
 
   return cands.filter(toId => {
     const to = hMap[toId]; if (!to) return false;
+    // Hex de base : seul son propriétaire peut y entrer (retraite/départ)
+    if (to.base) return to.faction === factionId;
     if (to.t === "lac") return hasPosition && factionId === "acadiane";
     if (to.t === "marecage" && !(hasPosition && factionId === "bayou")) return false;
     if (adj.includes(toId) && hasR(fromId, toId)) {

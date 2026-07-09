@@ -1,10 +1,10 @@
-// TODO [v0.11]: Add movement animations — smooth unit transitions between hexes (CSS transform + requestAnimationFrame)
-// TODO [v0.11]: Add action feedback animations — resource gain/spend particles, combat flash, star burst on milestone
-// TODO [v0.11]: Add bot turn visualization — highlight bot's chosen hex, show movement trail
+// Animations de mouvement (transitions CSS des pions) ✅ et retour visuel des
+// gains (floaters) ✅ sont implémentés. Idée libre restante : visualiser le hex
+// choisi par le bot pendant son tour (voir « Idées libres » dans TODO_proto_fixes.md).
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { TERRAINS } from '../data/terrains.js';
 import { FACTIONS, FACTION_IDS } from '../data/factions.js';
-import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, CURRENT_MAP, DEFAULT_MAP, loadMap } from '../data/hexes.js';
+import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, CURRENT_MAP, DEFAULT_MAP, loadMap, baseHexAt, homeBaseHex, isBaseHex } from '../data/hexes.js';
 import { generateAcceptedMap } from '../data/mapGen.js';
 import { getCombatBonus } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
@@ -14,6 +14,7 @@ import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA } from '../data/plans.js';
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, applyEnlistOngoing } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
 import { pickStructureBonus, structureBonusDetail } from '../data/structureBonus.js';
+import { reconcileHand, topCardsSum, spendTopCards, handSummary } from '../logic/cards.js';
 import RulesPage from './RulesPage.jsx';
 import AmbientSound from './AmbientSound.jsx';
 import SetupScreen from './SetupScreen.jsx';
@@ -61,6 +62,8 @@ export default function App(){
   const[carryOnMove,setCarryOnMove]=useState(true); // 🚚 emporter ouvriers/ressources au Move
   const[routeDrop,setRouteDrop]=useState(null); // 📦 dépose en route: {mids,destHex,endAfter}
   const[preActionSnapshot,setPreActionSnapshot]=useState(null); // snapshot of player[0] before action, for undo
+  const[undoStack,setUndoStack]=useState([]); // pile d'annulation (snapshots d'état, dans le tour humain)
+  const[redoStack,setRedoStack]=useState([]); // pile de rétablissement
   const[tradePicks,setTradePicks]=useState([]); // for Trade: array of picked resource types (0-2)
   const[hovHex,setHovHex]=useState(null);
   const[clickRipple,setClickRipple]=useState(null); // {hexId, key} for ripple animation
@@ -68,8 +71,8 @@ export default function App(){
   const[floaters,setFloaters]=useState([]); // animations de gain : {id,icon,color,x,y,label}
   const[log,setLog]=useState([]);
   const[botRunning,setBotRunning]=useState(false);
-  const[showStars,setShowStars]=useState(false);
-  const[showObjectives,setShowObjectives]=useState(false);
+  const[starDetail,setStarDetail]=useState(null); // étoile sélectionnée → panneau détail façon Steam
+  const[showCards,setShowCards]=useState(false); // main de cartes de combat (clic sur le compteur 🃏)
   const[showLog,setShowLog]=useState(true);
   const[logFilter,setLogFilter]=useState("all"); // "all"|"combat"|"move"|"resource"|"bot"|"warn"|"star"
   const[showRules,setShowRules]=useState(false);
@@ -338,7 +341,7 @@ export default function App(){
         const fromId=empire[eid];
         const adj=ADJ[fromId]||[];
         // Empire can cross rivers but not lakes/swamps
-        const validEmpire=adj.filter(toId=>{const h=hMap[toId];return h&&h.t!=="lac"&&h.t!=="marecage";});
+        const validEmpire=adj.filter(toId=>{const h=hMap[toId];return h&&h.t!=="lac"&&h.t!=="marecage"&&!h.base;});
         if(validEmpire.length>0){
           const toId=validEmpire[Math.floor(Math.random()*validEmpire.length)];
           setEmpire(prev=>({...prev,[eid]:toId}));
@@ -369,7 +372,7 @@ export default function App(){
                   addLog(`⚔🤖 ${bf.name} échoue vs ${card.name} (${botTotal} vs ${card.power})`);
                   // Retreat bot unit to home base
                   const hb=HOME_BASES[pl.faction];
-                  const hbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-hb.rx)**2+(h.ry-hb.ry)**2);const db=best?Math.sqrt((best.rx-hb.rx)**2+(best.ry-hb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+                  const hbHex=baseHexAt(hb);
                   if(bp.hero===toId)bp.hero=hbHex.id;
                   bp.mechs=bp.mechs.map(m=>m.hexId===toId?{...m,hexId:hbHex.id}:m);
                 }
@@ -466,7 +469,7 @@ export default function App(){
           logs.push(`⚔🤖 ${bf.name} échoue vs ${card.name} (${botTotal} vs ${card.power})`);
           // Bot retreats hero to HB
           const bhb=HOME_BASES[p.faction];
-          const bhbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-bhb.rx)**2+(h.ry-bhb.ry)**2);const db=best?Math.sqrt((best.rx-bhb.rx)**2+(best.ry-bhb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+          const bhbHex=baseHexAt(bhb);
           p.hero=bhbHex.id;
         }
       }
@@ -482,7 +485,7 @@ export default function App(){
         const displaced=n[oi].workers.filter(w=>botHexes.has(w.hexId)&&!defended(w.hexId));
         if(displaced.length>0){
           const ohb=HOME_BASES[n[oi].faction];
-          const ohbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ohb.rx)**2+(h.ry-ohb.ry)**2);const db=best?Math.sqrt((best.rx-ohb.rx)**2+(best.ry-ohb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+          const ohbHex=baseHexAt(ohb);
           const dispHexes=[...new Set(displaced.map(w=>w.hexId))];
           n[oi]={...n[oi],workers:n[oi].workers.map(w=>botHexes.has(w.hexId)&&!defended(w.hexId)?{...w,hexId:ohbHex.id}:w)};
           // Bot loses pop for displacing workers
@@ -579,6 +582,9 @@ export default function App(){
   // Actually finish and pass to bots
   const actuallyEndTurn=useCallback(()=>{
     setPendingBottom(null);setBottomPick(null);
+    // On ne peut pas annuler par-delà le tour des bots (tirages aléatoires) :
+    // les piles sont vidées au passage à l'IA.
+    setUndoStack([]);setRedoStack([]);
     setCurrentP(1);setBotRunning(true);
   },[]);
 
@@ -725,28 +731,33 @@ export default function App(){
   // ── BOTTOM-ROW: ENLIST (recrue sur une colonne → bonus immédiat + ongoing) ──
   // Règle Scythe : le bonus IMMÉDIAT (une fois) est d'un type DIFFÉRENT du
   // bonus PERMANENT de la recrue. On garde l'ongoing fixé par colonne
-  // (Upgrade⚡ Deploy💰 Build❤ Enlist🃏) et on décale le bonus immédiat d'un
-  // cran (cyclique) : « gagne X maintenant, Y à chaque fois ensuite ».
+  // (Upgrade → +2 Pièces, Deploy → +2 Pop, Build → +2 Cartes, Enlist → +2 Pui).
+  // Le bonus PERMANENT (recrue) est choisi SÉPARÉMENT par le joueur → totalement
+  // décorrélé du bonus immédiat (règle Scythe : on choisit quelle recrue poser).
   const ENLIST_BONUSES=[
     {id:0,col:0,icon:"💰",label:"+2 Pièces",svgKey:"coins",apply:p=>{p.coins+=2;}},
     {id:1,col:1,icon:"♥",label:"+2 Popularité",svgKey:"pop",apply:p=>{p.pop=Math.min(p.pop+2,18);}},
     {id:2,col:2,icon:"🃏",label:"+2 Cartes",svgKey:"combatCards",apply:p=>{p.combatCards+=2;}},
     {id:3,col:3,icon:"⚡",label:"+2 Puissance",svgKey:"power",apply:p=>{p.power=Math.min(p.power+2,16);}},
   ];
-  const doEnlist=useCallback((colIdx)=>{
+  // colIdx : action bottom qui reçoit la recrue (→ bonus immédiat de la section)
+  // recruitIdx : QUELLE recrue permanente poser (0-3, indépendante de colIdx)
+  const doEnlist=useCallback((colIdx,recruitIdx)=>{
     if(!me||(me.recruits||0)>=4)return;
-    if((me.enlistMap||[])[colIdx]){addLog(`⚠ Déjà une recrue sur ${BOTTOM[colIdx]}`);return;}
+    if((me.enlistMap||[])[colIdx]!=null){addLog(`⚠ Déjà une recrue sur ${BOTTOM[colIdx]}`);return;}
+    if((me.enlistMap||[]).includes(recruitIdx)){addLog(`⚠ Recrue ${ENLIST_ONGOING[recruitIdx].label} déjà posée`);return;}
     const costs=getBottomCost(me);
     const cost=costs[3]; // Enlist is bottom col 3
     const planBonus=getPlanBottomBonus(me,"Enlist");
     const effectiveQty=Math.max(0,cost.qty-planBonus.costReduction);
     if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${cost.res} requis`);return;}
     const bonus=ENLIST_BONUSES[colIdx];
+    const recruit=ENLIST_ONGOING[recruitIdx];
     setPlayers(prev=>{
       const n=[...prev];let p=spendRes(n[0],cost.res,effectiveQty);
       p.recruits=(p.recruits||0)+1;
-      p.enlistMap=[...(p.enlistMap||[false,false,false,false])];
-      p.enlistMap[colIdx]=true;
+      p.enlistMap=[...(p.enlistMap||[null,null,null,null])];
+      p.enlistMap[colIdx]=recruitIdx; // stocke la recrue choisie (pas un booléen)
       bonus.apply(p);
       p.coins+=planBonus.bonusCoins;
       p.power=Math.min(p.power+planBonus.bonusPower,16);
@@ -755,8 +766,8 @@ export default function App(){
       n[0]=p;return n;
     });
     planBonus.logs.forEach(l=>addLog(l));
-    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${BOTTOM[colIdx]} (-${effectiveQty} ${cost.res}, ${bonus.label})`);
-    addLog(`   Ongoing: ${ENLIST_ONGOING[colIdx].icon} quand vous/voisins faites ${BOTTOM[colIdx]}`);
+    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${BOTTOM[colIdx]} (-${effectiveQty} ${cost.res}) — immédiat ${bonus.label}`);
+    addLog(`   Permanent ${recruit.icon} ${recruit.label} quand vous/voisins faites ${BOTTOM[colIdx]}`);
     if((me.recruits||0)+1>=4)addLog(`⭐ 4 Recrues enrôlées !`);
     finishBottom(3);
   },[me,addLog,finishBottom]);
@@ -863,6 +874,55 @@ export default function App(){
     }
     prevStatsRef.current=snap;
   },[players,phase,spawnFloater]);
+
+  // Matérialise la main de cartes du joueur dès que son compteur change (gains)
+  // → la main affichée/jouée reflète toujours combatCards, sans toucher aux ~15
+  // sites de gain (qui font juste combatCards++).
+  useEffect(()=>{
+    if(phase!=="playing"||!me)return;
+    if((me.cardHand?.length||0)===me.combatCards)return;
+    setPlayers(prev=>{const n=[...prev];const p={...n[0]};reconcileHand(p);n[0]=p;return n;});
+  },[me?.combatCards,me?.cardHand,phase]);
+
+  // ── ANNULER / REFAIRE (undo/redo) ──────────────────────────────────
+  // Pile de snapshots de l'état de jeu, poussée avant chaque coup humain et
+  // vidée au passage aux bots (on n'annule pas au-delà de son propre tour ni
+  // par-dessus des tirages aléatoires de l'IA). Les objets porteurs de
+  // fonctions (objectifs) sont conservés par référence lors du clonage.
+  const gameRef=useRef({});
+  gameRef.current={players,empire,rails,encounterTokens,rrVisitors};
+  const cloneVal=useCallback((v)=>{
+    if(Array.isArray(v))return v.map(cloneVal);
+    if(v&&typeof v==="object"){
+      if(Object.values(v).some(x=>typeof x==="function"))return v; // def immuable (objectif…)
+      const o={};for(const k in v)o[k]=cloneVal(v[k]);return o;
+    }
+    return v;
+  },[]);
+  const snapshotGame=useCallback(()=>{
+    const g=gameRef.current;
+    return {players:g.players.map(cloneVal),empire:{...g.empire},rails:g.rails.map(r=>[...r]),encounterTokens:[...g.encounterTokens],rrVisitors:g.rrVisitors};
+  },[cloneVal]);
+  const restoreGame=useCallback((snap)=>{
+    setPlayers(snap.players.map(cloneVal));
+    setEmpire({...snap.empire});
+    setRails(snap.rails.map(r=>[...r]));
+    setEncounterTokens(new Set(snap.encounterTokens));
+    setRrVisitors(snap.rrVisitors);
+    // annule tout état transitoire d'action en cours
+    setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);
+    setPendingBottom(null);setBottomPick(null);setCombat(null);setEncounter(null);setRougeRiver(null);
+    setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);
+  },[cloneVal]);
+  const pushHistory=useCallback(()=>{ setUndoStack(s=>[...s.slice(-40),snapshotGame()]); setRedoStack([]); },[snapshotGame]);
+  const undo=useCallback(()=>{
+    setUndoStack(s=>{ if(s.length===0)return s; setRedoStack(r=>[...r,snapshotGame()]); restoreGame(s[s.length-1]); return s.slice(0,-1); });
+    addLog("↶ Coup annulé");
+  },[snapshotGame,restoreGame,addLog]);
+  const redo=useCallback(()=>{
+    setRedoStack(r=>{ if(r.length===0)return r; setUndoStack(u=>[...u,snapshotGame()]); restoreGame(r[r.length-1]); return r.slice(0,-1); });
+    addLog("↷ Coup rétabli");
+  },[snapshotGame,restoreGame,addLog]);
 
   const validMoves=useMemo(()=>{
     if(!moveSource||!me)return new Set();
@@ -1017,6 +1077,8 @@ export default function App(){
     }
     
     if(moveSource&&validMoves.has(hexId)){
+      // Snapshot avant CE déplacement → l'undo prend en compte chaque sous-coup
+      pushHistory();
       // Check for combat triggers before actually moving
       const movingCombatUnit=moveSource.unitType==="hero"||moveSource.unitType==="mech";
       
@@ -1110,7 +1172,7 @@ export default function App(){
           const enemyWorkersHere=ep.workers.filter(w=>w.hexId===hexId);
           if(enemyWorkersHere.length>0){
             const ehb=HOME_BASES[ep.faction];
-            const ehbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ehb.rx)**2+(h.ry-ehb.ry)**2);const db=best?Math.sqrt((best.rx-ehb.rx)**2+(best.ry-ehb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+            const ehbHex=baseHexAt(ehb);
             displaced+=enemyWorkersHere.length;
             // Retreat enemy workers to their home base + PILLAGE : leur magot
             // sur le hex passe au joueur (motivation au combat du design)
@@ -1247,7 +1309,7 @@ export default function App(){
     if(moveSource){setMoveSource(null);return;}
     setUnitPicker(null);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -1255,7 +1317,9 @@ export default function App(){
     // Player combat ability bonus (attacker if player moved, defender if attacked)
     const isDefender=!!combat.empireAttacks||combat.type==="pvp_defense";
     const playerCBonus=getCombatBonus(me, combat.hexId, !isDefender);
-    const playerTotal=combat.powerSpend + playerCBonus.powerBonus + (combat.cardsSpend*2);
+    // Contribution des cartes = SOMME des valeurs réelles engagées (main du joueur)
+    const playerCardVal=topCardsSum(me.cardHand,combat.cardsSpend);
+    const playerTotal=combat.powerSpend + playerCBonus.powerBonus + playerCardVal;
     if(playerCBonus.name&&(playerCBonus.powerBonus>0||playerCBonus.cardBonus>0)){
       addLog(`🛡 ${playerCBonus.name}: ${playerCBonus.powerBonus>0?`+${playerCBonus.powerBonus}⚡ `:""}${playerCBonus.cardBonus>0?`+${playerCBonus.cardBonus}🃏`:""}`);
     }
@@ -1269,16 +1333,16 @@ export default function App(){
       const win=playerTotal>attackerTotal; // l'attaquant remporte les égalités
       addLog(`⚔ ${af.name}: ${attackerTotal} (${combat.botSpend}⚡+${combat.botCards}🃏) vs vous: ${playerTotal} (${combat.powerSpend}⚡+${combat.cardsSpend}🃏)`);
       const myHb=HOME_BASES[me.faction];
-      const myHbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-myHb.rx)**2+(h.ry-myHb.ry)**2);const db=best?Math.sqrt((best.rx-myHb.rx)**2+(best.ry-myHb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+      const myHbHex=baseHexAt(myHb);
       const atkHb=HOME_BASES[attacker.faction];
-      const atkHbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-atkHb.rx)**2+(h.ry-atkHb.ry)**2);const db=best?Math.sqrt((best.rx-atkHb.rx)**2+(best.ry-atkHb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+      const atkHbHex=baseHexAt(atkHb);
       setPlayers(prev=>{
         const n=[...prev];
         n[0]={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
         Object.keys(prev[0].resources).forEach(k=>{n[0].resources[k]={...prev[0].resources[k]};});
         n[atkIdx]={...n[atkIdx],workers:[...n[atkIdx].workers],mechs:[...n[atkIdx].mechs],resources:{...n[atkIdx].resources}};
         Object.keys(prev[atkIdx].resources).forEach(k=>{n[atkIdx].resources[k]={...prev[atkIdx].resources[k]};});
-        n[0].power-=combat.powerSpend;n[0].combatCards-=combat.cardsSpend;
+        n[0].power-=combat.powerSpend;spendTopCards(n[0],combat.cardsSpend);
         n[atkIdx].power-=combat.botSpend;n[atkIdx].combatCards-=combat.botCards;
         if(win){
           // Le joueur repousse l'attaquant : retraite totale du bot + étoile défenseur
@@ -1335,12 +1399,12 @@ export default function App(){
       // Spend resources
       setPlayers(prev=>{
         const n=[...prev];const p={...n[0]};
-        p.power-=combat.powerSpend;p.combatCards-=combat.cardsSpend;
+        p.power-=combat.powerSpend;spendTopCards(p,combat.cardsSpend);
         if(!win){
           if(isDefender){
             // Empire attacked us — retreat ALL our combat units from that hex to home base
             const hb=HOME_BASES[p.faction];
-            const hbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-hb.rx)**2+(h.ry-hb.ry)**2);const db=best?Math.sqrt((best.rx-hb.rx)**2+(best.ry-hb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+            const hbHex=baseHexAt(hb);
             if(p.hero===combat.hexId)p.hero=hbHex.id;
             p.mechs=p.mechs.map(m=>m.hexId===combat.hexId?{...m,hexId:hbHex.id}:m);
             // Workers also retreat
@@ -1348,7 +1412,7 @@ export default function App(){
           } else {
             // Player attacked Empire — retreat the attacking unit
             const hb=HOME_BASES[p.faction];
-            const hbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-hb.rx)**2+(h.ry-hb.ry)**2);const db=best?Math.sqrt((best.rx-hb.rx)**2+(best.ry-hb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+            const hbHex=baseHexAt(hb);
             if(combat.moveData.unitType==="hero")p.hero=hbHex.id;
           }
         }
@@ -1400,7 +1464,7 @@ export default function App(){
         // Acadiane refuses combat: retreat + 2 pop, attacker gets hex + resources + star for free
         addLog(`🏳 ${ef.name} active White Flag ! Retraite volontaire + ${BALANCE.whiteFlagPop} Pop.`);
         const ehb=HOME_BASES[enemy.faction];
-        const ehbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ehb.rx)**2+(h.ry-ehb.ry)**2);const db=best?Math.sqrt((best.rx-ehb.rx)**2+(best.ry-ehb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+        const ehbHex=baseHexAt(ehb);
         setPlayers(prev=>{
           const n=[...prev];
           // Attacker moves in (no power/cards spent)
@@ -1455,9 +1519,9 @@ export default function App(){
       addLog(`⚔ ${myFaction.name}: ${playerTotal} (${combat.powerSpend}${playerCBonus.powerBonus>0?`+${playerCBonus.powerBonus}`:""}⚡+${combat.cardsSpend}🃏) vs ${ef.name}: ${enemyTotal} (${botPower}⚡+${botCards}🃏)${bonusLog}`);
       
       const hb=HOME_BASES[me.faction];
-      const hbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-hb.rx)**2+(h.ry-hb.ry)**2);const db=best?Math.sqrt((best.rx-hb.rx)**2+(best.ry-hb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+      const hbHex=baseHexAt(hb);
       const ehb=HOME_BASES[enemy.faction];
-      const ehbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ehb.rx)**2+(h.ry-ehb.ry)**2);const db=best?Math.sqrt((best.rx-ehb.rx)**2+(best.ry-ehb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+      const ehbHex=baseHexAt(ehb);
       // Pre-count enemy units on hex (before retreat) for faction abilities
       const preEnemyMechs=enemy.mechs.filter(m=>m.hexId===combat.hexId);
       const preEnemyWorkers=enemy.workers.filter(w=>w.hexId===combat.hexId);
@@ -1467,7 +1531,7 @@ export default function App(){
         // Both spend power + cards
         n[0]={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
         Object.keys(prev[0].resources).forEach(k=>{n[0].resources[k]={...prev[0].resources[k]};});
-        n[0].power-=combat.powerSpend;n[0].combatCards-=combat.cardsSpend;
+        n[0].power-=combat.powerSpend;spendTopCards(n[0],combat.cardsSpend);
         n[combat.enemyIdx]={...n[combat.enemyIdx],workers:[...n[combat.enemyIdx].workers],mechs:[...n[combat.enemyIdx].mechs],resources:{...n[combat.enemyIdx].resources}};
         Object.keys(prev[combat.enemyIdx].resources).forEach(k=>{n[combat.enemyIdx].resources[k]={...prev[combat.enemyIdx].resources[k]};});
         n[combat.enemyIdx].power-=botPower;n[combat.enemyIdx].combatCards-=botCards;
@@ -1583,7 +1647,7 @@ export default function App(){
     const atkIdx=combat.enemyIdx;
     const af=FACTIONS[players[atkIdx].faction];
     const myHb=HOME_BASES[me.faction];
-    const myHbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-myHb.rx)**2+(h.ry-myHb.ry)**2);const db=best?Math.sqrt((best.rx-myHb.rx)**2+(best.ry-myHb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+    const myHbHex=baseHexAt(myHb);
     setPlayers(prev=>{
       const n=[...prev];
       n[0]={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
@@ -1717,7 +1781,7 @@ export default function App(){
       const n=[...prev];const p={...n[0],resources:{...n[0].resources},workers:[...n[0].workers]};
       payProduce(p);
       hexIds.forEach(hidStr=>{
-        const hid=parseInt(hidStr);const hex=hMap[hid];const t=TERRAINS[hex.t];let wCount=workersByHex[hidStr].length;
+        const hid=parseInt(hidStr);const hex=hMap[hid];const t=TERRAINS[hex?.t];if(!t)return;let wCount=workersByHex[hidStr].length;
         // Moulin building: +1 production on this hex (as if +1 worker)
         const hasMoulin=(p.buildings||[]).some(b=>b.type==="moulin"&&b.hexId===hid);
         if(hasMoulin)wCount++;
@@ -1784,8 +1848,10 @@ export default function App(){
       const starMult=[3,4,5][popTier];
       const terMult=[2,3,4][popTier];
       const resMult=[1,2,3][popTier];
-      // Count territories: hexes with at least one unit
+      // Count territories: hexes with at least one unit (l'hex de base ne
+      // compte pas comme territoire — il est hors plateau)
       const unitHexes=new Set([p.hero,...p.workers.map(w=>w.hexId),...p.mechs.map(m=>m.hexId)]);
+      [...unitHexes].forEach(id=>{if(isBaseHex(id))unitHexes.delete(id);});
       // Buildings count as territory if hex has no enemy
       (p.buildings||[]).forEach(b=>unitHexes.add(b.hexId));
       // Trap tokens (Frente) count as territory
@@ -1793,7 +1859,7 @@ export default function App(){
       // Comptoir tokens (Acadiane) count as +1 territory each (not adj to HB)
       let flagBonus=0;
       const hb=HOME_BASES[p.faction];
-      const hbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-hb.rx)**2+(h.ry-hb.ry)**2);const db=best?Math.sqrt((best.rx-hb.rx)**2+(best.ry-hb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+      const hbHex=baseHexAt(hb);
       (p.flagTokens||[]).forEach(fl=>{
         const isAdjHB=hbHex&&(ADJ[hbHex.id]||[]).includes(fl.hexId);
         if(!isAdjHB)flagBonus++;
@@ -1899,6 +1965,21 @@ export default function App(){
       {svgKey:"mech",val:p.mechs.length,color:"#99aabb",label:"Mech"},
     ];
   };
+  // Étoiles à obtenir (pour le joueur) : icône + nom + progression + exigence.
+  // Utilisé par la rangée de la barre du haut ET le panneau détail façon Steam.
+  const starList=[
+    {key:"upg",icon:"⬆",name:"6 Améliorations",done:(me.upgrades||0)>=6,prog:`${me.upgrades||0}/6`,need:"Améliorer 6 cubes (action Upgrade : déplace un cube du haut vers le bas)."},
+    {key:"mech",icon:"⬡",name:"4 Mechas déployés",done:me.mechs.length>=4,prog:`${me.mechs.length}/4`,need:"Déployer 4 mechas (action Deploy, sur un hex avec un ouvrier)."},
+    {key:"build",icon:"🏗",name:"4 Bâtiments",done:(me.buildings||[]).length>=4,prog:`${(me.buildings||[]).length}/4`,need:"Construire 4 bâtiments (action Build, sur un hex avec un ouvrier)."},
+    {key:"recr",icon:"🤝",name:"4 Recrues",done:(me.recruits||0)>=4,prog:`${me.recruits||0}/4`,need:"Enrôler 4 recrues (action Enlist)."},
+    {key:"cbt",icon:"⚔",name:"2 Combats gagnés",done:(me.combatWins||0)>=2,prog:`${Math.min(me.combatWins||0,2)}/2`,need:"Gagner 2 combats (1 étoile par victoire, max 2)."},
+    {key:"obj",icon:"🎯",name:"Mission secrète",done:!!me.objectiveRevealed,prog:me.objectiveRevealed?"✓":"…",need:"Remplir la condition d'une de vos 2 missions secrètes puis la révéler."},
+    {key:"fobj",icon:"🏛",name:"Objectif de faction",done:!!me.fObjRevealed,prog:me.fObjRevealed?"✓":"…",need:myFaction.fObj?`${myFaction.fObj.name} — ${myFaction.fObj.desc}`:"Accomplir l'objectif de votre faction."},
+    {key:"wrk",icon:"👷",name:"8 Ouvriers",done:me.workers.length>=8,prog:`${me.workers.length}/8`,need:"Avoir 8 ouvriers sur le plateau (produits sur les villages)."},
+    {key:"pop",icon:"♥",name:"Popularité max",done:me.pop>=18,prog:`${me.pop}/18`,need:"Atteindre 18 de popularité."},
+    {key:"pow",icon:"⚡",name:"Puissance max",done:me.power>=16,prog:`${me.power}/16`,need:"Atteindre 16 de puissance."},
+  ];
+
   // Progression des 6 étoiles (voies d'étoiles Scythe) pour n'importe quel joueur
   const starMilestones=(p)=>[
     {icon:"⬆",label:"Upg",done:(p.upgrades||0)>=6,prog:`${p.upgrades||0}/6`},
@@ -1933,25 +2014,45 @@ export default function App(){
           const stats=playerStats(me);
           return stats.map((s,i)=>{
             const Icon=RESOURCE_ICONS[s.svgKey];
+            const isCards=s.svgKey==="combatCards";
             return(
-            <div key={i} className="res-pill" title={s.label}>
+            <div key={i} className="res-pill" title={isCards?"Cartes de combat — cliquer pour voir la main":s.label}
+              onClick={isCards?()=>setShowCards(v=>!v):undefined}
+              style={isCards?{cursor:"pointer",borderColor:showCards?"var(--gold-dim)":undefined}:undefined}>
               <span className="res-icon" style={{display:"flex",alignItems:"center"}}>{Icon?<Icon size={19} color={s.color}/>:s.svgKey}</span>
               <span className="res-val" style={{color:s.color}}>{s.val}</span>
             </div>
           );});
         })()}
-        {/* Stars - right side */}
-        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6}}>
-          {players.length>1&&<button onClick={()=>setShowOpponents(s=>!s)} title="Voir les adversaires" style={{display:"flex",alignItems:"center",gap:4,padding:"6px 12px",borderRadius:6,fontSize:13,fontWeight:700,background:showOpponents?"rgba(200,112,64,0.18)":"rgba(200,112,64,0.06)",color:"var(--rust)",border:"1px solid var(--border-dark)",fontFamily:"var(--font-title)"}}>
-            👥 {players.length-1}
-            <span style={{fontSize:9,transform:showOpponents?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
+        {/* ── Rangée d'ÉTOILES À OBTENIR (icône grisée → étoile posée si atteint) ──
+            Occupe l'espace libre ; clic → panneau détail façon Steam (progression
+            + ce que l'objectif demande). Remplace le drop-down récap. */}
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
+          {starList.map(s=>(
+            <button key={s.key} onClick={()=>setStarDetail(d=>d===s.key?null:s.key)} title={`${s.name} — ${s.prog}`}
+              style={{position:"relative",width:36,height:36,borderRadius:7,border:starDetail===s.key?"1px solid var(--gold)":"1px solid var(--border)",
+                background:s.done?"rgba(232,200,96,0.16)":starDetail===s.key?"rgba(212,178,84,0.12)":"rgba(255,255,255,0.02)",
+                display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:0}}>
+              <span style={{fontSize:18,filter:s.done?"none":"grayscale(1)",opacity:s.done?0.4:0.72}}>{s.icon}</span>
+              {s.done&&<span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:21,filter:"drop-shadow(0 0 3px rgba(232,200,96,0.7))"}}>⭐</span>}
+              {!s.done&&s.prog&&s.prog!=="…"&&<span style={{position:"absolute",bottom:-2,right:0,fontSize:8,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-mono)",background:"var(--bg)",borderRadius:2,padding:"0 2px"}}>{s.prog.split("/")[0]}</span>}
+            </button>
+          ))}
+        </div>
+        {/* Divider + total + boutons */}
+        <div style={{width:1,height:28,background:"var(--border-light)",flexShrink:0,marginLeft:4}}/>
+        <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+          <div title="Étoiles obtenues" style={{display:"flex",alignItems:"center",gap:3,fontSize:15,fontWeight:900,color:"var(--gold)",fontFamily:"var(--font-title)"}}>⭐{me.stars}<span style={{fontSize:11,color:"var(--text-dim)"}}>/6</span></div>
+          {players.length>1&&<button onClick={()=>setShowOpponents(s=>!s)} title="Voir les adversaires" style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:6,fontSize:13,fontWeight:700,background:showOpponents?"rgba(200,112,64,0.18)":"rgba(200,112,64,0.06)",color:"var(--rust)",border:"1px solid var(--border-dark)",fontFamily:"var(--font-title)"}}>
+            👥 {players.length-1}<span style={{fontSize:9,transform:showOpponents?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
           </button>}
-          {me.factoryCard&&<div style={{fontSize:12,padding:"4px 10px",borderRadius:4,background:me.factoryCard.type==="tesla"?"#7050a022":"#4a5a6a22",border:me.factoryCard.type==="tesla"?"1px solid #7050a0":"1px solid #4a5a6a",color:me.factoryCard.type==="tesla"?"#b080e0":"#8aa0b8"}} title={me.factoryCard.desc}>{me.factoryCard.name}</div>}
-          {(me.fragments||0)>0&&<div style={{fontSize:12,padding:"4px 10px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:"#a080d0"}}>{me.fragments}/2 frag.</div>}
-          <button onClick={()=>setShowStars(s=>!s)} style={{display:"flex",alignItems:"center",gap:4,padding:"5px 12px",borderRadius:6,fontSize:13,fontWeight:700,background:showStars?"var(--gold)":"rgba(255,215,0,0.08)",color:showStars?"var(--bg)":"#C9A84C",border:"1px solid rgba(255,215,0,0.3)",fontFamily:"var(--font-title)"}}>
-            {me.stars}/6
-          </button>
-          <button onClick={()=>setShowRules(true)} title="Regles du jeu" style={{padding:"5px 10px",borderRadius:6,fontSize:13,fontWeight:700,background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)",fontFamily:"var(--font-title)"}}>?</button>
+          {(me.fragments||0)>0&&<div style={{fontSize:12,padding:"4px 8px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:"#a080d0"}}>{me.fragments}/2 frag.</div>}
+          {/* Annuler / Refaire (dans le tour humain) */}
+          {(()=>{const canUndo=isMyTurn&&!botRunning&&undoStack.length>0;const canRedo=isMyTurn&&!botRunning&&redoStack.length>0;return<>
+            <button onClick={undo} disabled={!canUndo} title="Annuler le dernier coup" style={{width:32,height:32,borderRadius:6,fontSize:15,fontWeight:700,background:"transparent",color:canUndo?"var(--gold)":"var(--text-ghost)",border:`1px solid ${canUndo?"var(--gold-dim)":"var(--border)"}`,cursor:canUndo?"pointer":"not-allowed"}}>↶</button>
+            <button onClick={redo} disabled={!canRedo} title="Refaire le coup annulé" style={{width:32,height:32,borderRadius:6,fontSize:15,fontWeight:700,background:"transparent",color:canRedo?"var(--gold)":"var(--text-ghost)",border:`1px solid ${canRedo?"var(--gold-dim)":"var(--border)"}`,cursor:canRedo?"pointer":"not-allowed"}}>↷</button>
+          </>;})()}
+          <button onClick={()=>setShowRules(true)} title="Regles du jeu" style={{padding:"5px 10px",borderRadius:6,fontSize:14,fontWeight:700,background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)",fontFamily:"var(--font-title)"}}>?</button>
         </div>
       </div>
 
@@ -2189,6 +2290,25 @@ export default function App(){
               })()}
             </g>);
           })}
+          {/* ── HEXES DE BASE (invisibles mais interactifs) : sous chaque drapeau.
+                Le héros y démarre et les unités vaincues y reviennent. On rend un
+                hexagone cliquable discret pour pouvoir sélectionner l'unité qui
+                en sort (surbrillance dorée/verte comme les autres hexes). ── */}
+          {Object.values(HOME_BASES).map((hb,bi)=>{
+            const baseH=baseHexAt(hb);if(!baseH)return null;
+            const isMineBase=baseH.faction===me.faction;
+            const isV=validMoves.has(baseH.id);const isSrc=!moveSource&&movableUnits.has(baseH.id);
+            return(
+              <g key={`base${bi}`} onClick={()=>handleHexClick(baseH.id)} style={{cursor:isMineBase?"pointer":"default"}}>
+                {/* zone cliquable transparente autour du drapeau */}
+                <polygon points={hPts(baseH.rx,baseH.ry,26)} fill="rgba(0,0,0,0.01)" stroke={isMineBase?"rgba(216,201,163,0.18)":"none"} strokeWidth={1} strokeDasharray="3 3"/>
+                {isSrc&&<polygon points={hPts(baseH.rx,baseH.ry,26)} fill="rgba(212,178,84,0.16)" stroke="#e6c96a" strokeWidth={2.5} style={{pointerEvents:"none"}}>
+                  <animate attributeName="opacity" values="0.4;0.95;0.4" dur="1.4s" repeatCount="indefinite"/>
+                </polygon>}
+                {isV&&<polygon points={hPts(baseH.rx,baseH.ry,26)} fill="rgba(60,160,60,0.3)" stroke="#b8f0a8" strokeWidth={2.5} style={{pointerEvents:"none"}}/>}
+              </g>
+            );
+          })}
           {/* ── COUCHE UNITÉS : plate et animée (les pions glissent entre les hexes) ── */}
           <g style={{pointerEvents:"none"}}>
             {Object.entries(allHexContents).map(([hidStr,units])=>{
@@ -2221,10 +2341,11 @@ export default function App(){
               <animate attributeName="opacity" from="0.6" to="0" dur="0.5s" fill="freeze"/>
             </circle>;
           })()}
-          {/* Home Bases */}
+          {/* Home Bases — purement décoratif : pointerEvents none pour que
+              l'hex de base interactif en dessous reçoive bien les clics */}
           {Object.entries(HOME_BASES).map(([fid,hb])=>{
             const fc=FACTIONS[fid];if(!fc)return null;const isMe=fid===me.faction;
-            return(<g key={fid} opacity={isMe?1:0.55}>
+            return(<g key={fid} opacity={isMe?1:0.55} style={{pointerEvents:"none"}}>
               <line x1={hb.rx} y1={hb.ry-18} x2={hb.rx} y2={hb.ry+14} stroke="#d8c9a3" strokeWidth={1.2} opacity={0.6}/>
               <path d={`M${hb.rx} ${hb.ry-17} L${hb.rx+34} ${hb.ry-10} L${hb.rx+32} ${hb.ry-1} L${hb.rx} ${hb.ry+5} Z`} fill={fc.color} opacity={isMe?0.9:0.55} stroke="#0e0c08" strokeWidth={1}/>
               <text x={hb.rx+16} y={hb.ry-4} textAnchor="middle" fontSize={8} fill="#fff" fontWeight={700} stroke="rgba(0,0,0,0.5)" strokeWidth={2} paintOrder="stroke" style={{fontFamily:"var(--font-title)"}}>{fc.name.slice(0,8)}</text>
@@ -2271,7 +2392,10 @@ export default function App(){
                 const isAttacker=!combat.empireAttacks&&combat.type!=="pvp_defense";
                 const cBonus=getCombatBonus(me, combat.hexId, isAttacker);
                 const maxCards=Math.min(me.combatCards, combatUnits + cBonus.cardBonus);
-                const total=combat.powerSpend + cBonus.powerBonus + (combat.cardsSpend*2);
+                // Cartes valuées : on engage les `cardsSpend` cartes les plus fortes de la main
+                const handSorted=[...(me.cardHand||[])].sort((a,b)=>b-a);
+                const cardVal=topCardsSum(me.cardHand,combat.cardsSpend);
+                const total=combat.powerSpend + cBonus.powerBonus + cardVal;
                 const isPve=combat.type==="pve";
                 const enemy=!isPve?players[combat.enemyIdx]:null;
                 const ef=enemy?FACTIONS[enemy.faction]:null;
@@ -2291,14 +2415,20 @@ export default function App(){
                       ))}</div>
                     </div>
                     {maxCards>0&&<div style={{marginBottom:14}}>
-                      <div style={{fontSize:12,color:"var(--brass)",marginBottom:8,fontWeight:600}}>🃏 Cartes combat ({combat.cardsSpend}/{maxCards}) <span style={{fontWeight:400,color:"var(--text-muted)"}}>+2 chacune</span></div>
-                      <div style={{display:"flex",gap:5}}>{Array.from({length:maxCards+1},(_,i)=>i).map(v=>(
+                      <div style={{fontSize:12,color:"var(--brass)",marginBottom:8,fontWeight:600}}>🃏 Cartes engagées ({combat.cardsSpend}/{maxCards}) <span style={{fontWeight:400,color:"var(--text-muted)"}}>— les plus fortes de votre main, valeur = somme</span></div>
+                      <div style={{display:"flex",gap:5,marginBottom:8}}>{Array.from({length:maxCards+1},(_,i)=>i).map(v=>(
                         <button key={v} onClick={()=>setCombat(prev=>({...prev,cardsSpend:v}))} className={`dial-btn ${combat.cardsSpend===v?"on":"off"}`}>{v}</button>
                       ))}</div>
+                      {/* Votre main — les cartes engagées (les plus fortes) sont surlignées */}
+                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{handSorted.map((val,ci)=>{const played=ci<combat.cardsSpend;return(
+                        <span key={ci} style={{width:26,height:34,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,fontFamily:"var(--font-mono)",
+                          background:played?"linear-gradient(180deg,#8b2020,#bb3838)":"var(--bg3)",color:played?"#fff":"var(--text-dim)",
+                          border:played?"1px solid #dd4444":"1px solid var(--border)",boxShadow:played?"0 0 6px rgba(220,50,30,0.4)":"none"}}>{val}</span>
+                      );})}</div>
                     </div>}
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16,padding:"12px 16px",background:"rgba(0,0,0,0.4)",borderRadius:10,border:"1px solid var(--border)"}}>
                       <span style={{fontSize:22,fontWeight:900,color:"var(--gold)",fontFamily:"var(--font-title)"}}>{total}</span>
-                      <span style={{fontSize:12,color:"var(--text-muted)"}}>{combat.powerSpend}{cBonus.powerBonus>0?`+${cBonus.powerBonus}`:""}⚡ + {combat.cardsSpend}×2🃏</span>
+                      <span style={{fontSize:12,color:"var(--text-muted)"}}>{combat.powerSpend}{cBonus.powerBonus>0?`+${cBonus.powerBonus}`:""}⚡ + {cardVal}🃏</span>
                       {cBonus.name&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:"rgba(200,112,64,0.12)",border:"1px solid var(--rust)",color:"var(--rust)"}}>{cBonus.name}{cBonus.powerBonus>0?` +${cBonus.powerBonus}⚡`:""}{cBonus.cardBonus>0?` +${cBonus.cardBonus}🃏`:""}</span>}
                       {isPve&&<span style={{fontSize:16,fontWeight:700,marginLeft:"auto",color:total>=combat.empireCard.power?"var(--success)":"#ff4444"}}>{total>=combat.empireCard.power?"✓":"✗"} vs {combat.empireCard.power}</span>}
                     </div>
@@ -2474,7 +2604,7 @@ export default function App(){
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:12,fontWeight:700,color:fc.color,fontFamily:"var(--font-title)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{fc.name.slice(0,8)}{isActive&&<span style={{color:"var(--gold)",marginLeft:4}}>◀</span>}</div>
               </div>
-              <div style={{fontSize:11,color:"var(--text-dim)",whiteSpace:"nowrap",fontFamily:"var(--font-mono)"}}>⚡{p.power} ♥{p.pop} ⭐{p.stars}</div>
+              <div style={{fontSize:12,color:"var(--text-dim)",whiteSpace:"nowrap",fontFamily:"var(--font-mono)"}}>⚡{p.power} ♥{p.pop} ⭐{p.stars}</div>
             </div>
           );})}
         </div>
@@ -2499,55 +2629,6 @@ export default function App(){
             </div>
           </div>
         )}
-
-        {/* ── Bonus de bâtiments (meeple → bonus libéré une fois construit) ── */}
-        <div style={{padding:"5px 8px",borderBottom:"1px solid var(--border)",flexShrink:0,display:"flex",gap:4}}>
-          {BUILDING_TYPES.map(bt=>{
-            const built=(me.buildings||[]).some(b=>b.type===bt.type);
-            return(
-              <div key={bt.type} title={`${bt.name} — ${bt.effect}${built?" (actif)":" (à construire)"}`} style={{
-                flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:1,padding:"3px 2px",borderRadius:4,
-                background:built?"rgba(122,170,85,0.14)":"rgba(0,0,0,0.25)",
-                border:built?"1px solid rgba(122,170,85,0.5)":"1px dashed var(--border-dark)",
-                opacity:built?1:0.5,transition:"all 0.2s",
-              }}>
-                <span style={{fontSize:15,filter:built?"none":"grayscale(1)"}}>{bt.icon}</span>
-                <span style={{fontSize:8.5,color:built?"#8fbf6a":"var(--text-muted)",fontWeight:700,textAlign:"center",lineHeight:1}}>
-                  {bt.type==="arsenal"?"+1⚡ Bols.":bt.type==="memorial"?"+1❤ Bols.":bt.type==="gare"?"🛤 Rails":"+1 Prod."}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Star tracker (toggled) */}
-        {showStars&&(()=>{
-          const stars=[
-            {icon:"⬆",name:"Upg",prog:`${me.upgrades||0}/6`,done:(me.upgrades||0)>=6},
-            {icon:"⬡",name:"Mech",prog:`${me.mechs.length}/4`,done:me.mechs.length>=4},
-            {icon:"🏗",name:"Bât",prog:`${(me.buildings||[]).length}/4`,done:(me.buildings||[]).length>=4},
-            {icon:"🤝",name:"Recr",prog:`${me.recruits||0}/4`,done:(me.recruits||0)>=4},
-            {icon:"⚔",name:"Cmbt",prog:`${Math.min(me.combatWins||0,2)}/2`,done:(me.combatWins||0)>=2},
-            {icon:"🎯",name:"Obj",prog:me.objectiveRevealed?"✓":"…",done:me.objectiveRevealed},
-            {icon:"🏛",name:"Fact",prog:me.fObjRevealed?"✓":"…",done:me.fObjRevealed},
-            {icon:"👷",name:"Ouv8",prog:`${me.workers.length}/8`,done:me.workers.length>=8},
-            {icon:"♥",name:"Pop18",prog:`${me.pop}/18`,done:me.pop>=18},
-            {icon:"⚡",name:"Pui16",prog:`${me.power}/16`,done:me.power>=16},
-          ];
-          return(
-            <div style={{padding:"6px 8px",borderBottom:"1px solid var(--border)",flexShrink:0}}>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:3}}>
-                {stars.map((s,i)=>(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"3px 5px",borderRadius:3,fontSize:10,whiteSpace:"nowrap",background:s.done?"rgba(76,175,80,0.1)":"transparent",border:s.done?"1px solid rgba(76,175,80,0.2)":"1px solid transparent"}}>
-                    <span style={{fontSize:11}}>{s.done?"⭐":s.icon}</span>
-                    <span style={{color:s.done?"#4A8A4A":"var(--text-dim)"}}>{s.name}</span>
-                    {!s.done&&<span style={{color:"var(--gold)",fontWeight:700,fontSize:10}}>{s.prog}</span>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
 
         {/* ── Actions area ── */}
         <div style={{flex:1,overflow:"auto",padding:0}}>
@@ -2592,7 +2673,7 @@ export default function App(){
                 const isLastAction=i===3;
                 return(
                   <React.Fragment key={action}>
-                  <button onClick={()=>{if(!disabled){setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
+                  <button onClick={()=>{if(!disabled){pushHistory();setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
                     onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background="rgba(200,112,64,0.06)";}}
                     onMouseLeave={e=>{e.currentTarget.style.background=disabled?"rgba(0,0,0,0.3)":"transparent";}}
                     style={{
@@ -2604,9 +2685,9 @@ export default function App(){
                     transition:"all 0.2s ease",
                   }}>
                     {/* TOP ACTION */}
-                    <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(46,37,22,0.75),rgba(30,24,14,0.6))"}}>
+                    <div style={{padding:"9px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(46,37,22,0.75),rgba(30,24,14,0.6))"}}>
                       <div style={{minWidth:0,flex:1}}>
-                        <div style={{fontSize:11,fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",color:"var(--rust)",marginBottom:4,fontFamily:"var(--font-title)"}}>{action}</div>
+                        <div style={{fontSize:13,fontWeight:800,letterSpacing:1.5,textTransform:"uppercase",color:"var(--rust)",marginBottom:4,fontFamily:"var(--font-title)"}}>{action}</div>
                         <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact />
                       </div>
                       <CubeSlots total={cubesTop} filled={cubesTop} />
@@ -2616,10 +2697,10 @@ export default function App(){
                     {/* BOTTOM ACTION */}
                     <div style={{padding:"8px 12px",display:"flex",alignItems:"center",gap:8,background:"linear-gradient(180deg,rgba(14,12,8,0.6),rgba(10,9,6,0.8))"}}>
                       <div style={{minWidth:0,flex:1}}>
-                        <div style={{fontSize:10,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"var(--text-dim)",marginBottom:3,display:"flex",alignItems:"center",gap:5}}>
+                        <div style={{fontSize:12,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"var(--text-dim)",marginBottom:3,display:"flex",alignItems:"center",gap:5}}>
                           {bottomAction}
                           {/* Recrue posée ici → bonus ongoing actif (soi + voisins) */}
-                          {(me.enlistMap||[])[i]&&<span title={`Recrue : ${ENLIST_ONGOING[i].label} quand vous/voisins faites ${bottomAction}`} style={{fontSize:9,padding:"1px 5px",borderRadius:8,background:"rgba(90,122,106,0.3)",border:"1px solid #5a9a7a",color:"#8fd0b0",fontWeight:700}}>🤝{ENLIST_ONGOING[i].icon}</span>}
+                          {(me.enlistMap||[])[i]!=null&&<span title={`Recrue posée : ${ENLIST_ONGOING[(me.enlistMap||[])[i]].label} quand vous/voisins faites ${bottomAction}`} style={{fontSize:9,padding:"1px 5px",borderRadius:8,background:"rgba(90,122,106,0.3)",border:"1px solid #5a9a7a",color:"#8fd0b0",fontWeight:700}}>🤝{ENLIST_ONGOING[(me.enlistMap||[])[i]].icon}</span>}
                         </div>
                         {/* Coût (icônes) → gain concret : pièces libérées par l'upgrade */}
                         <ActionRow pay={bottomPay} gain={upBonus>0?Array(upBonus).fill("coins"):[bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":bottomAction==="Enlist"?"pop":"power"]} compact />
@@ -2628,8 +2709,8 @@ export default function App(){
                         {/* Emplacements de cube d'upgrade : chaque cube posé = -1 coût.
                             reducAvail visibles = réductions encore possibles ici */}
                         <CubeSlots total={maxBot} filled={cubesBot} />
-                        {reducAvail>0&&<span title={`${reducAvail} réduction(s) de coût possible(s) via Upgrade`} style={{fontSize:9,color:"#4caf50",whiteSpace:"nowrap"}}>↓-{reducAvail} poss.</span>}
-                        <span style={{fontSize:10,fontWeight:600,color:bottomData.max?"var(--success)":"var(--text-muted)",whiteSpace:"nowrap"}}>{bottomData.max?"✓ max":bottomData.prog}</span>
+                        {reducAvail>0&&<span title={`${reducAvail} réduction(s) de coût possible(s) via Upgrade`} style={{fontSize:10,color:"#4caf50",whiteSpace:"nowrap"}}>↓-{reducAvail} poss.</span>}
+                        <span style={{fontSize:11,fontWeight:600,color:bottomData.max?"var(--success)":"var(--text-muted)",whiteSpace:"nowrap"}}>{bottomData.max?"✓ max":bottomData.prog}</span>
                       </div>
                     </div>
                   </button>
@@ -2856,21 +2937,40 @@ export default function App(){
                   </div>;
                 })()}
                 {ba==="Build"&&!maxed&&(hasRes&&buildableHexes.length>0&&availBuildings.length>0?<div>{!bottomPick||bottomPick.packUp?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{availBuildings.map(bt=><button key={bt.type} onClick={()=>setBottomPick({building:bt})} className="act-btn">{bt.icon} {bt.name}</button>)}</div>:<div><div style={{fontSize:11,marginBottom:6}}>Placer {bottomPick.building.icon} sur :</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{buildableHexes.map(hid=><button key={hid} onClick={()=>doBuild(hid,bottomPick.building.type)} className="act-btn">#{hid}</button>)}</div><button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:12,opacity:0.7,minHeight:36}}>← Autre</button></div>}</div>:<div style={{fontSize:11,color:"var(--text-muted)"}}>Insuffisant</div>)}
-                {ba==="Enlist"&&!maxed&&(hasRes?<div>
-                  <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>Recrue {(me.recruits||0)+1}/4 — Assigner à une action bottom :</div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
-                    {BOTTOM.map((bName,ci)=>{
-                      const assigned=(me.enlistMap||[])[ci];
-                      const ongoing=ENLIST_ONGOING[ci];
-                      return <button key={ci} onClick={()=>doEnlist(ci)} className="act-btn" disabled={assigned} style={{textAlign:"center",opacity:assigned?0.3:1,cursor:assigned?"not-allowed":"pointer"}}>
-                        <div style={{fontWeight:700,fontSize:12}}>{ongoing.icon} {bName}</div>
-                        <div style={{fontSize:11,color:"var(--text-dim)",marginTop:2}}>Immédiat: {ENLIST_BONUSES[ci].label}</div>
-                        <div style={{fontSize:11,color:"#4caf50",marginTop:1}}>Ongoing: {ongoing.label}</div>
-                        {assigned&&<div style={{fontSize:11,color:"#8A3030"}}>✓ assigné</div>}
-                      </button>;
-                    })}
-                  </div>
-                </div>:<div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>)}
+                {ba==="Enlist"&&!maxed&&(hasRes?(()=>{
+                  // Étape 1 : choisir la SECTION (→ bonus immédiat de la colonne)
+                  // Étape 2 : choisir la RECRUE permanente à y poser (décorrélée)
+                  if(!bottomPick||bottomPick.enlistCol==null){
+                    return <div>
+                      <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>Recrue {(me.recruits||0)+1}/4 — ① Section (bonus immédiat) :</div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
+                        {BOTTOM.map((bName,ci)=>{
+                          const assigned=(me.enlistMap||[])[ci]!=null;
+                          return <button key={ci} onClick={()=>setBottomPick({enlistCol:ci})} className="act-btn" disabled={assigned} style={{textAlign:"center",opacity:assigned?0.3:1,cursor:assigned?"not-allowed":"pointer"}}>
+                            <div style={{fontWeight:700,fontSize:12}}>{bName}</div>
+                            <div style={{fontSize:11,color:"var(--gold)",marginTop:2}}>Immédiat {ENLIST_BONUSES[ci].icon} {ENLIST_BONUSES[ci].label}</div>
+                            {assigned&&<div style={{fontSize:10,color:"#8fd0b0",marginTop:1}}>🤝 {ENLIST_ONGOING[(me.enlistMap||[])[ci]].icon} posée</div>}
+                          </button>;
+                        })}
+                      </div>
+                    </div>;
+                  }
+                  const col=bottomPick.enlistCol;
+                  return <div>
+                    <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>Section <b style={{color:"var(--brass)"}}>{BOTTOM[col]}</b> (immédiat {ENLIST_BONUSES[col].icon} {ENLIST_BONUSES[col].label}) — ② Recrue permanente à poser :</div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
+                      {ENLIST_ONGOING.map((rec,ri)=>{
+                        const used=(me.enlistMap||[]).includes(ri);
+                        return <button key={ri} onClick={()=>{doEnlist(col,ri);setBottomPick(null);}} className="act-btn" disabled={used} style={{textAlign:"center",opacity:used?0.3:1,cursor:used?"not-allowed":"pointer",borderColor:used?"var(--border)":"#5a9a7a"}}>
+                          <div style={{fontWeight:700,fontSize:13}}>{rec.icon} {rec.label}</div>
+                          <div style={{fontSize:10,color:"#8fd0b0",marginTop:1}}>à chaque {BOTTOM[col]} (vous/voisins)</div>
+                          {used&&<div style={{fontSize:10,color:"#8A3030"}}>déjà posée</div>}
+                        </button>;
+                      })}
+                    </div>
+                    <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:12,opacity:0.7,minHeight:36}}>← Autre section</button>
+                  </div>;
+                })():<div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>)}
                 {maxed&&<div style={{fontSize:12,color:"var(--success)"}}>{ba} au maximum</div>}
                 <button onClick={actuallyEndTurn} className="act-btn" style={{marginTop:8,width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)"}}>Passer →</button>
               </div>
@@ -2946,48 +3046,8 @@ export default function App(){
 
         </div>
 
-        {/* ── Dropdown: Star Tracker ── */}
-        <div style={{borderTop:"1px solid var(--border)",flexShrink:0}}>
-          <button onClick={()=>setShowStars(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:12,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
-            <span>⭐ Étoiles ({me.stars}/6)</span>
-            <span style={{fontSize:9,color:"var(--text-dim)",transform:showStars?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
-          </button>
-        </div>
-
-        {/* ── Dropdown: Objectives ── */}
-        {me.objectives&&me.objectives.length>0&&(
-          <div style={{borderTop:"1px solid var(--border)",flexShrink:0}}>
-            <button onClick={()=>setShowObjectives(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",background:"rgba(201,168,76,0.04)",border:"none",color:"var(--gold)",fontSize:12,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
-              <span>🎯 Objectifs {me.objectiveRevealed?"(1 révélé)":""}</span>
-              <span style={{fontSize:9,color:"var(--text-dim)",transform:showObjectives?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
-            </button>
-            {showObjectives&&(
-              <div style={{padding:"8px 12px",animation:"slideDown 0.2s ease"}}>
-                <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>
-                  {me.objectiveRevealed?"1 objectif révélé":"Révélez-en un quand la condition est remplie pour gagner ⭐"}
-                </div>
-                {me.objectives.map((obj,idx)=>{
-                  const isRevealed=me.objectiveRevealed&&me.revealedObjectiveIdx===idx;
-                  const canReveal=!me.objectiveRevealed&&obj.check(me);
-                  const condMet=obj.check(me);
-                  return(
-                    <div key={obj.id||idx} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",opacity:me.objectiveRevealed&&!isRevealed?0.4:1}}>
-                      <span style={{color:isRevealed?"#4A8A4A":condMet?"var(--gold)":"var(--text-dim)",fontSize:13,fontFamily:"var(--font-title)",fontWeight:700,minWidth:0,flex:1}}>
-                        {isRevealed?"✅":"🎯"} {obj.name}
-                        <span style={{fontWeight:400,fontSize:12,color:"var(--text-dim)",marginLeft:8}}>{obj.desc}</span>
-                      </span>
-                      {!me.objectiveRevealed&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&(
-                        canReveal
-                          ?<button onClick={()=>revealObjective(idx)} style={{padding:"8px 14px",fontSize:12,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,minHeight:44,flexShrink:0}}>Révéler ⭐</button>
-                          :<span style={{fontSize:11,color:"var(--text-muted)",flexShrink:0}}>pas rempli</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+        {/* Étoiles + objectifs : désormais dans la rangée d'icônes de la barre du
+            haut → clic ouvre le panneau détail (voir plus bas). */}
 
         {/* ── Dropdown: Journal enrichi ── */}
         <div style={{borderTop:"1px solid var(--border)",flexShrink:0,marginTop:"auto"}}>
@@ -3026,6 +3086,119 @@ export default function App(){
           </>}
         </div>
       </div>
+
+      {/* ═══ PANNEAU DÉTAIL D'ÉTOILE (façon Steam) — clic sur une icône de la barre ═══ */}
+      {starDetail&&(()=>{
+        const s=starList.find(x=>x.key===starDetail);if(!s)return null;
+        return(
+          <div style={{position:"fixed",top:"calc(var(--top-h) + 8px)",right:"calc(var(--right-w) + 8px)",width:340,maxHeight:"calc(100vh - var(--top-h) - 24px)",overflowY:"auto",zIndex:45,
+            background:"linear-gradient(180deg,#211a10,#14100a)",border:"1px solid var(--gold-dim)",borderRadius:12,boxShadow:"0 10px 40px rgba(0,0,0,0.7)",animation:"slideUp 0.2s ease"}}>
+            {/* En-tête */}
+            <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:"1px solid var(--border)",position:"relative"}}>
+              <div style={{position:"relative",width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:8,background:s.done?"rgba(232,200,96,0.14)":"rgba(255,255,255,0.03)",border:`1px solid ${s.done?"var(--gold)":"var(--border)"}`}}>
+                <span style={{fontSize:22,filter:s.done?"none":"grayscale(1)",opacity:s.done?0.5:0.6}}>{s.icon}</span>
+                {s.done&&<span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>⭐</span>}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:"var(--font-title)",fontSize:16,fontWeight:800,color:s.done?"var(--gold)":"var(--text)"}}>{s.name}</div>
+                <div style={{fontSize:13,color:s.done?"#8fbf6a":"var(--gold)",fontWeight:700,marginTop:2}}>{s.done?"⭐ Étoile obtenue":`Progression ${s.prog}`}</div>
+              </div>
+              <button onClick={()=>setStarDetail(null)} style={{position:"absolute",top:10,right:10,width:26,height:26,borderRadius:6,background:"rgba(0,0,0,0.4)",border:"1px solid var(--border)",color:"var(--text-dim)",fontSize:14,cursor:"pointer"}}>✕</button>
+            </div>
+            {/* Ce que ça demande */}
+            <div style={{padding:"12px 16px",fontSize:13,color:"var(--text-dim)",lineHeight:1.6,borderBottom:"1px solid var(--border)"}}>{s.need}</div>
+            {/* Contenu spécifique */}
+            <div style={{padding:"12px 16px"}}>
+              {starDetail==="build"&&(<div>
+                <div style={{fontSize:12,fontWeight:700,color:"var(--brass)",marginBottom:8,fontFamily:"var(--font-title)"}}>Vos bâtiments & bonus</div>
+                {BUILDING_TYPES.map(bt=>{const built=(me.buildings||[]).find(b=>b.type===bt.type);return(
+                  <div key={bt.type} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:6,marginBottom:5,background:built?"rgba(122,170,85,0.12)":"rgba(0,0,0,0.25)",border:built?"1px solid rgba(122,170,85,0.4)":"1px dashed var(--border-dark)"}}>
+                    <span style={{fontSize:20,filter:built?"none":"grayscale(1)",opacity:built?1:0.5}}>{bt.icon}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:700,color:built?"#8fbf6a":"var(--text-dim)"}}>{bt.name}{built?` (#${built.hexId})`:""}</div>
+                      <div style={{fontSize:12,color:"var(--text-dim)"}}>{bt.effect}</div>
+                    </div>
+                    <span style={{fontSize:12,color:built?"#8fbf6a":"var(--text-muted)",fontWeight:700}}>{built?"✓ posé":"à poser"}</span>
+                  </div>
+                );})}
+                {structureBonus&&<div style={{marginTop:8,padding:"8px 10px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px solid var(--gold-dim)",fontSize:12,color:"var(--gold)"}}>
+                  🏦 Bonus de pose : <b>{structureBonus.icon} {structureBonus.name}</b> — +{structureBonus.coins}$ {structureBonus.desc} (tuiles marquées $ sur la carte).
+                </div>}
+              </div>)}
+              {starDetail==="mech"&&(<div>
+                <div style={{fontSize:12,fontWeight:700,color:"var(--brass)",marginBottom:8,fontFamily:"var(--font-title)"}}>Mechas & capacités</div>
+                <div style={{fontSize:12,color:"var(--text-dim)",marginBottom:8}}>Déployés : {me.mechs.length}/4 {me.mechs.length>0&&`(hex ${me.mechs.map(m=>`#${m.hexId}`).join(", ")})`} · Chaque déploiement débloque UNE capacité au choix :</div>
+                {ABILITY_NAMES.map((nm,idx)=>{const unlocked=(me.unlockedAbilities||[]).includes(idx);return(
+                  <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:6,marginBottom:5,background:unlocked?"rgba(200,112,64,0.1)":"rgba(0,0,0,0.25)",border:unlocked?"1px solid var(--rust-dark)":"1px dashed var(--border-dark)",opacity:unlocked?1:0.75}}>
+                    <span style={{fontSize:20,opacity:unlocked?1:0.5}}>{ABILITY_ICONS[idx]}</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:700,color:unlocked?"var(--rust)":"var(--text-dim)"}}>{nm}</div>
+                      <div style={{fontSize:12,color:"var(--text-dim)"}}>{ABILITY_DESC[idx]}</div>
+                    </div>
+                    <span style={{fontSize:12,color:unlocked?"#8fbf6a":"var(--text-muted)",fontWeight:700}}>{unlocked?"✓":"—"}</span>
+                  </div>
+                );})}
+              </div>)}
+              {starDetail==="recr"&&(<div>
+                <div style={{fontSize:12,fontWeight:700,color:"var(--brass)",marginBottom:8,fontFamily:"var(--font-title)"}}>Recrues posées (immédiat / permanent)</div>
+                {BOTTOM.map((bName,ci)=>{const rec=(me.enlistMap||[])[ci];const placed=rec!=null;return(
+                  <div key={ci} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:6,marginBottom:5,background:placed?"rgba(90,122,106,0.15)":"rgba(0,0,0,0.25)",border:placed?"1px solid #5a9a7a":"1px dashed var(--border-dark)"}}>
+                    <span style={{fontSize:16,fontWeight:700,color:"var(--text-dim)",minWidth:52}}>{bName}</span>
+                    <div style={{flex:1,fontSize:12}}>
+                      <div style={{color:"var(--gold)"}}>Immédiat {ENLIST_BONUSES[ci].icon} {ENLIST_BONUSES[ci].label}</div>
+                      <div style={{color:placed?"#8fd0b0":"var(--text-muted)"}}>Permanent {placed?`${ENLIST_ONGOING[rec].icon} ${ENLIST_ONGOING[rec].label}`:"— libre —"}</div>
+                    </div>
+                    <span style={{fontSize:12,color:placed?"#8fd0b0":"var(--text-muted)",fontWeight:700}}>{placed?"🤝":"—"}</span>
+                  </div>
+                );})}
+              </div>)}
+              {starDetail==="obj"&&me.objectives&&(<div>
+                <div style={{fontSize:12,fontWeight:700,color:"var(--brass)",marginBottom:6,fontFamily:"var(--font-title)"}}>Vos missions secrètes</div>
+                <div style={{fontSize:12,color:"var(--text-dim)",marginBottom:8}}>{me.objectiveRevealed?"1 mission révélée (⭐ obtenue).":"Révélez-en une dès que sa condition est remplie."}</div>
+                {me.objectives.map((obj,idx)=>{const isRev=me.objectiveRevealed&&me.revealedObjectiveIdx===idx;const canRev=!me.objectiveRevealed&&obj.check(me);const met=obj.check(me);return(
+                  <div key={obj.id||idx} style={{padding:"8px 10px",borderRadius:6,marginBottom:6,background:isRev?"rgba(122,170,85,0.12)":"rgba(0,0,0,0.25)",border:`1px solid ${isRev?"rgba(122,170,85,0.4)":met?"var(--gold-dim)":"var(--border)"}`,opacity:me.objectiveRevealed&&!isRev?0.45:1}}>
+                    <div style={{fontSize:13,fontWeight:700,color:isRev?"#8fbf6a":met?"var(--gold)":"var(--text)"}}>{isRev?"✅":"🎯"} {obj.name}</div>
+                    <div style={{fontSize:12,color:"var(--text-dim)",marginTop:2}}>{obj.desc}</div>
+                    {!me.objectiveRevealed&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&(canRev
+                      ?<button onClick={()=>{revealObjective(idx);}} style={{marginTop:6,padding:"8px 14px",fontSize:12,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,cursor:"pointer"}}>Révéler ⭐</button>
+                      :<div style={{marginTop:4,fontSize:11,color:"var(--text-muted)"}}>{met?"":"Condition non remplie"}</div>)}
+                  </div>
+                );})}
+              </div>)}
+              {/* Barre de progression générique pour les compteurs */}
+              {["upg","recr","cbt","wrk","pop","pow"].includes(starDetail)&&(()=>{
+                const parts=s.prog.split("/");const cur=+parts[0],max=+parts[1]||1;
+                return<div style={{marginTop:4}}>
+                  <div style={{height:10,borderRadius:5,background:"rgba(0,0,0,0.4)",overflow:"hidden",border:"1px solid var(--border)"}}>
+                    <div style={{height:"100%",width:`${Math.min(100,cur/max*100)}%`,background:s.done?"linear-gradient(90deg,#7aaa55,#9fd070)":"linear-gradient(90deg,var(--gold-dim),var(--gold))",transition:"width 0.3s"}}/>
+                  </div>
+                  <div style={{textAlign:"center",fontSize:13,fontWeight:700,color:"var(--gold)",marginTop:5}}>{s.prog}</div>
+                </div>;
+              })()}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* ═══ MAIN DE CARTES DE COMBAT (clic sur le compteur 🃏) ═══ */}
+      {showCards&&(()=>{
+        const summ=handSummary(me);const vals=Object.keys(summ).map(Number).sort((a,b)=>b-a);
+        return<div style={{position:"fixed",top:"calc(var(--top-h) + 6px)",left:200,zIndex:60,background:"linear-gradient(180deg,#211a10,#14100a)",border:"1px solid var(--gold-dim)",borderRadius:12,padding:"14px 16px",boxShadow:"0 8px 30px rgba(0,0,0,0.7)",minWidth:200,animation:"slideUp 0.15s ease"}}>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+            <div style={{fontSize:13,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-title)"}}>🃏 Main de combat ({me.combatCards})</div>
+            <button onClick={()=>setShowCards(false)} style={{width:22,height:22,borderRadius:5,background:"rgba(0,0,0,0.4)",border:"1px solid var(--border)",color:"var(--text-dim)",fontSize:12,cursor:"pointer"}}>✕</button>
+          </div>
+          {vals.length===0?<div style={{fontSize:12,color:"var(--text-dim)"}}>Aucune carte</div>:
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>{vals.map(v=>(
+              <div key={v} style={{display:"flex",alignItems:"center",gap:10}}>
+                <span style={{width:30,height:40,borderRadius:5,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,fontFamily:"var(--font-mono)",background:"var(--bg3)",border:"1px solid var(--border-light)",color:"#c0b0d8"}}>{v}</span>
+                <span style={{fontSize:14,color:"var(--text-dim)"}}>× {summ[v]}</span>
+                <span style={{fontSize:11,color:"var(--text-muted)",marginLeft:"auto"}}>= {v*summ[v]} pts</span>
+              </div>
+            ))}</div>}
+          <div style={{fontSize:11,color:"var(--text-muted)",marginTop:10,lineHeight:1.5,maxWidth:220}}>En combat, chaque carte engagée ajoute <b>sa valeur</b> au total (les plus fortes jouées en premier).</div>
+        </div>;
+      })()}
 
       {/* ═══ FLOATERS — animations de gain (pièces/cœurs/puissance qui pop) ═══ */}
       {floaters.length>0&&(

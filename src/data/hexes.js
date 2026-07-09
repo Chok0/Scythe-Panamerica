@@ -94,8 +94,17 @@ export let hMap = {};
 export let ADJ = {};
 export let RSET = new Set();
 export let CURRENT_MAP = DEFAULT_MAP;
+// Hex de base (« drapeau ») par faction : { faction: hexId }. Ids ≥ 900 pour
+// ne jamais entrer en collision avec les hexes du plateau (0-47).
+export let HOME_BASE_HEX = {};
 
 export const hasR = (a, b) => RSET.has(`${Math.min(a, b)}-${Math.max(a, b)}`);
+// L'hex de base est-il un vrai hex de plateau ? Non → invisible, non-scoré.
+export const isBaseHex = (id) => !!hMap[id]?.base;
+// Hex de base d'une faction (retraite / départ du héros)
+export const homeBaseHex = (faction) => hMap[HOME_BASE_HEX[faction]] || null;
+// Hex de base à des coordonnées de drapeau données (HOME_BASES[fac] → base hex)
+export const baseHexAt = (hb) => Object.values(hMap).find(h => h.base && h.rx === hb.rx && h.ry === hb.ry) || null;
 
 /** Charge une carte (par défaut ou générée) — toute la logique suit via les bindings. */
 export const loadMap = (map) => {
@@ -105,6 +114,27 @@ export const loadMap = (map) => {
   hMap = Object.fromEntries(map.hexes.map(h => [h.id, h]));
   ADJ = computeAdj(map.hexes);
   RSET = new Set(map.rivers.map(([a, b]) => `${Math.min(a, b)}-${Math.max(a, b)}`));
+
+  // ── Hexes de base virtuels : un « hex invisible » sous chaque drapeau ──
+  // Présents dans hMap + ADJ (le mouvement/les retraites fonctionnent) mais
+  // PAS dans HEXES (pas de tuile rendue, pas de terrain, pas de score).
+  // Chaque base est reliée à l'hex terrestre le plus proche : le héros en sort
+  // au 1er déplacement et les unités vaincues y reviennent.
+  HOME_BASE_HEX = {};
+  Object.entries(HOME_BASES).forEach(([fac, hb], i) => {
+    const id = 900 + i;
+    // Hex terrestre le plus proche du drapeau (point d'entrée sur le plateau)
+    const near = map.hexes.reduce((best, h) => {
+      if (h.t === "lac" || h.t === "marecage") return best;
+      const d = (h.rx - hb.rx) ** 2 + (h.ry - hb.ry) ** 2;
+      const db = best ? (best.rx - hb.rx) ** 2 + (best.ry - hb.ry) ** 2 : Infinity;
+      return d < db ? h : best;
+    }, null);
+    hMap[id] = { id, rx: hb.rx, ry: hb.ry, t: "base", base: true, faction: fac };
+    HOME_BASE_HEX[fac] = id;
+    ADJ[id] = [];
+    if (near) { ADJ[id].push(near.id); (ADJ[near.id] = ADJ[near.id] || []).push(id); }
+  });
 };
 
 loadMap(DEFAULT_MAP);
