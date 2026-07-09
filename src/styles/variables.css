@@ -82,7 +82,7 @@
 
   /* Sizing */
   --top-h: 56px;
-  --left-w: 72px;
+  --left-w: 110px;
   /* Panneau droit adaptatif : 320px minimum, s'élargit sur grands écrans */
   --right-w: clamp(320px, 24vw, 420px);
   --btn-min: 44px;
