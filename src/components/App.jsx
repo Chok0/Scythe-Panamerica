@@ -61,6 +61,8 @@ export default function App(){
   const[carryOnMove,setCarryOnMove]=useState(true); // 🚚 emporter ouvriers/ressources au Move
   const[routeDrop,setRouteDrop]=useState(null); // 📦 dépose en route: {mids,destHex,endAfter}
   const[preActionSnapshot,setPreActionSnapshot]=useState(null); // snapshot of player[0] before action, for undo
+  const[undoStack,setUndoStack]=useState([]); // pile d'annulation (snapshots d'état, dans le tour humain)
+  const[redoStack,setRedoStack]=useState([]); // pile de rétablissement
   const[tradePicks,setTradePicks]=useState([]); // for Trade: array of picked resource types (0-2)
   const[hovHex,setHovHex]=useState(null);
   const[clickRipple,setClickRipple]=useState(null); // {hexId, key} for ripple animation
@@ -578,6 +580,9 @@ export default function App(){
   // Actually finish and pass to bots
   const actuallyEndTurn=useCallback(()=>{
     setPendingBottom(null);setBottomPick(null);
+    // On ne peut pas annuler par-delà le tour des bots (tirages aléatoires) :
+    // les piles sont vidées au passage à l'IA.
+    setUndoStack([]);setRedoStack([]);
     setCurrentP(1);setBotRunning(true);
   },[]);
 
@@ -868,6 +873,46 @@ export default function App(){
     prevStatsRef.current=snap;
   },[players,phase,spawnFloater]);
 
+  // ── ANNULER / REFAIRE (undo/redo) ──────────────────────────────────
+  // Pile de snapshots de l'état de jeu, poussée avant chaque coup humain et
+  // vidée au passage aux bots (on n'annule pas au-delà de son propre tour ni
+  // par-dessus des tirages aléatoires de l'IA). Les objets porteurs de
+  // fonctions (objectifs) sont conservés par référence lors du clonage.
+  const gameRef=useRef({});
+  gameRef.current={players,empire,rails,encounterTokens,rrVisitors};
+  const cloneVal=useCallback((v)=>{
+    if(Array.isArray(v))return v.map(cloneVal);
+    if(v&&typeof v==="object"){
+      if(Object.values(v).some(x=>typeof x==="function"))return v; // def immuable (objectif…)
+      const o={};for(const k in v)o[k]=cloneVal(v[k]);return o;
+    }
+    return v;
+  },[]);
+  const snapshotGame=useCallback(()=>{
+    const g=gameRef.current;
+    return {players:g.players.map(cloneVal),empire:{...g.empire},rails:g.rails.map(r=>[...r]),encounterTokens:[...g.encounterTokens],rrVisitors:g.rrVisitors};
+  },[cloneVal]);
+  const restoreGame=useCallback((snap)=>{
+    setPlayers(snap.players.map(cloneVal));
+    setEmpire({...snap.empire});
+    setRails(snap.rails.map(r=>[...r]));
+    setEncounterTokens(new Set(snap.encounterTokens));
+    setRrVisitors(snap.rrVisitors);
+    // annule tout état transitoire d'action en cours
+    setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);
+    setPendingBottom(null);setBottomPick(null);setCombat(null);setEncounter(null);setRougeRiver(null);
+    setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);
+  },[cloneVal]);
+  const pushHistory=useCallback(()=>{ setUndoStack(s=>[...s.slice(-40),snapshotGame()]); setRedoStack([]); },[snapshotGame]);
+  const undo=useCallback(()=>{
+    setUndoStack(s=>{ if(s.length===0)return s; setRedoStack(r=>[...r,snapshotGame()]); restoreGame(s[s.length-1]); return s.slice(0,-1); });
+    addLog("↶ Coup annulé");
+  },[snapshotGame,restoreGame,addLog]);
+  const redo=useCallback(()=>{
+    setRedoStack(r=>{ if(r.length===0)return r; setUndoStack(u=>[...u,snapshotGame()]); restoreGame(r[r.length-1]); return r.slice(0,-1); });
+    addLog("↷ Coup rétabli");
+  },[snapshotGame,restoreGame,addLog]);
+
   const validMoves=useMemo(()=>{
     if(!moveSource||!me)return new Set();
     let moves=getValidMoves(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails,moveSource.unitType);
@@ -1021,6 +1066,8 @@ export default function App(){
     }
     
     if(moveSource&&validMoves.has(hexId)){
+      // Snapshot avant CE déplacement → l'undo prend en compte chaque sous-coup
+      pushHistory();
       // Check for combat triggers before actually moving
       const movingCombatUnit=moveSource.unitType==="hero"||moveSource.unitType==="mech";
       
@@ -1251,7 +1298,7 @@ export default function App(){
     if(moveSource){setMoveSource(null);return;}
     setUnitPicker(null);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -1984,6 +2031,11 @@ export default function App(){
             👥 {players.length-1}<span style={{fontSize:9,transform:showOpponents?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
           </button>}
           {(me.fragments||0)>0&&<div style={{fontSize:12,padding:"4px 8px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:"#a080d0"}}>{me.fragments}/2 frag.</div>}
+          {/* Annuler / Refaire (dans le tour humain) */}
+          {(()=>{const canUndo=isMyTurn&&!botRunning&&undoStack.length>0;const canRedo=isMyTurn&&!botRunning&&redoStack.length>0;return<>
+            <button onClick={undo} disabled={!canUndo} title="Annuler le dernier coup" style={{width:32,height:32,borderRadius:6,fontSize:15,fontWeight:700,background:"transparent",color:canUndo?"var(--gold)":"var(--text-ghost)",border:`1px solid ${canUndo?"var(--gold-dim)":"var(--border)"}`,cursor:canUndo?"pointer":"not-allowed"}}>↶</button>
+            <button onClick={redo} disabled={!canRedo} title="Refaire le coup annulé" style={{width:32,height:32,borderRadius:6,fontSize:15,fontWeight:700,background:"transparent",color:canRedo?"var(--gold)":"var(--text-ghost)",border:`1px solid ${canRedo?"var(--gold-dim)":"var(--border)"}`,cursor:canRedo?"pointer":"not-allowed"}}>↷</button>
+          </>;})()}
           <button onClick={()=>setShowRules(true)} title="Regles du jeu" style={{padding:"5px 10px",borderRadius:6,fontSize:14,fontWeight:700,background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)",fontFamily:"var(--font-title)"}}>?</button>
         </div>
       </div>
@@ -2596,7 +2648,7 @@ export default function App(){
                 const isLastAction=i===3;
                 return(
                   <React.Fragment key={action}>
-                  <button onClick={()=>{if(!disabled){setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
+                  <button onClick={()=>{if(!disabled){pushHistory();setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
                     onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background="rgba(200,112,64,0.06)";}}
                     onMouseLeave={e=>{e.currentTarget.style.background=disabled?"rgba(0,0,0,0.3)":"transparent";}}
                     style={{
