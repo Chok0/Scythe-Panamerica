@@ -1,14 +1,11 @@
 import { FACTIONS } from '../data/factions.js';
-import { HEXES, HOME_BASES, CURRENT_MAP } from '../data/hexes.js';
+import { HEXES, HOME_BASES, CURRENT_MAP, homeBaseHex } from '../data/hexes.js';
 import { MATS } from '../data/mats.js';
 
 export const createPlayer = (factionId, matId, isBot) => {
-  const f = FACTIONS[factionId], pm = MATS.find(m => m.id === matId), hb = HOME_BASES[factionId];
-  const heroHex = HEXES.reduce((best, h) => {
-    const d = Math.sqrt((h.rx - hb.rx) ** 2 + (h.ry - hb.ry) ** 2);
-    const db = best ? Math.sqrt((best.rx - hb.rx) ** 2 + (best.ry - hb.ry) ** 2) : Infinity;
-    return d < db && h.t !== "lac" && h.t !== "marecage" ? h : best;
-  }, null);
+  const f = FACTIONS[factionId], pm = MATS.find(m => m.id === matId);
+  // Le héros démarre SUR la base (hex invisible sous le drapeau), hors plateau.
+  const base = homeBaseHex(factionId);
   return {
     faction: factionId, matId, isBot,
     power: f.power, combatCards: f.cards,
@@ -18,7 +15,7 @@ export const createPlayer = (factionId, matId, isBot) => {
     // (prioritaires sur le plateau joueur) ; sinon plateau + startBonus (≥0)
     pop: f.startAbs?.pop ?? Math.max(0, Math.min(pm.pop + (f.startBonus?.pop || 0), 18)),
     coins: f.startAbs?.coins ?? Math.max(0, pm.coins + (f.startBonus?.coins || 0)),
-    stars: 0, hero: heroHex.id,
+    stars: 0, hero: base ? base.id : (CURRENT_MAP.starts?.[factionId]?.workerHex ?? f.workerHex)[0],
     workers: (CURRENT_MAP.starts?.[factionId]?.workerHex ?? f.workerHex).map((hid, i) => ({ id: `${factionId}_w${i}`, hexId: hid })),
     mechs: [], resources: {}, lastCol: null, buildings: [], encounters: 0,
     unlockedAbilities: [],

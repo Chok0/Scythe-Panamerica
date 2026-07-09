@@ -4,7 +4,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { TERRAINS } from '../data/terrains.js';
 import { FACTIONS, FACTION_IDS } from '../data/factions.js';
-import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, CURRENT_MAP, DEFAULT_MAP, loadMap } from '../data/hexes.js';
+import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, CURRENT_MAP, DEFAULT_MAP, loadMap, baseHexAt, homeBaseHex, isBaseHex } from '../data/hexes.js';
 import { generateAcceptedMap } from '../data/mapGen.js';
 import { getCombatBonus } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
@@ -338,7 +338,7 @@ export default function App(){
         const fromId=empire[eid];
         const adj=ADJ[fromId]||[];
         // Empire can cross rivers but not lakes/swamps
-        const validEmpire=adj.filter(toId=>{const h=hMap[toId];return h&&h.t!=="lac"&&h.t!=="marecage";});
+        const validEmpire=adj.filter(toId=>{const h=hMap[toId];return h&&h.t!=="lac"&&h.t!=="marecage"&&!h.base;});
         if(validEmpire.length>0){
           const toId=validEmpire[Math.floor(Math.random()*validEmpire.length)];
           setEmpire(prev=>({...prev,[eid]:toId}));
@@ -369,7 +369,7 @@ export default function App(){
                   addLog(`⚔🤖 ${bf.name} échoue vs ${card.name} (${botTotal} vs ${card.power})`);
                   // Retreat bot unit to home base
                   const hb=HOME_BASES[pl.faction];
-                  const hbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-hb.rx)**2+(h.ry-hb.ry)**2);const db=best?Math.sqrt((best.rx-hb.rx)**2+(best.ry-hb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+                  const hbHex=baseHexAt(hb);
                   if(bp.hero===toId)bp.hero=hbHex.id;
                   bp.mechs=bp.mechs.map(m=>m.hexId===toId?{...m,hexId:hbHex.id}:m);
                 }
@@ -466,7 +466,7 @@ export default function App(){
           logs.push(`⚔🤖 ${bf.name} échoue vs ${card.name} (${botTotal} vs ${card.power})`);
           // Bot retreats hero to HB
           const bhb=HOME_BASES[p.faction];
-          const bhbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-bhb.rx)**2+(h.ry-bhb.ry)**2);const db=best?Math.sqrt((best.rx-bhb.rx)**2+(best.ry-bhb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+          const bhbHex=baseHexAt(bhb);
           p.hero=bhbHex.id;
         }
       }
@@ -482,7 +482,7 @@ export default function App(){
         const displaced=n[oi].workers.filter(w=>botHexes.has(w.hexId)&&!defended(w.hexId));
         if(displaced.length>0){
           const ohb=HOME_BASES[n[oi].faction];
-          const ohbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ohb.rx)**2+(h.ry-ohb.ry)**2);const db=best?Math.sqrt((best.rx-ohb.rx)**2+(best.ry-ohb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+          const ohbHex=baseHexAt(ohb);
           const dispHexes=[...new Set(displaced.map(w=>w.hexId))];
           n[oi]={...n[oi],workers:n[oi].workers.map(w=>botHexes.has(w.hexId)&&!defended(w.hexId)?{...w,hexId:ohbHex.id}:w)};
           // Bot loses pop for displacing workers
@@ -1110,7 +1110,7 @@ export default function App(){
           const enemyWorkersHere=ep.workers.filter(w=>w.hexId===hexId);
           if(enemyWorkersHere.length>0){
             const ehb=HOME_BASES[ep.faction];
-            const ehbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ehb.rx)**2+(h.ry-ehb.ry)**2);const db=best?Math.sqrt((best.rx-ehb.rx)**2+(best.ry-ehb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+            const ehbHex=baseHexAt(ehb);
             displaced+=enemyWorkersHere.length;
             // Retreat enemy workers to their home base + PILLAGE : leur magot
             // sur le hex passe au joueur (motivation au combat du design)
@@ -1269,9 +1269,9 @@ export default function App(){
       const win=playerTotal>attackerTotal; // l'attaquant remporte les égalités
       addLog(`⚔ ${af.name}: ${attackerTotal} (${combat.botSpend}⚡+${combat.botCards}🃏) vs vous: ${playerTotal} (${combat.powerSpend}⚡+${combat.cardsSpend}🃏)`);
       const myHb=HOME_BASES[me.faction];
-      const myHbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-myHb.rx)**2+(h.ry-myHb.ry)**2);const db=best?Math.sqrt((best.rx-myHb.rx)**2+(best.ry-myHb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+      const myHbHex=baseHexAt(myHb);
       const atkHb=HOME_BASES[attacker.faction];
-      const atkHbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-atkHb.rx)**2+(h.ry-atkHb.ry)**2);const db=best?Math.sqrt((best.rx-atkHb.rx)**2+(best.ry-atkHb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+      const atkHbHex=baseHexAt(atkHb);
       setPlayers(prev=>{
         const n=[...prev];
         n[0]={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
@@ -1340,7 +1340,7 @@ export default function App(){
           if(isDefender){
             // Empire attacked us — retreat ALL our combat units from that hex to home base
             const hb=HOME_BASES[p.faction];
-            const hbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-hb.rx)**2+(h.ry-hb.ry)**2);const db=best?Math.sqrt((best.rx-hb.rx)**2+(best.ry-hb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+            const hbHex=baseHexAt(hb);
             if(p.hero===combat.hexId)p.hero=hbHex.id;
             p.mechs=p.mechs.map(m=>m.hexId===combat.hexId?{...m,hexId:hbHex.id}:m);
             // Workers also retreat
@@ -1348,7 +1348,7 @@ export default function App(){
           } else {
             // Player attacked Empire — retreat the attacking unit
             const hb=HOME_BASES[p.faction];
-            const hbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-hb.rx)**2+(h.ry-hb.ry)**2);const db=best?Math.sqrt((best.rx-hb.rx)**2+(best.ry-hb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+            const hbHex=baseHexAt(hb);
             if(combat.moveData.unitType==="hero")p.hero=hbHex.id;
           }
         }
@@ -1400,7 +1400,7 @@ export default function App(){
         // Acadiane refuses combat: retreat + 2 pop, attacker gets hex + resources + star for free
         addLog(`🏳 ${ef.name} active White Flag ! Retraite volontaire + ${BALANCE.whiteFlagPop} Pop.`);
         const ehb=HOME_BASES[enemy.faction];
-        const ehbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ehb.rx)**2+(h.ry-ehb.ry)**2);const db=best?Math.sqrt((best.rx-ehb.rx)**2+(best.ry-ehb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+        const ehbHex=baseHexAt(ehb);
         setPlayers(prev=>{
           const n=[...prev];
           // Attacker moves in (no power/cards spent)
@@ -1455,9 +1455,9 @@ export default function App(){
       addLog(`⚔ ${myFaction.name}: ${playerTotal} (${combat.powerSpend}${playerCBonus.powerBonus>0?`+${playerCBonus.powerBonus}`:""}⚡+${combat.cardsSpend}🃏) vs ${ef.name}: ${enemyTotal} (${botPower}⚡+${botCards}🃏)${bonusLog}`);
       
       const hb=HOME_BASES[me.faction];
-      const hbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-hb.rx)**2+(h.ry-hb.ry)**2);const db=best?Math.sqrt((best.rx-hb.rx)**2+(best.ry-hb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+      const hbHex=baseHexAt(hb);
       const ehb=HOME_BASES[enemy.faction];
-      const ehbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-ehb.rx)**2+(h.ry-ehb.ry)**2);const db=best?Math.sqrt((best.rx-ehb.rx)**2+(best.ry-ehb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+      const ehbHex=baseHexAt(ehb);
       // Pre-count enemy units on hex (before retreat) for faction abilities
       const preEnemyMechs=enemy.mechs.filter(m=>m.hexId===combat.hexId);
       const preEnemyWorkers=enemy.workers.filter(w=>w.hexId===combat.hexId);
@@ -1583,7 +1583,7 @@ export default function App(){
     const atkIdx=combat.enemyIdx;
     const af=FACTIONS[players[atkIdx].faction];
     const myHb=HOME_BASES[me.faction];
-    const myHbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-myHb.rx)**2+(h.ry-myHb.ry)**2);const db=best?Math.sqrt((best.rx-myHb.rx)**2+(best.ry-myHb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+    const myHbHex=baseHexAt(myHb);
     setPlayers(prev=>{
       const n=[...prev];
       n[0]={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
@@ -1784,8 +1784,10 @@ export default function App(){
       const starMult=[3,4,5][popTier];
       const terMult=[2,3,4][popTier];
       const resMult=[1,2,3][popTier];
-      // Count territories: hexes with at least one unit
+      // Count territories: hexes with at least one unit (l'hex de base ne
+      // compte pas comme territoire — il est hors plateau)
       const unitHexes=new Set([p.hero,...p.workers.map(w=>w.hexId),...p.mechs.map(m=>m.hexId)]);
+      [...unitHexes].forEach(id=>{if(isBaseHex(id))unitHexes.delete(id);});
       // Buildings count as territory if hex has no enemy
       (p.buildings||[]).forEach(b=>unitHexes.add(b.hexId));
       // Trap tokens (Frente) count as territory
@@ -1793,7 +1795,7 @@ export default function App(){
       // Comptoir tokens (Acadiane) count as +1 territory each (not adj to HB)
       let flagBonus=0;
       const hb=HOME_BASES[p.faction];
-      const hbHex=HEXES.reduce((best,h)=>{const d=Math.sqrt((h.rx-hb.rx)**2+(h.ry-hb.ry)**2);const db=best?Math.sqrt((best.rx-hb.rx)**2+(best.ry-hb.ry)**2):Infinity;return d<db&&h.t!=="lac"&&h.t!=="marecage"?h:best;},null);
+      const hbHex=baseHexAt(hb);
       (p.flagTokens||[]).forEach(fl=>{
         const isAdjHB=hbHex&&(ADJ[hbHex.id]||[]).includes(fl.hexId);
         if(!isAdjHB)flagBonus++;
@@ -2189,6 +2191,25 @@ export default function App(){
               })()}
             </g>);
           })}
+          {/* ── HEXES DE BASE (invisibles mais interactifs) : sous chaque drapeau.
+                Le héros y démarre et les unités vaincues y reviennent. On rend un
+                hexagone cliquable discret pour pouvoir sélectionner l'unité qui
+                en sort (surbrillance dorée/verte comme les autres hexes). ── */}
+          {Object.values(HOME_BASES).map((hb,bi)=>{
+            const baseH=baseHexAt(hb);if(!baseH)return null;
+            const isMineBase=baseH.faction===me.faction;
+            const isV=validMoves.has(baseH.id);const isSrc=!moveSource&&movableUnits.has(baseH.id);
+            return(
+              <g key={`base${bi}`} onClick={()=>handleHexClick(baseH.id)} style={{cursor:isMineBase?"pointer":"default"}}>
+                {/* zone cliquable transparente autour du drapeau */}
+                <polygon points={hPts(baseH.rx,baseH.ry,26)} fill="rgba(0,0,0,0.01)" stroke={isMineBase?"rgba(216,201,163,0.18)":"none"} strokeWidth={1} strokeDasharray="3 3"/>
+                {isSrc&&<polygon points={hPts(baseH.rx,baseH.ry,26)} fill="rgba(212,178,84,0.16)" stroke="#e6c96a" strokeWidth={2.5} style={{pointerEvents:"none"}}>
+                  <animate attributeName="opacity" values="0.4;0.95;0.4" dur="1.4s" repeatCount="indefinite"/>
+                </polygon>}
+                {isV&&<polygon points={hPts(baseH.rx,baseH.ry,26)} fill="rgba(60,160,60,0.3)" stroke="#b8f0a8" strokeWidth={2.5} style={{pointerEvents:"none"}}/>}
+              </g>
+            );
+          })}
           {/* ── COUCHE UNITÉS : plate et animée (les pions glissent entre les hexes) ── */}
           <g style={{pointerEvents:"none"}}>
             {Object.entries(allHexContents).map(([hidStr,units])=>{
@@ -2221,10 +2242,11 @@ export default function App(){
               <animate attributeName="opacity" from="0.6" to="0" dur="0.5s" fill="freeze"/>
             </circle>;
           })()}
-          {/* Home Bases */}
+          {/* Home Bases — purement décoratif : pointerEvents none pour que
+              l'hex de base interactif en dessous reçoive bien les clics */}
           {Object.entries(HOME_BASES).map(([fid,hb])=>{
             const fc=FACTIONS[fid];if(!fc)return null;const isMe=fid===me.faction;
-            return(<g key={fid} opacity={isMe?1:0.55}>
+            return(<g key={fid} opacity={isMe?1:0.55} style={{pointerEvents:"none"}}>
               <line x1={hb.rx} y1={hb.ry-18} x2={hb.rx} y2={hb.ry+14} stroke="#d8c9a3" strokeWidth={1.2} opacity={0.6}/>
               <path d={`M${hb.rx} ${hb.ry-17} L${hb.rx+34} ${hb.ry-10} L${hb.rx+32} ${hb.ry-1} L${hb.rx} ${hb.ry+5} Z`} fill={fc.color} opacity={isMe?0.9:0.55} stroke="#0e0c08" strokeWidth={1}/>
               <text x={hb.rx+16} y={hb.ry-4} textAnchor="middle" fontSize={8} fill="#fff" fontWeight={700} stroke="rgba(0,0,0,0.5)" strokeWidth={2} paintOrder="stroke" style={{fontFamily:"var(--font-title)"}}>{fc.name.slice(0,8)}</text>
