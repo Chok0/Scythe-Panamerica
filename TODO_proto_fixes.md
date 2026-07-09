@@ -59,6 +59,7 @@ Plus aucun chantier en attente. Les deux derniers ont été livrés :
 - Cartes valuées côté BOTS (retirer l'asymétrie humain/bot) → nécessiterait un re-tuning de la simulation.
 - Undo par-delà le tour des bots via rejeu à seed déterministe.
 - Icônes Scythe officielles (PNG) à la place des emoji.
+- Visualisation du tour du bot : surligner le hex qu'il choisit / tracer son déplacement (le scoreboard pulse déjà le bot actif).
 
 ## 🔧 Historique des fixes
 

@@ -1,6 +1,6 @@
-// TODO [v0.11]: Add movement animations — smooth unit transitions between hexes (CSS transform + requestAnimationFrame)
-// TODO [v0.11]: Add action feedback animations — resource gain/spend particles, combat flash, star burst on milestone
-// TODO [v0.11]: Add bot turn visualization — highlight bot's chosen hex, show movement trail
+// Animations de mouvement (transitions CSS des pions) ✅ et retour visuel des
+// gains (floaters) ✅ sont implémentés. Idée libre restante : visualiser le hex
+// choisi par le bot pendant son tour (voir « Idées libres » dans TODO_proto_fixes.md).
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { TERRAINS } from '../data/terrains.js';
 import { FACTIONS, FACTION_IDS } from '../data/factions.js';
