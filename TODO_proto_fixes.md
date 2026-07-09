@@ -43,6 +43,13 @@
 | **Mechas distincts** | Fond hexagonal teinté couleur de faction + corps du mecha Frente recoloré (avant : Frente/Nations paraissaient bruns/identiques) |
 | **Riverwalk par faction** | Vérifié discriminant par terrain (déjà OK) + affiché au setup (ex. Bayou → Désert & Village) |
 
+## 🔜 Chantiers à venir (demandés, non encore faits)
+
+| # | Élément | Détail |
+|---|---------|--------|
+| CARDS | **Cartes de combat valuées** | Modéliser une MAIN de cartes de valeurs (2-5 façon Scythe) au lieu d'un simple compteur : tirer une valeur au gain, afficher le décompte par valeur au clic sur le compteur 🃏, et faire que le combat somme les valeurs réelles des cartes engagées (au lieu de +2 fixe). ⚠ Touche ~58 sites (combat joueur/bot PvE/PvP, Bolster, Enlist, sim) et **rebalance le combat** → nécessite : modale de combat qui choisit QUELLES cartes jouer, mise à jour des heuristiques bot, re-tuning de la simulation. À faire dans une passe dédiée. |
+| UNDO | **Annuler / refaire les coups** | Historique d'états (pile undo/redo) pour reprendre un coup. Il existe déjà `preActionSnapshot` (annulation d'UNE action en cours) ; généraliser en pile multi-niveaux avec un bouton ↶/↷. Attention aux effets aléatoires (rencontres, combats, tirages) : soit rejouer avec seed, soit interdire l'undo après un tirage. |
+
 ## 🔧 Fixes restants
 
 ### ✅ Toutes les faction abilities — IMPLÉMENTÉES (6/6)
