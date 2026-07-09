@@ -21,7 +21,9 @@ export const createPlayer = (factionId, matId, isBot) => {
     unlockedAbilities: [],
     topRow: pm.topRow, matName: pm.name,
     cubesOnTop: [...(pm.topCubes || [1, 2, 1, 2])], cubesOnBottom: [0, 0, 0, 0],
-    enlistMap: [false, false, false, false],
+    // enlistMap[col] = indice de la recrue PERMANENTE posée sur cette colonne
+    // (0-3, décorrélé du bonus immédiat), ou null si la colonne est vide.
+    enlistMap: [null, null, null, null],
     objectives: [], objective: null, objectiveRevealed: false, revealedObjectiveIdx: null, fObjRevealed: false,
     capturedWorkers: 0, capturedMech: 0, empireKills: 0, trapTokens: [], flagTokens: [], imperialCoins: 0,
     upgrades: 0, recruits: 0, combatWins: 0,

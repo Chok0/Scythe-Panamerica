@@ -725,28 +725,33 @@ export default function App(){
   // ── BOTTOM-ROW: ENLIST (recrue sur une colonne → bonus immédiat + ongoing) ──
   // Règle Scythe : le bonus IMMÉDIAT (une fois) est d'un type DIFFÉRENT du
   // bonus PERMANENT de la recrue. On garde l'ongoing fixé par colonne
-  // (Upgrade⚡ Deploy💰 Build❤ Enlist🃏) et on décale le bonus immédiat d'un
-  // cran (cyclique) : « gagne X maintenant, Y à chaque fois ensuite ».
+  // (Upgrade → +2 Pièces, Deploy → +2 Pop, Build → +2 Cartes, Enlist → +2 Pui).
+  // Le bonus PERMANENT (recrue) est choisi SÉPARÉMENT par le joueur → totalement
+  // décorrélé du bonus immédiat (règle Scythe : on choisit quelle recrue poser).
   const ENLIST_BONUSES=[
     {id:0,col:0,icon:"💰",label:"+2 Pièces",svgKey:"coins",apply:p=>{p.coins+=2;}},
     {id:1,col:1,icon:"♥",label:"+2 Popularité",svgKey:"pop",apply:p=>{p.pop=Math.min(p.pop+2,18);}},
     {id:2,col:2,icon:"🃏",label:"+2 Cartes",svgKey:"combatCards",apply:p=>{p.combatCards+=2;}},
     {id:3,col:3,icon:"⚡",label:"+2 Puissance",svgKey:"power",apply:p=>{p.power=Math.min(p.power+2,16);}},
   ];
-  const doEnlist=useCallback((colIdx)=>{
+  // colIdx : action bottom qui reçoit la recrue (→ bonus immédiat de la section)
+  // recruitIdx : QUELLE recrue permanente poser (0-3, indépendante de colIdx)
+  const doEnlist=useCallback((colIdx,recruitIdx)=>{
     if(!me||(me.recruits||0)>=4)return;
-    if((me.enlistMap||[])[colIdx]){addLog(`⚠ Déjà une recrue sur ${BOTTOM[colIdx]}`);return;}
+    if((me.enlistMap||[])[colIdx]!=null){addLog(`⚠ Déjà une recrue sur ${BOTTOM[colIdx]}`);return;}
+    if((me.enlistMap||[]).includes(recruitIdx)){addLog(`⚠ Recrue ${ENLIST_ONGOING[recruitIdx].label} déjà posée`);return;}
     const costs=getBottomCost(me);
     const cost=costs[3]; // Enlist is bottom col 3
     const planBonus=getPlanBottomBonus(me,"Enlist");
     const effectiveQty=Math.max(0,cost.qty-planBonus.costReduction);
     if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${cost.res} requis`);return;}
     const bonus=ENLIST_BONUSES[colIdx];
+    const recruit=ENLIST_ONGOING[recruitIdx];
     setPlayers(prev=>{
       const n=[...prev];let p=spendRes(n[0],cost.res,effectiveQty);
       p.recruits=(p.recruits||0)+1;
-      p.enlistMap=[...(p.enlistMap||[false,false,false,false])];
-      p.enlistMap[colIdx]=true;
+      p.enlistMap=[...(p.enlistMap||[null,null,null,null])];
+      p.enlistMap[colIdx]=recruitIdx; // stocke la recrue choisie (pas un booléen)
       bonus.apply(p);
       p.coins+=planBonus.bonusCoins;
       p.power=Math.min(p.power+planBonus.bonusPower,16);
@@ -755,8 +760,8 @@ export default function App(){
       n[0]=p;return n;
     });
     planBonus.logs.forEach(l=>addLog(l));
-    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${BOTTOM[colIdx]} (-${effectiveQty} ${cost.res}, ${bonus.label})`);
-    addLog(`   Ongoing: ${ENLIST_ONGOING[colIdx].icon} quand vous/voisins faites ${BOTTOM[colIdx]}`);
+    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${BOTTOM[colIdx]} (-${effectiveQty} ${cost.res}) — immédiat ${bonus.label}`);
+    addLog(`   Permanent ${recruit.icon} ${recruit.label} quand vous/voisins faites ${BOTTOM[colIdx]}`);
     if((me.recruits||0)+1>=4)addLog(`⭐ 4 Recrues enrôlées !`);
     finishBottom(3);
   },[me,addLog,finishBottom]);
@@ -1717,7 +1722,7 @@ export default function App(){
       const n=[...prev];const p={...n[0],resources:{...n[0].resources},workers:[...n[0].workers]};
       payProduce(p);
       hexIds.forEach(hidStr=>{
-        const hid=parseInt(hidStr);const hex=hMap[hid];const t=TERRAINS[hex.t];let wCount=workersByHex[hidStr].length;
+        const hid=parseInt(hidStr);const hex=hMap[hid];const t=TERRAINS[hex?.t];if(!t)return;let wCount=workersByHex[hidStr].length;
         // Moulin building: +1 production on this hex (as if +1 worker)
         const hasMoulin=(p.buildings||[]).some(b=>b.type==="moulin"&&b.hexId===hid);
         if(hasMoulin)wCount++;
@@ -2641,7 +2646,7 @@ export default function App(){
                         <div style={{fontSize:10,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:"var(--text-dim)",marginBottom:3,display:"flex",alignItems:"center",gap:5}}>
                           {bottomAction}
                           {/* Recrue posée ici → bonus ongoing actif (soi + voisins) */}
-                          {(me.enlistMap||[])[i]&&<span title={`Recrue : ${ENLIST_ONGOING[i].label} quand vous/voisins faites ${bottomAction}`} style={{fontSize:9,padding:"1px 5px",borderRadius:8,background:"rgba(90,122,106,0.3)",border:"1px solid #5a9a7a",color:"#8fd0b0",fontWeight:700}}>🤝{ENLIST_ONGOING[i].icon}</span>}
+                          {(me.enlistMap||[])[i]!=null&&<span title={`Recrue posée : ${ENLIST_ONGOING[(me.enlistMap||[])[i]].label} quand vous/voisins faites ${bottomAction}`} style={{fontSize:9,padding:"1px 5px",borderRadius:8,background:"rgba(90,122,106,0.3)",border:"1px solid #5a9a7a",color:"#8fd0b0",fontWeight:700}}>🤝{ENLIST_ONGOING[(me.enlistMap||[])[i]].icon}</span>}
                         </div>
                         {/* Coût (icônes) → gain concret : pièces libérées par l'upgrade */}
                         <ActionRow pay={bottomPay} gain={upBonus>0?Array(upBonus).fill("coins"):[bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":bottomAction==="Enlist"?"pop":"power"]} compact />
@@ -2878,21 +2883,40 @@ export default function App(){
                   </div>;
                 })()}
                 {ba==="Build"&&!maxed&&(hasRes&&buildableHexes.length>0&&availBuildings.length>0?<div>{!bottomPick||bottomPick.packUp?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{availBuildings.map(bt=><button key={bt.type} onClick={()=>setBottomPick({building:bt})} className="act-btn">{bt.icon} {bt.name}</button>)}</div>:<div><div style={{fontSize:11,marginBottom:6}}>Placer {bottomPick.building.icon} sur :</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{buildableHexes.map(hid=><button key={hid} onClick={()=>doBuild(hid,bottomPick.building.type)} className="act-btn">#{hid}</button>)}</div><button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:12,opacity:0.7,minHeight:36}}>← Autre</button></div>}</div>:<div style={{fontSize:11,color:"var(--text-muted)"}}>Insuffisant</div>)}
-                {ba==="Enlist"&&!maxed&&(hasRes?<div>
-                  <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>Recrue {(me.recruits||0)+1}/4 — Assigner à une action bottom :</div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
-                    {BOTTOM.map((bName,ci)=>{
-                      const assigned=(me.enlistMap||[])[ci];
-                      const ongoing=ENLIST_ONGOING[ci];
-                      return <button key={ci} onClick={()=>doEnlist(ci)} className="act-btn" disabled={assigned} style={{textAlign:"center",opacity:assigned?0.3:1,cursor:assigned?"not-allowed":"pointer"}}>
-                        <div style={{fontWeight:700,fontSize:12}}>{ongoing.icon} {bName}</div>
-                        <div style={{fontSize:11,color:"var(--text-dim)",marginTop:2}}>Immédiat: {ENLIST_BONUSES[ci].label}</div>
-                        <div style={{fontSize:11,color:"#4caf50",marginTop:1}}>Ongoing: {ongoing.label}</div>
-                        {assigned&&<div style={{fontSize:11,color:"#8A3030"}}>✓ assigné</div>}
-                      </button>;
-                    })}
-                  </div>
-                </div>:<div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>)}
+                {ba==="Enlist"&&!maxed&&(hasRes?(()=>{
+                  // Étape 1 : choisir la SECTION (→ bonus immédiat de la colonne)
+                  // Étape 2 : choisir la RECRUE permanente à y poser (décorrélée)
+                  if(!bottomPick||bottomPick.enlistCol==null){
+                    return <div>
+                      <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>Recrue {(me.recruits||0)+1}/4 — ① Section (bonus immédiat) :</div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
+                        {BOTTOM.map((bName,ci)=>{
+                          const assigned=(me.enlistMap||[])[ci]!=null;
+                          return <button key={ci} onClick={()=>setBottomPick({enlistCol:ci})} className="act-btn" disabled={assigned} style={{textAlign:"center",opacity:assigned?0.3:1,cursor:assigned?"not-allowed":"pointer"}}>
+                            <div style={{fontWeight:700,fontSize:12}}>{bName}</div>
+                            <div style={{fontSize:11,color:"var(--gold)",marginTop:2}}>Immédiat {ENLIST_BONUSES[ci].icon} {ENLIST_BONUSES[ci].label}</div>
+                            {assigned&&<div style={{fontSize:10,color:"#8fd0b0",marginTop:1}}>🤝 {ENLIST_ONGOING[(me.enlistMap||[])[ci]].icon} posée</div>}
+                          </button>;
+                        })}
+                      </div>
+                    </div>;
+                  }
+                  const col=bottomPick.enlistCol;
+                  return <div>
+                    <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>Section <b style={{color:"var(--brass)"}}>{BOTTOM[col]}</b> (immédiat {ENLIST_BONUSES[col].icon} {ENLIST_BONUSES[col].label}) — ② Recrue permanente à poser :</div>
+                    <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
+                      {ENLIST_ONGOING.map((rec,ri)=>{
+                        const used=(me.enlistMap||[]).includes(ri);
+                        return <button key={ri} onClick={()=>{doEnlist(col,ri);setBottomPick(null);}} className="act-btn" disabled={used} style={{textAlign:"center",opacity:used?0.3:1,cursor:used?"not-allowed":"pointer",borderColor:used?"var(--border)":"#5a9a7a"}}>
+                          <div style={{fontWeight:700,fontSize:13}}>{rec.icon} {rec.label}</div>
+                          <div style={{fontSize:10,color:"#8fd0b0",marginTop:1}}>à chaque {BOTTOM[col]} (vous/voisins)</div>
+                          {used&&<div style={{fontSize:10,color:"#8A3030"}}>déjà posée</div>}
+                        </button>;
+                      })}
+                    </div>
+                    <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:12,opacity:0.7,minHeight:36}}>← Autre section</button>
+                  </div>;
+                })():<div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>)}
                 {maxed&&<div style={{fontSize:12,color:"var(--success)"}}>{ba} au maximum</div>}
                 <button onClick={actuallyEndTurn} className="act-btn" style={{marginTop:8,width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)"}}>Passer →</button>
               </div>
