@@ -1,6 +1,7 @@
 import { FACTIONS } from '../data/factions.js';
 import { HEXES, HOME_BASES, CURRENT_MAP, homeBaseHex } from '../data/hexes.js';
 import { MATS } from '../data/mats.js';
+import { drawCardValue } from './cards.js';
 
 export const createPlayer = (factionId, matId, isBot) => {
   const f = FACTIONS[factionId], pm = MATS.find(m => m.id === matId);
@@ -9,6 +10,8 @@ export const createPlayer = (factionId, matId, isBot) => {
   return {
     faction: factionId, matId, isBot,
     power: f.power, combatCards: f.cards,
+    // Main de cartes de combat valuées (matérialisée depuis le compteur)
+    cardHand: Array.from({ length: f.cards }, () => drawCardValue()),
     // startBonus : compensation asymétrique des factions mal dotées (mesurée
     // par simulation — voir factions.js et RAPPORT_SIMULATION.md)
     // startAbs : valeurs de départ ABSOLUES imprimées sur la fiche de faction
