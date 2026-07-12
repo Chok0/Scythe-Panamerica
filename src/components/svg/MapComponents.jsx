@@ -69,20 +69,20 @@ export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory, isSrc
   const isWater = hex.t === "lac" || hex.t === "marecage";
   return (
     <g>
-      {/* Base fill with gradient — painted-board look */}
+      {/* Base fill — texture de terrain seamless (photo-réaliste) ; le dégradé
+          tg-<t> reste défini en secours mais la texture porte désormais le rendu */}
       <polygon points={hPts(hex.rx, hex.ry)}
-        fill={`url(#tg-${hex.t})`}
+        fill={`url(#tex-${hex.t})`}
         stroke="#171310"
         strokeWidth={2.2}
       />
-      {/* Texture pattern overlay */}
-      <polygon points={hPts(hex.rx, hex.ry)} fill={`url(#tp-${hex.t})`} opacity={isWater ? 0.5 : 0.7} style={{ pointerEvents: "none" }} />
       {/* Voile léger UNIQUEMENT sur les bords (vignette interne) : assombrit le
           pourtour du hex pour la lecture des pions, tout en laissant vivre la
-          couleur peinte du terrain au centre → rendu plus organique. */}
+          texture du terrain au centre. */}
       <polygon points={hPts(hex.rx, hex.ry)} fill={`url(#hexvig)`} style={{ pointerEvents: "none" }} />
-      {/* Terrain decorations (peintes, denses) — au-dessus du voile de bord */}
-      <g opacity={0.92}><TerrainDecor hex={hex} /></g>
+      {/* Décors de terrain — atténués (la texture porte déjà l'identité visuelle),
+          gardés pour renforcer la lecture du type de terrain d'un coup d'œil */}
+      <g opacity={0.55}><TerrainDecor hex={hex} /></g>
       {/* Cream board line between hexes (printed-board separation) */}
       <polygon points={hPts(hex.rx, hex.ry, HS - 1)} fill="none"
         stroke={isSel ? "#e6c96a" : isHov ? "#e0d2a8" : "#d8c9a3"}
