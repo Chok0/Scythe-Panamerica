@@ -64,7 +64,7 @@ const HexResIcon = React.memo(({ cx, cy, resType }) => {
   return null;
 });
 
-export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory, isSrc }) => {
+export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory, isSrc, controlColor }) => {
   const t = TERRAINS[hex.t];
   const isWater = hex.t === "lac" || hex.t === "marecage";
   return (
@@ -90,6 +90,14 @@ export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory, isSrc
         opacity={isSel ? 0.95 : isHov ? 0.7 : 0.4}
         style={{ pointerEvents: "none" }}
       />
+      {/* Territorial control contour — hex fills are already saturated per-terrain,
+          so "who controls this tile" is carried by a colored ring rather than a
+          fill tint (cf. Scythe reference board: desaturated ground, colored hex
+          outline). Read continuously during play, unlike the corner flags/traps. */}
+      {controlColor && <polygon points={hPts(hex.rx, hex.ry, HS - 3)} fill="none"
+        stroke={controlColor} strokeWidth={3.5} opacity={0.9}
+        style={{ pointerEvents: "none" }}
+      />}
       {/* Resource SVG icon — top of hex so units don't cover it.
           Disque clair derrière l'icône pour un contraste net sur tout terrain */}
       {t.res && <>
