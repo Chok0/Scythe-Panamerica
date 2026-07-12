@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { FACTIONS, FACTION_IDS } from '../data/factions.js';
 import { MATS } from '../data/mats.js';
 import { TERRAINS } from '../data/terrains.js';
+import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 
 const RES_EMOJI = { petrole: "🛢", metal: "⚙", bois: "🪵", nourriture: "🌽" };
 const BOTTOM_EMOJI = ["⬆", "⬡", "🏗", "🤝"]; // Upgrade, Deploy, Build, Enlist
@@ -12,7 +13,24 @@ const DIFFICULTIES = [
   { key: "difficile", label: "Difficile", desc: "meilleur profil connu, sans erreur" },
 ];
 
+// ── Matérialité (§6 priorité B) : grain de papier discret + bord biseauté,
+// réutilisés sur toutes les cartes/cadres de l'écran au lieu d'un simple
+// stroke plat. Le grain reprend le motif déjà utilisé sur le fond d'écran.
+const GRAIN = "repeating-linear-gradient(0deg,transparent,transparent 1px,rgba(201,168,76,0.02) 1px,rgba(201,168,76,0.02) 2px)";
+const bevel = (selected) => selected
+  ? "inset 0 1px 0 rgba(255,255,255,0.10), inset 0 -1px 0 rgba(0,0,0,0.55), 0 0 20px rgba(201,168,76,0.12)"
+  : "inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.45)";
+const frameStyle = (selected) => ({
+  background: `${GRAIN}, ${selected ? "rgba(201,168,76,0.08)" : "rgba(20,18,12,0.82)"}`,
+  border: selected ? "2px solid var(--gold)" : "1px solid var(--border)",
+  borderRadius: 6,
+  boxShadow: bevel(selected),
+});
+
 export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, randomMap, setRandomMap, difficulty, setDifficulty, empireEnabled, setEmpireEnabled, startGame, onShowRules }) {
+  const [hoverFaction, setHoverFaction] = useState(null);
+  const previewId = hoverFaction || selFaction;
+  const preview = previewId ? FACTIONS[previewId] : null;
   const randomFaction = () => setSelFaction(FACTION_IDS[Math.floor(Math.random() * FACTION_IDS.length)]);
   const randomMat = () => setSelMat(MATS[Math.floor(Math.random() * MATS.length)].id);
   const diceBtnStyle = {
@@ -22,8 +40,8 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
   };
   return (
     <div style={{minHeight:"100vh",background:"linear-gradient(170deg, #1A1710 0%, #1A1710 30%, #1a1610 60%, #1A1710 100%)",color:"var(--text)",display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 16px",position:"relative",overflow:"auto"}}>
-      <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"repeating-linear-gradient(0deg,transparent,transparent 1px,rgba(201,168,76,0.012) 1px,rgba(201,168,76,0.012) 2px)",pointerEvents:"none"}}/>
-      <div style={{position:"relative",display:"flex",flexDirection:"column",alignItems:"center",width:"100%",maxWidth:640}}>
+      <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:GRAIN,pointerEvents:"none"}}/>
+      <div style={{position:"relative",display:"flex",flexDirection:"column",alignItems:"center",width:"100%",maxWidth:760}}>
         <div style={{width:80,height:1,background:"linear-gradient(90deg,transparent,var(--gold),transparent)",marginBottom:16}}/>
         <div style={{fontSize:11,fontWeight:600,color:"var(--gold-dim)",letterSpacing:8,textTransform:"uppercase",marginBottom:6,fontFamily:"'Bitter',serif"}}>Scythe</div>
         <h1 style={{fontSize:32,fontWeight:900,letterSpacing:10,textTransform:"uppercase",color:"var(--gold)",marginBottom:4,textAlign:"center",textShadow:"0 0 40px rgba(201,168,76,0.15)"}}>Panamerica</h1>
@@ -34,7 +52,7 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
         <button onClick={onShowRules} style={{
           marginBottom:32,padding:"8px 28px",fontSize:12,letterSpacing:3,textTransform:"uppercase",
           background:"transparent",color:"var(--gold-dim)",border:"1px solid var(--border)",
-          borderRadius:4,fontWeight:700,fontFamily:"'Bitter',serif",
+          borderRadius:4,fontWeight:700,fontFamily:"'Bitter',serif",boxShadow:bevel(false),
         }}>Regles du Jeu</button>
 
         <div style={{color:"var(--gold-dim)",fontSize:13,fontWeight:600,marginBottom:10,letterSpacing:3,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Adversaires</div>
@@ -45,7 +63,7 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
               background:numBots===n?"linear-gradient(135deg,var(--gold),#a08030)":"transparent",
               color:numBots===n?"var(--bg)":"var(--text-muted)",
               border:numBots===n?"none":"1px solid var(--border)",
-              boxShadow:numBots===n?"0 0 20px rgba(201,168,76,0.3),inset 0 1px 0 rgba(255,255,255,0.2)":"none",
+              boxShadow:numBots===n?"0 0 20px rgba(201,168,76,0.3),inset 0 1px 0 rgba(255,255,255,0.2)":bevel(false),
             }}>{n}</button>
           ))}
         </div>
@@ -59,7 +77,7 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
               color:difficulty===d.key?"var(--bg)":"var(--text-muted)",
               border:difficulty===d.key?"none":"1px solid var(--border)",
               borderRadius:4,fontFamily:"'Bitter',serif",
-              boxShadow:difficulty===d.key?"0 0 20px rgba(201,168,76,0.3)":"none",
+              boxShadow:difficulty===d.key?"0 0 20px rgba(201,168,76,0.3)":bevel(false),
             }}>{d.label}</button>
           ))}
         </div>
@@ -73,7 +91,7 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
             background:randomMap?"rgba(201,168,76,0.12)":"transparent",
             color:randomMap?"var(--gold)":"var(--text-muted)",
             border:randomMap?"1px solid var(--gold)":"1px solid var(--border)",
-            borderRadius:4,fontFamily:"'Bitter',serif",fontWeight:700,
+            borderRadius:4,fontFamily:"'Bitter',serif",fontWeight:700,boxShadow:bevel(randomMap),
           }}>
             🗺 Carte {randomMap?"PROCÉDURALE":"classique"} {randomMap?"— nouvelle carte à chaque partie":""}
           </button>
@@ -82,7 +100,7 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
             background:empireEnabled?"rgba(201,168,76,0.12)":"transparent",
             color:empireEnabled?"var(--gold)":"var(--text-muted)",
             border:empireEnabled?"1px solid var(--gold)":"1px solid var(--border)",
-            borderRadius:4,fontFamily:"'Bitter',serif",fontWeight:700,
+            borderRadius:4,fontFamily:"'Bitter',serif",fontWeight:700,boxShadow:bevel(empireEnabled),
           }}>
             🤖 Bots de l'Empire : {empireEnabled?"ACTIVÉS":"désactivés"}
           </button>
@@ -92,21 +110,55 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
           <div style={{color:"var(--gold-dim)",fontSize:13,fontWeight:600,letterSpacing:3,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Votre Faction</div>
           <button onClick={randomFaction} style={diceBtnStyle}>🎲 Aléatoire</button>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8,width:"100%",marginBottom:32}}>
+
+        {/* ── Panneau d'aperçu (§6 priorité C) : illustration + blason + lore de la
+            faction survolée/sélectionnée. Sépare nettement l'ambiance (ici) des
+            stats de décision (cartes ci-dessous), au lieu de tout empiler par carte. ── */}
+        <div style={{
+          width:"100%",height:220,borderRadius:8,marginBottom:14,position:"relative",overflow:"hidden",
+          border:"1px solid var(--border)",boxShadow:bevel(false),background:"#0f0d08",
+        }}>
+          {preview ? (<>
+            <img src={FACTION_ART[previewId]} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block",opacity:0.9}}/>
+            <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(10,9,6,0.15) 0%,rgba(10,9,6,0.55) 55%,rgba(8,7,5,0.96) 100%)"}}/>
+            <div style={{position:"absolute",left:18,right:18,bottom:14,display:"flex",alignItems:"flex-end",gap:14}}>
+              <img src={FACTION_LOGOS[previewId]} alt="" style={{width:56,height:56,flexShrink:0,filter:"drop-shadow(0 2px 8px rgba(0,0,0,0.7))"}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:20,color:"var(--gold)"}}>{preview.name}</div>
+                <div style={{fontSize:14,color:"var(--text2)",marginBottom:4}}>{preview.hero} &amp; {preview.companion}</div>
+                {/* Bloc lore — encart distinct des stats, italique, contraste réduit (§5) */}
+                <div style={{fontSize:13,fontStyle:"italic",color:"var(--text-dim)",opacity:0.9,lineHeight:1.4}}>
+                  {preview.riverwalk&&<span>🌊 {preview.rwName||"Riverwalk"} → {preview.riverwalk.map(t=>TERRAINS[t]?.label||t).join(" & ")}</span>}
+                  {preview.riverwalk&&preview.fObj&&<span> · </span>}
+                  {preview.fObj&&<span>🏛 {preview.fObj.name} — {preview.fObj.desc}</span>}
+                </div>
+              </div>
+              {preview.isExtension&&<div style={{fontSize:11,fontWeight:600,color:"var(--gold-dim)",letterSpacing:2,textTransform:"uppercase",flexShrink:0}}>Extension</div>}
+            </div>
+          </>) : (
+            <div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:GRAIN}}>
+              <span style={{fontSize:13,fontStyle:"italic",color:"var(--text-muted)"}}>Survolez ou choisissez une faction pour découvrir son histoire</span>
+            </div>
+          )}
+        </div>
+
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8,width:"100%",marginBottom:32}}>
           {FACTION_IDS.map(fid=>{const f=FACTIONS[fid];const sel=selFaction===fid;return(
-            <button key={fid} onClick={()=>setSelFaction(fid)} className="fade-in" style={{
-              background:sel?"rgba(201,168,76,0.08)":"rgba(20,18,12,0.8)",
-              border:sel?"2px solid var(--gold)":"1px solid var(--border)",
-              borderRadius:6,padding:"14px 12px",color:"var(--text)",textAlign:"left",
-              boxShadow:sel?"0 0 20px rgba(201,168,76,0.12),inset 0 1px 0 rgba(255,255,255,0.04)":"inset 0 1px 0 rgba(255,255,255,0.02)",
+            <button key={fid} onClick={()=>setSelFaction(fid)}
+              onMouseEnter={()=>setHoverFaction(fid)} onMouseLeave={()=>setHoverFaction(null)}
+              className="fade-in" style={{
+              ...frameStyle(sel),
+              padding:"12px 12px",color:"var(--text)",textAlign:"left",display:"flex",flexDirection:"column",gap:6,
             }}>
-              {/* Nom de faction — ancre visuelle de la carte (§4 : 18-20px Bold, accent
-                  doré unique — la couleur ne différencie plus le contenu, cf. §3/§5) */}
-              <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:19,color:"var(--gold)",marginBottom:4}}>{f.name}</div>
-              <div style={{fontSize:15,color:"var(--text2)"}}>{f.hero} & {f.companion}</div>
-              {/* Stats de jeu — l'info qui sert la décision du joueur, doit primer
-                  visuellement sur le lore (§2.1/§5) : taille corps de carte + blanc cassé */}
-              <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",fontSize:15,marginTop:8,fontFamily:"'IBM Plex Mono',monospace"}}>
+              {/* Blason (§6 priorité C) — porte l'identité de faction à la place de
+                  la couleur de titre ; nom en accent doré unique (§3/§4 : 18-20px Bold) */}
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <img src={FACTION_LOGOS[fid]} alt="" style={{width:30,height:30,flexShrink:0,opacity:sel?1:0.85}}/>
+                <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:18,color:"var(--gold)",lineHeight:1.2}}>{f.name}</div>
+              </div>
+              {/* Stats de jeu — priment sur le lore, désormais relégué au panneau
+                  d'aperçu ci-dessus plutôt que répété sur chaque carte (§2.1/§5) */}
+              <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",fontSize:15,fontFamily:"'IBM Plex Mono',monospace"}}>
                 <span>⚡ <span style={{color:"var(--text)",fontWeight:600}}>{f.power}</span></span>
                 <span>🃏 <span style={{color:"var(--text)",fontWeight:600}}>{f.cards}</span></span>
                 {f.startBonus&&<span style={{color:"#8fc26a",fontWeight:600}}>
@@ -116,11 +168,6 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
                   💰={f.startAbs.coins} ♥={f.startAbs.pop}
                 </span>}
               </div>
-              {/* Texte de lore — ambiance, jamais confondu avec les stats ci-dessus :
-                  italique, contraste réduit assumé (§4) */}
-              {f.riverwalk&&<div style={{fontSize:13,fontStyle:"italic",color:"#6aa8d0",opacity:0.85,marginTop:6}}>🌊 {f.rwName||"Riverwalk"} → {f.riverwalk.map(t=>TERRAINS[t]?.label||t).join(" & ")}</div>}
-              {f.fObj&&<div style={{fontSize:13,fontStyle:"italic",color:"var(--gold-dim)",opacity:0.85,marginTop:4}}>🏛 {f.fObj.name}</div>}
-              {f.isExtension&&<div style={{fontSize:11,fontWeight:600,color:"var(--gold-dim)",marginTop:4,letterSpacing:2,textTransform:"uppercase"}}>Extension</div>}
             </button>
           );})}
         </div>
@@ -133,10 +180,8 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:8,width:"100%",marginBottom:32}}>
             {MATS.map(pm=>(
               <button key={pm.id} onClick={()=>setSelMat(pm.id)} className="fade-in" style={{
-                background:selMat===pm.id?"rgba(201,168,76,0.08)":"rgba(20,18,12,0.8)",
-                border:selMat===pm.id?"2px solid var(--gold)":"1px solid var(--border)",
-                borderRadius:6,padding:"14px 12px",color:"var(--text)",textAlign:"left",
-                boxShadow:selMat===pm.id?"0 0 20px rgba(201,168,76,0.12)":"none",
+                ...frameStyle(selMat===pm.id),
+                padding:"14px 12px",color:"var(--text)",textAlign:"left",
               }}>
                 <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:14}}>{pm.name}</div>
                 <div style={{fontSize:11,color:"var(--text-dim)",marginTop:4,letterSpacing:0.5}}>{pm.topRow.join(" · ")}</div>
