@@ -1889,7 +1889,7 @@ export default function App(){
     return(
       <div style={{minHeight:"100vh",background:"linear-gradient(170deg,#1A1710 0%,#1A1710 40%,#1A1710 100%)",color:"var(--text)",display:"flex",flexDirection:"column",alignItems:"center",padding:"32px 16px",overflow:"auto"}}>
         <div style={{width:80,height:1,background:"linear-gradient(90deg,transparent,var(--rust),transparent)",marginBottom:16}}/>
-        <h1 style={{fontSize:24,fontWeight:900,letterSpacing:8,textTransform:"uppercase",color:"var(--rust)",marginBottom:4,textAlign:"center"}}>Fin de Partie</h1>
+        <h1 style={{fontSize:28,fontWeight:900,letterSpacing:8,textTransform:"uppercase",color:"var(--rust)",marginBottom:4,textAlign:"center"}}>Fin de Partie</h1>
         <div style={{width:140,height:1,background:"linear-gradient(90deg,transparent,var(--rust-dark),transparent)",marginBottom:24}}/>
 
         {/* Rankings */}
@@ -1903,34 +1903,34 @@ export default function App(){
               animationDelay:`${i*0.1}s`,
             }}>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
-                <span style={{fontSize:24,fontWeight:900,color:i===0?"var(--rust)":"var(--text-muted)",fontFamily:"var(--font-title)",width:32}}>
+                <span style={{fontSize:28,fontWeight:900,color:i===0?"var(--rust)":"var(--text-muted)",fontFamily:"var(--font-title)",width:32}}>
                   {i===0?"🏆":i+1+"."}
                 </span>
                 <div style={{flex:1}}>
-                  <div style={{fontFamily:"var(--font-title)",fontSize:16,fontWeight:700,color:s.color}}>{s.name}</div>
-                  <div style={{fontSize:10,color:"var(--text-dim)"}}>{s.hero} {s.isBot?"🤖":"👤"}</div>
+                  <div style={{fontFamily:"var(--font-title)",fontSize:18,fontWeight:700,color:s.color}}>{s.name}</div>
+                  <div style={{fontSize:12,color:"var(--text-dim)"}}>{s.hero} {s.isBot?"🤖":"👤"}</div>
                 </div>
-                <div style={{fontSize:22,fontWeight:900,color:i===0?"var(--rust)":"var(--text)",fontFamily:"var(--font-title)"}}>{s.total}$</div>
+                <div style={{fontSize:25,fontWeight:900,color:i===0?"var(--rust)":"var(--text)",fontFamily:"var(--font-title)"}}>{s.total}$</div>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,fontSize:11,color:"var(--text-dim)"}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,fontSize:13,color:"var(--text-dim)"}}>
                 <div style={{background:"var(--bg3)",padding:"6px 8px",borderRadius:4,textAlign:"center"}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"var(--gold)"}}>{s.starScore}$</div>
+                  <div style={{fontSize:14,fontWeight:700,color:"var(--gold)"}}>{s.starScore}$</div>
                   <div>⭐{s.stars} × {s.starMult}</div>
                 </div>
                 <div style={{background:"var(--bg3)",padding:"6px 8px",borderRadius:4,textAlign:"center"}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"var(--brass)"}}>{s.terScore}$</div>
+                  <div style={{fontSize:14,fontWeight:700,color:"var(--brass)"}}>{s.terScore}$</div>
                   <div>🗺{s.territories}{s.factoryBonus?`+${s.factoryBonus}`:""}{s.flagBonus?`+${s.flagBonus}⚑`:""} × {s.terMult}</div>
                 </div>
                 <div style={{background:"var(--bg3)",padding:"6px 8px",borderRadius:4,textAlign:"center"}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"var(--copper)"}}>{s.resScore}$</div>
+                  <div style={{fontSize:14,fontWeight:700,color:"var(--copper)"}}>{s.resScore}$</div>
                   <div>📦{s.resPairs}p × {s.resMult}</div>
                 </div>
                 <div style={{background:"var(--bg3)",padding:"6px 8px",borderRadius:4,textAlign:"center"}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"var(--text)"}}>{s.coins}$</div>
+                  <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>{s.coins}$</div>
                   <div>💰 cash</div>
                 </div>
               </div>
-              <div style={{fontSize:11,color:"var(--text-dim)",marginTop:4}}>
+              <div style={{fontSize:13,color:"var(--text-dim)",marginTop:4}}>
                 Pop: {s.pop} (palier {["0-6","7-12","13-18"][s.popTier]}) — {s.totalRes} ressources
                 {structureBonus&&s.sbCoins>0&&<span style={{color:"var(--gold)",marginLeft:8}}>🏦 {structureBonus.icon} {structureBonus.name}: +{s.sbCoins}$ ({s.sbCount} bât.)</span>}
               </div>
@@ -1939,7 +1939,7 @@ export default function App(){
         </div>
 
         <button onClick={()=>{setPhase("setup");setPlayers([]);setLog([]);setTurn(1);setEmpire(Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])));setRails([...EMPIRE_RAILS]);setRailPlacement(null);setSelFaction(null);setSelMat(null);}} style={{
-          marginTop:24,padding:"12px 40px",fontSize:13,letterSpacing:4,textTransform:"uppercase",
+          marginTop:24,padding:"12px 40px",fontSize:15,letterSpacing:4,textTransform:"uppercase",
           background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:6,fontWeight:700,
           fontFamily:"var(--font-title)",cursor:"pointer",
         }}>Nouvelle Partie</button>
@@ -2009,11 +2009,11 @@ export default function App(){
             <img src={FACTION_LOGOS[me.faction]} alt="" style={{width:"82%",height:"82%",objectFit:"contain"}}/>
           </div>
           <div style={{lineHeight:1.2}}>
-            <div style={{fontSize:14,fontWeight:700,color:myFaction.color,fontFamily:"var(--font-title)"}}>{myFaction.name}</div>
-            <div style={{fontSize:11,color:"var(--text-dim)",fontFamily:"var(--font-body)"}}>{myMat.name} · T{turn}</div>
+            <div style={{fontSize:16,fontWeight:700,color:myFaction.color,fontFamily:"var(--font-title)"}}>{myFaction.name}</div>
+            <div style={{fontSize:13,color:"var(--text-dim)",fontFamily:"var(--font-body)"}}>{myMat.name} · T{turn}</div>
           </div>
         </div>
-        {botRunning&&<span style={{color:"var(--rust)",fontSize:12,animation:"pulse 1s infinite",marginRight:4,display:"flex",alignItems:"center",gap:3}}>{React.createElement(RESOURCE_ICONS.metal,{size:12,color:"var(--rust)"})} IA…</span>}
+        {botRunning&&<span style={{color:"var(--rust)",fontSize:14,animation:"pulse 1s infinite",marginRight:4,display:"flex",alignItems:"center",gap:3}}>{React.createElement(RESOURCE_ICONS.metal,{size:12,color:"var(--rust)"})} IA…</span>}
         {/* Divider */}
         <div style={{width:1,height:28,background:"var(--border-light)",flexShrink:0}}/>
         {/* Resource counters — SVG icons */}
@@ -2040,26 +2040,26 @@ export default function App(){
               style={{position:"relative",width:36,height:36,borderRadius:7,border:starDetail===s.key?"1px solid var(--gold)":"1px solid var(--border)",
                 background:s.done?"rgba(232,200,96,0.16)":starDetail===s.key?"rgba(212,178,84,0.12)":"rgba(255,255,255,0.02)",
                 display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:0}}>
-              <span style={{fontSize:18,filter:s.done?"none":"brightness(0) invert(1)",opacity:s.done?0.4:0.7}}>{s.icon}</span>
-              {s.done&&<span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:21,filter:"drop-shadow(0 0 3px rgba(232,200,96,0.7))"}}>⭐</span>}
-              {!s.done&&s.prog&&s.prog!=="…"&&<span style={{position:"absolute",bottom:-2,right:0,fontSize:8,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-mono)",background:"var(--bg)",borderRadius:2,padding:"0 2px"}}>{s.prog.split("/")[0]}</span>}
+              <span style={{fontSize:21,filter:s.done?"none":"brightness(0) invert(1)",opacity:s.done?0.4:0.7}}>{s.icon}</span>
+              {s.done&&<span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,filter:"drop-shadow(0 0 3px rgba(232,200,96,0.7))"}}>⭐</span>}
+              {!s.done&&s.prog&&s.prog!=="…"&&<span style={{position:"absolute",bottom:-2,right:0,fontSize:9,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-mono)",background:"var(--bg)",borderRadius:2,padding:"0 2px"}}>{s.prog.split("/")[0]}</span>}
             </button>
           ))}
         </div>
         {/* Divider + total + boutons */}
         <div style={{width:1,height:28,background:"var(--border-light)",flexShrink:0,marginLeft:4}}/>
         <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-          <div title="Étoiles obtenues" style={{display:"flex",alignItems:"center",gap:3,fontSize:15,fontWeight:900,color:"var(--gold)",fontFamily:"var(--font-title)"}}>⭐{me.stars}<span style={{fontSize:11,color:"var(--text-dim)"}}>/6</span></div>
-          {players.length>1&&<button onClick={()=>setShowOpponents(s=>!s)} title="Voir les adversaires" style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:6,fontSize:13,fontWeight:700,background:showOpponents?"rgba(200,112,64,0.18)":"rgba(200,112,64,0.06)",color:"var(--rust)",border:"1px solid var(--border-dark)",fontFamily:"var(--font-title)"}}>
-            👥 {players.length-1}<span style={{fontSize:9,transform:showOpponents?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
+          <div title="Étoiles obtenues" style={{display:"flex",alignItems:"center",gap:3,fontSize:17,fontWeight:900,color:"var(--gold)",fontFamily:"var(--font-title)"}}>⭐{me.stars}<span style={{fontSize:13,color:"var(--text-dim)"}}>/6</span></div>
+          {players.length>1&&<button onClick={()=>setShowOpponents(s=>!s)} title="Voir les adversaires" style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:6,fontSize:15,fontWeight:700,background:showOpponents?"rgba(200,112,64,0.18)":"rgba(200,112,64,0.06)",color:"var(--rust)",border:"1px solid var(--border-dark)",fontFamily:"var(--font-title)"}}>
+            👥 {players.length-1}<span style={{fontSize:10,transform:showOpponents?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
           </button>}
-          {(me.fragments||0)>0&&<div style={{fontSize:12,padding:"4px 8px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:"#a080d0"}}>{me.fragments}/2 frag.</div>}
+          {(me.fragments||0)>0&&<div style={{fontSize:14,padding:"4px 8px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:"#a080d0"}}>{me.fragments}/2 frag.</div>}
           {/* Annuler / Refaire (dans le tour humain) */}
           {(()=>{const canUndo=isMyTurn&&!botRunning&&undoStack.length>0;const canRedo=isMyTurn&&!botRunning&&redoStack.length>0;return<>
-            <button onClick={undo} disabled={!canUndo} title="Annuler le dernier coup" style={{width:32,height:32,borderRadius:6,fontSize:15,fontWeight:700,background:"transparent",color:canUndo?"var(--gold)":"var(--text-ghost)",border:`1px solid ${canUndo?"var(--gold-dim)":"var(--border)"}`,cursor:canUndo?"pointer":"not-allowed"}}>↶</button>
-            <button onClick={redo} disabled={!canRedo} title="Refaire le coup annulé" style={{width:32,height:32,borderRadius:6,fontSize:15,fontWeight:700,background:"transparent",color:canRedo?"var(--gold)":"var(--text-ghost)",border:`1px solid ${canRedo?"var(--gold-dim)":"var(--border)"}`,cursor:canRedo?"pointer":"not-allowed"}}>↷</button>
+            <button onClick={undo} disabled={!canUndo} title="Annuler le dernier coup" style={{width:32,height:32,borderRadius:6,fontSize:17,fontWeight:700,background:"transparent",color:canUndo?"var(--gold)":"var(--text-ghost)",border:`1px solid ${canUndo?"var(--gold-dim)":"var(--border)"}`,cursor:canUndo?"pointer":"not-allowed"}}>↶</button>
+            <button onClick={redo} disabled={!canRedo} title="Refaire le coup annulé" style={{width:32,height:32,borderRadius:6,fontSize:17,fontWeight:700,background:"transparent",color:canRedo?"var(--gold)":"var(--text-ghost)",border:`1px solid ${canRedo?"var(--gold-dim)":"var(--border)"}`,cursor:canRedo?"pointer":"not-allowed"}}>↷</button>
           </>;})()}
-          <button onClick={()=>setShowRules(true)} title="Regles du jeu" style={{padding:"5px 10px",borderRadius:6,fontSize:14,fontWeight:700,background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)",fontFamily:"var(--font-title)"}}>?</button>
+          <button onClick={()=>setShowRules(true)} title="Regles du jeu" style={{padding:"5px 10px",borderRadius:6,fontSize:16,fontWeight:700,background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)",fontFamily:"var(--font-title)"}}>?</button>
         </div>
       </div>
 
@@ -2080,8 +2080,8 @@ export default function App(){
                     <img src={FACTION_LOGOS[op.faction]} alt="" style={{width:"82%",height:"82%",objectFit:"contain"}}/>
                   </div>
                   <div style={{lineHeight:1.2}}>
-                    <div style={{fontSize:13,fontWeight:700,color:of.color,fontFamily:"var(--font-title)"}}>{of.name}{op.isBot?" 🤖":""}{active?" ◀":""}</div>
-                    <div style={{fontSize:10,color:"var(--text-dim)"}}>{op.matName} · ⭐{op.stars}/6</div>
+                    <div style={{fontSize:15,fontWeight:700,color:of.color,fontFamily:"var(--font-title)"}}>{of.name}{op.isBot?" 🤖":""}{active?" ◀":""}</div>
+                    <div style={{fontSize:12,color:"var(--text-dim)"}}>{op.matName} · ⭐{op.stars}/6</div>
                   </div>
                 </div>
                 {/* Ressources */}
@@ -2089,14 +2089,14 @@ export default function App(){
                   {playerStats(op).map((s,i)=>{const Icon=RESOURCE_ICONS[s.svgKey];return(
                     <div key={i} className="res-pill" title={s.label} style={{minWidth:40,padding:"3px 7px"}}>
                       <span style={{display:"flex",alignItems:"center"}}>{Icon?<Icon size={15} color={s.color}/>:null}</span>
-                      <span className="res-val" style={{color:s.color,fontSize:14}}>{s.val}</span>
+                      <span className="res-val" style={{color:s.color,fontSize:16}}>{s.val}</span>
                     </div>
                   );})}
                 </div>
                 {/* Étoiles — progression des 6 voies */}
                 <div style={{display:"flex",gap:3,marginLeft:"auto",flexWrap:"wrap"}}>
                   {starMilestones(op).map((m,i)=>(
-                    <div key={i} title={`${m.label} ${m.prog}`} style={{display:"flex",alignItems:"center",gap:2,padding:"2px 5px",borderRadius:4,fontSize:10,
+                    <div key={i} title={`${m.label} ${m.prog}`} style={{display:"flex",alignItems:"center",gap:2,padding:"2px 5px",borderRadius:4,fontSize:12,
                       background:m.done?"rgba(232,200,96,0.15)":"rgba(255,255,255,0.03)",
                       border:m.done?"1px solid rgba(232,200,96,0.4)":"1px solid var(--border)"}}>
                       <span>{m.done?"⭐":m.icon}</span>
@@ -2115,7 +2115,7 @@ export default function App(){
       <div style={{display:"flex",gap:4,background:"linear-gradient(180deg,#241d12,#171209 60%,#100c07)",borderRight:"1px solid var(--panel-edge)",boxShadow:"inset -1px 0 0 rgba(216,201,163,0.06)",padding:"4px 4px",overflow:"hidden"}}>
         {/* Popularity track */}
         <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
-          <div style={{fontSize:8,color:"var(--brass)",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pop</div>
+          <div style={{fontSize:9,color:"var(--brass)",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pop</div>
           <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,width:"100%"}}>
             {Array.from({length:19},(_,i)=>i).map(v=>{
               const tier=v<=6?0:v<=12?1:2;
@@ -2126,7 +2126,7 @@ export default function App(){
                   background:v<=me.pop?`linear-gradient(90deg,${tierColors[tier]}cc,${tierColors[tier]})`:"rgba(255,255,255,0.03)",
                   border:v<=me.pop?`1px solid ${tierColors[tier]}`:"1px solid rgba(255,255,255,0.04)",
                   display:"flex",alignItems:"center",justifyContent:"center",
-                  fontSize:8,fontWeight:v===me.pop?900:400,
+                  fontSize:9,fontWeight:v===me.pop?900:400,
                   color:v<=me.pop?"#fff":"#2a2010",
                   boxShadow:v===me.pop?"0 0 6px rgba(200,160,60,0.5)":"none",
                   borderLeft:v===7||v===13?`2px solid ${tierColors[tier]}88`:"none",
@@ -2134,7 +2134,7 @@ export default function App(){
               );
             })}
           </div>
-          <div style={{fontSize:16,fontWeight:700,color:"var(--brass)",marginTop:4,fontFamily:"var(--font-title)"}}>{me.pop}</div>
+          <div style={{fontSize:18,fontWeight:700,color:"var(--brass)",marginTop:4,fontFamily:"var(--font-title)"}}>{me.pop}</div>
         </div>
         {/* ── BARÈME DE SCORE par palier de popularité (aide-mémoire fidèle à
               Scythe) : ⭐ étoiles / 🗺 territoires / 📦 paires de ressources.
@@ -2148,18 +2148,18 @@ export default function App(){
           ];
           return(
             <div style={{width:42,display:"flex",flexDirection:"column",alignItems:"stretch",paddingTop:14,paddingBottom:24}}>
-              <div style={{fontSize:7,color:"var(--gold-dim)",textAlign:"center",letterSpacing:0.5,marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>$/pt</div>
+              <div style={{fontSize:8,color:"var(--gold-dim)",textAlign:"center",letterSpacing:0.5,marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>$/pt</div>
               <div style={{flex:1,display:"grid",gridTemplateRows:"1fr 1fr 1fr",gap:3}}>
                 {bands.map(b=>{const active=b.t===curTier;return(
                   <div key={b.t} title={`Popularité ${b.range} : chaque ⭐ vaut ${b.star}$, chaque territoire ${b.ter}$, chaque paire de ressources ${b.res}$`}
                     style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",gap:1,borderRadius:4,padding:"2px 3px",
                       background:active?"rgba(212,178,84,0.16)":"rgba(255,255,255,0.02)",
                       border:active?"1px solid var(--gold)":"1px solid var(--border)"}}>
-                    <div style={{fontSize:7,color:active?"var(--gold)":"var(--text-muted)",textAlign:"center",fontFamily:"var(--font-mono)",fontWeight:700}}>{b.range}</div>
-                    <div style={{display:"flex",justifyContent:"space-around",fontSize:9,fontWeight:800,fontFamily:"var(--font-mono)",color:active?"#e8dcc4":"var(--text-dim)"}}>
+                    <div style={{fontSize:8,color:active?"var(--gold)":"var(--text-muted)",textAlign:"center",fontFamily:"var(--font-mono)",fontWeight:700}}>{b.range}</div>
+                    <div style={{display:"flex",justifyContent:"space-around",fontSize:10,fontWeight:800,fontFamily:"var(--font-mono)",color:active?"#e8dcc4":"var(--text-dim)"}}>
                       <span title="par étoile" style={{color:active?"var(--gold)":"var(--gold-dim)"}}>⭐{b.star}</span>
                     </div>
-                    <div style={{display:"flex",justifyContent:"space-around",fontSize:9,fontWeight:800,fontFamily:"var(--font-mono)",color:active?"#e8dcc4":"var(--text-dim)"}}>
+                    <div style={{display:"flex",justifyContent:"space-around",fontSize:10,fontWeight:800,fontFamily:"var(--font-mono)",color:active?"#e8dcc4":"var(--text-dim)"}}>
                       <span title="par territoire">🗺{b.ter}</span><span title="par paire de ressources">📦{b.res}</span>
                     </div>
                   </div>
@@ -2174,12 +2174,12 @@ export default function App(){
       <div style={{position:"relative",overflow:"hidden",background:"radial-gradient(ellipse at 50% 45%,#16140e,var(--bg-map))",cursor:isPanning?"grabbing":"grab",touchAction:"none"}}>
         {/* Zoom controls */}
         <div style={{position:"absolute",top:8,right:8,zIndex:5,display:"flex",flexDirection:"column",gap:4}}>
-          <button onClick={()=>mapZoom(1/1.4)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--rust)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>+</button>
-          <button onClick={()=>mapZoom(1.4)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--rust)",fontSize:18,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>−</button>
-          <button onClick={mapCenterOnMe} title="Centrer sur mon héros" style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--rust)",fontSize:14,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>⌖</button>
-          <button onClick={mapReset} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--text-dim)",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>⟲</button>
+          <button onClick={()=>mapZoom(1/1.4)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--rust)",fontSize:21,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>+</button>
+          <button onClick={()=>mapZoom(1.4)} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--rust)",fontSize:21,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>−</button>
+          <button onClick={mapCenterOnMe} title="Centrer sur mon héros" style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--rust)",fontSize:16,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>⌖</button>
+          <button onClick={mapReset} style={{width:32,height:32,borderRadius:6,border:"1px solid var(--border)",background:"rgba(14,12,8,0.85)",color:"var(--text-dim)",fontSize:13,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",backdropFilter:"blur(4px)"}}>⟲</button>
         </div>
-        <div style={{position:"absolute",bottom:6,left:8,zIndex:5,fontSize:10,color:"var(--text-muted)",opacity:0.5,pointerEvents:"none"}}>Glisser: panoramique · Molette/pinch: zoom</div>
+        <div style={{position:"absolute",bottom:6,left:8,zIndex:5,fontSize:12,color:"var(--text-muted)",opacity:0.5,pointerEvents:"none"}}>Glisser: panoramique · Molette/pinch: zoom</div>
         {/* SVG Map */}
         <svg ref={mapRef} viewBox={`${mapView.x} ${mapView.y} ${mapView.w} ${mapView.h}`} style={{width:"100%",height:"100%",display:"block",minHeight:"100%"}}
           onPointerDown={handleMapPointerDown} onPointerMove={handleMapPointerMove} onPointerUp={handleMapPointerUp} onPointerCancel={handleMapPointerUp}
@@ -2401,14 +2401,14 @@ export default function App(){
           <div style={{position:"absolute",bottom:16,left:"50%",transform:"translateX(-50%)",zIndex:8,
             background:"rgba(14,12,8,0.95)",border:"1px solid var(--gold-dim)",borderRadius:10,
             padding:"10px 14px",boxShadow:"0 6px 30px rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",animation:"slideUp 0.2s ease"}}>
-            <div style={{fontSize:12,color:"var(--gold)",fontWeight:700,marginBottom:8,fontFamily:"var(--font-title)"}}>Quelle unité déplacer depuis #{unitPicker.hexId} ?</div>
+            <div style={{fontSize:14,color:"var(--gold)",fontWeight:700,marginBottom:8,fontFamily:"var(--font-title)"}}>Quelle unité déplacer depuis #{unitPicker.hexId} ?</div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               {unitPicker.units.map(u=>(
-                <button key={u.id} onClick={()=>doMove(u.type,u.id,unitPicker.hexId)} className="act-btn" style={{borderColor:myFaction.color+"88",fontSize:13}}>
+                <button key={u.id} onClick={()=>doMove(u.type,u.id,unitPicker.hexId)} className="act-btn" style={{borderColor:myFaction.color+"88",fontSize:15}}>
                   {u.icon} {u.label}
                 </button>
               ))}
-              <button onClick={()=>setUnitPicker(null)} className="act-btn" style={{fontSize:12,opacity:0.7}}>✕</button>
+              <button onClick={()=>setUnitPicker(null)} className="act-btn" style={{fontSize:14,opacity:0.7}}>✕</button>
             </div>
           </div>
         )}
@@ -2440,39 +2440,39 @@ export default function App(){
                 return(
                   <div className="combat-panel" style={{padding:"24px",background:"linear-gradient(180deg,#200e0a,var(--bg2))",borderRadius:12}}>
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
-                      <div style={{width:50,height:50,borderRadius:"50%",background:isPve?"rgba(180,30,15,0.2)":"rgba(200,100,30,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,border:isPve?"2px solid #1A3A6A":"2px solid "+(ef?ef.color:"#888"),flexShrink:0}}>⚔</div>
+                      <div style={{width:50,height:50,borderRadius:"50%",background:isPve?"rgba(180,30,15,0.2)":"rgba(200,100,30,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,border:isPve?"2px solid #1A3A6A":"2px solid "+(ef?ef.color:"#888"),flexShrink:0}}>⚔</div>
                       <div>
-                        <div style={{fontFamily:"var(--font-title)",color:isPve?"#2A5A8A":ef.color,fontSize:18,fontWeight:700}}>{isPve?combat.empireCard.name:combat.type==="pvp_defense"?`${ef.name} vous attaque !`:`Combat vs ${ef.name}`}</div>
-                        <div style={{fontSize:12,color:"var(--text-muted)",marginTop:3}}>{isPve?`Force Empire: ${combat.empireCard.power}`:combat.type==="pvp_defense"?"Ses forces sont engagées en secret — défendez le territoire":"L'adversaire choisit secrètement…"}</div>
+                        <div style={{fontFamily:"var(--font-title)",color:isPve?"#2A5A8A":ef.color,fontSize:21,fontWeight:700}}>{isPve?combat.empireCard.name:combat.type==="pvp_defense"?`${ef.name} vous attaque !`:`Combat vs ${ef.name}`}</div>
+                        <div style={{fontSize:14,color:"var(--text-muted)",marginTop:3}}>{isPve?`Force Empire: ${combat.empireCard.power}`:combat.type==="pvp_defense"?"Ses forces sont engagées en secret — défendez le territoire":"L'adversaire choisit secrètement…"}</div>
                       </div>
                     </div>
                     <div style={{marginBottom:14}}>
-                      <div style={{fontSize:12,color:"var(--brass)",marginBottom:8,fontWeight:600}}>⚡ Puissance ({combat.powerSpend}/{maxPower})</div>
+                      <div style={{fontSize:14,color:"var(--brass)",marginBottom:8,fontWeight:600}}>⚡ Puissance ({combat.powerSpend}/{maxPower})</div>
                       <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>{Array.from({length:maxPower+1},(_,i)=>i).map(v=>(
                         <button key={v} onClick={()=>setCombat(prev=>({...prev,powerSpend:v}))} className={`dial-btn ${combat.powerSpend===v?"on":"off"}`}>{v}</button>
                       ))}</div>
                     </div>
                     {maxCards>0&&<div style={{marginBottom:14}}>
-                      <div style={{fontSize:12,color:"var(--brass)",marginBottom:8,fontWeight:600}}>🃏 Cartes engagées ({combat.cardsSpend}/{maxCards}) <span style={{fontWeight:400,color:"var(--text-muted)"}}>— les plus fortes de votre main, valeur = somme</span></div>
+                      <div style={{fontSize:14,color:"var(--brass)",marginBottom:8,fontWeight:600}}>🃏 Cartes engagées ({combat.cardsSpend}/{maxCards}) <span style={{fontWeight:400,color:"var(--text-muted)"}}>— les plus fortes de votre main, valeur = somme</span></div>
                       <div style={{display:"flex",gap:5,marginBottom:8}}>{Array.from({length:maxCards+1},(_,i)=>i).map(v=>(
                         <button key={v} onClick={()=>setCombat(prev=>({...prev,cardsSpend:v}))} className={`dial-btn ${combat.cardsSpend===v?"on":"off"}`}>{v}</button>
                       ))}</div>
                       {/* Votre main — les cartes engagées (les plus fortes) sont surlignées */}
                       <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{handSorted.map((val,ci)=>{const played=ci<combat.cardsSpend;return(
-                        <span key={ci} style={{width:26,height:34,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:800,fontFamily:"var(--font-mono)",
+                        <span key={ci} style={{width:26,height:34,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,fontFamily:"var(--font-mono)",
                           background:played?"linear-gradient(180deg,#8b2020,#bb3838)":"var(--bg3)",color:played?"#fff":"var(--text-dim)",
                           border:played?"1px solid #dd4444":"1px solid var(--border)",boxShadow:played?"0 0 6px rgba(220,50,30,0.4)":"none"}}>{val}</span>
                       );})}</div>
                     </div>}
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16,padding:"12px 16px",background:"rgba(0,0,0,0.4)",borderRadius:10,border:"1px solid var(--border)"}}>
-                      <span style={{fontSize:22,fontWeight:900,color:"var(--gold)",fontFamily:"var(--font-title)"}}>{total}</span>
-                      <span style={{fontSize:12,color:"var(--text-muted)"}}>{combat.powerSpend}{cBonus.powerBonus>0?`+${cBonus.powerBonus}`:""}⚡ + {cardVal}🃏</span>
-                      {cBonus.name&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:"rgba(200,112,64,0.12)",border:"1px solid var(--rust)",color:"var(--rust)"}}>{cBonus.name}{cBonus.powerBonus>0?` +${cBonus.powerBonus}⚡`:""}{cBonus.cardBonus>0?` +${cBonus.cardBonus}🃏`:""}</span>}
-                      {isPve&&<span style={{fontSize:16,fontWeight:700,marginLeft:"auto",color:total>=combat.empireCard.power?"var(--success)":"#ff4444"}}>{total>=combat.empireCard.power?"✓":"✗"} vs {combat.empireCard.power}</span>}
+                      <span style={{fontSize:25,fontWeight:900,color:"var(--gold)",fontFamily:"var(--font-title)"}}>{total}</span>
+                      <span style={{fontSize:14,color:"var(--text-muted)"}}>{combat.powerSpend}{cBonus.powerBonus>0?`+${cBonus.powerBonus}`:""}⚡ + {cardVal}🃏</span>
+                      {cBonus.name&&<span style={{fontSize:12,padding:"2px 8px",borderRadius:4,background:"rgba(200,112,64,0.12)",border:"1px solid var(--rust)",color:"var(--rust)"}}>{cBonus.name}{cBonus.powerBonus>0?` +${cBonus.powerBonus}⚡`:""}{cBonus.cardBonus>0?` +${cBonus.cardBonus}🃏`:""}</span>}
+                      {isPve&&<span style={{fontSize:18,fontWeight:700,marginLeft:"auto",color:total>=combat.empireCard.power?"var(--success)":"#ff4444"}}>{total>=combat.empireCard.power?"✓":"✗"} vs {combat.empireCard.power}</span>}
                     </div>
-                    <button onClick={resolveCombat} style={{width:"100%",padding:"14px",fontSize:15,fontWeight:700,fontFamily:"var(--font-title)",letterSpacing:3,textTransform:"uppercase",background:"linear-gradient(135deg,var(--danger),#8b1515)",color:"#fff",border:"none",borderRadius:10,boxShadow:"0 3px 20px rgba(200,56,40,0.4)"}}>⚔ Combattre</button>
+                    <button onClick={resolveCombat} style={{width:"100%",padding:"14px",fontSize:17,fontWeight:700,fontFamily:"var(--font-title)",letterSpacing:3,textTransform:"uppercase",background:"linear-gradient(135deg,var(--danger),#8b1515)",color:"#fff",border:"none",borderRadius:10,boxShadow:"0 3px 20px rgba(200,56,40,0.4)"}}>⚔ Combattre</button>
                     {combat.type==="pvp_defense"&&me.faction==="acadiane"&&(me.unlockedAbilities||[]).includes(2)&&(
-                      <button onClick={resolveWhiteFlag} style={{width:"100%",marginTop:8,padding:"11px",fontSize:12,fontWeight:700,fontFamily:"var(--font-title)",letterSpacing:2,textTransform:"uppercase",background:"transparent",color:"var(--text-dim)",border:"1px solid var(--border-dark)",borderRadius:10}}>🏳 White Flag — céder le hex, +2 Popularité</button>
+                      <button onClick={resolveWhiteFlag} style={{width:"100%",marginTop:8,padding:"11px",fontSize:14,fontWeight:700,fontFamily:"var(--font-title)",letterSpacing:2,textTransform:"uppercase",background:"transparent",color:"var(--text-dim)",border:"1px solid var(--border-dark)",borderRadius:10}}>🏳 White Flag — céder le hex, +2 Popularité</button>
                     )}
                   </div>
                 );
@@ -2482,15 +2482,15 @@ export default function App(){
               {combat&&combat.phase==="reward"&&(
                 <div className="reward-panel" style={{padding:"24px",background:"linear-gradient(180deg,#0e200e,var(--bg2))",borderRadius:12}}>
                   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                    <span style={{fontSize:32}}>🏆</span>
-                    <div><div style={{fontFamily:"var(--font-title)",color:"var(--success)",fontSize:20,fontWeight:700}}>Victoire !</div><div style={{fontSize:12,color:"var(--text-dim)"}}>Choisissez votre butin</div></div>
+                    <span style={{fontSize:37}}>🏆</span>
+                    <div><div style={{fontFamily:"var(--font-title)",color:"var(--success)",fontSize:23,fontWeight:700}}>Victoire !</div><div style={{fontSize:14,color:"var(--text-dim)"}}>Choisissez votre butin</div></div>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
                     {[{k:"metal",icon:"⚙",label:"2 Métal",sub:"Ferraille"},{k:"pop",icon:"♥",label:"+2 Pop",sub:"Acclamation"},{k:"fragment",icon:"🔬",label:"Fragment",sub:`Tesla (${(me.fragments||0)}/2)`}].map(r=>(
                       <button key={r.k} onClick={()=>claimReward(r.k)} style={{background:"var(--bg3)",border:"1px solid var(--border-light)",borderRadius:10,padding:"18px 10px",color:"var(--text)",textAlign:"center",fontFamily:"inherit"}}>
-                        <div style={{fontSize:26,marginBottom:8}}>{r.icon}</div>
-                        <div style={{fontSize:13,fontWeight:700}}>{r.label}</div>
-                        <div style={{fontSize:10,color:"var(--text-muted)",marginTop:4}}>{r.sub}</div>
+                        <div style={{fontSize:30,marginBottom:8}}>{r.icon}</div>
+                        <div style={{fontSize:15,fontWeight:700}}>{r.label}</div>
+                        <div style={{fontSize:12,color:"var(--text-muted)",marginTop:4}}>{r.sub}</div>
                       </button>
                     ))}
                   </div>
@@ -2521,13 +2521,13 @@ export default function App(){
                 };
                 return(
                 <div style={{padding:"16px",background:"linear-gradient(180deg,#141a10,var(--bg2))",borderRadius:10,border:"1px solid var(--gold-dim)",animation:"slideUp 0.35s ease",marginBottom:10}}>
-                  <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,fontSize:13,marginBottom:6}}>📦 Dépose en route — le mech est passé par {routeDrop.mids.map(m=>`#${m}`).join(", ")}</div>
-                  <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:8,fontStyle:"italic"}}>Déposez des ouvriers ou du matériel sur un hex de passage (expansion, relais, dépôt avant bataille)</div>
+                  <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,fontSize:15,marginBottom:6}}>📦 Dépose en route — le mech est passé par {routeDrop.mids.map(m=>`#${m}`).join(", ")}</div>
+                  <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:8,fontStyle:"italic"}}>Déposez des ouvriers ou du matériel sur un hex de passage (expansion, relais, dépôt avant bataille)</div>
                   {routeDrop.mids.map(mid=>(
                     <div key={mid} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center"}}>
-                      <span style={{fontSize:12,color:"var(--text)",minWidth:36}}>#{mid}</span>
-                      <button disabled={wAtDest<1} onClick={()=>dropWorker(mid)} className="act-btn" style={{fontSize:11,opacity:wAtDest<1?0.4:1}}>● Déposer 1 ouvrier ({wAtDest} dispo)</button>
-                      <button disabled={resAtDest.length===0} onClick={()=>dropRes(mid)} className="act-btn" style={{fontSize:11,opacity:resAtDest.length===0?0.4:1}}>📦 Déposer les ressources ({resAtDest.map(([rt,q])=>`${q}${rt}`).join(",")||"—"})</button>
+                      <span style={{fontSize:14,color:"var(--text)",minWidth:36}}>#{mid}</span>
+                      <button disabled={wAtDest<1} onClick={()=>dropWorker(mid)} className="act-btn" style={{fontSize:13,opacity:wAtDest<1?0.4:1}}>● Déposer 1 ouvrier ({wAtDest} dispo)</button>
+                      <button disabled={resAtDest.length===0} onClick={()=>dropRes(mid)} className="act-btn" style={{fontSize:13,opacity:resAtDest.length===0?0.4:1}}>📦 Déposer les ressources ({resAtDest.map(([rt,q])=>`${q}${rt}`).join(",")||"—"})</button>
                     </div>
                   ))}
                   <button onClick={()=>{const end=routeDrop.endAfter;setRouteDrop(null);if(end)endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginTop:6,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Continuer ▶</button>
@@ -2538,10 +2538,10 @@ export default function App(){
               {encounter&&(
                 <div style={{padding:"20px",background:"linear-gradient(180deg,#1a1608,var(--bg2))",borderRadius:10,border:"1px solid var(--rust)",animation:"slideUp 0.35s ease"}}>
                   <div style={{display:"flex",alignItems:"flex-start",gap:12,marginBottom:16}}>
-                    <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(201,168,76,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:"2px solid var(--gold)",flexShrink:0}}>📜</div>
+                    <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(201,168,76,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:25,border:"2px solid var(--gold)",flexShrink:0}}>📜</div>
                     <div>
-                      <div style={{fontFamily:"var(--font-title)",color:"var(--gold)",fontSize:16,fontWeight:700}}>{encounter.card.name}</div>
-                      <div style={{fontSize:11,color:"var(--text-dim)",lineHeight:1.6,marginTop:4,fontStyle:"italic"}}>{encounter.card.desc}</div>
+                      <div style={{fontFamily:"var(--font-title)",color:"var(--gold)",fontSize:18,fontWeight:700}}>{encounter.card.name}</div>
+                      <div style={{fontSize:13,color:"var(--text-dim)",lineHeight:1.6,marginTop:4,fontStyle:"italic"}}>{encounter.card.desc}</div>
                     </div>
                   </div>
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -2550,12 +2550,12 @@ export default function App(){
                       return(
                       <button key={ci} onClick={()=>{if(!locked)resolveEncounter(ci);}} className="enc-card" disabled={locked} style={locked?{opacity:0.35,cursor:"not-allowed"}:undefined}>
                         <div style={{display:"flex",alignItems:"center",gap:10}}>
-                          <span style={{fontSize:20,width:28,textAlign:"center"}}>{c.icon}</span>
+                          <span style={{fontSize:23,width:28,textAlign:"center"}}>{c.icon}</span>
                           <div style={{flex:1}}>
-                            <div style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>{c.label}</div>
-                            <div style={{fontSize:10,color:"var(--brass)",marginTop:2}}>{c.desc}</div>
+                            <div style={{fontSize:15,fontWeight:700,color:"var(--text)"}}>{c.label}</div>
+                            <div style={{fontSize:12,color:"var(--brass)",marginTop:2}}>{c.desc}</div>
                           </div>
-                          <span style={{fontSize:16,color:"var(--gold-dim)"}}>›</span>
+                          <span style={{fontSize:18,color:"var(--gold-dim)"}}>›</span>
                         </div>
                       </button>
                     );})}
@@ -2567,10 +2567,10 @@ export default function App(){
               {rougeRiver&&(
                 <div style={{padding:"20px",background:"linear-gradient(180deg,#1a0a08,var(--bg2))",borderRadius:10,border:"1px solid var(--danger)",animation:"slideUp 0.35s ease"}}>
                   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                    <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(139,32,32,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,border:"2px solid #8b2020",flexShrink:0}}>⚙</div>
+                    <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(139,32,32,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:25,border:"2px solid #8b2020",flexShrink:0}}>⚙</div>
                     <div>
-                      <div style={{fontFamily:"var(--font-title)",color:"#cc4433",fontSize:16,fontWeight:700}}>Rouge River</div>
-                      <div style={{fontSize:10,color:"var(--text-dim)"}}>
+                      <div style={{fontFamily:"var(--font-title)",color:"#cc4433",fontSize:18,fontWeight:700}}>Rouge River</div>
+                      <div style={{fontSize:12,color:"var(--text-dim)"}}>
                         {rougeRiver.hasFragments?<span>Plans Ford <span style={{color:"#9060c0",fontWeight:700}}>+ Tesla</span></span>:"Plans Ford"} — Choisissez 1 carte
                       </div>
                     </div>
@@ -2578,10 +2578,10 @@ export default function App(){
                   <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:8,maxHeight:250,overflowY:"auto"}}>
                     {rougeRiver.cards.map(card=>(
                       <button key={card.id} onClick={()=>pickFactoryCard(card)} className={`rr-card ${card.type}`}>
-                        {card.type==="tesla"&&<div style={{position:"absolute",top:4,right:6,fontSize:10,color:"#b080e0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Tesla</div>}
-                        {card.type==="ford"&&<div style={{position:"absolute",top:4,right:6,fontSize:10,color:"#7a9ab0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Ford</div>}
-                        <div style={{fontFamily:"var(--font-title)",fontSize:13,fontWeight:700,color:card.type==="tesla"?"#c090e0":"#a0b8cc",marginBottom:5,paddingRight:30}}>{card.name}</div>
-                        <div style={{fontSize:11,color:"var(--text-dim)",lineHeight:1.5}}>{card.desc}</div>
+                        {card.type==="tesla"&&<div style={{position:"absolute",top:4,right:6,fontSize:12,color:"#b080e0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Tesla</div>}
+                        {card.type==="ford"&&<div style={{position:"absolute",top:4,right:6,fontSize:12,color:"#7a9ab0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Ford</div>}
+                        <div style={{fontFamily:"var(--font-title)",fontSize:15,fontWeight:700,color:card.type==="tesla"?"#c090e0":"#a0b8cc",marginBottom:5,paddingRight:30}}>{card.name}</div>
+                        <div style={{fontSize:13,color:"var(--text-dim)",lineHeight:1.5}}>{card.desc}</div>
                       </button>
                     ))}
                   </div>
@@ -2597,8 +2597,8 @@ export default function App(){
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.7)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:12}}>
             <div style={{maxWidth:420,width:"90%",borderRadius:12,border:"1px solid var(--rust)",boxShadow:"0 10px 50px rgba(0,0,0,0.8)",background:"linear-gradient(180deg,#1a1510,var(--bg2))",padding:24,animation:"slideUp 0.25s ease"}}>
               <div style={{textAlign:"center",marginBottom:16}}>
-                <div style={{fontSize:22,fontWeight:900,fontFamily:"var(--font-title)",color:"var(--rust)",letterSpacing:2,textTransform:"uppercase"}}>Choisir une Ability</div>
-                <div style={{fontSize:12,color:"var(--text-dim)",marginTop:4}}>Mecha déployé — débloque une capacité</div>
+                <div style={{fontSize:25,fontWeight:900,fontFamily:"var(--font-title)",color:"var(--rust)",letterSpacing:2,textTransform:"uppercase"}}>Choisir une Ability</div>
+                <div style={{fontSize:14,color:"var(--text-dim)",marginTop:4}}>Mecha déployé — débloque une capacité</div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 {ABILITY_NAMES.map((name,idx)=>{
@@ -2614,9 +2614,9 @@ export default function App(){
                       onMouseEnter={e=>{if(!already)e.currentTarget.style.borderColor="var(--rust)";e.currentTarget.style.background="rgba(200,112,64,0.1)";}}
                       onMouseLeave={e=>{e.currentTarget.style.borderColor=already?"var(--border)":"var(--rust-dark)";e.currentTarget.style.background=already?"rgba(0,0,0,0.3)":"var(--bg3)";}}
                     >
-                      <div style={{fontSize:28,marginBottom:6}}>{ABILITY_ICONS[idx]}</div>
-                      <div style={{fontSize:14,fontWeight:700,fontFamily:"var(--font-title)",color:already?"var(--text-muted)":"var(--rust)",letterSpacing:1}}>{name}</div>
-                      <div style={{fontSize:11,color:already?"var(--text-muted)":"var(--text-dim)",marginTop:4}}>{already?"Déjà débloqué":ABILITY_DESC[idx]}</div>
+                      <div style={{fontSize:32,marginBottom:6}}>{ABILITY_ICONS[idx]}</div>
+                      <div style={{fontSize:16,fontWeight:700,fontFamily:"var(--font-title)",color:already?"var(--text-muted)":"var(--rust)",letterSpacing:1}}>{name}</div>
+                      <div style={{fontSize:13,color:already?"var(--text-muted)":"var(--text-dim)",marginTop:4}}>{already?"Déjà débloqué":ABILITY_DESC[idx]}</div>
                     </button>
                   );
                 })}
@@ -2637,7 +2637,7 @@ export default function App(){
           <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(10,9,6,0.1) 0%,rgba(10,9,6,0.5) 55%,rgba(10,9,6,0.92) 100%)"}}/>
           <div style={{position:"absolute",left:10,bottom:6,display:"flex",alignItems:"center",gap:6}}>
             <img src={FACTION_LOGOS[me.faction]} alt="" style={{width:22,height:22,filter:"drop-shadow(0 1px 4px rgba(0,0,0,0.7))"}}/>
-            <span style={{fontSize:13,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-title)",textShadow:"0 1px 3px rgba(0,0,0,0.8)"}}>{myFaction.name}</span>
+            <span style={{fontSize:15,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-title)",textShadow:"0 1px 3px rgba(0,0,0,0.8)"}}>{myFaction.name}</span>
           </div>
         </div>
 
@@ -2652,9 +2652,9 @@ export default function App(){
             }}>
               <div style={{width:8,height:8,borderRadius:"50%",background:fc.color,flexShrink:0}}/>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:12,fontWeight:700,color:fc.color,fontFamily:"var(--font-title)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{fc.name.slice(0,8)}{isActive&&<span style={{color:"var(--gold)",marginLeft:4}}>◀</span>}</div>
+                <div style={{fontSize:14,fontWeight:700,color:fc.color,fontFamily:"var(--font-title)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{fc.name.slice(0,8)}{isActive&&<span style={{color:"var(--gold)",marginLeft:4}}>◀</span>}</div>
               </div>
-              <div style={{fontSize:12,color:"var(--text-dim)",whiteSpace:"nowrap",fontFamily:"var(--font-mono)"}}>⚡{p.power} ♥{p.pop} ⭐{p.stars}</div>
+              <div style={{fontSize:14,color:"var(--text-dim)",whiteSpace:"nowrap",fontFamily:"var(--font-mono)"}}>⚡{p.power} ♥{p.pop} ⭐{p.stars}</div>
             </div>
           );})}
         </div>
@@ -2662,7 +2662,7 @@ export default function App(){
         {/* ── Bonus de construction actif ── */}
         {structureBonus&&(
           <div title={`En fin de partie : +${structureBonus.coins}$ ${structureBonus.desc} (tuiles marquées $ sur la carte)`}
-            style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:11,color:"var(--gold)",display:"flex",alignItems:"center",gap:6,background:"rgba(212,178,84,0.05)"}}>
+            style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:13,color:"var(--gold)",display:"flex",alignItems:"center",gap:6,background:"rgba(212,178,84,0.05)"}}>
             <span>🏦</span>
             <span style={{fontWeight:700,fontFamily:"var(--font-title)"}}>{structureBonus.icon} {structureBonus.name}</span>
             <span style={{color:"var(--text-dim)",marginLeft:"auto"}}>+{structureBonus.coins}$/bât.</span>
@@ -2671,11 +2671,11 @@ export default function App(){
 
         {/* ── Plan d'usine actif (Rouge River) ── */}
         {me.factoryCard&&(
-          <div style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:11,display:"flex",gap:6,alignItems:"flex-start",background:me.factoryCard.type==="tesla"?"rgba(123,45,139,0.07)":"rgba(58,106,154,0.07)"}}>
+          <div style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:13,display:"flex",gap:6,alignItems:"flex-start",background:me.factoryCard.type==="tesla"?"rgba(123,45,139,0.07)":"rgba(58,106,154,0.07)"}}>
             <span>⚙</span>
             <div style={{minWidth:0}}>
               <span style={{fontWeight:700,fontFamily:"var(--font-title)",color:me.factoryCard.type==="tesla"?"#b080e0":"#8aa0b8"}}>{me.factoryCard.name}</span>
-              <div style={{color:"var(--text-dim)",fontSize:10.5,lineHeight:1.45}}>{me.factoryCard.desc}</div>
+              <div style={{color:"var(--text-dim)",fontSize:12,lineHeight:1.45}}>{me.factoryCard.desc}</div>
             </div>
           </div>
         )}
@@ -2736,10 +2736,10 @@ export default function App(){
                   }}>
                     {/* EN-TÊTE : nom couplé (action haut · action bas) façon Scythe */}
                     <div style={{padding:"6px 10px",display:"flex",alignItems:"center",gap:6,background:"linear-gradient(180deg,rgba(66,52,30,0.7),rgba(44,35,20,0.55))",borderBottom:"1px solid var(--border)"}}>
-                      <span style={{fontSize:13,fontWeight:800,color:disabled?"var(--text-muted)":"var(--rust-light)",fontFamily:"var(--font-title)"}}>{FR_TOP[action]||action}</span>
-                      <span style={{fontSize:12,color:"var(--text-muted)"}}>·</span>
-                      <span style={{fontSize:12,fontWeight:700,color:"var(--text-dim)",fontFamily:"var(--font-title)"}}>{FR_BOT[bottomAction]||bottomAction}</span>
-                      {disabled&&<span style={{marginLeft:"auto",fontSize:10,color:"var(--text-muted)",fontStyle:"italic"}}>joué</span>}
+                      <span style={{fontSize:15,fontWeight:800,color:disabled?"var(--text-muted)":"var(--rust-light)",fontFamily:"var(--font-title)"}}>{FR_TOP[action]||action}</span>
+                      <span style={{fontSize:14,color:"var(--text-muted)"}}>·</span>
+                      <span style={{fontSize:14,fontWeight:700,color:"var(--text-dim)",fontFamily:"var(--font-title)"}}>{FR_BOT[bottomAction]||bottomAction}</span>
+                      {disabled&&<span style={{marginLeft:"auto",fontSize:12,color:"var(--text-muted)",fontStyle:"italic"}}>joué</span>}
                     </div>
                     {/* RANGÉE HAUT */}
                     <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8}}>
@@ -2754,10 +2754,10 @@ export default function App(){
                       </div>
                       <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3}}>
                         {/* Recrue posée sur cette action (enrôlement) */}
-                        {(me.enlistMap||[])[i]!=null&&<span title={`Recrue : ${ENLIST_ONGOING[(me.enlistMap||[])[i]].label} quand vous/voisins faites ${FR_BOT[bottomAction]}`} style={{fontSize:10,padding:"1px 5px",borderRadius:8,background:"rgba(90,122,106,0.35)",border:"1px solid #5a9a7a",color:"#8fd0b0",fontWeight:700}}>🤝{ENLIST_ONGOING[(me.enlistMap||[])[i]].icon}</span>}
+                        {(me.enlistMap||[])[i]!=null&&<span title={`Recrue : ${ENLIST_ONGOING[(me.enlistMap||[])[i]].label} quand vous/voisins faites ${FR_BOT[bottomAction]}`} style={{fontSize:12,padding:"1px 5px",borderRadius:8,background:"rgba(90,122,106,0.35)",border:"1px solid #5a9a7a",color:"#8fd0b0",fontWeight:700}}>🤝{ENLIST_ONGOING[(me.enlistMap||[])[i]].icon}</span>}
                         <div title={`${cubesBot}/${maxBot} cube(s) d'amélioration posé(s) — chaque cube -1 coût`}><CubeSlots total={maxBot} filled={cubesBot} /></div>
-                        {reducAvail>0&&<span title={`${reducAvail} réduction(s) de coût encore possible(s) via Améliorer`} style={{fontSize:10,color:"#5cb85c",whiteSpace:"nowrap"}}>↓{reducAvail}</span>}
-                        <span style={{fontSize:11,fontWeight:700,color:bottomData.max?"var(--success)":"var(--gold-dim)",whiteSpace:"nowrap"}}>{bottomData.max?"✓ max":bottomData.prog}</span>
+                        {reducAvail>0&&<span title={`${reducAvail} réduction(s) de coût encore possible(s) via Améliorer`} style={{fontSize:12,color:"#5cb85c",whiteSpace:"nowrap"}}>↓{reducAvail}</span>}
+                        <span style={{fontSize:13,fontWeight:700,color:bottomData.max?"var(--success)":"var(--gold-dim)",whiteSpace:"nowrap"}}>{bottomData.max?"✓ max":bottomData.prog}</span>
                       </div>
                     </div>
                   </button>
@@ -2769,15 +2769,15 @@ export default function App(){
 
           {/* Action detail panels */}
           {isMyTurn&&!combat&&!encounter&&!rougeRiver&&selAction&&(
-            <div style={{padding:"12px 16px",fontSize:12,animation:"slideUp 0.25s ease"}}>
+            <div style={{padding:"12px 16px",fontSize:14,animation:"slideUp 0.25s ease"}}>
               {selAction==="Move"&&(
                 <div>
-                  <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:14}}>Déplacement ({(me.movedUnits||[]).length}/{moveLimit})</div>
+                  <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Déplacement ({(me.movedUnits||[]).length}/{moveLimit})</div>
                   <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+1};return n;});addLog(`💰 +1$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner 1$ (pas de déplacement)</button>
                   {!moveSource&&(
-                    <div style={{padding:"10px 12px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:12,color:"var(--gold)",lineHeight:1.5}}>
+                    <div style={{padding:"10px 12px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:14,color:"var(--gold)",lineHeight:1.5}}>
                       👆 Cliquez sur la carte l'unité à déplacer (hexes surlignés en doré), puis sa destination.
-                      <div style={{fontSize:11,color:"var(--text-dim)",marginTop:4}}>
+                      <div style={{fontSize:13,color:"var(--text-dim)",marginTop:4}}>
                         Disponibles : {!(me.movedUnits||[]).includes("hero")&&<span>★ {myFaction.hero} · </span>}
                         ● {me.workers.filter(w=>!(me.movedUnits||[]).includes(w.id)).length} ouvrier(s)
                         {me.mechs.length>0&&<span> · ⬡ {me.mechs.filter(m=>!(me.movedUnits||[]).includes(m.id)).length} mecha(s)</span>}
@@ -2786,7 +2786,7 @@ export default function App(){
                   )}
                   {/* 🚚 Choix d'emport (règle Scythe : le transport est optionnel) —
                       désactivé, le mech laisse ouvriers+ressources tenir le terrain */}
-                  <button onClick={()=>setCarryOnMove(c=>!c)} className="act-btn" style={{marginTop:8,width:"100%",fontSize:12,
+                  <button onClick={()=>setCarryOnMove(c=>!c)} className="act-btn" style={{marginTop:8,width:"100%",fontSize:14,
                     background:carryOnMove?"rgba(201,168,76,0.12)":"transparent",
                     border:carryOnMove?"1px solid var(--gold)":"1px solid var(--border)",
                     color:carryOnMove?"var(--gold)":"var(--text-muted)"}}>
@@ -2797,13 +2797,13 @@ export default function App(){
                     const resHexes=Object.entries(me.resources).filter(([hid,r])=>parseInt(hid)!==me.hero&&Object.values(r).some(q=>q>0));
                     if(resHexes.length===0)return null;
                     return <div style={{marginTop:8}}>
-                      <div style={{fontSize:11,color:"#8aa0b8",marginBottom:4}}>⚙ River Rouge Special (1×/tour) — téléporter vers le héros (#{me.hero}) :</div>
+                      <div style={{fontSize:13,color:"#8aa0b8",marginBottom:4}}>⚙ River Rouge Special (1×/tour) — téléporter vers le héros (#{me.hero}) :</div>
                       <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                        {resHexes.map(([hid,r])=><button key={hid} onClick={()=>doPlanTeleportRes(parseInt(hid))} className="act-btn" style={{fontSize:11,borderColor:"#4a5a6a"}}>#{hid} · {Object.entries(r).filter(([,q])=>q>0).map(([rt,q])=>`${q} ${rt.slice(0,4)}`).join(", ")}</button>)}
+                        {resHexes.map(([hid,r])=><button key={hid} onClick={()=>doPlanTeleportRes(parseInt(hid))} className="act-btn" style={{fontSize:13,borderColor:"#4a5a6a"}}>#{hid} · {Object.entries(r).filter(([,q])=>q>0).map(([rt,q])=>`${q} ${rt.slice(0,4)}`).join(", ")}</button>)}
                       </div>
                     </div>;
                   })()}
-                  {moveSource&&<div style={{color:"#C9A84C",fontSize:12,marginTop:8,fontStyle:"italic"}}>
+                  {moveSource&&<div style={{color:"#C9A84C",fontSize:14,marginTop:8,fontStyle:"italic"}}>
                     {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:moveSource.unitType==="mech"?"⬡ Mecha":"● Ouvrier"} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts), ou une autre de vos unités pour changer.
                   </div>}
                   {/* PACK UP — Nations free building move */}
@@ -2813,32 +2813,32 @@ export default function App(){
                       const adjTargets=(ADJ[bld.hexId]||[]).filter(id=>{const h=hMap[id];return h&&h.t!=="lac"&&h.t!=="marecage"&&!(me.buildings||[]).some(b=>b.hexId===id);});
                       const bt=BUILDING_TYPES.find(t=>t.type===bld.type);
                       return <div style={{marginTop:8,padding:"8px 10px",borderRadius:6,border:"1px solid var(--nations)",background:"rgba(32,178,170,0.06)"}}>
-                        <div style={{fontSize:12,color:"var(--nations)",marginBottom:6}}>📦 Pack Up — déplacer {bt?bt.icon:""} {bt?bt.name:""} depuis #{bld.hexId}</div>
-                        {adjTargets.length>0?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{adjTargets.map(hid=><button key={hid} onClick={()=>doPackUpMove(bottomPick.buildingIdx,hid)} className="act-btn" style={{borderColor:"var(--nations)"}}>→ #{hid}</button>)}</div>:<div style={{fontSize:10,color:"var(--text-muted)"}}>Aucun hex adjacent libre</div>}
-                        <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:12,opacity:0.7,minHeight:36}}>← Annuler</button>
+                        <div style={{fontSize:14,color:"var(--nations)",marginBottom:6}}>📦 Pack Up — déplacer {bt?bt.icon:""} {bt?bt.name:""} depuis #{bld.hexId}</div>
+                        {adjTargets.length>0?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{adjTargets.map(hid=><button key={hid} onClick={()=>doPackUpMove(bottomPick.buildingIdx,hid)} className="act-btn" style={{borderColor:"var(--nations)"}}>→ #{hid}</button>)}</div>:<div style={{fontSize:12,color:"var(--text-muted)"}}>Aucun hex adjacent libre</div>}
+                        <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Annuler</button>
                       </div>;
                     }
                     return <div style={{marginTop:8}}>
-                      <div style={{fontSize:12,color:"var(--nations)",marginBottom:4}}>📦 Pack Up (gratuit, 1×/tour) :</div>
-                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{(me.buildings||[]).map((b,i)=>{const bt=BUILDING_TYPES.find(t=>t.type===b.type);return <button key={i} onClick={()=>setBottomPick({packUp:true,buildingIdx:i})} className="act-btn" style={{fontSize:12,borderColor:"var(--nations)",padding:"8px 12px"}}>{bt?bt.icon:"🏗"} #{b.hexId}</button>;})}</div>
+                      <div style={{fontSize:14,color:"var(--nations)",marginBottom:4}}>📦 Pack Up (gratuit, 1×/tour) :</div>
+                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{(me.buildings||[]).map((b,i)=>{const bt=BUILDING_TYPES.find(t=>t.type===b.type);return <button key={i} onClick={()=>setBottomPick({packUp:true,buildingIdx:i})} className="act-btn" style={{fontSize:14,borderColor:"var(--nations)",padding:"8px 12px"}}>{bt?bt.icon:"🏗"} #{b.hexId}</button>;})}</div>
                     </div>;
                   })()}
-                  {me.packUpUsed&&me.faction==="nations"&&<div style={{marginTop:6,fontSize:10,color:"var(--text-muted)"}}>📦 Pack Up utilisé ce tour</div>}
+                  {me.packUpUsed&&me.faction==="nations"&&<div style={{marginTop:6,fontSize:12,color:"var(--text-muted)"}}>📦 Pack Up utilisé ce tour</div>}
                   {(me.movedUnits||[]).length>0&&(me.movedUnits||[]).length<moveLimit&&(
                     <button onClick={()=>{addLog("✅ Mouvement terminé");endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginTop:8,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Terminer ({(me.movedUnits||[]).length}/{moveLimit})</button>
                   )}
                 </div>
               )}
               {selAction==="Bolster"&&(<div>
-                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:14}}>Soutien (1$)</div>
-                {me.coins<1?<div style={{color:"#8A3030",fontSize:12}}>Pas assez d'$</div>:
+                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Soutien (1$)</div>
+                {me.coins<1?<div style={{color:"#8A3030",fontSize:14}}>Pas assez d'$</div>:
                 <div style={{display:"flex",gap:10}}>
                   <button onClick={()=>doBolster("power")} className="act-btn" style={{flex:1}}>⚡ +2 Puissance</button>
                   <button onClick={()=>doBolster("cards")} className="act-btn" style={{flex:1}}>🃏 +1 Carte</button>
                 </div>}
               </div>)}
               {selAction==="Produce"&&(<div>
-                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:14}}>Production (max 2 hex)</div>
+                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Production (max 2 hex)</div>
                 {(()=>{
                   const nw=me.workers.length;const costStr=produceCostLabel(nw);const canPay=canPayProduce(me);
                   return(<div>
@@ -2846,7 +2846,7 @@ export default function App(){
                     <div style={{display:"flex",gap:4,marginBottom:8}}>
                       {PRODUCE_TIERS.map(t=>{
                         const active=nw>=t.min&&nw<=t.max;
-                        return <div key={t.label} style={{flex:1,textAlign:"center",padding:"5px 4px",borderRadius:5,fontSize:10.5,lineHeight:1.4,
+                        return <div key={t.label} style={{flex:1,textAlign:"center",padding:"5px 4px",borderRadius:5,fontSize:12,lineHeight:1.4,
                           border:active?"1px solid var(--gold)":"1px solid var(--border)",
                           background:active?"rgba(212,178,84,0.12)":"transparent",
                           color:active?"var(--gold)":"var(--text-muted)"}}>
@@ -2855,7 +2855,7 @@ export default function App(){
                         </div>;
                       })}
                     </div>
-                    <div style={{fontSize:12,color:canPay?"var(--text-dim)":"#ff5555",marginBottom:6}}>Coût actuel : {costStr} ({nw} ouvrier{nw>1?"s":""})</div>
+                    <div style={{fontSize:14,color:canPay?"var(--text-dim)":"#ff5555",marginBottom:6}}>Coût actuel : {costStr} ({nw} ouvrier{nw>1?"s":""})</div>
                     {canPay?<button onClick={doProduce} className="act-btn" style={{width:"100%"}}>⚒ Produire</button>:<div style={{color:"#8A3030"}}>Insuffisant</div>}
                   </div>);
                 })()}
@@ -2863,10 +2863,10 @@ export default function App(){
               {selAction==="Trade"&&(()=>{
                 const RES_ICO={metal:"⚙",bois:"🪵",nourriture:"🌽",petrole:"🛢"};
                 return(<div>
-                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:14}}>Commerce (1$)</div>
-                {me.coins<1?<div style={{color:"#8A3030",fontSize:12}}>Pas assez d'$</div>:
+                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Commerce (1$)</div>
+                {me.coins<1?<div style={{color:"#8A3030",fontSize:14}}>Pas assez d'$</div>:
                 <div>
-                  <div style={{fontSize:12,color:"var(--text-dim)",marginBottom:6}}>Choisissez 2 ressources (même type ou différentes) :</div>
+                  <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:6}}>Choisissez 2 ressources (même type ou différentes) :</div>
                   {/* 2 emplacements visibles — l'état de la sélection ne peut pas être raté */}
                   <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
                     {[0,1].map(i=>(
@@ -2877,10 +2877,10 @@ export default function App(){
                         {tradePicks[i]?RES_ICO[tradePicks[i]]:i+1}
                       </div>
                     ))}
-                    <span style={{fontSize:11,color:"var(--text-dim)",flex:1}}>
+                    <span style={{fontSize:13,color:"var(--text-dim)",flex:1}}>
                       {tradePicks.length===0?"Cliquez 2 ressources ci-dessous":tradePicks.length===1?"Choisissez la 2e ressource":"Prêt — confirmez l'échange"}
                     </span>
-                    {tradePicks.length>0&&<button onClick={()=>setTradePicks([])} className="act-btn" style={{fontSize:11,padding:"6px 10px",minHeight:36,opacity:0.8}}>↩</button>}
+                    {tradePicks.length>0&&<button onClick={()=>setTradePicks([])} className="act-btn" style={{fontSize:13,padding:"6px 10px",minHeight:36,opacity:0.8}}>↩</button>}
                   </div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
                     {["metal","bois","nourriture","petrole"].map(r=><button key={r} onClick={()=>doTradePick(r)} disabled={tradePicks.length>=2} className="act-btn" style={{flex:1,minWidth:60,opacity:tradePicks.length>=2?0.4:1}}>{RES_ICO[r]} {r}</button>)}
@@ -2893,7 +2893,7 @@ export default function App(){
                   <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité (à la place)</button>
                 </div>}
               </div>);})()}
-              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:12,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
+              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
             </div>
           )}
 
@@ -2919,20 +2919,20 @@ export default function App(){
             return(
               <div style={{padding:"12px 16px",borderTop:"1px solid var(--border)",animation:"slideUp 0.25s ease"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-                  <span style={{fontFamily:"var(--font-title)",color:"var(--brass)",fontSize:14,fontWeight:700}}>▼ {ba}</span>
-                  {bc&&<span style={{fontSize:11,color:hasRes&&!maxed?"var(--text-dim)":"#8A3030"}}>{maxed?"Maximum":` ${bc.qty} ${bc.res} (${resCount} dispo)`}</span>}
+                  <span style={{fontFamily:"var(--font-title)",color:"var(--brass)",fontSize:16,fontWeight:700}}>▼ {ba}</span>
+                  {bc&&<span style={{fontSize:13,color:hasRes&&!maxed?"var(--text-dim)":"#8A3030"}}>{maxed?"Maximum":` ${bc.qty} ${bc.res} (${resCount} dispo)`}</span>}
                 </div>
                 {/* UPGRADE — 2-step: pick top source then bottom dest */}
                 {ba==="Upgrade"&&!maxed&&(()=>{
-                  if(!hasRes) return <div style={{fontSize:11,color:"var(--text-muted)",fontStyle:"italic"}}>Pas assez de {bc.res}</div>;
+                  if(!hasRes) return <div style={{fontSize:13,color:"var(--text-muted)",fontStyle:"italic"}}>Pas assez de {bc.res}</div>;
                   const validTops=[];const validBottoms=[];
                   if(mat){
                     (me.cubesOnTop||[]).forEach((c,ci)=>{if(c>0)validTops.push(ci);});
                     (mat.bottomSlots||[]).forEach((s,ci)=>{if((me.cubesOnBottom||[])[ci]<s)validBottoms.push(ci);});
                   }
-                  if(validTops.length===0||validBottoms.length===0) return <div style={{fontSize:11,color:"var(--text-muted)"}}>Plus de cubes disponibles</div>;
+                  if(validTops.length===0||validBottoms.length===0) return <div style={{fontSize:13,color:"var(--text-muted)"}}>Plus de cubes disponibles</div>;
                   if(!bottomPick||bottomPick.upgradeFrom===undefined) return <div>
-                    <div style={{fontSize:10,color:"#4caf50",marginBottom:6,fontWeight:600}}>① Retirer un cube du top :</div>
+                    <div style={{fontSize:12,color:"#4caf50",marginBottom:6,fontWeight:600}}>① Retirer un cube du top :</div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                       {validTops.map(ci=><button key={ci} onClick={()=>setBottomPick({upgradeFrom:ci})} className="act-btn" style={{borderColor:"#4caf50"}}>
                         <span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:"#4caf50",marginRight:4,verticalAlign:"middle"}}/>
@@ -2941,20 +2941,20 @@ export default function App(){
                     </div>
                   </div>;
                   return <div>
-                    <div style={{fontSize:10,color:"#4caf50",marginBottom:4}}>① {me.topRow[bottomPick.upgradeFrom]} sélectionné</div>
-                    <div style={{fontSize:10,color:"var(--brass)",marginBottom:6,fontWeight:600}}>② Placer le cube sur un bottom :</div>
+                    <div style={{fontSize:12,color:"#4caf50",marginBottom:4}}>① {me.topRow[bottomPick.upgradeFrom]} sélectionné</div>
+                    <div style={{fontSize:12,color:"var(--brass)",marginBottom:6,fontWeight:600}}>② Placer le cube sur un bottom :</div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                       {validBottoms.map(ci=>{
                         const bCost=mat.bottomCosts[ci];
                         return <button key={ci} onClick={()=>{doUpgrade(bottomPick.upgradeFrom,ci);setBottomPick(null);}} className="act-btn" style={{borderColor:"var(--brass)"}}>
-                          {BOTTOM[ci]} <span style={{fontSize:11,opacity:0.7}}>(-1 coût, +{bCost.bonus}$)</span>
+                          {BOTTOM[ci]} <span style={{fontSize:13,opacity:0.7}}>(-1 coût, +{bCost.bonus}$)</span>
                           <span style={{display:"inline-flex",gap:1,marginLeft:4}}>
                             {Array.from({length:(mat.bottomSlots||[])[ci]}).map((_2,si)=><span key={si} style={{display:"inline-block",width:6,height:6,borderRadius:1,background:si<(me.cubesOnBottom||[])[ci]?"#4caf50":"#333",border:"1px solid #555"}}/>)}
                           </span>
                         </button>;
                       })}
                     </div>
-                    <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:12,opacity:0.7,minHeight:36}}>← Autre source</button>
+                    <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre source</button>
                   </div>;
                 })()}
                 {ba==="Deploy"&&!maxed&&(()=>{
@@ -2962,36 +2962,36 @@ export default function App(){
                   const metalCount=countRes(me,"metal");const boisCount=countRes(me,"bois");
                   const qty=bc.qty;
                   const hasMetal=metalCount>=qty;const hasBois=boisCount>=qty;
-                  if(!deployAlt) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn">⬡ #{hid}</button>)}</div>:<div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
+                  if(!deployAlt) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn">⬡ #{hid}</button>)}</div>:<div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
                   // Nations: Esprit Sauvage — choose metal or bois
-                  if(!hasMetal&&!hasBois) return <div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de métal ni de bois</div>;
+                  if(!hasMetal&&!hasBois) return <div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de métal ni de bois</div>;
                   if(!bottomPick||!bottomPick.deployRes) return <div>
-                    <div style={{fontSize:10,color:"var(--brass)",marginBottom:6}}>🌿 {FACTIONS[me.faction].deployAltName||FACTIONS[me.faction].ability} — déployer avec :</div>
+                    <div style={{fontSize:12,color:"var(--brass)",marginBottom:6}}>🌿 {FACTIONS[me.faction].deployAltName||FACTIONS[me.faction].ability} — déployer avec :</div>
                     <div style={{display:"flex",gap:6}}>
                       {hasMetal&&<button onClick={()=>setBottomPick({deployRes:"metal"})} className="act-btn" style={{flex:1}}>⚙ Métal ({metalCount})</button>}
                       {hasBois&&<button onClick={()=>setBottomPick({deployRes:"bois"})} className="act-btn" style={{flex:1,borderColor:"#5a8a3a"}}>🪵 Bois ({boisCount})</button>}
                     </div>
                   </div>;
                   return <div>
-                    <div style={{fontSize:10,color:"var(--brass)",marginBottom:4}}>Deploy avec {bottomPick.deployRes} :</div>
+                    <div style={{fontSize:12,color:"var(--brass)",marginBottom:4}}>Deploy avec {bottomPick.deployRes} :</div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid,bottomPick.deployRes)} className="act-btn">⬡ #{hid}</button>)}</div>
-                    <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:12,opacity:0.7,minHeight:36}}>← Autre ressource</button>
+                    <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre ressource</button>
                   </div>;
                 })()}
-                {ba==="Build"&&!maxed&&(hasRes&&buildableHexes.length>0&&availBuildings.length>0?<div>{!bottomPick||bottomPick.packUp?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{availBuildings.map(bt=><button key={bt.type} onClick={()=>setBottomPick({building:bt})} className="act-btn">{bt.icon} {bt.name}</button>)}</div>:<div><div style={{fontSize:11,marginBottom:6}}>Placer {bottomPick.building.icon} sur :</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{buildableHexes.map(hid=><button key={hid} onClick={()=>doBuild(hid,bottomPick.building.type)} className="act-btn">#{hid}</button>)}</div><button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:12,opacity:0.7,minHeight:36}}>← Autre</button></div>}</div>:<div style={{fontSize:11,color:"var(--text-muted)"}}>Insuffisant</div>)}
+                {ba==="Build"&&!maxed&&(hasRes&&buildableHexes.length>0&&availBuildings.length>0?<div>{!bottomPick||bottomPick.packUp?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{availBuildings.map(bt=><button key={bt.type} onClick={()=>setBottomPick({building:bt})} className="act-btn">{bt.icon} {bt.name}</button>)}</div>:<div><div style={{fontSize:13,marginBottom:6}}>Placer {bottomPick.building.icon} sur :</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{buildableHexes.map(hid=><button key={hid} onClick={()=>doBuild(hid,bottomPick.building.type)} className="act-btn">#{hid}</button>)}</div><button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre</button></div>}</div>:<div style={{fontSize:13,color:"var(--text-muted)"}}>Insuffisant</div>)}
                 {ba==="Enlist"&&!maxed&&(hasRes?(()=>{
                   // Étape 1 : choisir la SECTION (→ bonus immédiat de la colonne)
                   // Étape 2 : choisir la RECRUE permanente à y poser (décorrélée)
                   if(!bottomPick||bottomPick.enlistCol==null){
                     return <div>
-                      <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>Recrue {(me.recruits||0)+1}/4 — ① Section (bonus immédiat) :</div>
+                      <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:6}}>Recrue {(me.recruits||0)+1}/4 — ① Section (bonus immédiat) :</div>
                       <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
                         {BOTTOM.map((bName,ci)=>{
                           const assigned=(me.enlistMap||[])[ci]!=null;
                           return <button key={ci} onClick={()=>setBottomPick({enlistCol:ci})} className="act-btn" disabled={assigned} style={{textAlign:"center",opacity:assigned?0.3:1,cursor:assigned?"not-allowed":"pointer"}}>
-                            <div style={{fontWeight:700,fontSize:12}}>{bName}</div>
-                            <div style={{fontSize:11,color:"var(--gold)",marginTop:2}}>Immédiat {ENLIST_BONUSES[ci].icon} {ENLIST_BONUSES[ci].label}</div>
-                            {assigned&&<div style={{fontSize:10,color:"#8fd0b0",marginTop:1}}>🤝 {ENLIST_ONGOING[(me.enlistMap||[])[ci]].icon} posée</div>}
+                            <div style={{fontWeight:700,fontSize:14}}>{bName}</div>
+                            <div style={{fontSize:13,color:"var(--gold)",marginTop:2}}>Immédiat {ENLIST_BONUSES[ci].icon} {ENLIST_BONUSES[ci].label}</div>
+                            {assigned&&<div style={{fontSize:12,color:"#8fd0b0",marginTop:1}}>🤝 {ENLIST_ONGOING[(me.enlistMap||[])[ci]].icon} posée</div>}
                           </button>;
                         })}
                       </div>
@@ -2999,21 +2999,21 @@ export default function App(){
                   }
                   const col=bottomPick.enlistCol;
                   return <div>
-                    <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:6}}>Section <b style={{color:"var(--brass)"}}>{BOTTOM[col]}</b> (immédiat {ENLIST_BONUSES[col].icon} {ENLIST_BONUSES[col].label}) — ② Recrue permanente à poser :</div>
+                    <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:6}}>Section <b style={{color:"var(--brass)"}}>{BOTTOM[col]}</b> (immédiat {ENLIST_BONUSES[col].icon} {ENLIST_BONUSES[col].label}) — ② Recrue permanente à poser :</div>
                     <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
                       {ENLIST_ONGOING.map((rec,ri)=>{
                         const used=(me.enlistMap||[]).includes(ri);
                         return <button key={ri} onClick={()=>{doEnlist(col,ri);setBottomPick(null);}} className="act-btn" disabled={used} style={{textAlign:"center",opacity:used?0.3:1,cursor:used?"not-allowed":"pointer",borderColor:used?"var(--border)":"#5a9a7a"}}>
-                          <div style={{fontWeight:700,fontSize:13}}>{rec.icon} {rec.label}</div>
-                          <div style={{fontSize:10,color:"#8fd0b0",marginTop:1}}>à chaque {BOTTOM[col]} (vous/voisins)</div>
-                          {used&&<div style={{fontSize:10,color:"#8A3030"}}>déjà posée</div>}
+                          <div style={{fontWeight:700,fontSize:15}}>{rec.icon} {rec.label}</div>
+                          <div style={{fontSize:12,color:"#8fd0b0",marginTop:1}}>à chaque {BOTTOM[col]} (vous/voisins)</div>
+                          {used&&<div style={{fontSize:12,color:"#8A3030"}}>déjà posée</div>}
                         </button>;
                       })}
                     </div>
-                    <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:12,opacity:0.7,minHeight:36}}>← Autre section</button>
+                    <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre section</button>
                   </div>;
-                })():<div style={{fontSize:11,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>)}
-                {maxed&&<div style={{fontSize:12,color:"var(--success)"}}>{ba} au maximum</div>}
+                })():<div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>)}
+                {maxed&&<div style={{fontSize:14,color:"var(--success)"}}>{ba} au maximum</div>}
                 <button onClick={actuallyEndTurn} className="act-btn" style={{marginTop:8,width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)"}}>Passer →</button>
               </div>
             );
@@ -3027,27 +3027,27 @@ export default function App(){
             const available=resTypes.filter(r=>countRes(me,r)>=1);
             if(available.length===0) return null;
             return(
-              <div style={{padding:"8px 16px",borderTop:"1px solid #882020",fontSize:12,background:"rgba(200,30,30,0.04)"}}>
-                <div style={{color:"#cc3030",fontWeight:600,marginBottom:6,fontSize:12}}>🏛 Commerce Impérial (1×/tour) — envoyer 1 ressource :</div>
+              <div style={{padding:"8px 16px",borderTop:"1px solid #882020",fontSize:14,background:"rgba(200,30,30,0.04)"}}>
+                <div style={{color:"#cc3030",fontWeight:600,marginBottom:6,fontSize:14}}>🏛 Commerce Impérial (1×/tour) — envoyer 1 ressource :</div>
                 <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                   {available.map(r=><div key={r} style={{display:"flex",gap:4}}>
-                    <button onClick={()=>doCommerceImperial(r,"coins")} className="act-btn" style={{fontSize:12,padding:"8px 12px",borderColor:"#882020"}}>-1{r.slice(0,3)} →1💰</button>
-                    <button onClick={()=>doCommerceImperial(r,"cards")} className="act-btn" style={{fontSize:12,padding:"8px 12px",borderColor:"#882020"}}>-1{r.slice(0,3)} →1🃏</button>
+                    <button onClick={()=>doCommerceImperial(r,"coins")} className="act-btn" style={{fontSize:14,padding:"8px 12px",borderColor:"#882020"}}>-1{r.slice(0,3)} →1💰</button>
+                    <button onClick={()=>doCommerceImperial(r,"cards")} className="act-btn" style={{fontSize:14,padding:"8px 12px",borderColor:"#882020"}}>-1{r.slice(0,3)} →1🃏</button>
                   </div>)}
                 </div>
               </div>
             );
           })()}
           {me.faction==="dominion"&&me.commerceUsed&&isMyTurn&&!combat&&!selAction&&!pendingBottom&&(
-            <div style={{padding:"6px 16px",borderTop:"1px solid var(--border)",fontSize:12,color:"var(--text-dim)"}}>🏛 Commerce Impérial utilisé ce tour</div>
+            <div style={{padding:"6px 16px",borderTop:"1px solid var(--border)",fontSize:14,color:"var(--text-dim)"}}>🏛 Commerce Impérial utilisé ce tour</div>
           )}
           {/* Import Impérial — Dominion : 2$ → 1 ressource (1×/tour) */}
           {me.faction==="dominion"&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&!me.importUsed&&me.coins>=2&&BALANCE.imperialImport&&(
-            <div style={{padding:"8px 16px",borderTop:"1px solid #882020",fontSize:12,background:"rgba(200,30,30,0.04)"}}>
-              <div style={{color:"#cc3030",fontWeight:600,marginBottom:6,fontSize:12}}>🏛 Import Impérial (1×/tour) — acheter 1 ressource pour 2💰 :</div>
+            <div style={{padding:"8px 16px",borderTop:"1px solid #882020",fontSize:14,background:"rgba(200,30,30,0.04)"}}>
+              <div style={{color:"#cc3030",fontWeight:600,marginBottom:6,fontSize:14}}>🏛 Import Impérial (1×/tour) — acheter 1 ressource pour 2💰 :</div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                 {["metal","bois","nourriture","petrole"].map(r=>(
-                  <button key={r} onClick={()=>doImportImperial(r)} className="act-btn" style={{fontSize:12,padding:"8px 12px",borderColor:"#882020"}}>-2💰 →1 {r}</button>
+                  <button key={r} onClick={()=>doImportImperial(r)} className="act-btn" style={{fontSize:14,padding:"8px 12px",borderColor:"#882020"}}>-2💰 →1 {r}</button>
                 ))}
               </div>
             </div>
@@ -3055,7 +3055,7 @@ export default function App(){
 
           {/* Plan « Five Dollar Day » — action libre 1×/tour */}
           {me.factoryCard?.topBonus==="pop_worker"&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&!me.planTopUsed&&me.coins>=2&&(
-            <div style={{padding:"8px 16px",borderTop:"1px solid #3a5a7a",fontSize:12,background:"rgba(58,106,154,0.05)"}}>
+            <div style={{padding:"8px 16px",borderTop:"1px solid #3a5a7a",fontSize:14,background:"rgba(58,106,154,0.05)"}}>
               <div style={{color:"#8aa0b8",fontWeight:600,marginBottom:6}}>⚙ Five Dollar Day (1×/tour)</div>
               <button onClick={doPlanPopWorker} className="act-btn" style={{width:"100%",borderColor:"#4a5a6a"}}>-2💰 → +2♥ Pop{me.workers.length<8?" + 1👷 ouvrier (sur le héros)":""}</button>
             </div>
@@ -3063,31 +3063,31 @@ export default function App(){
 
           {/* Rail placement mode indicator */}
           {railPlacement&&(
-            <div style={{padding:"8px 16px",borderTop:"1px solid #6a5030",background:"rgba(100,80,48,0.08)",fontSize:12}}>
+            <div style={{padding:"8px 16px",borderTop:"1px solid #6a5030",background:"rgba(100,80,48,0.08)",fontSize:14}}>
               <div style={{color:"#a08050",fontWeight:700,marginBottom:4}}>🚂 Pose de rails ({railPlacement.remaining}/3 restants)</div>
               {railPlacement.fromHex===null?
-                <div style={{color:"var(--text-dim)",fontSize:11}}>Cliquez un hex de départ : la Gare (#{railPlacement.gareHex}) ou un rail existant</div>:
+                <div style={{color:"var(--text-dim)",fontSize:13}}>Cliquez un hex de départ : la Gare (#{railPlacement.gareHex}) ou un rail existant</div>:
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{color:"#C9A84C",fontSize:11}}>Depuis #{railPlacement.fromHex} → cliquez un hex adjacent</span>
-                  <button onClick={()=>setRailPlacement(prev=>({...prev,fromHex:null}))} className="act-btn" style={{fontSize:10,padding:"4px 10px"}}>Annuler</button>
+                  <span style={{color:"#C9A84C",fontSize:13}}>Depuis #{railPlacement.fromHex} → cliquez un hex adjacent</span>
+                  <button onClick={()=>setRailPlacement(prev=>({...prev,fromHex:null}))} className="act-btn" style={{fontSize:12,padding:"4px 10px"}}>Annuler</button>
                 </div>
               }
-              <button onClick={()=>{setRailPlacement(null);addLog(`⏭ Rails passés (${railPlacement.remaining} non posés)`);finishBottom(2);}} className="act-btn" style={{marginTop:6,width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)",fontSize:11}}>Terminer sans poser les rails restants</button>
+              <button onClick={()=>{setRailPlacement(null);addLog(`⏭ Rails passés (${railPlacement.remaining} non posés)`);finishBottom(2);}} className="act-btn" style={{marginTop:6,width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)",fontSize:13}}>Terminer sans poser les rails restants</button>
             </div>
           )}
 
           {/* Hex info */}
           {selHexData&&!selAction&&(
-            <div style={{padding:"6px 16px",fontSize:12,color:"var(--text-dim)",borderTop:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}}>
+            <div style={{padding:"6px 16px",fontSize:14,color:"var(--text-dim)",borderTop:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}}>
               {selHexData.base ? (<>
-                <span style={{fontSize:16}}>🏳</span>
+                <span style={{fontSize:18}}>🏳</span>
                 <span style={{fontWeight:600,color:FACTIONS[selHexData.faction]?.color||"var(--text)"}}>Base — {FACTIONS[selHexData.faction]?.name}</span>
                 <span style={{color:"var(--text-muted)"}}>#{selHexData.id}</span>
               </>) : (<>
-                <span style={{fontSize:16}}>{TERRAINS[selHexData.t].icon}</span>
+                <span style={{fontSize:18}}>{TERRAINS[selHexData.t].icon}</span>
                 <span style={{fontWeight:600,color:TERRAINS[selHexData.t].color}}>{TERRAINS[selHexData.t].label}</span>
                 <span style={{color:"var(--text-muted)"}}>#{selHexData.id}</span>
-                {TERRAINS[selHexData.t].res&&<span style={{color:"var(--brass)",fontSize:11}}>→ {TERRAINS[selHexData.t].res}</span>}
+                {TERRAINS[selHexData.t].res&&<span style={{color:"var(--brass)",fontSize:13}}>→ {TERRAINS[selHexData.t].res}</span>}
               </>)}
             </div>
           )}
@@ -3099,16 +3099,16 @@ export default function App(){
 
         {/* ── Dropdown: Journal enrichi ── */}
         <div style={{borderTop:"1px solid var(--border)",flexShrink:0,marginTop:"auto"}}>
-          <button onClick={()=>setShowLog(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",background:"rgba(200,112,64,0.04)",border:"none",color:"var(--rust)",fontSize:12,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
+          <button onClick={()=>setShowLog(s=>!s)} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",background:"rgba(200,112,64,0.04)",border:"none",color:"var(--rust)",fontSize:14,fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer"}}>
             <span>📜 Journal ({log.length})</span>
-            <span style={{fontSize:9,color:"var(--text-dim)",transform:showLog?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
+            <span style={{fontSize:10,color:"var(--text-dim)",transform:showLog?"rotate(180deg)":"rotate(0deg)",transition:"transform 0.2s"}}>▼</span>
           </button>
           {showLog&&<>
             {/* Filter bar + copy */}
             <div style={{display:"flex",gap:2,padding:"3px 6px",flexWrap:"wrap",alignItems:"center",borderBottom:"1px solid var(--border)"}}>
               {[["all","Tout"],["combat","⚔"],["move","🚶"],["bot","🤖"],["resource","💰"],["deploy","⬡"],["encounter","📜"],["warn","⚠"],["star","⭐"]].map(([k,label])=>(
                 <button key={k} onClick={()=>setLogFilter(k)} style={{
-                  padding:"2px 7px",fontSize:10,borderRadius:3,cursor:"pointer",
+                  padding:"2px 7px",fontSize:12,borderRadius:3,cursor:"pointer",
                   background:logFilter===k?"var(--rust)":"transparent",
                   color:logFilter===k?"#fff":"var(--text-muted)",
                   border:logFilter===k?"1px solid var(--rust)":"1px solid transparent",
@@ -3117,15 +3117,15 @@ export default function App(){
               <button onClick={()=>{
                 const txt=log.map(e=>`[T${e.turn}#${e.step}] ${e.msg}`).join("\n");
                 navigator.clipboard.writeText(txt);
-              }} style={{marginLeft:"auto",padding:"1px 5px",fontSize:9,borderRadius:3,cursor:"pointer",background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)"}} title="Copier tout le log">📋</button>
+              }} style={{marginLeft:"auto",padding:"1px 5px",fontSize:10,borderRadius:3,cursor:"pointer",background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)"}} title="Copier tout le log">📋</button>
             </div>
-            <div ref={logRef} style={{maxHeight:200,overflow:"auto",padding:"6px 8px",fontSize:11,lineHeight:1.55}}>
+            <div ref={logRef} style={{maxHeight:200,overflow:"auto",padding:"6px 8px",fontSize:13,lineHeight:1.55}}>
               {(()=>{
                 const CAT_COLORS={combat:"#e04838",bot:"#a89878",star:"#d4b254",warn:"#e08850",encounter:"#b08060",rr:"#c87040",move:"#5a9aca",deploy:"#7aaa55",build:"#7aaa55",enlist:"#5a7a6a",upgrade:"#c4a060",resource:"#d4b254",ability:"#e08850",turn:"var(--rust)",info:"var(--text-dim)"};
                 const filtered=logFilter==="all"?log:log.filter(e=>e.cat===logFilter);
                 return filtered.slice(-60).map((e,i)=>(
                   <div key={i} className="log-line" style={{display:"flex",gap:6,alignItems:"baseline"}}>
-                    <span style={{fontSize:9,color:"var(--text-muted)",fontFamily:"var(--font-mono)",flexShrink:0,minWidth:36,textAlign:"right"}}>T{e.turn}.{e.step}</span>
+                    <span style={{fontSize:10,color:"var(--text-muted)",fontFamily:"var(--font-mono)",flexShrink:0,minWidth:36,textAlign:"right"}}>T{e.turn}.{e.step}</span>
                     <span style={{color:CAT_COLORS[e.cat]||"var(--text-dim)",fontWeight:e.cat==="turn"||e.cat==="star"?700:400}}>{e.msg}</span>
                   </div>
                 ));
@@ -3139,7 +3139,7 @@ export default function App(){
             en bas d'écran ; un point de couleur par adversaire marque sa position
             actuelle sur la piste, en plus de la mienne (remplissage rouge). ═══ */}
       <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",gap:10,padding:"5px 16px",height:32,background:"linear-gradient(0deg,#241d12,#171209)",borderTop:"1px solid var(--panel-edge)",boxShadow:"inset 0 1px 0 rgba(216,201,163,0.06)",flexShrink:0,overflow:"hidden"}}>
-        <div style={{fontSize:9,color:"var(--rust)",letterSpacing:1,textTransform:"uppercase",fontFamily:"var(--font-title)",fontWeight:700,flexShrink:0}}>Puissance</div>
+        <div style={{fontSize:10,color:"var(--rust)",letterSpacing:1,textTransform:"uppercase",fontFamily:"var(--font-title)",fontWeight:700,flexShrink:0}}>Puissance</div>
         <div style={{flex:1,display:"flex",gap:2,height:20,position:"relative"}}>
           {Array.from({length:17},(_,v)=>v).map(v=>{
             const opponentsHere=players.slice(1).filter(op=>op.power===v);
@@ -3149,7 +3149,7 @@ export default function App(){
                 background:v<=me.power?"linear-gradient(180deg,#bb3838,#8b2020)":"rgba(255,255,255,0.03)",
                 border:v<=me.power?"1px solid #dd4444":"1px solid rgba(255,255,255,0.04)",
                 display:"flex",alignItems:"center",justifyContent:"center",
-                fontSize:8,fontWeight:v===me.power?900:400,
+                fontSize:9,fontWeight:v===me.power?900:400,
                 color:v<=me.power?"#fff":"#3a2a2a",
                 boxShadow:v===me.power?"0 0 6px rgba(220,50,30,0.5)":"none",
               }}>
@@ -3165,7 +3165,7 @@ export default function App(){
             );
           })}
         </div>
-        <div style={{fontSize:15,fontWeight:700,color:"var(--rust-light)",fontFamily:"var(--font-title)",flexShrink:0,minWidth:20,textAlign:"right"}}>{me.power}</div>
+        <div style={{fontSize:17,fontWeight:700,color:"var(--rust-light)",fontFamily:"var(--font-title)",flexShrink:0,minWidth:20,textAlign:"right"}}>{me.power}</div>
       </div>
 
       {/* ═══ PANNEAU DÉTAIL D'ÉTOILE (façon Steam) — clic sur une icône de la barre ═══ */}
@@ -3177,72 +3177,72 @@ export default function App(){
             {/* En-tête */}
             <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:"1px solid var(--border)",position:"relative"}}>
               <div style={{position:"relative",width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:8,background:s.done?"rgba(232,200,96,0.14)":"rgba(255,255,255,0.03)",border:`1px solid ${s.done?"var(--gold)":"var(--border)"}`}}>
-                <span style={{fontSize:22,filter:s.done?"none":"brightness(0) invert(1)",opacity:s.done?0.5:0.65}}>{s.icon}</span>
-                {s.done&&<span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>⭐</span>}
+                <span style={{fontSize:25,filter:s.done?"none":"brightness(0) invert(1)",opacity:s.done?0.5:0.65}}>{s.icon}</span>
+                {s.done&&<span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30}}>⭐</span>}
               </div>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:"var(--font-title)",fontSize:16,fontWeight:800,color:s.done?"var(--gold)":"var(--text)"}}>{s.name}</div>
-                <div style={{fontSize:13,color:s.done?"#8fbf6a":"var(--gold)",fontWeight:700,marginTop:2}}>{s.done?"⭐ Étoile obtenue":`Progression ${s.prog}`}</div>
+                <div style={{fontFamily:"var(--font-title)",fontSize:18,fontWeight:800,color:s.done?"var(--gold)":"var(--text)"}}>{s.name}</div>
+                <div style={{fontSize:15,color:s.done?"#8fbf6a":"var(--gold)",fontWeight:700,marginTop:2}}>{s.done?"⭐ Étoile obtenue":`Progression ${s.prog}`}</div>
               </div>
-              <button onClick={()=>setStarDetail(null)} style={{position:"absolute",top:10,right:10,width:26,height:26,borderRadius:6,background:"rgba(0,0,0,0.4)",border:"1px solid var(--border)",color:"var(--text-dim)",fontSize:14,cursor:"pointer"}}>✕</button>
+              <button onClick={()=>setStarDetail(null)} style={{position:"absolute",top:10,right:10,width:26,height:26,borderRadius:6,background:"rgba(0,0,0,0.4)",border:"1px solid var(--border)",color:"var(--text-dim)",fontSize:16,cursor:"pointer"}}>✕</button>
             </div>
             {/* Ce que ça demande */}
-            <div style={{padding:"12px 16px",fontSize:13,color:"var(--text-dim)",lineHeight:1.6,borderBottom:"1px solid var(--border)"}}>{s.need}</div>
+            <div style={{padding:"12px 16px",fontSize:15,color:"var(--text-dim)",lineHeight:1.6,borderBottom:"1px solid var(--border)"}}>{s.need}</div>
             {/* Contenu spécifique */}
             <div style={{padding:"12px 16px"}}>
               {starDetail==="build"&&(<div>
-                <div style={{fontSize:12,fontWeight:700,color:"var(--brass)",marginBottom:8,fontFamily:"var(--font-title)"}}>Vos bâtiments & bonus</div>
+                <div style={{fontSize:14,fontWeight:700,color:"var(--brass)",marginBottom:8,fontFamily:"var(--font-title)"}}>Vos bâtiments & bonus</div>
                 {BUILDING_TYPES.map(bt=>{const built=(me.buildings||[]).find(b=>b.type===bt.type);return(
                   <div key={bt.type} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:6,marginBottom:5,background:built?"rgba(122,170,85,0.12)":"rgba(0,0,0,0.25)",border:built?"1px solid rgba(122,170,85,0.4)":"1px dashed var(--border-dark)"}}>
-                    <span style={{fontSize:20,filter:built?"none":"grayscale(1)",opacity:built?1:0.5}}>{bt.icon}</span>
+                    <span style={{fontSize:23,filter:built?"none":"grayscale(1)",opacity:built?1:0.5}}>{bt.icon}</span>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:13,fontWeight:700,color:built?"#8fbf6a":"var(--text-dim)"}}>{bt.name}{built?` (#${built.hexId})`:""}</div>
-                      <div style={{fontSize:12,color:"var(--text-dim)"}}>{bt.effect}</div>
+                      <div style={{fontSize:15,fontWeight:700,color:built?"#8fbf6a":"var(--text-dim)"}}>{bt.name}{built?` (#${built.hexId})`:""}</div>
+                      <div style={{fontSize:14,color:"var(--text-dim)"}}>{bt.effect}</div>
                     </div>
-                    <span style={{fontSize:12,color:built?"#8fbf6a":"var(--text-muted)",fontWeight:700}}>{built?"✓ posé":"à poser"}</span>
+                    <span style={{fontSize:14,color:built?"#8fbf6a":"var(--text-muted)",fontWeight:700}}>{built?"✓ posé":"à poser"}</span>
                   </div>
                 );})}
-                {structureBonus&&<div style={{marginTop:8,padding:"8px 10px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px solid var(--gold-dim)",fontSize:12,color:"var(--gold)"}}>
+                {structureBonus&&<div style={{marginTop:8,padding:"8px 10px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px solid var(--gold-dim)",fontSize:14,color:"var(--gold)"}}>
                   🏦 Bonus de pose : <b>{structureBonus.icon} {structureBonus.name}</b> — +{structureBonus.coins}$ {structureBonus.desc} (tuiles marquées $ sur la carte).
                 </div>}
               </div>)}
               {starDetail==="mech"&&(<div>
-                <div style={{fontSize:12,fontWeight:700,color:"var(--brass)",marginBottom:8,fontFamily:"var(--font-title)"}}>Mechas & capacités</div>
-                <div style={{fontSize:12,color:"var(--text-dim)",marginBottom:8}}>Déployés : {me.mechs.length}/4 {me.mechs.length>0&&`(hex ${me.mechs.map(m=>`#${m.hexId}`).join(", ")})`} · Chaque déploiement débloque UNE capacité au choix :</div>
+                <div style={{fontSize:14,fontWeight:700,color:"var(--brass)",marginBottom:8,fontFamily:"var(--font-title)"}}>Mechas & capacités</div>
+                <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:8}}>Déployés : {me.mechs.length}/4 {me.mechs.length>0&&`(hex ${me.mechs.map(m=>`#${m.hexId}`).join(", ")})`} · Chaque déploiement débloque UNE capacité au choix :</div>
                 {ABILITY_NAMES.map((nm,idx)=>{const unlocked=(me.unlockedAbilities||[]).includes(idx);return(
                   <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:6,marginBottom:5,background:unlocked?"rgba(200,112,64,0.1)":"rgba(0,0,0,0.25)",border:unlocked?"1px solid var(--rust-dark)":"1px dashed var(--border-dark)",opacity:unlocked?1:0.75}}>
-                    <span style={{fontSize:20,opacity:unlocked?1:0.5}}>{ABILITY_ICONS[idx]}</span>
+                    <span style={{fontSize:23,opacity:unlocked?1:0.5}}>{ABILITY_ICONS[idx]}</span>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:13,fontWeight:700,color:unlocked?"var(--rust)":"var(--text-dim)"}}>{nm}</div>
-                      <div style={{fontSize:12,color:"var(--text-dim)"}}>{ABILITY_DESC[idx]}</div>
+                      <div style={{fontSize:15,fontWeight:700,color:unlocked?"var(--rust)":"var(--text-dim)"}}>{nm}</div>
+                      <div style={{fontSize:14,color:"var(--text-dim)"}}>{ABILITY_DESC[idx]}</div>
                     </div>
-                    <span style={{fontSize:12,color:unlocked?"#8fbf6a":"var(--text-muted)",fontWeight:700}}>{unlocked?"✓":"—"}</span>
+                    <span style={{fontSize:14,color:unlocked?"#8fbf6a":"var(--text-muted)",fontWeight:700}}>{unlocked?"✓":"—"}</span>
                   </div>
                 );})}
               </div>)}
               {starDetail==="recr"&&(<div>
-                <div style={{fontSize:12,fontWeight:700,color:"var(--brass)",marginBottom:8,fontFamily:"var(--font-title)"}}>Recrues posées (immédiat / permanent)</div>
+                <div style={{fontSize:14,fontWeight:700,color:"var(--brass)",marginBottom:8,fontFamily:"var(--font-title)"}}>Recrues posées (immédiat / permanent)</div>
                 {BOTTOM.map((bName,ci)=>{const rec=(me.enlistMap||[])[ci];const placed=rec!=null;return(
                   <div key={ci} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:6,marginBottom:5,background:placed?"rgba(90,122,106,0.15)":"rgba(0,0,0,0.25)",border:placed?"1px solid #5a9a7a":"1px dashed var(--border-dark)"}}>
-                    <span style={{fontSize:16,fontWeight:700,color:"var(--text-dim)",minWidth:52}}>{bName}</span>
-                    <div style={{flex:1,fontSize:12}}>
+                    <span style={{fontSize:18,fontWeight:700,color:"var(--text-dim)",minWidth:52}}>{bName}</span>
+                    <div style={{flex:1,fontSize:14}}>
                       <div style={{color:"var(--gold)"}}>Immédiat {ENLIST_BONUSES[ci].icon} {ENLIST_BONUSES[ci].label}</div>
                       <div style={{color:placed?"#8fd0b0":"var(--text-muted)"}}>Permanent {placed?`${ENLIST_ONGOING[rec].icon} ${ENLIST_ONGOING[rec].label}`:"— libre —"}</div>
                     </div>
-                    <span style={{fontSize:12,color:placed?"#8fd0b0":"var(--text-muted)",fontWeight:700}}>{placed?"🤝":"—"}</span>
+                    <span style={{fontSize:14,color:placed?"#8fd0b0":"var(--text-muted)",fontWeight:700}}>{placed?"🤝":"—"}</span>
                   </div>
                 );})}
               </div>)}
               {starDetail==="obj"&&me.objectives&&(<div>
-                <div style={{fontSize:12,fontWeight:700,color:"var(--brass)",marginBottom:6,fontFamily:"var(--font-title)"}}>Vos missions secrètes</div>
-                <div style={{fontSize:12,color:"var(--text-dim)",marginBottom:8}}>{me.objectiveRevealed?"1 mission révélée (⭐ obtenue).":"Révélez-en une dès que sa condition est remplie."}</div>
+                <div style={{fontSize:14,fontWeight:700,color:"var(--brass)",marginBottom:6,fontFamily:"var(--font-title)"}}>Vos missions secrètes</div>
+                <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:8}}>{me.objectiveRevealed?"1 mission révélée (⭐ obtenue).":"Révélez-en une dès que sa condition est remplie."}</div>
                 {me.objectives.map((obj,idx)=>{const isRev=me.objectiveRevealed&&me.revealedObjectiveIdx===idx;const canRev=!me.objectiveRevealed&&obj.check(me);const met=obj.check(me);return(
                   <div key={obj.id||idx} style={{padding:"8px 10px",borderRadius:6,marginBottom:6,background:isRev?"rgba(122,170,85,0.12)":"rgba(0,0,0,0.25)",border:`1px solid ${isRev?"rgba(122,170,85,0.4)":met?"var(--gold-dim)":"var(--border)"}`,opacity:me.objectiveRevealed&&!isRev?0.45:1}}>
-                    <div style={{fontSize:13,fontWeight:700,color:isRev?"#8fbf6a":met?"var(--gold)":"var(--text)"}}>{isRev?"✅":"🎯"} {obj.name}</div>
-                    <div style={{fontSize:12,color:"var(--text-dim)",marginTop:2}}>{obj.desc}</div>
+                    <div style={{fontSize:15,fontWeight:700,color:isRev?"#8fbf6a":met?"var(--gold)":"var(--text)"}}>{isRev?"✅":"🎯"} {obj.name}</div>
+                    <div style={{fontSize:14,color:"var(--text-dim)",marginTop:2}}>{obj.desc}</div>
                     {!me.objectiveRevealed&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&(canRev
-                      ?<button onClick={()=>{revealObjective(idx);}} style={{marginTop:6,padding:"8px 14px",fontSize:12,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,cursor:"pointer"}}>Révéler ⭐</button>
-                      :<div style={{marginTop:4,fontSize:11,color:"var(--text-muted)"}}>{met?"":"Condition non remplie"}</div>)}
+                      ?<button onClick={()=>{revealObjective(idx);}} style={{marginTop:6,padding:"8px 14px",fontSize:14,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,cursor:"pointer"}}>Révéler ⭐</button>
+                      :<div style={{marginTop:4,fontSize:13,color:"var(--text-muted)"}}>{met?"":"Condition non remplie"}</div>)}
                   </div>
                 );})}
               </div>)}
@@ -3253,7 +3253,7 @@ export default function App(){
                   <div style={{height:10,borderRadius:5,background:"rgba(0,0,0,0.4)",overflow:"hidden",border:"1px solid var(--border)"}}>
                     <div style={{height:"100%",width:`${Math.min(100,cur/max*100)}%`,background:s.done?"linear-gradient(90deg,#7aaa55,#9fd070)":"linear-gradient(90deg,var(--gold-dim),var(--gold))",transition:"width 0.3s"}}/>
                   </div>
-                  <div style={{textAlign:"center",fontSize:13,fontWeight:700,color:"var(--gold)",marginTop:5}}>{s.prog}</div>
+                  <div style={{textAlign:"center",fontSize:15,fontWeight:700,color:"var(--gold)",marginTop:5}}>{s.prog}</div>
                 </div>;
               })()}
             </div>
@@ -3266,18 +3266,18 @@ export default function App(){
         const summ=handSummary(me);const vals=Object.keys(summ).map(Number).sort((a,b)=>b-a);
         return<div style={{position:"fixed",top:"calc(var(--top-h) + 6px)",left:200,zIndex:60,background:"linear-gradient(180deg,#211a10,#14100a)",border:"1px solid var(--gold-dim)",borderRadius:12,padding:"14px 16px",boxShadow:"0 8px 30px rgba(0,0,0,0.7)",minWidth:200,animation:"slideUp 0.15s ease"}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-            <div style={{fontSize:13,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-title)"}}>🃏 Main de combat ({me.combatCards})</div>
-            <button onClick={()=>setShowCards(false)} style={{width:22,height:22,borderRadius:5,background:"rgba(0,0,0,0.4)",border:"1px solid var(--border)",color:"var(--text-dim)",fontSize:12,cursor:"pointer"}}>✕</button>
+            <div style={{fontSize:15,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-title)"}}>🃏 Main de combat ({me.combatCards})</div>
+            <button onClick={()=>setShowCards(false)} style={{width:22,height:22,borderRadius:5,background:"rgba(0,0,0,0.4)",border:"1px solid var(--border)",color:"var(--text-dim)",fontSize:14,cursor:"pointer"}}>✕</button>
           </div>
-          {vals.length===0?<div style={{fontSize:12,color:"var(--text-dim)"}}>Aucune carte</div>:
+          {vals.length===0?<div style={{fontSize:14,color:"var(--text-dim)"}}>Aucune carte</div>:
             <div style={{display:"flex",flexDirection:"column",gap:6}}>{vals.map(v=>(
               <div key={v} style={{display:"flex",alignItems:"center",gap:10}}>
-                <span style={{width:30,height:40,borderRadius:5,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,fontFamily:"var(--font-mono)",background:"var(--bg3)",border:"1px solid var(--border-light)",color:"#c0b0d8"}}>{v}</span>
-                <span style={{fontSize:14,color:"var(--text-dim)"}}>× {summ[v]}</span>
-                <span style={{fontSize:11,color:"var(--text-muted)",marginLeft:"auto"}}>= {v*summ[v]} pts</span>
+                <span style={{width:30,height:40,borderRadius:5,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:800,fontFamily:"var(--font-mono)",background:"var(--bg3)",border:"1px solid var(--border-light)",color:"#c0b0d8"}}>{v}</span>
+                <span style={{fontSize:16,color:"var(--text-dim)"}}>× {summ[v]}</span>
+                <span style={{fontSize:13,color:"var(--text-muted)",marginLeft:"auto"}}>= {v*summ[v]} pts</span>
               </div>
             ))}</div>}
-          <div style={{fontSize:11,color:"var(--text-muted)",marginTop:10,lineHeight:1.5,maxWidth:220}}>En combat, chaque carte engagée ajoute <b>sa valeur</b> au total (les plus fortes jouées en premier).</div>
+          <div style={{fontSize:13,color:"var(--text-muted)",marginTop:10,lineHeight:1.5,maxWidth:220}}>En combat, chaque carte engagée ajoute <b>sa valeur</b> au total (les plus fortes jouées en premier).</div>
         </div>;
       })()}
 

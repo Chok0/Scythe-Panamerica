@@ -45,21 +45,27 @@
   /* ── ACCENTS COULEUR ── */
   --ink-blue: #2a3a5a;
 
-  /* === Typographie — 1920s Ameriques === */
-  --font-title: 'Playfair Display', 'Bitter', serif;
-  --font-body: 'Crimson Text', Georgia, serif;
+  /* === Typographie — 1920s Ameriques ===
+     Refonte lisibilité (page de jeu) : abandon des serifs fins (Playfair/Crimson)
+     — peu lisibles aux petites tailles de l'UI — au profit d'un duo grotesque
+     industriel très lisible qui garde le ton dieselpunk : Oswald (condensé,
+     façon affiche 1920s) pour les titres/labels, Barlow pour le corps.
+     Playfair est conservé en secours pour le grand titre de marque uniquement. */
+  --font-title: 'Oswald', 'Bitter', 'Segoe UI', sans-serif;
+  --font-body: 'Barlow', 'Segoe UI', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
   --font-map: 'IM Fell English SC', 'Bitter', serif;
+  --font-brand: 'Playfair Display', 'Oswald', serif;
 
-  /* Echelle typo */
-  --fs-title: 22px;
-  --fs-section: 15px;
-  --fs-faction: 13px;
-  --fs-label: 11px;
-  --fs-body: 12px;
-  --fs-counter: 12px;
-  --fs-micro: 9px;
-  --fs-debug: 7px;
+  /* Echelle typo — remontée d'un cran pour la lisibilité (page de jeu) */
+  --fs-title: 25px;
+  --fs-section: 17px;
+  --fs-faction: 15px;
+  --fs-label: 13px;
+  --fs-body: 14px;
+  --fs-counter: 14px;
+  --fs-micro: 11px;
+  --fs-debug: 8px;
 
   /* Spacing tokens */
   --space-1: 4px;
@@ -81,10 +87,11 @@
   --surface-3: #2A2418;
 
   /* Sizing */
-  --top-h: 56px;
-  --left-w: 110px;
-  /* Panneau droit adaptatif : 320px minimum, s'élargit sur grands écrans */
-  --right-w: clamp(320px, 24vw, 420px);
+  /* Barres élargies pour absorber la typo agrandie sans rogner le texte */
+  --top-h: 62px;
+  --left-w: 118px;
+  /* Panneau droit adaptatif : 340px minimum, s'élargit sur grands écrans */
+  --right-w: clamp(340px, 25vw, 440px);
   --btn-min: 44px;
 
   /* Map */
