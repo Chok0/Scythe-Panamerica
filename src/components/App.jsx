@@ -32,6 +32,7 @@ import { getPlanBottomBonus, auraPowerCount } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
 import { ActionRow, CubeSlots, RESOURCE_ICONS } from './svg/ActionIcons.jsx';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
+import { TERRAIN_TEXTURES, TERRAIN_TILE } from '../assets/terrains/index.js';
 
 export default function App(){
   const[phase,setPhase]=useState("setup");
@@ -2243,17 +2244,13 @@ export default function App(){
                 <stop offset="0%" stopColor={t.grad[0]}/><stop offset="50%" stopColor={t.grad[1]}/><stop offset="100%" stopColor={t.grad[2]}/>
               </radialGradient>
             ))}
-            <pattern id="tp-montagne" width="14" height="14" patternUnits="userSpaceOnUse"><path d="M0 7L7 0L14 7" fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth="0.7"/></pattern>
-            <pattern id="tp-sierra" width="14" height="14" patternUnits="userSpaceOnUse"><path d="M0 7L7 0L14 7" fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth="0.7"/></pattern>
-            <pattern id="tp-foret" width="18" height="18" patternUnits="userSpaceOnUse"><circle cx="5" cy="5" r="3" fill="rgba(0,0,0,0.14)"/><circle cx="14" cy="13" r="2.5" fill="rgba(0,0,0,0.1)"/></pattern>
-            <pattern id="tp-village" width="16" height="16" patternUnits="userSpaceOnUse"><rect x="3" y="4" width="4.5" height="5" fill="rgba(0,0,0,0.12)" rx="0.5"/></pattern>
-            <pattern id="tp-champs" width="12" height="12" patternUnits="userSpaceOnUse"><line x1="0" y1="4" x2="12" y2="4" stroke="rgba(0,0,0,0.06)" strokeWidth="0.5"/><line x1="0" y1="8" x2="12" y2="8" stroke="rgba(0,0,0,0.06)" strokeWidth="0.5"/></pattern>
-            <pattern id="tp-plaine" width="12" height="12" patternUnits="userSpaceOnUse"><line x1="0" y1="6" x2="12" y2="6" stroke="rgba(0,0,0,0.05)" strokeWidth="0.4"/></pattern>
-            <pattern id="tp-toundra" width="10" height="10" patternUnits="userSpaceOnUse"><circle cx="5" cy="5" r="0.6" fill="rgba(255,255,255,0.06)"/></pattern>
-            <pattern id="tp-desert" width="8" height="8" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="0.5" fill="rgba(0,0,0,0.06)"/></pattern>
-            <pattern id="tp-lac" width="24" height="10" patternUnits="userSpaceOnUse"><path d="M0 5Q6 3 12 5Q18 7 24 5" fill="none" stroke="rgba(200,220,255,0.1)" strokeWidth="0.8"/></pattern>
-            <pattern id="tp-marecage" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M0 10Q5 8 10 10Q15 12 20 10" fill="none" stroke="rgba(200,255,200,0.06)" strokeWidth="0.6"/></pattern>
-            <pattern id="tp-factory" width="14" height="14" patternUnits="userSpaceOnUse"><line x1="0" y1="0" x2="14" y2="14" stroke="rgba(255,180,80,0.08)" strokeWidth="0.4"/><line x1="14" y1="0" x2="0" y2="14" stroke="rgba(255,180,80,0.08)" strokeWidth="0.4"/></pattern>
+            {/* Textures de terrain seamless — remplissage photo-réaliste des hexes.
+                userSpaceOnUse → les hexes voisins d'un même terrain se raccordent. */}
+            {Object.entries(TERRAIN_TEXTURES).map(([key,url])=>(
+              <pattern key={`tex-${key}`} id={`tex-${key}`} patternUnits="userSpaceOnUse" width={TERRAIN_TILE} height={TERRAIN_TILE}>
+                <image href={url} x="0" y="0" width={TERRAIN_TILE} height={TERRAIN_TILE} preserveAspectRatio="xMidYMid slice"/>
+              </pattern>
+            ))}
             <filter id="desat"><feColorMatrix type="saturate" values="0.3"/><feComponentTransfer><feFuncR type="linear" slope="0.8"/><feFuncG type="linear" slope="0.8"/><feFuncB type="linear" slope="0.8"/></feComponentTransfer></filter>
             <filter id="glow"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
             <filter id="softglow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
