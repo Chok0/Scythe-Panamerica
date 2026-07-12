@@ -10,6 +10,7 @@ body {
   line-height: 1.5;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 /* Paper noise overlay */
@@ -149,9 +150,9 @@ svg text { -webkit-user-select: none; user-select: none; }
   border: 1px solid rgba(255,255,255,0.08);
   min-width: 46px;
 }
-.res-pill .res-icon { font-size: 13px; line-height: 1; }
+.res-pill .res-icon { font-size: 15px; line-height: 1; }
 .res-pill .res-val {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   font-family: var(--font-mono);
 }

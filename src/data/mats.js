@@ -21,6 +21,16 @@ export const MATS = [
 
 export const BOTTOM = ["Upgrade", "Deploy", "Build", "Enlist"];
 
+// Bonus IMMÉDIAT (une fois) d'un enrôlement, indexé par colonne d'action bottom
+// (différent du bonus PERMANENT choisi séparément). Partagé entre l'UI joueur
+// (App.jsx) et la résolution des bots (botEncounters.js) pour éviter la divergence.
+export const ENLIST_IMMEDIATE = [
+  { col: 0, icon: "💰", label: "+2 Pièces", apply: p => { p.coins += 2; } },
+  { col: 1, icon: "♥", label: "+2 Popularité", apply: p => { p.pop = Math.min(p.pop + 2, 18); } },
+  { col: 2, icon: "🃏", label: "+2 Cartes", apply: p => { p.combatCards += 2; } },
+  { col: 3, icon: "⚡", label: "+2 Puissance", apply: p => { p.power = Math.min(p.power + 2, 16); } },
+];
+
 export const getBottomCost = (player) => {
   const mat = MATS.find(m => m.id === player.matId);
   if (!mat) return [{ res: "petrole", qty: 2 }, { res: "metal", qty: 3 }, { res: "bois", qty: 3 }, { res: "nourriture", qty: 3 }];
