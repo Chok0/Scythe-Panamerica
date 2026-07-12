@@ -31,6 +31,7 @@ import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { getPlanBottomBonus, auraPowerCount } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
 import { ActionRow, CubeSlots, RESOURCE_ICONS } from './svg/ActionIcons.jsx';
+import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 
 export default function App(){
   const[phase,setPhase]=useState("setup");
@@ -73,7 +74,7 @@ export default function App(){
   const[botRunning,setBotRunning]=useState(false);
   const[starDetail,setStarDetail]=useState(null); // étoile sélectionnée → panneau détail façon Steam
   const[showCards,setShowCards]=useState(false); // main de cartes de combat (clic sur le compteur 🃏)
-  const[showLog,setShowLog]=useState(true);
+  const[showLog,setShowLog]=useState(false);
   const[logFilter,setLogFilter]=useState("all"); // "all"|"combat"|"move"|"resource"|"bot"|"warn"|"star"
   const[showRules,setShowRules]=useState(false);
   const logRef=useRef(null);
@@ -1998,13 +1999,15 @@ export default function App(){
 
 
   return(
-    <div style={{height:"100vh",display:"grid",gridTemplateRows:"var(--top-h) 1fr",gridTemplateColumns:"var(--left-w) 1fr var(--right-w)",background:"var(--bg)",color:"var(--text)",overflow:"hidden"}}>
+    <div style={{height:"100vh",display:"grid",gridTemplateRows:"var(--top-h) 1fr auto",gridTemplateColumns:"var(--left-w) 1fr var(--right-w)",background:"var(--bg)",color:"var(--text)",overflow:"hidden"}}>
 
       {/* ═══ TOP RESOURCE BAR ═══ */}
       <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",padding:"6px 16px",gap:10,background:"linear-gradient(180deg,#282013,#1c150c)",borderBottom:"1px solid var(--panel-edge)",boxShadow:"inset 0 -1px 0 rgba(216,201,163,0.07)",flexShrink:0,height:"var(--top-h)",overflow:"hidden"}}>
         {/* Faction badge */}
         <div style={{display:"flex",alignItems:"center",gap:8,marginRight:4,flexShrink:0}}>
-          <div style={{width:36,height:36,borderRadius:"50%",background:myFaction.color+"22",border:`2px solid ${myFaction.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:900,color:myFaction.color,fontFamily:"var(--font-title)"}}>{myFaction.name[0]}</div>
+          <div style={{width:36,height:36,borderRadius:"50%",background:myFaction.color+"22",border:`2px solid ${myFaction.color}`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
+            <img src={FACTION_LOGOS[me.faction]} alt="" style={{width:"82%",height:"82%",objectFit:"contain"}}/>
+          </div>
           <div style={{lineHeight:1.2}}>
             <div style={{fontSize:14,fontWeight:700,color:myFaction.color,fontFamily:"var(--font-title)"}}>{myFaction.name}</div>
             <div style={{fontSize:11,color:"var(--text-dim)",fontFamily:"var(--font-body)"}}>{myMat.name} · T{turn}</div>
@@ -2037,7 +2040,7 @@ export default function App(){
               style={{position:"relative",width:36,height:36,borderRadius:7,border:starDetail===s.key?"1px solid var(--gold)":"1px solid var(--border)",
                 background:s.done?"rgba(232,200,96,0.16)":starDetail===s.key?"rgba(212,178,84,0.12)":"rgba(255,255,255,0.02)",
                 display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:0}}>
-              <span style={{fontSize:18,filter:s.done?"none":"grayscale(1)",opacity:s.done?0.4:0.72}}>{s.icon}</span>
+              <span style={{fontSize:18,filter:s.done?"none":"brightness(0) invert(1)",opacity:s.done?0.4:0.7}}>{s.icon}</span>
               {s.done&&<span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:21,filter:"drop-shadow(0 0 3px rgba(232,200,96,0.7))"}}>⭐</span>}
               {!s.done&&s.prog&&s.prog!=="…"&&<span style={{position:"absolute",bottom:-2,right:0,fontSize:8,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-mono)",background:"var(--bg)",borderRadius:2,padding:"0 2px"}}>{s.prog.split("/")[0]}</span>}
             </button>
@@ -2073,7 +2076,9 @@ export default function App(){
                 padding:"6px 10px",borderRadius:8,background:active?"rgba(200,112,64,0.08)":"rgba(255,255,255,0.02)",
                 borderLeft:`4px solid ${of.color}`}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,minWidth:150}}>
-                  <div style={{width:30,height:30,borderRadius:"50%",background:of.color+"22",border:`2px solid ${of.color}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,fontWeight:900,color:of.color,fontFamily:"var(--font-title)"}}>{of.name[0]}</div>
+                  <div style={{width:30,height:30,borderRadius:"50%",background:of.color+"22",border:`2px solid ${of.color}`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
+                    <img src={FACTION_LOGOS[op.faction]} alt="" style={{width:"82%",height:"82%",objectFit:"contain"}}/>
+                  </div>
                   <div style={{lineHeight:1.2}}>
                     <div style={{fontSize:13,fontWeight:700,color:of.color,fontFamily:"var(--font-title)"}}>{of.name}{op.isBot?" 🤖":""}{active?" ◀":""}</div>
                     <div style={{fontSize:10,color:"var(--text-dim)"}}>{op.matName} · ⭐{op.stars}/6</div>
@@ -2105,26 +2110,9 @@ export default function App(){
         </div>
       )}
 
-      {/* ═══ LEFT: POWER + POPULARITY TRACKS ═══ */}
+      {/* ═══ LEFT: POPULARITY TRACK ═══ (la piste de puissance est désormais en
+            bas d'écran, cf. bande horizontale sous la grille principale) */}
       <div style={{display:"flex",gap:4,background:"linear-gradient(180deg,#241d12,#171209 60%,#100c07)",borderRight:"1px solid var(--panel-edge)",boxShadow:"inset -1px 0 0 rgba(216,201,163,0.06)",padding:"4px 4px",overflow:"hidden"}}>
-        {/* Power track */}
-        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
-          <div style={{fontSize:8,color:"var(--rust)",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pui</div>
-          <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,width:"100%"}}>
-            {Array.from({length:17},(_,i)=>i).map(v=>(
-              <div key={v} style={{
-                flex:1,minHeight:0,width:"100%",borderRadius:2,
-                background:v<=me.power?"linear-gradient(90deg,#8b2020,#bb3838)":"rgba(255,255,255,0.03)",
-                border:v<=me.power?"1px solid #dd4444":"1px solid rgba(255,255,255,0.04)",
-                display:"flex",alignItems:"center",justifyContent:"center",
-                fontSize:8,fontWeight:v===me.power?900:400,
-                color:v<=me.power?"#fff":"#3a2a2a",
-                boxShadow:v===me.power?"0 0 6px rgba(220,50,30,0.5)":"none",
-              }}>{v%2===0?v:""}</div>
-            ))}
-          </div>
-          <div style={{fontSize:16,fontWeight:700,color:"var(--rust-light)",marginTop:4,fontFamily:"var(--font-title)"}}>{me.power}</div>
-        </div>
         {/* Popularity track */}
         <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
           <div style={{fontSize:8,color:"var(--brass)",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pop</div>
@@ -2396,7 +2384,10 @@ export default function App(){
               <line x1={hb.rx} y1={hb.ry-18} x2={hb.rx} y2={hb.ry+14} stroke="#d8c9a3" strokeWidth={1.2} opacity={0.6}/>
               <path d={`M${hb.rx} ${hb.ry-17} L${hb.rx+34} ${hb.ry-10} L${hb.rx+32} ${hb.ry-1} L${hb.rx} ${hb.ry+5} Z`} fill={fc.color} opacity={isMe?0.9:0.55} stroke="#0e0c08" strokeWidth={1}/>
               <text x={hb.rx+16} y={hb.ry-4} textAnchor="middle" fontSize={8} fill="#fff" fontWeight={700} stroke="rgba(0,0,0,0.5)" strokeWidth={2} paintOrder="stroke" style={{fontFamily:"var(--font-title)"}}>{fc.name.slice(0,8)}</text>
-              <circle cx={hb.rx} cy={hb.ry-18} r={2.5} fill="#d8c9a3"/>
+              {/* Blason de faction — identifie la base au premier coup d'œil,
+                  à la place du simple point de couleur */}
+              <circle cx={hb.rx} cy={hb.ry-18} r={13} fill="rgba(6,5,3,0.85)" stroke={fc.color} strokeWidth={1.5}/>
+              <image href={FACTION_LOGOS[fid]} x={hb.rx-11} y={hb.ry-29} width={22} height={22}/>
             </g>);
           })}
           {/* Watermark */}
@@ -2638,6 +2629,18 @@ export default function App(){
       {/* ═══ RIGHT PANEL: SCOREBOARD + ACTIONS + DROPDOWNS ═══ */}
       <div style={{display:"flex",flexDirection:"column",background:"linear-gradient(180deg,#241d12,#171209 60%,#100c07)",borderLeft:"1px solid var(--panel-edge)",boxShadow:"inset 1px 0 0 rgba(216,201,163,0.06)",overflow:"hidden"}}>
 
+        {/* ── Illustration de faction — réintégrée dans l'espace de jeu (bannière
+              compacte en tête du panneau, au lieu d'être réservée à l'écran de
+              sélection) ── */}
+        <div style={{height:74,position:"relative",overflow:"hidden",borderBottom:"1px solid var(--panel-edge)",flexShrink:0}}>
+          <img src={FACTION_ART[me.faction]} alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 32%",display:"block",opacity:0.85}}/>
+          <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(10,9,6,0.1) 0%,rgba(10,9,6,0.5) 55%,rgba(10,9,6,0.92) 100%)"}}/>
+          <div style={{position:"absolute",left:10,bottom:6,display:"flex",alignItems:"center",gap:6}}>
+            <img src={FACTION_LOGOS[me.faction]} alt="" style={{width:22,height:22,filter:"drop-shadow(0 1px 4px rgba(0,0,0,0.7))"}}/>
+            <span style={{fontSize:13,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-title)",textShadow:"0 1px 3px rgba(0,0,0,0.8)"}}>{myFaction.name}</span>
+          </div>
+        </div>
+
         {/* ── Scoreboard ── */}
         <div style={{padding:"6px 8px",borderBottom:"1px solid var(--border)",flexShrink:0}}>
           {players.map((p,i)=>{const fc=FACTIONS[p.faction];const isActive=i===currentP;return(
@@ -2740,13 +2743,11 @@ export default function App(){
                     </div>
                     {/* RANGÉE HAUT */}
                     <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontSize:8,fontWeight:800,letterSpacing:1,color:"#c89a5a",background:"rgba(200,150,80,0.12)",border:"1px solid rgba(200,150,80,0.3)",borderRadius:4,padding:"3px 4px",writingMode:"vertical-rl",transform:"rotate(180deg)",lineHeight:1}}>HAUT</span>
                       <div style={{flex:1,minWidth:0}}><ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact /></div>
                       <div title="Cubes disponibles sur cette action" style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}><CubeSlots total={cubesTop} filled={cubesTop} /></div>
                     </div>
                     {/* RANGÉE BAS */}
                     <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8,background:"rgba(0,0,0,0.28)",borderTop:"1px solid var(--border)"}}>
-                      <span style={{fontSize:8,fontWeight:800,letterSpacing:1,color:"#7a9aca",background:"rgba(90,130,180,0.12)",border:"1px solid rgba(90,130,180,0.3)",borderRadius:4,padding:"3px 4px",writingMode:"vertical-rl",transform:"rotate(180deg)",lineHeight:1}}>BAS</span>
                       <div style={{flex:1,minWidth:0}}>
                         {/* Coût (rouge) → gain concret (pièces libérées par l'upgrade) */}
                         <ActionRow pay={bottomPay} gain={upBonus>0?Array(upBonus).fill("coins"):[bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":bottomAction==="Enlist"?"pop":"power"]} compact />
@@ -3078,10 +3079,16 @@ export default function App(){
           {/* Hex info */}
           {selHexData&&!selAction&&(
             <div style={{padding:"6px 16px",fontSize:12,color:"var(--text-dim)",borderTop:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:16}}>{TERRAINS[selHexData.t].icon}</span>
-              <span style={{fontWeight:600,color:TERRAINS[selHexData.t].color}}>{TERRAINS[selHexData.t].label}</span>
-              <span style={{color:"var(--text-muted)"}}>#{selHexData.id}</span>
-              {TERRAINS[selHexData.t].res&&<span style={{color:"var(--brass)",fontSize:11}}>→ {TERRAINS[selHexData.t].res}</span>}
+              {selHexData.base ? (<>
+                <span style={{fontSize:16}}>🏳</span>
+                <span style={{fontWeight:600,color:FACTIONS[selHexData.faction]?.color||"var(--text)"}}>Base — {FACTIONS[selHexData.faction]?.name}</span>
+                <span style={{color:"var(--text-muted)"}}>#{selHexData.id}</span>
+              </>) : (<>
+                <span style={{fontSize:16}}>{TERRAINS[selHexData.t].icon}</span>
+                <span style={{fontWeight:600,color:TERRAINS[selHexData.t].color}}>{TERRAINS[selHexData.t].label}</span>
+                <span style={{color:"var(--text-muted)"}}>#{selHexData.id}</span>
+                {TERRAINS[selHexData.t].res&&<span style={{color:"var(--brass)",fontSize:11}}>→ {TERRAINS[selHexData.t].res}</span>}
+              </>)}
             </div>
           )}
 
@@ -3128,6 +3135,39 @@ export default function App(){
         </div>
       </div>
 
+      {/* ═══ BOTTOM: POWER TRACK (horizontale, pleine largeur) — bascule demandée
+            en bas d'écran ; un point de couleur par adversaire marque sa position
+            actuelle sur la piste, en plus de la mienne (remplissage rouge). ═══ */}
+      <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",gap:10,padding:"5px 16px",height:32,background:"linear-gradient(0deg,#241d12,#171209)",borderTop:"1px solid var(--panel-edge)",boxShadow:"inset 0 1px 0 rgba(216,201,163,0.06)",flexShrink:0,overflow:"hidden"}}>
+        <div style={{fontSize:9,color:"var(--rust)",letterSpacing:1,textTransform:"uppercase",fontFamily:"var(--font-title)",fontWeight:700,flexShrink:0}}>Puissance</div>
+        <div style={{flex:1,display:"flex",gap:2,height:20,position:"relative"}}>
+          {Array.from({length:17},(_,v)=>v).map(v=>{
+            const opponentsHere=players.slice(1).filter(op=>op.power===v);
+            return(
+              <div key={v} style={{
+                flex:1,minWidth:0,borderRadius:2,position:"relative",
+                background:v<=me.power?"linear-gradient(180deg,#bb3838,#8b2020)":"rgba(255,255,255,0.03)",
+                border:v<=me.power?"1px solid #dd4444":"1px solid rgba(255,255,255,0.04)",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:8,fontWeight:v===me.power?900:400,
+                color:v<=me.power?"#fff":"#3a2a2a",
+                boxShadow:v===me.power?"0 0 6px rgba(220,50,30,0.5)":"none",
+              }}>
+                {v%2===0?v:""}
+                {opponentsHere.length>0&&(
+                  <div style={{position:"absolute",top:-9,left:"50%",transform:"translateX(-50%)",display:"flex",gap:2}}>
+                    {opponentsHere.map(op=>(
+                      <div key={op.faction} title={`${FACTIONS[op.faction].name} : ${op.power}⚡`} style={{width:7,height:7,borderRadius:"50%",background:FACTIONS[op.faction].color,border:"1px solid rgba(6,5,3,0.9)"}}/>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div style={{fontSize:15,fontWeight:700,color:"var(--rust-light)",fontFamily:"var(--font-title)",flexShrink:0,minWidth:20,textAlign:"right"}}>{me.power}</div>
+      </div>
+
       {/* ═══ PANNEAU DÉTAIL D'ÉTOILE (façon Steam) — clic sur une icône de la barre ═══ */}
       {starDetail&&(()=>{
         const s=starList.find(x=>x.key===starDetail);if(!s)return null;
@@ -3137,7 +3177,7 @@ export default function App(){
             {/* En-tête */}
             <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:"1px solid var(--border)",position:"relative"}}>
               <div style={{position:"relative",width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:8,background:s.done?"rgba(232,200,96,0.14)":"rgba(255,255,255,0.03)",border:`1px solid ${s.done?"var(--gold)":"var(--border)"}`}}>
-                <span style={{fontSize:22,filter:s.done?"none":"grayscale(1)",opacity:s.done?0.5:0.6}}>{s.icon}</span>
+                <span style={{fontSize:22,filter:s.done?"none":"brightness(0) invert(1)",opacity:s.done?0.5:0.65}}>{s.icon}</span>
                 {s.done&&<span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>⭐</span>}
               </div>
               <div style={{flex:1,minWidth:0}}>
