@@ -1718,8 +1718,10 @@ export default function App(){
     });
     addLog(`📜 ${encounter.card.name}: ${choice.label} → ${choice.desc}`);
     setEncounter(null);
-    // If the encounter granted a mech, show ability picker
-    if(choice.grantsMech&&me.coins>=2&&mechsBefore<4){
+    // If the encounter granted a mech (option payée en $ ou en popularité),
+    // ouvrir le sélecteur d'ability — l'option est déjà gardée par `available`,
+    // donc si elle a pu être choisie, le mecha a bien été posé.
+    if(choice.grantsMech&&mechsBefore<4){
       setPendingAbility({source:"encounter"});
       return; // don't end turn yet — ability picker will handle it
     }
