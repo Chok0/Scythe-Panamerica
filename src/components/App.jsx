@@ -11,7 +11,7 @@ import { BALANCE } from '../data/balance.js';
 import { EMPIRE_START, EMPIRE_RAILS, drawEmpireCombat } from '../data/empire.js';
 import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA } from '../data/plans.js';
-import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, applyEnlistOngoing } from '../data/mats.js';
+import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
 import { pickStructureBonus, structureBonusDetail } from '../data/structureBonus.js';
 import { reconcileHand, topCardsSum, spendTopCards, handSummary } from '../logic/cards.js';
@@ -55,6 +55,8 @@ export default function App(){
   const[pendingAbility,setPendingAbility]=useState(null); // {source:"deploy"|"encounter", hexId} — waiting for player to pick mech ability
   const[combat,setCombat]=useState(null); // {type:"pvp"|"pve", hexId, enemyIdx?, empireId?, empireCard?, phase:"choose"|"reward", powerSpend:0, cardsSpend:0}
   const[encounter,setEncounter]=useState(null); // {card, hexId}
+  const[encounterBuild,setEncounterBuild]=useState(false); // rencontre → choisir le type de bâtiment (posé sur le hex du héros)
+  const[encounterEnlist,setEncounterEnlist]=useState(null); // rencontre → enrôler : {col:null} puis {col}
   const[rougeRiver,setRougeRiver]=useState(null); // {cards:[]}
   const[encounterTokens,setEncounterTokens]=useState(new Set(CURRENT_MAP.encounterHexes));
   const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
@@ -735,12 +737,7 @@ export default function App(){
   // (Upgrade → +2 Pièces, Deploy → +2 Pop, Build → +2 Cartes, Enlist → +2 Pui).
   // Le bonus PERMANENT (recrue) est choisi SÉPARÉMENT par le joueur → totalement
   // décorrélé du bonus immédiat (règle Scythe : on choisit quelle recrue poser).
-  const ENLIST_BONUSES=[
-    {id:0,col:0,icon:"💰",label:"+2 Pièces",svgKey:"coins",apply:p=>{p.coins+=2;}},
-    {id:1,col:1,icon:"♥",label:"+2 Popularité",svgKey:"pop",apply:p=>{p.pop=Math.min(p.pop+2,18);}},
-    {id:2,col:2,icon:"🃏",label:"+2 Cartes",svgKey:"combatCards",apply:p=>{p.combatCards+=2;}},
-    {id:3,col:3,icon:"⚡",label:"+2 Puissance",svgKey:"power",apply:p=>{p.power=Math.min(p.power+2,16);}},
-  ];
+  const ENLIST_BONUSES=ENLIST_IMMEDIATE; // bonus immédiat par colonne (source unique dans mats.js)
   // colIdx : action bottom qui reçoit la recrue (→ bonus immédiat de la section)
   // recruitIdx : QUELLE recrue permanente poser (0-3, indépendante de colIdx)
   const doEnlist=useCallback((colIdx,recruitIdx)=>{
@@ -913,6 +910,7 @@ export default function App(){
     // annule tout état transitoire d'action en cours
     setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);
     setPendingBottom(null);setBottomPick(null);setCombat(null);setEncounter(null);setRougeRiver(null);
+    setEncounterBuild(false);setEncounterEnlist(null);
     setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);
   },[cloneVal]);
   const pushHistory=useCallback(()=>{ setUndoStack(s=>[...s.slice(-40),snapshotGame()]); setRedoStack([]); },[snapshotGame]);
@@ -1703,6 +1701,13 @@ export default function App(){
     }
   },[combat,me,addLog,endHumanTurn,myMat]);
 
+  // Reprend le tour humain après un picker de rencontre (mecha/bâtiment/recrue) :
+  // si tous les déplacements sont faits, on enchaîne sur l'action bottom.
+  const resumeAfterEncounter=useCallback(()=>{
+    const moved=(me?.movedUnits||[]).length;
+    if(moved>=moveLimit){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
+  },[me,moveLimit,addLog,endHumanTurn,myMat]);
+
   // ── ENCOUNTER RESOLUTION ──
   const resolveEncounter=useCallback((choiceIdx)=>{
     if(!encounter)return;
@@ -1718,17 +1723,63 @@ export default function App(){
     });
     addLog(`📜 ${encounter.card.name}: ${choice.label} → ${choice.desc}`);
     setEncounter(null);
-    // If the encounter granted a mech (option payée en $ ou en popularité),
-    // ouvrir le sélecteur d'ability — l'option est déjà gardée par `available`,
-    // donc si elle a pu être choisie, le mecha a bien été posé.
+    // Récompenses « structurantes » qui demandent un choix du joueur — l'option
+    // a déjà payé son coût (mecha/bâtiment/recrue via l'effet), on ouvre le
+    // picker correspondant ; le tour reprend une fois le choix fait. Les gardes
+    // `available` garantissent qu'un placement/enrôlement valide existe.
     if(choice.grantsMech&&mechsBefore<4){
       setPendingAbility({source:"encounter"});
       return; // don't end turn yet — ability picker will handle it
     }
+    if(choice.grantsBuilding){ setEncounterBuild(true); return; }
+    if(choice.grantsRecruit){ setEncounterEnlist({col:null}); return; }
     // Resume movement check
-    const moved=(me.movedUnits||[]).length;
-    if(moved>=moveLimit){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
-  },[encounter,me,addLog,endHumanTurn,myMat]);
+    resumeAfterEncounter();
+  },[encounter,me,addLog,resumeAfterEncounter]);
+
+  // ── RÉCOMPENSE RENCONTRE : bâtiment gratuit (posé sur le hex du héros) ──
+  const doEncounterBuild=useCallback((buildingType)=>{
+    if(!me)return;
+    const hex=me.hero;
+    if((me.buildings||[]).length>=4)return;
+    if((me.buildings||[]).some(b=>b.hexId===hex)){addLog(`⚠ Déjà un bâtiment ici`);return;}
+    if((me.buildings||[]).some(b=>b.type===buildingType))return;
+    const bt=BUILDING_TYPES.find(b=>b.type===buildingType);
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0],buildings:[...(n[0].buildings||[])]};
+      p.buildings.push({type:buildingType,hexId:hex});
+      const earned=p.buildings.length>=4&&!p.starBuildings;
+      if(earned){p.stars++;p.starBuildings=true;}
+      n[0]=p;return n;
+    });
+    addLog(`🏗 ${bt?bt.name:buildingType} édifié sur #${hex} (rencontre)`);
+    if((me.buildings||[]).length+1>=4)addLog(`⭐ 4 Bâtiments construits !`);
+    setEncounterBuild(false);
+    resumeAfterEncounter();
+  },[me,addLog,resumeAfterEncounter]);
+
+  // ── RÉCOMPENSE RENCONTRE : recrue gratuite (colonne + recrue permanente) ──
+  const doEncounterEnlist=useCallback((colIdx,recruitIdx)=>{
+    if(!me||(me.recruits||0)>=4)return;
+    if((me.enlistMap||[])[colIdx]!=null)return;
+    if((me.enlistMap||[]).includes(recruitIdx))return;
+    const bonus=ENLIST_IMMEDIATE[colIdx];const recruit=ENLIST_ONGOING[recruitIdx];
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0]};
+      p.recruits=(p.recruits||0)+1;
+      p.enlistMap=[...(p.enlistMap||[null,null,null,null])];
+      p.enlistMap[colIdx]=recruitIdx;
+      bonus.apply(p);
+      const earned=p.recruits>=4&&!p.starRecruits;
+      if(earned){p.stars++;p.starRecruits=true;}
+      n[0]=p;return n;
+    });
+    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${BOTTOM[colIdx]} (rencontre) — immédiat ${bonus.label}`);
+    addLog(`   Permanent ${recruit.icon} ${recruit.label} quand vous/voisins faites ${BOTTOM[colIdx]}`);
+    if((me.recruits||0)+1>=4)addLog(`⭐ 4 Recrues enrôlées !`);
+    setEncounterEnlist(null);
+    resumeAfterEncounter();
+  },[me,addLog,resumeAfterEncounter]);
 
   // ── ROUGE RIVER — PICK FACTORY CARD ──
   const pickFactoryCard=useCallback((card)=>{
@@ -2416,7 +2467,7 @@ export default function App(){
         )}
 
         {/* ═══ MODAL OVERLAYS (combat/encounter/RR) ═══ */}
-        {(combat||encounter||rougeRiver)&&(
+        {(combat||encounter||encounterBuild||encounterEnlist||rougeRiver)&&(
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
             <div style={{maxWidth:460,width:"92%",maxHeight:"80vh",overflow:"auto",borderRadius:12,border:"1px solid var(--border-light)",boxShadow:"0 10px 50px rgba(0,0,0,0.8)"}}>
 
@@ -2562,6 +2613,78 @@ export default function App(){
                       </button>
                     );})}
                   </div>
+                </div>
+              )}
+
+              {/* RENCONTRE → BÂTIMENT GRATUIT (posé sur le hex du héros) */}
+              {encounterBuild&&(()=>{
+                const types=BUILDING_TYPES.filter(bt=>bt.type!=="gare"&&!(me.buildings||[]).some(b=>b.type===bt.type));
+                return(
+                  <div style={{padding:"20px",background:"linear-gradient(180deg,#1a1608,var(--bg2))",borderRadius:10,border:"1px solid var(--rust)",animation:"slideUp 0.35s ease"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+                      <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(201,168,76,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:25,border:"2px solid var(--gold)",flexShrink:0}}>🏗</div>
+                      <div>
+                        <div style={{fontFamily:"var(--font-title)",color:"var(--gold)",fontSize:18,fontWeight:700}}>Bâtiment gratuit</div>
+                        <div style={{fontSize:13,color:"var(--text-dim)"}}>Édifié sur le hex de votre héros (#{me.hero})</div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                      {types.map(bt=>(
+                        <button key={bt.type} onClick={()=>doEncounterBuild(bt.type)} className="enc-card">
+                          <div style={{display:"flex",alignItems:"center",gap:10}}>
+                            <span style={{fontSize:23,width:28,textAlign:"center"}}>{bt.icon}</span>
+                            <div style={{flex:1}}>
+                              <div style={{fontSize:15,fontWeight:700,color:"var(--text)"}}>{bt.name}</div>
+                              <div style={{fontSize:12,color:"var(--brass)",marginTop:2}}>{bt.effect}</div>
+                            </div>
+                            <span style={{fontSize:18,color:"var(--gold-dim)"}}>›</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* RENCONTRE → RECRUE GRATUITE (colonne puis recrue permanente) */}
+              {encounterEnlist&&(
+                <div style={{padding:"20px",background:"linear-gradient(180deg,#12160e,var(--bg2))",borderRadius:10,border:"1px solid #5a9a7a",animation:"slideUp 0.35s ease"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+                    <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(90,154,122,0.14)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:25,border:"2px solid #5a9a7a",flexShrink:0}}>🤝</div>
+                    <div>
+                      <div style={{fontFamily:"var(--font-title)",color:"#8fd0b0",fontSize:18,fontWeight:700}}>Recrue gratuite</div>
+                      <div style={{fontSize:13,color:"var(--text-dim)"}}>Recrue {(me.recruits||0)+1}/4</div>
+                    </div>
+                  </div>
+                  {encounterEnlist.col==null?(
+                    <div>
+                      <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:6}}>① Section (bonus immédiat) :</div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
+                        {BOTTOM.map((bName,ci)=>{
+                          const assigned=(me.enlistMap||[])[ci]!=null;
+                          return <button key={ci} onClick={()=>setEncounterEnlist({col:ci})} className="act-btn" disabled={assigned} style={{textAlign:"center",opacity:assigned?0.3:1,cursor:assigned?"not-allowed":"pointer"}}>
+                            <div style={{fontWeight:700,fontSize:14}}>{bName}</div>
+                            <div style={{fontSize:13,color:"var(--gold)",marginTop:2}}>Immédiat {ENLIST_IMMEDIATE[ci].icon} {ENLIST_IMMEDIATE[ci].label}</div>
+                            {assigned&&<div style={{fontSize:12,color:"#8fd0b0",marginTop:1}}>🤝 {ENLIST_ONGOING[(me.enlistMap||[])[ci]].icon} posée</div>}
+                          </button>;
+                        })}
+                      </div>
+                    </div>
+                  ):(
+                    <div>
+                      <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:6}}>Section <b style={{color:"var(--brass)"}}>{BOTTOM[encounterEnlist.col]}</b> (immédiat {ENLIST_IMMEDIATE[encounterEnlist.col].icon} {ENLIST_IMMEDIATE[encounterEnlist.col].label}) — ② Recrue permanente :</div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
+                        {ENLIST_ONGOING.map((rec,ri)=>{
+                          const used=(me.enlistMap||[]).includes(ri);
+                          return <button key={ri} onClick={()=>doEncounterEnlist(encounterEnlist.col,ri)} className="act-btn" disabled={used} style={{textAlign:"center",opacity:used?0.3:1,cursor:used?"not-allowed":"pointer",borderColor:used?"var(--border)":"#5a9a7a"}}>
+                            <div style={{fontWeight:700,fontSize:15}}>{rec.icon} {rec.label}</div>
+                            <div style={{fontSize:12,color:"#8fd0b0",marginTop:1}}>à chaque {BOTTOM[encounterEnlist.col]} (vous/voisins)</div>
+                          </button>;
+                        })}
+                      </div>
+                      <button onClick={()=>setEncounterEnlist({col:null})} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre section</button>
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -35,6 +35,13 @@ const addMech = (p) => {
 const gainPop = (p, n) => { p.pop = Math.min(p.pop + n, 18); };
 const gainPow = (p, n) => { p.power = Math.min(p.power + n, 16); };
 const gainUpg = (p) => { p.upgrades = Math.min((p.upgrades || 0) + 1, 6); };
+// Le bâtiment/la recrue gagnés en rencontre sont placés/résolus après le choix
+// (picker côté joueur, auto côté bot) ; l'effet ne fait que payer le coût.
+// Bâtiment : posé sur le hex du héros → il faut un type non-Gare encore libre
+// (la Gare implique la pose de rails, hors flux rencontre) et le hex libre.
+const NON_GARE = ["arsenal", "memorial", "moulin"];
+const canEncBuild = (p) => NON_GARE.some(t => !(p.buildings || []).some(b => b.type === t)) && !(p.buildings || []).some(b => b.hexId === p.hero);
+const canEncRecruit = (p) => (p.recruits || 0) < 4;
 
 export const ENCOUNTERS = [
   { id: 1, name: "L'Épave Fumante", desc: "Un mecha gît au bord de la route, fumant encore.",
@@ -59,13 +66,13 @@ export const ENCOUNTERS = [
     choices: [
       { label: "Escorter les familles", icon: "♥", desc: "+1 pop, +1 ouvrier", effect: p => { gainPop(p, 1); addWorkers(p, 1); } },
       { label: "Financer leur exode", icon: "💰", desc: "-2$, +2 ouvriers", available: p => p.coins >= 2, effect: p => { p.coins -= 2; addWorkers(p, 2); } },
-      { label: "Réquisitionner bras et vivres", icon: "👷", desc: "-2 pop, +2 ouvriers, +3 nourriture", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); addWorkers(p, 2); addRes(p, "nourriture", 3); } },
+      { label: "Fonder un établissement", icon: "🏗", desc: "-2 pop, +1 bâtiment", grantsBuilding: true, available: p => p.pop >= 2 && canEncBuild(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
     ] },
   { id: 5, name: "Le Prêcheur au Carrefour", desc: "Un prédicateur harangue une foule. Milice ou messie ?",
     choices: [
       { label: "Écouter le sermon", icon: "♥", desc: "+1 pop, +1 carte combat", effect: p => { gainPop(p, 1); p.combatCards += 1; } },
       { label: "Financer sa croisade", icon: "🃏", desc: "-2$, +3 cartes combat", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.combatCards += 3; } },
-      { label: "Armer ses fidèles", icon: "⚡", desc: "-2 pop, +4 puissance, +1 carte", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); gainPow(p, 4); p.combatCards += 1; } },
+      { label: "Enrôler ses fidèles", icon: "🤝", desc: "-2 pop, +1 recrue", grantsRecruit: true, available: p => p.pop >= 2 && canEncRecruit(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
     ] },
   { id: 6, name: "Le Dépôt de Trains", desc: "Un dépôt ferroviaire rempli de technologie oubliée.",
     choices: [
@@ -106,7 +113,7 @@ export const ENCOUNTERS = [
   { id: 12, name: "La Contrebandière", desc: "Elle vend de tout. Armes, nourriture, secrets.",
     choices: [
       { label: "Marchander poliment", icon: "♥", desc: "+1 pop, +2$", effect: p => { gainPop(p, 1); p.coins += 2; } },
-      { label: "Acheter son arsenal", icon: "⚡", desc: "-3$, +4 puissance, +1 carte", available: p => p.coins >= 3, effect: p => { p.coins -= 3; gainPow(p, 4); p.combatCards += 1; } },
+      { label: "Engager ses mercenaires", icon: "🤝", desc: "-3$, +1 recrue", grantsRecruit: true, available: p => p.coins >= 3 && canEncRecruit(p), effect: p => { p.coins -= 3; } },
       { label: "La dévaliser", icon: "⚙", desc: "-2 pop, +4 métal", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); addRes(p, "metal", 4); } },
     ] },
   { id: 13, name: "Le Barrage", desc: "Un barrage hydroélectrique, intact mais sans opérateur.",
@@ -125,7 +132,7 @@ export const ENCOUNTERS = [
     choices: [
       { label: "Accepter sa reddition", icon: "♥", desc: "+1 pop, +2$", effect: p => { gainPop(p, 1); p.coins += 2; } },
       { label: "Acheter sa milice", icon: "⚡", desc: "-3$, +4 puissance, +1 carte", available: p => p.coins >= 3, effect: p => { p.coins -= 3; gainPow(p, 4); p.combatCards += 1; } },
-      { label: "Saisir son arsenal", icon: "⬆", desc: "-2 pop, +1 amélioration", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); gainUpg(p); } },
+      { label: "Investir son domaine", icon: "🏗", desc: "-2 pop, +1 bâtiment", grantsBuilding: true, available: p => p.pop >= 2 && canEncBuild(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
     ] },
 ];
 
