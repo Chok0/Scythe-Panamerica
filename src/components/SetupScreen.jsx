@@ -6,6 +6,9 @@ import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 
 const RES_EMOJI = { petrole: "🛢", metal: "⚙", bois: "🪵", nourriture: "🌽" };
 const BOTTOM_EMOJI = ["⬆", "⬡", "🏗", "🤝"]; // Upgrade, Deploy, Build, Enlist
+// Emblème par plateau joueur — tient le rôle du blason de faction pour donner
+// aux cartes de plateau la même structure d'en-tête (emblème + nom doré).
+const MAT_ICONS = { 1: "🏭", 2: "🔧", 3: "🧭", 4: "⚒", 5: "🌾" };
 
 const DIFFICULTIES = [
   { key: "facile", label: "Facile", desc: "bots imprévisibles et sous-optimaux" },
@@ -41,7 +44,7 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
   return (
     <div style={{minHeight:"100vh",background:"linear-gradient(170deg, #1A1710 0%, #1A1710 30%, #1a1610 60%, #1A1710 100%)",color:"var(--text)",display:"flex",flexDirection:"column",alignItems:"center",padding:"40px 16px",position:"relative",overflow:"auto"}}>
       <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:GRAIN,pointerEvents:"none"}}/>
-      <div style={{position:"relative",display:"flex",flexDirection:"column",alignItems:"center",width:"100%",maxWidth:760}}>
+      <div style={{position:"relative",display:"flex",flexDirection:"column",alignItems:"center",width:"100%",maxWidth:820}}>
         <div style={{width:80,height:1,background:"linear-gradient(90deg,transparent,var(--gold),transparent)",marginBottom:16}}/>
         <div style={{fontSize:11,fontWeight:600,color:"var(--gold-dim)",letterSpacing:8,textTransform:"uppercase",marginBottom:6,fontFamily:"'Bitter',serif"}}>Scythe</div>
         <h1 style={{fontFamily:"var(--font-brand)",fontSize:32,fontWeight:900,letterSpacing:10,textTransform:"uppercase",color:"var(--gold)",marginBottom:4,textAlign:"center",textShadow:"0 0 40px rgba(201,168,76,0.15)"}}>Panamerica</h1>
@@ -115,14 +118,14 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
             faction survolée/sélectionnée. Sépare nettement l'ambiance (ici) des
             stats de décision (cartes ci-dessous), au lieu de tout empiler par carte. ── */}
         <div style={{
-          width:"100%",height:220,borderRadius:8,marginBottom:14,position:"relative",overflow:"hidden",
+          width:"100%",height:340,borderRadius:8,marginBottom:14,position:"relative",overflow:"hidden",
           border:"1px solid var(--border)",boxShadow:bevel(false),background:"#0f0d08",
         }}>
           {preview ? (<>
-            <img src={FACTION_ART[previewId]} alt="" style={{width:"100%",height:"100%",objectFit:"cover",display:"block",opacity:0.9}}/>
-            <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(10,9,6,0.15) 0%,rgba(10,9,6,0.55) 55%,rgba(8,7,5,0.96) 100%)"}}/>
-            <div style={{position:"absolute",left:18,right:18,bottom:14,display:"flex",alignItems:"flex-end",gap:14}}>
-              <img src={FACTION_LOGOS[previewId]} alt="" style={{width:56,height:56,flexShrink:0,filter:"drop-shadow(0 2px 8px rgba(0,0,0,0.7))"}}/>
+            <img src={FACTION_ART[previewId]} alt="" style={{width:"100%",height:"100%",objectFit:"cover",objectPosition:"center 42%",display:"block",opacity:0.92}}/>
+            <div style={{position:"absolute",inset:0,background:"linear-gradient(180deg,rgba(10,9,6,0.05) 0%,rgba(10,9,6,0.35) 45%,rgba(8,7,5,0.94) 100%)"}}/>
+            <div style={{position:"absolute",left:18,right:18,bottom:16,display:"flex",alignItems:"flex-end",gap:14}}>
+              <img src={FACTION_LOGOS[previewId]} alt="" style={{width:64,height:64,flexShrink:0,filter:"drop-shadow(0 2px 8px rgba(0,0,0,0.7))"}}/>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:20,color:"var(--gold)"}}>{preview.name}</div>
                 <div style={{fontSize:14,color:"var(--text2)",marginBottom:4}}>{preview.hero} &amp; {preview.companion}</div>
@@ -177,20 +180,30 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
             <div style={{color:"var(--gold-dim)",fontSize:13,fontWeight:600,letterSpacing:3,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Plateau Joueur</div>
             <button onClick={randomMat} style={diceBtnStyle}>🎲 Aléatoire</button>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(120px,1fr))",gap:8,width:"100%",marginBottom:32}}>
-            {MATS.map(pm=>(
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8,width:"100%",marginBottom:32}}>
+            {MATS.map(pm=>{const sel=selMat===pm.id;return(
               <button key={pm.id} onClick={()=>setSelMat(pm.id)} className="fade-in" style={{
-                ...frameStyle(selMat===pm.id),
-                padding:"14px 12px",color:"var(--text)",textAlign:"left",
+                ...frameStyle(sel),
+                padding:"12px 12px",color:"var(--text)",textAlign:"left",display:"flex",flexDirection:"column",gap:6,
               }}>
-                <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:14}}>{pm.name}</div>
-                <div style={{fontSize:11,color:"var(--text-dim)",marginTop:4,letterSpacing:0.5}}>{pm.topRow.join(" · ")}</div>
-                <div style={{fontSize:12,color:"var(--gold)",marginTop:6,fontFamily:"'IBM Plex Mono',monospace"}}>♥{pm.pop}  💰{pm.coins}$</div>
-                <div style={{fontSize:11,color:"var(--text-dim)",marginTop:5,fontFamily:"'IBM Plex Mono',monospace"}} title="Coûts des actions bottom : Upgrade / Deploy / Build / Enlist (+bonus $ par cube posé)">
-                  {pm.bottomCosts.map((bc,i)=><span key={i} style={{marginRight:6,whiteSpace:"nowrap"}}>{BOTTOM_EMOJI[i]}{bc.base}{RES_EMOJI[bc.res]}{bc.bonus>0?<span style={{color:"#7fa05a"}}>+{bc.bonus}$</span>:""}</span>)}
+                {/* En-tête identique aux cartes de faction : emblème + nom en accent doré */}
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <div style={{width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,opacity:sel?1:0.9,filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.6))"}}>{MAT_ICONS[pm.id]}</div>
+                  <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:18,color:"var(--gold)",lineHeight:1.2}}>{pm.name}</div>
+                </div>
+                {/* Stats de départ — même motif « icône + valeur en gras blanc » que les factions */}
+                <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",fontSize:15,fontFamily:"'IBM Plex Mono',monospace"}}>
+                  <span>♥ <span style={{color:"var(--text)",fontWeight:600}}>{pm.pop}</span></span>
+                  <span>💰 <span style={{color:"var(--text)",fontWeight:600}}>{pm.coins}$</span></span>
+                </div>
+                {/* Ordre des actions du haut — info secondaire, style atténué (comme le lore) */}
+                <div style={{fontSize:12,color:"var(--text-dim)",fontStyle:"italic"}}>{pm.topRow.join(" · ")}</div>
+                {/* Coûts des actions du bas — mono, atténué */}
+                <div style={{fontSize:12,color:"var(--text-dim)",fontFamily:"'IBM Plex Mono',monospace",display:"flex",flexWrap:"wrap",gap:"2px 8px"}} title="Coûts des actions bottom : Upgrade / Deploy / Build / Enlist (+bonus $ par cube posé)">
+                  {pm.bottomCosts.map((bc,i)=><span key={i} style={{whiteSpace:"nowrap"}}>{BOTTOM_EMOJI[i]}{bc.base}{RES_EMOJI[bc.res]}{bc.bonus>0?<span style={{color:"#8fc26a"}}>+{bc.bonus}$</span>:""}</span>)}
                 </div>
               </button>
-            ))}
+            );})}
           </div>
         </>)}
 
