@@ -77,6 +77,43 @@ export const IconMech = ({ size = 16, color = "#fff" }) => (
   </svg>
 );
 
+// ═══ SVG Building Icons — même vocabulaire graphique (trait simple, silhouette
+// unique, pas de détail interne fin) pour rester lisible à 16-18px. ═══
+
+export const IconArsenal = ({ size = 16, color = "#fff" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 1.5 L13 3.5 V8 C13 11.5 10.5 13.5 8 14.5 C5.5 13.5 3 11.5 3 8 V3.5 Z" />
+    <path d="M8 4.5 V11" />
+    <path d="M5.5 6.5 H10.5" />
+  </svg>
+);
+
+export const IconMemorial = ({ size = 16, color = "#fff" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M6.5 14 L6.5 5 L8 2 L9.5 5 L9.5 14 Z" />
+    <line x1="4.5" y1="14" x2="11.5" y2="14" />
+  </svg>
+);
+
+export const IconGare = ({ size = 16, color = "#fff" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2.5" y="5" width="11" height="6" rx="1.5" />
+    <circle cx="5.5" cy="13" r="1.3" />
+    <circle cx="10.5" cy="13" r="1.3" />
+    <line x1="5" y1="2" x2="5" y2="5" />
+  </svg>
+);
+
+export const IconMoulin = ({ size = 16, color = "#fff" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="8" cy="8" r="1.3" fill={color} stroke="none" />
+    <path d="M8 6.5 C6.5 4.5 6.5 2.5 8 1.5 C8.5 3.5 8.5 5 8 6.5Z" />
+    <path d="M9.5 8 C11.5 6.5 13.5 6.5 14.5 8 C12.5 8.5 11 8.5 9.5 8Z" />
+    <path d="M8 9.5 C9.5 11.5 9.5 13.5 8 14.5 C7.5 12.5 7.5 11 8 9.5Z" />
+    <path d="M6.5 8 C4.5 9.5 2.5 9.5 1.5 8 C3.5 7.5 5 7.5 6.5 8Z" />
+  </svg>
+);
+
 // Map resource name to icon component
 export const RESOURCE_ICONS = {
   metal: IconMetal,
@@ -89,6 +126,14 @@ export const RESOURCE_ICONS = {
   pop: IconPop,
   worker: IconWorker,
   mech: IconMech,
+};
+
+// Map building type (BUILDING_TYPES[i].type from data/mats.js) to icon component
+export const BUILDING_ICONS = {
+  arsenal: IconArsenal,
+  memorial: IconMemorial,
+  gare: IconGare,
+  moulin: IconMoulin,
 };
 
 // ═══ ActionSquare — colored square with icon inside ═══
@@ -138,7 +183,7 @@ export function ActionRow({ pay = [], gain = [], altGain, compact = false }) {
   );
 }
 
-// ═══ CubeSlots — upgrade cube visualization ═══
+// ═══ CubeSlots — upgrade cube visualization (petit indicateur compact) ═══
 export function CubeSlots({ total, filled, size = 8 }) {
   if (total <= 0) return null;
   return (
@@ -151,6 +196,87 @@ export function CubeSlots({ total, filled, size = 8 }) {
           opacity: i < filled ? 0.85 : 0.4,
         }} />
       ))}
+    </div>
+  );
+}
+
+// ═══ UpgradeSlot — case d'amélioration intégrée à la ligne de coût.
+// Plein = cube posé (réduction acquise) · pointillé = case encore disponible
+// pour un futur cube (aucune donnée cachée dans un compteur à part). ═══
+export function UpgradeSlot({ filled = false, size = 23, title }) {
+  return (
+    <div title={title} style={{
+      width: size, height: size, borderRadius: 4, flexShrink: 0,
+      background: filled ? "linear-gradient(160deg, var(--cube-active), var(--cube-border))" : "transparent",
+      border: filled ? "1.5px solid var(--cube-border)" : "1.5px dashed rgba(76,175,80,0.55)",
+      boxShadow: filled ? "inset 0 1px 0 rgba(255,255,255,0.32), 0 1px 2px rgba(0,0,0,0.4)" : "none",
+    }} />
+  );
+}
+
+// ═══ BuildingSlot — le pion Bâtiment de cette colonne : encore en réserve
+// (silhouette fantôme, pointillé) ou construit (icône pleine, effet révélé). ═══
+export function BuildingSlot({ Icon, name, effect, revealed, extra }) {
+  return (
+    <div title={revealed ? `${name} construit${extra ? ` (${extra})` : ""} — ${effect}` : `${name} — à construire (${effect})`} style={{
+      display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0,
+      padding: "5px 8px", borderRadius: 6,
+      border: `1px solid ${revealed ? "var(--gold-dim)" : "var(--border)"}`,
+      background: revealed ? "rgba(212,178,84,0.08)" : "rgba(196,160,96,0.03)",
+    }}>
+      <div style={{
+        width: 28, height: 28, flexShrink: 0, borderRadius: 5,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: revealed ? "rgba(212,178,84,0.15)" : "transparent",
+        border: revealed ? "1px solid var(--gold-dim)" : "1.5px dashed var(--border-dark)",
+      }}>
+        {Icon && <Icon size={16} color={revealed ? "var(--gold)" : "var(--text-ghost)"} />}
+      </div>
+      <div style={{ minWidth: 0, lineHeight: 1.25 }}>
+        <div style={{
+          fontFamily: "var(--font-title)", fontWeight: 600, fontSize: 12, letterSpacing: "0.05em",
+          textTransform: "uppercase", color: revealed ? "var(--text)" : "var(--text-dim)",
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+        }}>{name}{extra ? ` · ${extra}` : ""}</div>
+        <div style={{
+          fontSize: 11.5, color: revealed ? "var(--gold)" : "var(--text-muted)",
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+        }}>{effect}</div>
+      </div>
+    </div>
+  );
+}
+
+// ═══ RecruitSlot — l'emplacement Recrue de cette colonne : libre (cercle
+// fantôme pointillé) ou enrôlée (disque plein + bonus permanent affiché). ═══
+export function RecruitSlot({ Icon, label, placed }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 0,
+      padding: "5px 8px", borderRadius: 6,
+      border: `1px solid ${placed ? "#5a9a7a" : "var(--border)"}`,
+      background: placed ? "rgba(90,122,106,0.1)" : "rgba(90,122,106,0.03)",
+    }}>
+      <div style={{
+        width: 26, height: 26, flexShrink: 0, borderRadius: "50%",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        background: placed ? "radial-gradient(circle at 34% 30%, #7ac08a, #3d7a52 75%)" : "transparent",
+        border: placed ? "1px solid #2a5c3a" : "1.5px dashed var(--border-dark)",
+        boxShadow: placed ? "inset 0 1px 0 rgba(255,255,255,0.3)" : "none",
+      }} />
+      <div style={{ minWidth: 0, lineHeight: 1.25 }}>
+        <div style={{
+          fontFamily: "var(--font-title)", fontWeight: 600, fontSize: 12, letterSpacing: "0.05em",
+          textTransform: "uppercase", color: placed ? "#8fd0b0" : "var(--text-dim)",
+        }}>Recrue</div>
+        <div style={{
+          fontSize: 11.5, color: placed ? "#8fd0b0" : "var(--text-muted)",
+          display: "flex", alignItems: "center", gap: 4,
+          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+        }}>
+          {placed ? <>{Icon && <Icon size={12} color="#8fd0b0" />}{label}</> : "emplacement libre"}
+        </div>
+      </div>
     </div>
   );
 }
