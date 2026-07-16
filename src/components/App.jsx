@@ -30,7 +30,7 @@ import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from 
 import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { getPlanBottomBonus, auraPowerCount } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
-import { ActionRow, CubeSlots, RESOURCE_ICONS } from './svg/ActionIcons.jsx';
+import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, BuildingSlot, RecruitSlot, RESOURCE_ICONS, BUILDING_ICONS } from './svg/ActionIcons.jsx';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 import { TERRAIN_TEXTURES, TERRAIN_TILE } from '../assets/terrains/index.js';
 import { BOARD_IMAGE } from '../assets/map/index.js';
@@ -2839,11 +2839,22 @@ export default function App(){
                   Enlist:{prog:`${me.recruits||0}/4`,max:(me.recruits||0)>=4},
                 }[bottomAction]||{prog:"",max:false};
                 const hasRes=bc?countRes(me,bc.res)>=bc.qty:false;
-                const bottomPay=bc?Array(bc.qty).fill(bc.res):[];
                 // $ libéré à chaque cube d'upgrade posé ici (icône, pas chiffre)
                 const upBonus=(mat?.bottomCosts||[])[i]?.bonus||0;
                 // Cubes d'upgrade encore posables ici → autant de -1 sur le coût
                 const reducAvail=Math.max(0,maxBot-cubesBot);
+                // Part du coût jamais réductible (base moins le nombre total de cases d'amélioration)
+                const fixedQty=bc?Math.max(0,bc.base-maxBot):0;
+                const topPark=(mat?.topCubes||[])[i]||0;
+                // Bâtiment "domicilié" sur cette colonne (rangement, pas une règle de jeu :
+                // BUILDING_TYPES[i] est fixe, indépendant du top/bottom de ce plateau)
+                const colBuilding=BUILDING_TYPES[i];
+                const builtEntry=colBuilding?(me.buildings||[]).find(b=>b.type===colBuilding.type):null;
+                const BIcon=colBuilding?BUILDING_ICONS[colBuilding.type]:null;
+                // Recrue posée sur cette colonne (choix libre du joueur à l'enrôlement)
+                const recIdx=(me.enlistMap||[])[i];
+                const rec=recIdx!=null?ENLIST_ONGOING[recIdx]:null;
+                const RIcon=rec?RESOURCE_ICONS[rec.svgKey]:null;
                 // Action group separator: strong between pairs (after index 1), light between actions within a pair (after index 0, 2)
                 const isGroupEnd=i===1;
                 const isLastAction=i===3;
@@ -2865,26 +2876,30 @@ export default function App(){
                       <span style={{fontSize:15,fontWeight:800,color:disabled?"var(--text-muted)":"var(--rust-light)",fontFamily:"var(--font-title)"}}>{FR_TOP[action]||action}</span>
                       <span style={{fontSize:14,color:"var(--text-muted)"}}>·</span>
                       <span style={{fontSize:14,fontWeight:700,color:"var(--text-dim)",fontFamily:"var(--font-title)"}}>{FR_BOT[bottomAction]||bottomAction}</span>
-                      {disabled&&<span style={{marginLeft:"auto",fontSize:12,color:"var(--text-muted)",fontStyle:"italic"}}>joué</span>}
+                      {disabled?<span style={{marginLeft:"auto",fontSize:12,color:"var(--text-muted)",fontStyle:"italic"}}>joué</span>
+                        :<span style={{marginLeft:"auto",fontSize:12,fontWeight:700,color:bottomData.max?"var(--success)":"var(--gold-dim)",whiteSpace:"nowrap"}}>{bottomData.max?"✓ max":bottomData.prog}</span>}
                     </div>
-                    {/* RANGÉE HAUT */}
+                    {/* RANGÉE HAUT — gains de l'action + réserve de cubes d'amélioration */}
                     <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8}}>
                       <div style={{flex:1,minWidth:0}}><ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact /></div>
-                      <div title="Cubes disponibles sur cette action" style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}><CubeSlots total={cubesTop} filled={cubesTop} /></div>
+                      {topPark>0&&<div title={`${cubesTop}/${topPark} cube(s) d'amélioration encore en réserve sur ${FR_TOP[action]||action}`} style={{display:"flex",gap:3,flexShrink:0}}>
+                        {Array.from({length:topPark}).map((_,k)=><UpgradeSlot key={k} filled={k<cubesTop} size={20}/>)}
+                      </div>}
                     </div>
-                    {/* RANGÉE BAS */}
-                    <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8,background:"rgba(0,0,0,0.28)",borderTop:"1px solid var(--border)"}}>
-                      <div style={{flex:1,minWidth:0}}>
-                        {/* Coût (rouge) → gain concret (pièces libérées par l'upgrade) */}
-                        <ActionRow pay={bottomPay} gain={upBonus>0?Array(upBonus).fill("coins"):[bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":bottomAction==="Enlist"?"pop":"power"]} compact />
-                      </div>
-                      <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:3}}>
-                        {/* Recrue posée sur cette action (enrôlement) */}
-                        {(me.enlistMap||[])[i]!=null&&<span title={`Recrue : ${ENLIST_ONGOING[(me.enlistMap||[])[i]].label} quand vous/voisins faites ${FR_BOT[bottomAction]}`} style={{fontSize:12,padding:"1px 5px",borderRadius:8,background:"rgba(90,122,106,0.35)",border:"1px solid #5a9a7a",color:"#8fd0b0",fontWeight:700}}>🤝{ENLIST_ONGOING[(me.enlistMap||[])[i]].icon}</span>}
-                        <div title={`${cubesBot}/${maxBot} cube(s) d'amélioration posé(s) — chaque cube -1 coût`}><CubeSlots total={maxBot} filled={cubesBot} /></div>
-                        {reducAvail>0&&<span title={`${reducAvail} réduction(s) de coût encore possible(s) via Améliorer`} style={{fontSize:12,color:"#5cb85c",whiteSpace:"nowrap"}}>↓{reducAvail}</span>}
-                        <span style={{fontSize:13,fontWeight:700,color:bottomData.max?"var(--success)":"var(--gold-dim)",whiteSpace:"nowrap"}}>{bottomData.max?"✓ max":bottomData.prog}</span>
-                      </div>
+                    {/* RANGÉE BAS — coût lu comme une séquence : cases fixes → cubes déjà posés (réduction acquise) → cases pointillées (réduction encore possible) → gain */}
+                    <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:3,flexWrap:"wrap",background:"rgba(0,0,0,0.28)",borderTop:"1px solid var(--border)"}}>
+                      {bc&&<>
+                        {Array.from({length:fixedQty}).map((_,k)=><ActionSquare key={`f${k}`} type="cost" resource={bc.res} size={23}/>)}
+                        {Array.from({length:cubesBot}).map((_,k)=><UpgradeSlot key={`u${k}`} filled size={23} title="Réduction acquise (cube posé)"/>)}
+                        {Array.from({length:reducAvail}).map((_,k)=><UpgradeSlot key={`r${k}`} size={23} title="Réduction encore possible via Améliorer"/>)}
+                        <span style={{color:"var(--text-muted)",fontSize:10,margin:"0 1px"}}>→</span>
+                      </>}
+                      <ActionRow gain={upBonus>0?Array(upBonus).fill("coins"):[bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":bottomAction==="Enlist"?"pop":"power"]} compact />
+                    </div>
+                    {/* BANDE COLONNE — le bâtiment et la recrue « domiciliés » ici, façon plateau original */}
+                    <div style={{padding:"7px 10px 9px",display:"flex",alignItems:"stretch",gap:8,background:"rgba(0,0,0,0.16)",borderTop:"1px dashed var(--border)"}}>
+                      {colBuilding&&<BuildingSlot Icon={BIcon} name={colBuilding.name} effect={colBuilding.effect} revealed={!!builtEntry} extra={builtEntry?`#${builtEntry.hexId}`:null}/>}
+                      <RecruitSlot Icon={RIcon} label={rec?rec.label:null} placed={!!rec}/>
                     </div>
                   </button>
                   </React.Fragment>
