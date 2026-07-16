@@ -64,31 +64,38 @@ const HexResIcon = React.memo(({ cx, cy, resType }) => {
   return null;
 });
 
-export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory, isSrc, controlColor }) => {
+export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory, isSrc, controlColor, wireframe }) => {
   const t = TERRAINS[hex.t];
   const isWater = hex.t === "lac" || hex.t === "marecage";
   return (
     <g>
-      {/* Base fill — texture de terrain seamless (photo-réaliste) ; le dégradé
-          tg-<t> reste défini en secours mais la texture porte désormais le rendu */}
-      <polygon points={hPts(hex.rx, hex.ry)}
-        fill={`url(#tex-${hex.t})`}
-        stroke="#171310"
-        strokeWidth={2.2}
-      />
-      {/* Voile léger UNIQUEMENT sur les bords (vignette interne) : assombrit le
-          pourtour du hex pour la lecture des pions, tout en laissant vivre la
-          texture du terrain au centre. */}
-      <polygon points={hPts(hex.rx, hex.ry)} fill={`url(#hexvig)`} style={{ pointerEvents: "none" }} />
-      {/* Décors de terrain — atténués (la texture porte déjà l'identité visuelle),
-          gardés pour renforcer la lecture du type de terrain d'un coup d'œil */}
-      <g opacity={0.55}><TerrainDecor hex={hex} /></g>
-      {/* Cream board line between hexes (printed-board separation) */}
+      {wireframe ? (
+        // Mode fil de fer : le fond peint (image) porte le terrain ; l'hex n'est
+        // qu'une cible cliquable transparente (fill quasi nul, pas "none" sinon
+        // pas de hit-test) + un léger voile de bord pour la lecture des pions.
+        <>
+          <polygon points={hPts(hex.rx, hex.ry)} fill="rgba(0,0,0,0.001)" stroke="none" />
+          <polygon points={hPts(hex.rx, hex.ry)} fill={`url(#hexvig)`} style={{ pointerEvents: "none" }} />
+        </>
+      ) : (<>
+        {/* Base fill — texture de terrain seamless (photo-réaliste) */}
+        <polygon points={hPts(hex.rx, hex.ry)}
+          fill={`url(#tex-${hex.t})`}
+          stroke="#171310"
+          strokeWidth={2.2}
+        />
+        {/* Voile léger UNIQUEMENT sur les bords (vignette interne) */}
+        <polygon points={hPts(hex.rx, hex.ry)} fill={`url(#hexvig)`} style={{ pointerEvents: "none" }} />
+        {/* Décors de terrain — atténués (la texture porte déjà l'identité) */}
+        <g opacity={0.55}><TerrainDecor hex={hex} /></g>
+      </>)}
+      {/* Cream board line between hexes (printed-board separation) — c'est le
+          « fil de fer » quand un fond peint est affiché → plus marqué dans ce mode */}
       <polygon points={hPts(hex.rx, hex.ry, HS - 1)} fill="none"
-        stroke={isSel ? "#e6c96a" : isHov ? "#e0d2a8" : "#d8c9a3"}
-        strokeWidth={isSel ? 2.2 : isHov ? 1.6 : 1}
-        opacity={isSel ? 0.95 : isHov ? 0.7 : 0.4}
-        style={{ pointerEvents: "none" }}
+        stroke={isSel ? "#e6c96a" : isHov ? "#e0d2a8" : wireframe ? "#e8dcc0" : "#d8c9a3"}
+        strokeWidth={isSel ? 2.4 : isHov ? 1.8 : wireframe ? 1.5 : 1}
+        opacity={isSel ? 0.95 : isHov ? 0.8 : wireframe ? 0.62 : 0.4}
+        style={{ pointerEvents: "none", ...(wireframe ? { filter: "drop-shadow(0 0 1px rgba(10,8,4,0.85))" } : {}) }}
       />
       {/* Territorial control contour — hex fills are already saturated per-terrain,
           so "who controls this tile" is carried by a colored ring rather than a

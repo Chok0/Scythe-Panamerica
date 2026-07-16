@@ -33,6 +33,7 @@ import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from '
 import { ActionRow, CubeSlots, RESOURCE_ICONS } from './svg/ActionIcons.jsx';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 import { TERRAIN_TEXTURES, TERRAIN_TILE } from '../assets/terrains/index.js';
+import { BOARD_IMAGE } from '../assets/map/index.js';
 
 export default function App(){
   const[phase,setPhase]=useState("setup");
@@ -2267,6 +2268,9 @@ export default function App(){
             </radialGradient>
           </defs>
           <rect x="20" y="20" width="980" height="990" fill="url(#mapbg)"/>
+          {/* Fond de plateau peint (carte classique) — sous la grille en fil de fer.
+              Cadrage aligné sur la zone des hexagones ; ajustable via ces 4 valeurs. */}
+          {!randomMap && <image href={BOARD_IMAGE} x={44} y={30} width={952} height={968} preserveAspectRatio="none" opacity={0.98} style={{pointerEvents:"none"}}/>}
           <rect x="20" y="20" width="980" height="990" fill="url(#mapvig)"/>
           {/* Compass */}
           <g transform="translate(920,90)" opacity={0.2}>
@@ -2326,7 +2330,7 @@ export default function App(){
             // occupé par deux factions à la fois hors résolution de combat.
             const controlColor=!isBaseHex(hex.id)?(allHexContents[hex.id]?.[0]?.color||null):null;
             return(<g key={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
-              <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc} controlColor={controlColor}/>
+              <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc} controlColor={controlColor} wireframe={!randomMap}/>
               {/* Bonus de construction : pastille $ sur les tuiles qualifiées */}
               {isBonusTile&&<g style={{pointerEvents:"none"}}>
                 <circle cx={hex.rx-26} cy={hex.ry+24} r={8} fill="rgba(6,5,3,0.75)" stroke="#d4b254" strokeWidth={1}/>
