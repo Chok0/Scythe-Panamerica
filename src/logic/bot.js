@@ -4,7 +4,7 @@ import { hMap, ADJ, HEXES, HOME_BASES } from '../data/hexes.js';
 import { MATS, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, getBottomCost } from '../data/mats.js';
 import { countRes, spendRes, getWorkerHexes } from './resources.js';
 import { canPayProduce, payProduce } from './production.js';
-import { getValidMoves, findPathWaypoints } from './movement.js';
+import { getValidMoves, findPathWaypoints, marshToll } from './movement.js';
 import { transportUnits } from './transport.js';
 import { BOT_PROFILES } from './botProfiles.js';
 import { BALANCE } from '../data/balance.js';
@@ -328,6 +328,8 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       Object.assign(p, { resources: tr.player.resources });
       const tl = tr.carried.resTypes.length > 0 ? ` 📦${tr.carried.resTypes.join(",")}` : "";
       logs.push(`🤖 ${f.name}: ${f.hero} → #${target}${tl}`);
+      const heroToll = marshToll(p, target, "hero");
+      if (heroToll) logs.push(`🤖${heroToll}`);
       // Frente trap placement
       if (p.faction === "frente" && (p.trapTokens || []).length < 4 && !(p.trapTokens || []).some(t => t.hexId === target)) {
         p.trapTokens = [...(p.trapTokens || []), { hexId: target, disarmed: false }];
@@ -389,6 +391,8 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
           if (tr.carried.workers > 0) tl += ` 👷×${tr.carried.workers}`;
           if (tr.carried.resTypes.length > 0) tl += ` 📦${tr.carried.resTypes.join(",")}`;
           logs.push(`🤖 ${f.name}: Mech → #${mt}${tl}`);
+          const mechToll = marshToll(p, mt, "mech", tr.carried.workers);
+          if (mechToll) logs.push(`🤖${mechToll}`);
           mechMoved = true;
         }
       }
@@ -420,6 +424,8 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         } else {
           logs.push(`🤖 ${f.name}: Ouv. → #${wt}`);
         }
+        const wToll = marshToll(p, wt, "worker");
+        if (wToll) logs.push(`🤖${wToll}`);
       }
     }
   } else if (action === "Bolster") {

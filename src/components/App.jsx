@@ -4,16 +4,16 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { TERRAINS } from '../data/terrains.js';
 import { FACTIONS, FACTION_IDS } from '../data/factions.js';
-import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, CURRENT_MAP, DEFAULT_MAP, loadMap, baseHexAt, homeBaseHex, isBaseHex } from '../data/hexes.js';
+import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, CURRENT_MAP, DEFAULT_MAP, CLASSIC_V2_MAP, loadMap, baseHexAt, homeBaseHex, isBaseHex } from '../data/hexes.js';
 import { generateAcceptedMap } from '../data/mapGen.js';
 import { getCombatBonus } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
-import { EMPIRE_START, EMPIRE_RAILS, drawEmpireCombat } from '../data/empire.js';
+import { EMPIRE_START, drawEmpireCombat } from '../data/empire.js';
 import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA } from '../data/plans.js';
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
-import { pickStructureBonus, structureBonusDetail } from '../data/structureBonus.js';
+import { structureBonusDetail } from '../data/structureBonus.js';
 import { reconcileHand, topCardsSum, spendTopCards, handSummary } from '../logic/cards.js';
 import RulesPage from './RulesPage.jsx';
 import AmbientSound from './AmbientSound.jsx';
@@ -21,7 +21,7 @@ import SetupScreen from './SetupScreen.jsx';
 import { countRes, spendRes, getWorkerHexes } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel, PRODUCE_TIERS } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
-import { getValidMoves, findPathWaypoints } from '../logic/movement.js';
+import { getValidMoves, findPathWaypoints, marshToll } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer } from '../logic/player.js';
 import { botTurn } from '../logic/bot.js';
@@ -72,15 +72,16 @@ export default function App(){
   const[selFaction,setSelFaction]=useState(null);
   const[selMat,setSelMat]=useState(null);
   const[numBots,setNumBots]=useState(2);
-  const[randomMap,setRandomMap]=useState(false);
-  const[empireEnabled,setEmpireEnabled]=useState(true); // bots de l'Empire activables/désactivables au setup
+  const[mapChoice,setMapChoice]=useState("v3"); // "v3" (défaut) | "v2" (configuration initiale) | "random" (procédurale)
+  // Bots de l'Empire désactivés par défaut — mécanique réservée au mode campagne
+  const[empireEnabled,setEmpireEnabled]=useState(false);
   const[difficulty,setDifficulty]=useState("normal");
   const[structureBonus,setStructureBonus]=useState(null); // tuile bonus de construction tirée au début
   const[players,setPlayers]=useState([]);
   const[currentP,setCurrentP]=useState(0);
   const[turn,setTurn]=useState(1);
   const[empire,setEmpire]=useState(Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])));
-  const[rails,setRails]=useState([...EMPIRE_RAILS]); // shared rail network: array of [hexA, hexB]
+  const[rails,setRails]=useState([]); // shared rail network: array of [hexA, hexB] — la carte de base démarre SANS rails (EMPIRE_RAILS réservés à la campagne)
   const[railPlacement,setRailPlacement]=useState(null); // {remaining:3, fromHex:null} for placing rails after Gare build
   const[selHex,setSelHex]=useState(null);
   const[selAction,setSelAction]=useState(null);
@@ -306,23 +307,26 @@ export default function App(){
 
   const startGame=useCallback(()=>{
     if(!selFaction||!selMat)return;
-    // Carte : procédurale (validée par les règles de non-acceptation) ou celle d'origine
-    if(randomMap){
+    // Carte : v3 (défaut), configuration initiale (v2), ou procédurale
+    if(mapChoice==="random"){
       const gen=generateAcceptedMap(Math.random);
       loadMap(gen.map);
       addLog(`🗺 Carte procédurale générée (${gen.tries} essai${gen.tries>1?"s":""})`);
+    } else if(mapChoice==="v2"){
+      loadMap(CLASSIC_V2_MAP);
+      addLog(`🗺 Carte classique — configuration initiale (v2)`);
     } else {
       loadMap(DEFAULT_MAP);
     }
     setEncounterTokens(new Set(CURRENT_MAP.encounterHexes));
     setEmpire(empireEnabled?Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])):{});
-    if(!empireEnabled)addLog(`🤖 Bots de l'Empire désactivés pour cette partie`);
-    setRails([...EMPIRE_RAILS]);
+    if(empireEnabled)addLog(`🤖 Bots de l'Empire activés (mécanique campagne)`);
+    // La carte de base démarre sans rails — seules les Gares en posent
+    setRails([]);
     setRrVisitors(0);
-    // Bonus de construction : tuile tirée au hasard, visible de tous
-    const sb=pickStructureBonus();
-    setStructureBonus(sb);
-    addLog(`🏦 Bonus de construction : ${sb.icon} ${sb.name} — +${sb.coins}$ ${sb.desc}`);
+    // 🏦 Tuiles bonus $ retirées du jeu de base — l'idée est réservée à la
+    // mission « Ruée vers l'or » du mode campagne (voir docs/campagne.md)
+    setStructureBonus(null);
     const usedFactions=[selFaction];const usedMats=[selMat];
     const ps=[createPlayer(selFaction,selMat,false)];
     const availF=FACTION_IDS.filter(f=>!usedFactions.includes(f));
@@ -357,7 +361,7 @@ export default function App(){
       const y=Math.max(MAP_BASE.y,Math.min(MAP_BASE.y+MAP_BASE.h-zh,heroHex.ry-zh/2));
       setMapView({x,y,w:zw,h:zh});
     }
-  },[selFaction,selMat,numBots,randomMap,empireEnabled,difficulty,addLog]);
+  },[selFaction,selMat,numBots,mapChoice,empireEnabled,difficulty,addLog]);
 
   const revealObjective=useCallback((objIdx)=>{
     const p=players[0];if(!p||p.objectiveRevealed)return;
@@ -871,10 +875,12 @@ export default function App(){
   // ongoing, bonus de bâtiment au Bolster…) fait « pop » l'icône correspondante.
   // Joueur → près de la barre du haut ; adversaires → mini au-dessus de leur base.
   const prevStatsRef=useRef(null);
-  const spawnFloater=useCallback((icon,color,x,y,mini)=>{
+  // variant : "big" (gains du joueur — gros toast au centre de l'écran),
+  // "mini" (gains adverses au-dessus de leur base), sinon taille standard
+  const spawnFloater=useCallback((icon,color,x,y,variant)=>{
     const id=`${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
-    setFloaters(f=>[...f,{id,icon,color,x,y,mini}]);
-    setTimeout(()=>setFloaters(f=>f.filter(z=>z.id!==id)),1500);
+    setFloaters(f=>[...f,{id,icon,color,x,y,variant}]);
+    setTimeout(()=>setFloaters(f=>f.filter(z=>z.id!==id)),variant==="big"?1800:1500);
   },[]);
   useEffect(()=>{
     if(phase!=="playing"||players.length===0){prevStatsRef.current=null;return;}
@@ -891,14 +897,17 @@ export default function App(){
           const d=snap[pi][k]-pr[k];
           if(d>0&&d<=12){
             if(pi===0){
-              const bx=window.innerWidth*0.34+stack*30;
-              spawnFloater(`+${d>1?d:""}${icon}`,color,bx,54,false);
+              // Gain du joueur : gros toast au CENTRE de l'écran (empilé
+              // verticalement si plusieurs gains simultanés)
+              const bx=window.innerWidth*0.5;
+              const by=window.innerHeight*0.40+stack*72;
+              spawnFloater(`+${d>1?d:""}${icon}`,color,bx,by,"big");
             } else if(rect&&mv){
               const hb=HOME_BASES[p.faction];
               const sx=rect.left+(hb.rx-mv.x)/mv.w*rect.width;
               const sy=rect.top+(hb.ry-mv.y)/mv.h*rect.height;
               if(sx>rect.left&&sx<rect.right&&sy>rect.top&&sy<rect.bottom)
-                spawnFloater(`+${d>1?d:""}${icon}`,color,sx+stack*16,sy-24,true);
+                spawnFloater(`+${d>1?d:""}${icon}`,color,sx+stack*16,sy-24,"mini");
             }
             stack++;
           }
@@ -1148,6 +1157,7 @@ export default function App(){
       Object.keys(me.resources).forEach(k=>{p.resources[k]={...me.resources[k]};});
       const fromHex=moveSource.fromHex;
       let transportLog="";
+      let marshCarried=0; // ouvriers transportés par un mecha → paient aussi le péage
       
       // ── SCYTHE RULE: workers cannot enter enemy-occupied hexes ──
       if(moveSource.unitType==="worker"){
@@ -1171,6 +1181,7 @@ export default function App(){
         // ressources restent (stratégie d'expansion : le mech continue seul)
         const tr=transportUnits(p, fromHex, hexId, "mech", {carryWorkers:carryOnMove,carryRes:carryOnMove});
         p=tr.player;
+        marshCarried=tr.carried.workers;
         if(tr.carried.workers>0) transportLog+=` 👷×${tr.carried.workers}`;
         if(tr.carried.resTypes.length>0) transportLog+=` 📦${tr.carried.resTypes.join(",")}`;
       }
@@ -1184,6 +1195,10 @@ export default function App(){
         }
       }
       
+      // ── PÉAGE DE MARÉCAGE : -1♥ par ouvrier, -1⚡ par unité de combat qui y entre ──
+      const toll=marshToll(p,hexId,moveSource.unitType,marshCarried);
+      if(toll)addLog(toll);
+
       p.movesLeft=(me.movesLeft||moveLimit)-1;p.movedUnits=[...(me.movedUnits||[]),moveSource.unitId];
 
       // ── PLAN « Iron Horse » (move_mine) : chaque déplacement mine 1 ressource du terrain d'arrivée ──
@@ -1923,7 +1938,7 @@ export default function App(){
 
   // ══════════ SETUP SCREEN ══════════
   if(phase==="setup"){
-    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} randomMap={randomMap} setRandomMap={setRandomMap} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
+    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} mapChoice={mapChoice} setMapChoice={setMapChoice} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
   }
 
   // (pick_objective phase removed — player keeps both objectives per Scythe rules)
@@ -1973,6 +1988,33 @@ export default function App(){
         starScore,terScore,resScore,total,starMult,terMult,resMult,
         sbCount:sbDetail.count,sbCoins:sbDetail.coins};
     }).sort((a,b)=>b.total-a.total);
+
+    // Export du journal de partie (JSON) — données pour l'entraînement de l'IA
+    // et l'étude des bugs : classement complet + log horodaté de tous les coups
+    const downloadJournal=()=>{
+      const data={
+        jeu:"Scythe Panamerica",
+        date:new Date().toISOString(),
+        carte:CURRENT_MAP.name,
+        tours:turn,
+        difficulte:difficulty,
+        classement:scores.map((s,i)=>({
+          rang:i+1,faction:s.faction,nom:s.name,bot:s.isBot,total:s.total,
+          etoiles:s.stars,pop:s.pop,palier_pop:["0-6","7-12","13-18"][s.popTier],
+          territoires:s.territories,bonus_usine:s.factoryBonus,comptoirs:s.flagBonus,
+          ressources:s.totalRes,paires:s.resPairs,argent:s.coins,
+          detail:{etoiles:s.starScore,territoires:s.terScore,ressources:s.resScore},
+        })),
+        journal:log.map(e=>({tour:e.turn,etape:e.step,cat:e.cat,ts:e.ts,msg:e.msg})),
+      };
+      const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;
+      a.download=`scythe-journal-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`;
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
 
     return(
       <div style={{minHeight:"100vh",background:"linear-gradient(170deg,#1A1710 0%,#1A1710 40%,#1A1710 100%)",color:"var(--text)",display:"flex",flexDirection:"column",alignItems:"center",padding:"32px 16px",overflow:"auto"}}>
@@ -2026,11 +2068,18 @@ export default function App(){
           ))}
         </div>
 
-        <button onClick={()=>{setPhase("setup");setPlayers([]);setLog([]);setTurn(1);setEmpire(Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])));setRails([...EMPIRE_RAILS]);setRailPlacement(null);setSelFaction(null);setSelMat(null);}} style={{
-          marginTop:24,padding:"12px 40px",fontSize:15,letterSpacing:4,textTransform:"uppercase",
-          background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:6,fontWeight:700,
-          fontFamily:"var(--font-title)",cursor:"pointer",
-        }}>Nouvelle Partie</button>
+        <div style={{display:"flex",gap:12,marginTop:24,flexWrap:"wrap",justifyContent:"center"}}>
+          <button onClick={()=>{setPhase("setup");setPlayers([]);setLog([]);setTurn(1);setEmpire({});setRails([]);setRailPlacement(null);setSelFaction(null);setSelMat(null);}} style={{
+            padding:"12px 40px",fontSize:15,letterSpacing:4,textTransform:"uppercase",
+            background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:6,fontWeight:700,
+            fontFamily:"var(--font-title)",cursor:"pointer",
+          }}>Nouvelle Partie</button>
+          <button onClick={downloadJournal} title="Exporter le journal complet de la partie en JSON (classement + tous les coups) — utile pour analyser l'IA et les bugs" style={{
+            padding:"12px 30px",fontSize:15,letterSpacing:2,textTransform:"uppercase",
+            background:"transparent",color:"var(--gold)",border:"1px solid var(--gold-dim)",borderRadius:6,fontWeight:700,
+            fontFamily:"var(--font-title)",cursor:"pointer",
+          }}>💾 Télécharger le journal</button>
+        </div>
       </div>
     );
   }
@@ -2341,7 +2390,7 @@ export default function App(){
           <rect x="20" y="20" width="980" height="990" fill="url(#mapbg)"/>
           {/* Fond de plateau peint (carte classique) — sous la grille en fil de fer.
               Cadrage aligné sur la zone des hexagones ; ajustable via ces 4 valeurs. */}
-          {!randomMap && <image href={BOARD_IMAGE} x={44} y={30} width={952} height={968} preserveAspectRatio="none" opacity={0.98} style={{pointerEvents:"none"}}/>}
+          {mapChoice!=="random" && <image href={BOARD_IMAGE} x={44} y={30} width={952} height={968} preserveAspectRatio="none" opacity={0.98} style={{pointerEvents:"none"}}/>}
           <rect x="20" y="20" width="980" height="990" fill="url(#mapvig)"/>
           {/* Compass */}
           <g transform="translate(920,90)" opacity={0.2}>
@@ -2401,7 +2450,7 @@ export default function App(){
             // occupé par deux factions à la fois hors résolution de combat.
             const controlColor=!isBaseHex(hex.id)?(allHexContents[hex.id]?.[0]?.color||null):null;
             return(<g key={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
-              <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc} controlColor={controlColor} wireframe={!randomMap}/>
+              <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc} controlColor={controlColor} wireframe={mapChoice!=="random"}/>
               {/* Bonus de construction : pastille $ sur les tuiles qualifiées */}
               {isBonusTile&&<g style={{pointerEvents:"none"}}>
                 <circle cx={hex.rx-26} cy={hex.ry+24} r={8} fill="rgba(6,5,3,0.75)" stroke="#d4b254" strokeWidth={1}/>
@@ -3503,8 +3552,8 @@ export default function App(){
           {floaters.map(f=>(
             <div key={f.id} className="floater" style={{
               position:"absolute",left:f.x,top:f.y,transform:"translate(-50%,-50%)",
-              fontSize:f.mini?13:22,fontWeight:900,color:f.color,
-              textShadow:"0 1px 3px rgba(0,0,0,0.9),0 0 6px rgba(0,0,0,0.6)",
+              fontSize:f.variant==="big"?58:f.variant==="mini"?13:22,fontWeight:900,color:f.color,
+              textShadow:f.variant==="big"?"0 2px 6px rgba(0,0,0,0.95),0 0 18px rgba(0,0,0,0.7)":"0 1px 3px rgba(0,0,0,0.9),0 0 6px rgba(0,0,0,0.6)",
               fontFamily:"var(--font-title)",whiteSpace:"nowrap",
             }}>{f.icon}</div>
           ))}

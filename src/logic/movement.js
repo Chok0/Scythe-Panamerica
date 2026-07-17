@@ -56,7 +56,8 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails, 
     // Hex de base : seul son propriétaire peut y entrer (retraite/départ)
     if (to.base) return to.faction === factionId;
     if (to.t === "lac") return hasPosition && factionId === "acadiane";
-    if (to.t === "marecage" && !(hasPosition && factionId === "bayou")) return false;
+    // Marécage : franchissable par tous (règle du péage — voir marshToll) ;
+    // l'arrêt forcé est géré dans getValidMoves/findPathWaypoints.
     if (adj.includes(toId) && hasR(fromId, toId)) {
       if (ignoreRivers) return true;
       if (hasRiverwalk) return f.riverwalk.includes(to.t);
@@ -87,7 +88,14 @@ export const getValidMoves = (fromId, factionId, abilities, player, rails, unitT
   let frontier = [fromId];
   for (let s = 0; s < steps; s++) {
     const next = [];
-    const reach = (id) => { if (id !== fromId && !all.has(id)) { all.add(id); next.push(id); } };
+    // Arrêt forcé sur marécage : l'hex est atteignable mais ne ré-alimente pas
+    // la frontière — impossible de le traverser sans s'y arrêter.
+    const reach = (id) => {
+      if (id !== fromId && !all.has(id)) {
+        all.add(id);
+        if (hMap[id]?.t !== "marecage") next.push(id);
+      }
+    };
     frontier.forEach(fid => {
       // Rail hexes themselves are valid destinations (free teleport)
       const railNet = getRailNetwork(fid, rails);
@@ -104,6 +112,28 @@ export const getValidMoves = (fromId, factionId, abilities, player, rails, unitT
   return [...all];
 };
 
+// ── Péage de marécage ──
+// Tout le monde peut entrer sur un marécage, mais la traversée se paie :
+//   -1 popularité par OUVRIER qui y entre, -1 puissance par unité de COMBAT
+//   (héros ou mecha) — les ouvriers transportés par un mecha paient aussi.
+// Mute `p` en place et rend un libellé de log ("" si pas de marécage).
+export const marshToll = (p, toId, unitType, carriedWorkers = 0) => {
+  if (hMap[toId]?.t !== "marecage") return "";
+  const parts = [];
+  if (unitType === "worker") {
+    p.pop = Math.max(0, p.pop - 1);
+    parts.push("-1♥");
+  } else {
+    p.power = Math.max(0, p.power - 1);
+    parts.push("-1⚡");
+    if (carriedWorkers > 0) {
+      p.pop = Math.max(0, p.pop - carriedWorkers);
+      parts.push(`-${carriedWorkers}♥`);
+    }
+  }
+  return `≋ péage marécage #${toId} : ${parts.join(" ")}`;
+};
+
 // ── Trajet : reconstitue les ÉTAPES d'un déplacement from→to ──
 // Rend les hexes intermédiaires (hors départ/arrivée) où l'unité « passe » :
 // c'est là qu'un mech peut DÉPOSER un ouvrier ou du matériel en cours de route
@@ -116,6 +146,9 @@ export const findPathWaypoints = (fromId, toId, factionId, abilities, player, ra
   let found = false;
   while (queue.length > 0 && !found) {
     const cur = queue.shift();
+    // Un marécage ne peut pas être traversé (arrêt forcé) : on n'étend pas le
+    // chemin depuis un marécage, sauf s'il est l'hex de départ.
+    if (cur !== fromId && hMap[cur]?.t === "marecage") continue;
     const nexts = new Set(getValidMoves1Step(cur, factionId, abilities, player, rails));
     const rn = getRailNetwork(cur, rails);
     if (rn) rn.forEach(rid => nexts.add(rid));
