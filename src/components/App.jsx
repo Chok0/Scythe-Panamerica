@@ -97,6 +97,8 @@ export default function App(){
   const[encounterTokens,setEncounterTokens]=useState(new Set(CURRENT_MAP.encounterHexes));
   const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
   const[moveSource,setMoveSource]=useState(null);
+  // Transport partiel (mech) : choix des ouvriers/ressources à emporter avant le déplacement
+  const[transportPick,setTransportPick]=useState(null);
   const[unitPicker,setUnitPicker]=useState(null); // {hexId,units:[{type,id,label}]} — plusieurs unités sur le hex cliqué
   const[carryOnMove,setCarryOnMove]=useState(true); // 🚚 emporter ouvriers/ressources au Move
   const[routeDrop,setRouteDrop]=useState(null); // 📦 dépose en route: {mids,destHex,endAfter}
@@ -1082,7 +1084,9 @@ export default function App(){
     }
   },[players,phase,addLog]);
 
-  const handleHexClick=useCallback((hexId)=>{
+  // transportOverride : {transport:{workers,res}} — quantités choisies dans le
+  // panneau de transport partiel (repasse par ce même flux après validation)
+  const handleHexClick=useCallback((hexId,transportOverride)=>{
     if(wasDragging.current){wasDragging.current=false;return;} // suppress click after drag
     if(phase!=="playing"||botRunning||combat)return;
     // Ripple effect on click
@@ -1172,6 +1176,19 @@ export default function App(){
         }
       }
       
+      // ── TRANSPORT PARTIEL (mech) : s'il y a de quoi emporter, ouvrir le
+      // panneau de quantités au lieu d'exécuter — la validation repasse ici
+      // avec transportOverride ──
+      if(moveSource.unitType==="mech"&&carryOnMove&&!transportOverride){
+        const wOnHex=me.workers.filter(w=>w.hexId===moveSource.fromHex).length;
+        const resOnHex=Object.fromEntries(Object.entries(me.resources[String(moveSource.fromHex)]||{}).filter(([,q])=>q>0));
+        if(wOnHex>0||Object.keys(resOnHex).length>0){
+          setTransportPick({toHex:hexId,fromHex:moveSource.fromHex,workersMax:wOnHex,workers:wOnHex,resMax:resOnHex,res:{...resOnHex}});
+          return;
+        }
+      }
+      setTransportPick(null);
+
       // No combat: normal move with TRANSPORT (Scythe rules)
       let p={...me, workers:[...me.workers], mechs:[...me.mechs], resources:{...me.resources}};
       Object.keys(me.resources).forEach(k=>{p.resources[k]={...me.resources[k]};});
@@ -1198,8 +1215,12 @@ export default function App(){
       else if(moveSource.unitType==="mech"){
         p.mechs=p.mechs.map(m=>m.id===moveSource.unitId?{...m,hexId}:m);
         // Mech carries workers + resources — 🚚 désactivé = les ouvriers et
-        // ressources restent (stratégie d'expansion : le mech continue seul)
-        const tr=transportUnits(p, fromHex, hexId, "mech", {carryWorkers:carryOnMove,carryRes:carryOnMove});
+        // ressources restent (stratégie d'expansion : le mech continue seul).
+        // Avec transport partiel validé : quantités choisies, le reste sur place.
+        const tp=transportOverride?.transport;
+        const tr=transportUnits(p, fromHex, hexId, "mech", tp
+          ?{carryWorkers:tp.workers>0,carryRes:true,workerCount:tp.workers,resCounts:tp.res}
+          :{carryWorkers:carryOnMove,carryRes:carryOnMove});
         p=tr.player;
         marshCarried=tr.carried.workers;
         if(tr.carried.workers>0) transportLog+=` 👷×${tr.carried.workers}`;
@@ -1386,7 +1407,7 @@ export default function App(){
       else{setMoveSource(null);setUnitPicker({hexId,units});}
       return;
     }
-    if(moveSource){setMoveSource(null);return;}
+    if(moveSource){setMoveSource(null);setTransportPick(null);return;}
     setUnitPicker(null);
     setSelHex(hexId);
   },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory]);
@@ -2627,6 +2648,42 @@ export default function App(){
           </div>
         )}
 
+        {/* ═══ TRANSPORT PARTIEL — choisir ce que le mech emporte ═══ */}
+        {transportPick&&(()=>{
+          const stepBtn={width:26,height:26,borderRadius:5,border:"1px solid var(--border)",background:"var(--bg3)",color:"var(--text)",cursor:"pointer",fontSize:15,fontWeight:700,lineHeight:1};
+          const rowStyle={display:"flex",alignItems:"center",gap:8,marginBottom:6};
+          const EMOJI={metal:"⚙",bois:"🪵",nourriture:"🌽",petrole:"🛢"};
+          return(
+          <div style={{position:"absolute",bottom:16,left:"50%",transform:"translateX(-50%)",zIndex:8,minWidth:270,
+            background:"rgba(14,12,8,0.95)",border:"1px solid var(--gold-dim)",borderRadius:10,
+            padding:"10px 14px",boxShadow:"0 6px 30px rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",animation:"slideUp 0.2s ease"}}>
+            <div style={{fontSize:14,color:"var(--gold)",fontWeight:700,marginBottom:8,fontFamily:"var(--font-title)"}}>🚚 Transport #{transportPick.fromHex} → #{transportPick.toHex}</div>
+            {transportPick.workersMax>0&&(
+              <div style={rowStyle}>
+                <span style={{width:104,fontSize:14}}>👷 Ouvriers</span>
+                <button style={stepBtn} onClick={()=>setTransportPick(tp=>({...tp,workers:Math.max(0,tp.workers-1)}))}>−</button>
+                <span style={{fontFamily:"var(--font-mono)",fontSize:14,minWidth:40,textAlign:"center"}}>{transportPick.workers}/{transportPick.workersMax}</span>
+                <button style={stepBtn} onClick={()=>setTransportPick(tp=>({...tp,workers:Math.min(tp.workersMax,tp.workers+1)}))}>+</button>
+              </div>
+            )}
+            {Object.entries(transportPick.resMax).map(([rt,mx])=>(
+              <div key={rt} style={rowStyle}>
+                <span style={{width:104,fontSize:14}}>{EMOJI[rt]||"📦"} {rt}</span>
+                <button style={stepBtn} onClick={()=>setTransportPick(tp=>({...tp,res:{...tp.res,[rt]:Math.max(0,(tp.res[rt]||0)-1)}}))}>−</button>
+                <span style={{fontFamily:"var(--font-mono)",fontSize:14,minWidth:40,textAlign:"center"}}>{transportPick.res[rt]||0}/{mx}</span>
+                <button style={stepBtn} onClick={()=>setTransportPick(tp=>({...tp,res:{...tp.res,[rt]:Math.min(mx,(tp.res[rt]||0)+1)}}))}>+</button>
+              </div>
+            ))}
+            <div style={{display:"flex",gap:6,marginTop:8}}>
+              <button className="act-btn" style={{fontSize:13,minHeight:34}} onClick={()=>setTransportPick(tp=>({...tp,workers:0,res:Object.fromEntries(Object.keys(tp.resMax).map(k=>[k,0]))}))}>Rien</button>
+              <button className="act-btn" style={{fontSize:13,minHeight:34}} onClick={()=>setTransportPick(tp=>({...tp,workers:tp.workersMax,res:{...tp.resMax}}))}>Tout</button>
+              <button className="act-btn" style={{flex:1,fontWeight:700,minHeight:34,background:"#3a6a3a",color:"#fff",border:"none"}}
+                onClick={()=>{const tp=transportPick;setTransportPick(null);handleHexClick(tp.toHex,{transport:{workers:tp.workers,res:tp.res}});}}>✓ Déplacer</button>
+              <button className="act-btn" style={{fontSize:14,minHeight:34,opacity:0.7}} onClick={()=>setTransportPick(null)}>✕</button>
+            </div>
+          </div>);
+        })()}
+
         {/* ═══ MODAL OVERLAYS (combat/encounter/RR) ═══ */}
         {(combat||encounter||encounterBuild||encounterEnlist||rougeRiver)&&(
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
@@ -3233,7 +3290,7 @@ export default function App(){
                   <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité (à la place)</button>
                 </div>}
               </div>);})()}
-              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
+              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setTransportPick(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
             </div>
           )}
 

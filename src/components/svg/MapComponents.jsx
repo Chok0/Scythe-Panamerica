@@ -3,6 +3,7 @@ import { TERRAINS } from '../../data/terrains.js';
 import { hPts, HS } from '../../logic/hexMath.js';
 import { TerrainDecor } from './TerrainDecor.jsx';
 import { FACTION_ICON_MAP, HERO_ICON_MAP, WORKER_ICON_MAP } from './FactionIcons.jsx';
+import { RESOURCE_ICONS } from './ActionIcons.jsx';
 
 // DA: painted-board hex rendering — bright terrain fills, dark gutter between
 // hexes with a thin cream separation line like the printed Scythe board
@@ -267,16 +268,20 @@ export const EmpireMecha = React.memo(({ cx, cy, eid }) => {
   );
 });
 
-// Resource token — clean, SVG icon instead of emoji
+// Resource token — icône SVG de la ressource + quantité (le rectangle nu
+// avec un simple chiffre ne disait pas QUELLE ressource était posée là)
 export const ResourceToken = React.memo(({ cx, cy, resType, count }) => {
   const cfg = {
-    metal: { bg: "#3A3A3A", border: "#8A8A8A" },
-    bois: { bg: "#2D3A1A", border: "#5A7A3A" },
-    nourriture: { bg: "#3A3018", border: "#9A8A30" },
-    petrole: { bg: "#1A1A20", border: "#6A6A7A" },
-  }[resType] || { bg: "#333", border: "#888" };
+    metal: { bg: "#3A3A3A", border: "#8A8A8A", icon: "#c8c8d0" },
+    bois: { bg: "#2D3A1A", border: "#5A7A3A", icon: "#9fc878" },
+    nourriture: { bg: "#3A3018", border: "#9A8A30", icon: "#e0c860" },
+    petrole: { bg: "#1A1A20", border: "#6A6A7A", icon: "#a8a8c0" },
+  }[resType] || { bg: "#333", border: "#888", icon: "#E8DCC8" };
+  const Icon = RESOURCE_ICONS[resType];
   return (<g>
-    <rect x={cx - 14} y={cy - 8} width={28} height={16} rx={3} fill={cfg.bg} stroke={cfg.border} strokeWidth={1} opacity={0.95} />
-    <text x={cx} y={cy + 5} textAnchor="middle" fontSize={11} fill="#E8DCC8" fontWeight={700} style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{count}</text>
+    <title>{`${count} ${resType}`}</title>
+    <rect x={cx - 20} y={cy - 9} width={40} height={18} rx={4} fill={cfg.bg} stroke={cfg.border} strokeWidth={1} opacity={0.95} />
+    {Icon && <g transform={`translate(${cx - 17}, ${cy - 7})`}><Icon size={14} color={cfg.icon} /></g>}
+    <text x={cx + 8} y={cy + 4.5} textAnchor="middle" fontSize={11} fill="#E8DCC8" fontWeight={700} style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{count}</text>
   </g>);
 });
