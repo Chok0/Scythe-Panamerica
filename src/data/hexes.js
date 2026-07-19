@@ -54,6 +54,14 @@ export const HOME_BASES = {
   dominion: { rx: 395, ry: 65 },
 };
 
+// Hexes touchés par chaque base sur les cartes par défaut (miroir des
+// workerHex de factions.js — pas importé d'ici pour éviter un cycle).
+// Les cartes générées fournissent map.starts[fid].workerHex à la place.
+const DEFAULT_START_HEXES = {
+  confederation: [36, 32], frente: [41, 45], nations: [10, 17],
+  acadiane: [2, 6], bayou: [35, 28], dominion: [0, 4],
+};
+
 const computeAdj = (hexes) => {
   const a = {};
   hexes.forEach(h => { a[h.id] = []; });
@@ -78,11 +86,12 @@ export const LEGACY_MAP = {
 };
 
 // ── v3 (carte par défaut) : retouches terrain + rivières ──
-// Terrains : 8→forêt, 11→toundra (pétrole), 12→plaine, 16→montagne (métal),
-// 28→village, 37→montagne, 38→désert (pétrole)
+// Terrains : 6→village, 8→forêt, 11→toundra (pétrole), 12→plaine,
+// 16→montagne (métal), 37→montagne, 38→désert (pétrole)
+// (28 reste forêt : le bois du Bayou vient de là)
 const V3_TERRAIN_CHANGES = {
-  8: "foret", 11: "toundra", 12: "plaine", 16: "montagne",
-  28: "village", 37: "montagne", 38: "desert",
+  6: "village", 8: "foret", 11: "toundra", 12: "plaine", 16: "montagne",
+  37: "montagne", 38: "desert",
 };
 const V3_HEXES = DEFAULT_HEXES.map(h => V3_TERRAIN_CHANGES[h.id] ? { ...h, t: V3_TERRAIN_CHANGES[h.id] } : h);
 // Rivières retirées en v3 : bords de lacs superflus (5, 13) et abords des
@@ -145,22 +154,29 @@ export const loadMap = (map) => {
   // ── Hexes de base virtuels : un « hex invisible » sous chaque drapeau ──
   // Présents dans hMap + ADJ (le mouvement/les retraites fonctionnent) mais
   // PAS dans HEXES (pas de tuile rendue, pas de terrain, pas de score).
-  // Chaque base est reliée à l'hex terrestre le plus proche : le héros en sort
-  // au 1er déplacement et les unités vaincues y reviennent.
+  // Comme sur le plateau physique, chaque base touche les DEUX hexes de départ
+  // de sa faction : le héros peut sortir vers l'un ou l'autre, et les unités
+  // vaincues y reviennent.
   HOME_BASE_HEX = {};
   Object.entries(HOME_BASES).forEach(([fac, hb], i) => {
     const id = 900 + i;
-    // Hex terrestre le plus proche du drapeau (point d'entrée sur le plateau)
-    const near = map.hexes.reduce((best, h) => {
-      if (h.t === "lac" || h.t === "marecage") return best;
-      const d = (h.rx - hb.rx) ** 2 + (h.ry - hb.ry) ** 2;
-      const db = best ? (best.rx - hb.rx) ** 2 + (best.ry - hb.ry) ** 2 : Infinity;
-      return d < db ? h : best;
-    }, null);
     hMap[id] = { id, rx: hb.rx, ry: hb.ry, t: "base", base: true, faction: fac };
     HOME_BASE_HEX[fac] = id;
     ADJ[id] = [];
-    if (near) { ADJ[id].push(near.id); (ADJ[near.id] = ADJ[near.id] || []).push(id); }
+    const startHexes = (map.starts?.[fac]?.workerHex || DEFAULT_START_HEXES[fac] || [])
+      .filter(sid => hMap[sid] && !hMap[sid].base);
+    let links = [...new Set(startHexes)];
+    if (!links.length) {
+      // Repli (carte sans starts connus) : hex terrestre le plus proche du drapeau
+      const near = map.hexes.reduce((best, h) => {
+        if (h.t === "lac" || h.t === "marecage") return best;
+        const d = (h.rx - hb.rx) ** 2 + (h.ry - hb.ry) ** 2;
+        const db = best ? (best.rx - hb.rx) ** 2 + (best.ry - hb.ry) ** 2 : Infinity;
+        return d < db ? h : best;
+      }, null);
+      if (near) links = [near.id];
+    }
+    links.forEach(sid => { ADJ[id].push(sid); (ADJ[sid] = ADJ[sid] || []).push(id); });
   });
 };
 
