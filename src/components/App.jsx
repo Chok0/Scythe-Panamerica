@@ -31,6 +31,7 @@ import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { getPlanBottomBonus, auraPowerCount } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
 import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, RESOURCE_ICONS, BUILDING_ICONS } from './svg/ActionIcons.jsx';
+import { getMechAbilities } from '../data/mechAbilities.js';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 import { TERRAIN_TEXTURES, TERRAIN_TILE } from '../assets/terrains/index.js';
 import { BOARD_IMAGE } from '../assets/map/index.js';
@@ -674,9 +675,9 @@ export default function App(){
 
   // ── BOTTOM-ROW: DEPLOY ──
   // Nations "Esprit Sauvage": can deploy with metal OR bois
-  const ABILITY_NAMES=["Speed","Riverwalk","Combat","Position"];
-  const ABILITY_DESC=["Déplacement +1 hex","Traverser rivières","Bonus combat +1⚡","Recul au choix"];
-  const ABILITY_ICONS=["🏃","🌊","⚔","📍"];
+  // Capacités de mecha SPÉCIFIQUES à la faction du joueur (noms + descriptions
+  // depuis data/mechAbilities.js — les mécaniques sont dans movement/combat)
+  const myMechAbilities=getMechAbilities(me?.faction);
 
   const doDeploy=useCallback((targetHex,overrideRes)=>{
     if(!me||me.mechs.length>=4)return;
@@ -709,7 +710,7 @@ export default function App(){
       const n=[...prev];const p={...n[0],unlockedAbilities:[...(n[0].unlockedAbilities||[]),abilityIdx]};
       n[0]=p;return n;
     });
-    addLog(`🔓 Ability débloquée : ${ABILITY_ICONS[abilityIdx]} ${ABILITY_NAMES[abilityIdx]}`);
+    addLog(`🔓 Ability débloquée : ${myMechAbilities[abilityIdx]?.icon||""} ${myMechAbilities[abilityIdx]?.name||""}`);
     const source=pendingAbility;
     setPendingAbility(null);
     if(source&&source.source==="deploy") finishBottom(source.col);
@@ -2847,7 +2848,7 @@ export default function App(){
                 <div style={{fontSize:14,color:"var(--text-dim)",marginTop:4}}>Mecha déployé — débloque une capacité</div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                {ABILITY_NAMES.map((name,idx)=>{
+                {myMechAbilities.map((ab,idx)=>{
                   const already=(me.unlockedAbilities||[]).includes(idx);
                   return(
                     <button key={idx} onClick={()=>{if(!already)confirmAbility(idx);}} disabled={already}
@@ -2860,9 +2861,9 @@ export default function App(){
                       onMouseEnter={e=>{if(!already)e.currentTarget.style.borderColor="var(--rust)";e.currentTarget.style.background="rgba(200,112,64,0.1)";}}
                       onMouseLeave={e=>{e.currentTarget.style.borderColor=already?"var(--border)":"var(--rust-dark)";e.currentTarget.style.background=already?"rgba(0,0,0,0.3)":"var(--bg3)";}}
                     >
-                      <div style={{fontSize:32,marginBottom:6}}>{ABILITY_ICONS[idx]}</div>
-                      <div style={{fontSize:16,fontWeight:700,fontFamily:"var(--font-title)",color:already?"var(--text-muted)":"var(--rust)",letterSpacing:1}}>{name}</div>
-                      <div style={{fontSize:13,color:already?"var(--text-muted)":"var(--text-dim)",marginTop:4}}>{already?"Déjà débloqué":ABILITY_DESC[idx]}</div>
+                      <div style={{fontSize:32,marginBottom:6}}>{ab.icon}</div>
+                      <div style={{fontSize:16,fontWeight:700,fontFamily:"var(--font-title)",color:already?"var(--text-muted)":"var(--rust)",letterSpacing:1}}>{ab.name}</div>
+                      <div style={{fontSize:13,color:already?"var(--text-muted)":"var(--text-dim)",marginTop:4}}>{already?"Déjà débloqué":ab.desc}</div>
                     </button>
                   );
                 })}
@@ -2886,6 +2887,18 @@ export default function App(){
             <span style={{fontSize:15,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-title)",textShadow:"0 1px 3px rgba(0,0,0,0.8)"}}>{myFaction.name}</span>
           </div>
         </div>
+
+        {/* ── Capacité de faction — rappel permanent en jeu ── */}
+        {myFaction.ability&&(
+          <div title={`${myFaction.ability} — ${myFaction.abilityDesc||""}`}
+            style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:13,display:"flex",gap:6,alignItems:"flex-start",background:"rgba(200,112,64,0.05)"}}>
+            <span>🏴</span>
+            <div style={{minWidth:0}}>
+              <span style={{fontWeight:700,fontFamily:"var(--font-title)",color:"var(--rust)"}}>{myFaction.ability}</span>
+              <div style={{color:"var(--text-dim)",fontSize:12,lineHeight:1.45}}>{myFaction.abilityDesc}</div>
+            </div>
+          </div>
+        )}
 
         {/* ── Scoreboard ── */}
         <div style={{padding:"6px 8px",borderBottom:"1px solid var(--border)",flexShrink:0}}>
@@ -3486,12 +3499,12 @@ export default function App(){
               {starDetail==="mech"&&(<div>
                 <div style={{fontSize:14,fontWeight:700,color:"var(--brass)",marginBottom:8,fontFamily:"var(--font-title)"}}>Mechas & capacités</div>
                 <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:8}}>Déployés : {me.mechs.length}/4 {me.mechs.length>0&&`(hex ${me.mechs.map(m=>`#${m.hexId}`).join(", ")})`} · Chaque déploiement débloque UNE capacité au choix :</div>
-                {ABILITY_NAMES.map((nm,idx)=>{const unlocked=(me.unlockedAbilities||[]).includes(idx);return(
+                {myMechAbilities.map((ab,idx)=>{const unlocked=(me.unlockedAbilities||[]).includes(idx);return(
                   <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:6,marginBottom:5,background:unlocked?"rgba(200,112,64,0.1)":"rgba(0,0,0,0.25)",border:unlocked?"1px solid var(--rust-dark)":"1px dashed var(--border-dark)",opacity:unlocked?1:0.75}}>
-                    <span style={{fontSize:23,opacity:unlocked?1:0.5}}>{ABILITY_ICONS[idx]}</span>
+                    <span style={{fontSize:23,opacity:unlocked?1:0.5}}>{ab.icon}</span>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:15,fontWeight:700,color:unlocked?"var(--rust)":"var(--text-dim)"}}>{nm}</div>
-                      <div style={{fontSize:14,color:"var(--text-dim)"}}>{ABILITY_DESC[idx]}</div>
+                      <div style={{fontSize:15,fontWeight:700,color:unlocked?"var(--rust)":"var(--text-dim)"}}>{ab.name}</div>
+                      <div style={{fontSize:14,color:"var(--text-dim)"}}>{ab.desc}</div>
                     </div>
                     <span style={{fontSize:14,color:unlocked?"#8fbf6a":"var(--text-muted)",fontWeight:700}}>{unlocked?"✓":"—"}</span>
                   </div>

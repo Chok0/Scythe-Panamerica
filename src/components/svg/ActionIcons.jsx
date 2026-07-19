@@ -73,7 +73,14 @@ export const IconWorker = ({ size = 16, color = "#fff" }) => (
 
 export const IconMech = ({ size = 16, color = "#fff" }) => (
   <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="8,2 14,8 8,14 2,8" fill={color} fillOpacity="0.1" />
+    {/* Marcheur de combat : antenne, cockpit bombé, hublot, jambes écartées */}
+    <path d="M8 3 V1.5" />
+    <path d="M4.5 8.5 V6.5 C4.5 4.4 6 3 8 3 C10 3 11.5 4.4 11.5 6.5 V8.5 Z" fill={color} fillOpacity="0.12" />
+    <circle cx="8" cy="5.8" r="1" fill={color} stroke="none" opacity="0.6" />
+    <path d="M5.5 8.5 L4.5 13" />
+    <path d="M10.5 8.5 L11.5 13" />
+    <path d="M3 13 H6" />
+    <path d="M10 13 H13" />
   </svg>
 );
 

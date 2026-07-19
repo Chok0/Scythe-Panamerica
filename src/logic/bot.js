@@ -8,6 +8,7 @@ import { getValidMoves, findPathWaypoints, marshToll } from './movement.js';
 import { transportUnits } from './transport.js';
 import { BOT_PROFILES } from './botProfiles.js';
 import { BALANCE } from '../data/balance.js';
+import { getMechAbilities } from '../data/mechAbilities.js';
 
 // ══════════════════════════════════════════════════════
 // Strategic Bot AI — based on Scythe competitive strategy
@@ -570,7 +571,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
           return da - db;
         })[0];
         const abilityIdx = p.mechs.length;
-        const abilityNames = ["Speed", "Riverwalk", "Combat", "Position"];
+        const abilityNames = getMechAbilities(p.faction).map(a => a.name);
         p.mechs.push({ id: `${p.faction}_m${p.mechs.length}`, hexId: th });
         p.unlockedAbilities = [...(p.unlockedAbilities || []), abilityIdx];
         bottomDone = true;
