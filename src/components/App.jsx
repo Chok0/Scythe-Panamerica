@@ -1198,7 +1198,18 @@ export default function App(){
       
       // ── PÉAGE DE MARÉCAGE : -1♥ par ouvrier, -1⚡ par unité de combat qui y entre ──
       const toll=marshToll(p,hexId,moveSource.unitType,marshCarried);
-      if(toll)addLog(toll);
+      if(toll){
+        addLog(toll);
+        // Toast de perte au centre — le système de floaters automatique ne
+        // suit que les gains, les pertes du péage sont poussées ici
+        const bx=window.innerWidth*0.5;const by=window.innerHeight*0.40;let stack=0;
+        if(moveSource.unitType==="worker"){
+          spawnFloater("-❤","#e0708a",bx,by,"big");
+        }else{
+          spawnFloater("-⚡","#e0603a",bx,by,"big");stack++;
+          if(marshCarried>0)spawnFloater(`-${marshCarried>1?marshCarried:""}❤`,"#e0708a",bx,by+stack*72,"big");
+        }
+      }
 
       p.movesLeft=(me.movesLeft||moveLimit)-1;p.movedUnits=[...(me.movedUnits||[]),moveSource.unitId];
 
