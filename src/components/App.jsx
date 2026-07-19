@@ -586,6 +586,19 @@ export default function App(){
         n[cp]=er.player;logs.push(er.log);
         setEncounterTokens(prev=>{const s=new Set(prev);s.delete(encHex);return s;});
       }
+      // ── ROUGE RIVER BOT : héros sur l'Usine (1re visite) → plan auto ──
+      // Même règle que le joueur : le tirage rétrécit avec les visiteurs
+      // précédents, Tesla accessible avec les fragments requis
+      if(n[cp].hero===FACTORY_RR_HEX&&!n[cp].visitedRR){
+        const hasFrag=(n[cp].fragments||0)>=TESLA_FRAGMENTS_REQUIRED;
+        const pool=hasFrag?[...PLANS_FORD,...PLANS_TESLA]:[...PLANS_FORD];
+        const seeCount=Math.max(1,Math.min(pool.length,pool.length-rrVisitors));
+        const visible=shuffleArray(pool).slice(0,seeCount);
+        const card=visible.find(c=>c.type==="tesla")||visible[Math.floor(Math.random()*visible.length)];
+        n[cp]={...n[cp],visitedRR:true,factoryCard:card};
+        setRrVisitors(prev=>prev+1);
+        logs.push(`⚙ ${FACTIONS[n[cp].faction].name} visite la Rouge River → plan « ${card.name} »${card.type==="tesla"?" (Tesla)":""}`);
+      }
       // ── ENLIST ONGOING: bot did a bottom action → trigger for self + neighbors ──
       if(result.bottomCol>=0){
         const enlistResult=applyEnlistOngoing(n,cp,result.bottomCol,FACTIONS);
@@ -610,7 +623,7 @@ export default function App(){
       }
     },350);
     return()=>clearTimeout(timer);
-  },[botRunning,currentP,players,phase,empire,turn,rails,encounterTokens,addLog,addLogs]);
+  },[botRunning,currentP,players,phase,empire,turn,rails,encounterTokens,rrVisitors,addLog,addLogs]);
 
   // After top-row → show bottom-row option
   const endHumanTurn=useCallback((col)=>{

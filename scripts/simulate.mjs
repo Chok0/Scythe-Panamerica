@@ -20,6 +20,7 @@ import { writeFileSync } from 'node:fs';
 import { botTurn } from '../src/logic/bot.js';
 import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../src/logic/pvpBots.js';
 import { resolveBotEncounter } from '../src/logic/botEncounters.js';
+import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } from '../src/data/plans.js';
 import { CURRENT_MAP, loadMap, DEFAULT_MAP, LEGACY_MAP } from '../src/data/hexes.js';
 import { generateAcceptedMap, validateMap } from '../src/data/mapGen.js';
 import { createPlayer } from '../src/logic/player.js';
@@ -190,6 +191,7 @@ const playGame = (gameIdx, log) => {
   // Aligné sur le jeu de base : plus de rails initiaux (EMPIRE_RAILS = campagne)
   let rails = [];
   let encounterTokens = new Set(CURRENT_MAP.encounterHexes);
+  let rrVisitors = 0;
   const issues = [];
   const combatStats = { pveAttacks: 0, pveWins: 0, defenses: 0, defWins: 0, pvp: 0, encounters: 0 };
   let round = 0, endedBy = 'cap';
@@ -323,6 +325,18 @@ const playGame = (gameIdx, log) => {
         const er = resolveBotEncounter(players[cp]);
         players[cp] = er.player;
         if (log) log(`  ${er.log}`);
+      }
+
+      // ── Rouge River bot : héros sur l'Usine (1re visite) → plan auto (miroir App.jsx) ──
+      if (players[cp].hero === FACTORY_RR_HEX && !players[cp].visitedRR) {
+        const hasFrag = (players[cp].fragments || 0) >= TESLA_FRAGMENTS_REQUIRED;
+        const pool = hasFrag ? [...PLANS_FORD, ...PLANS_TESLA] : [...PLANS_FORD];
+        const seeCount = Math.max(1, Math.min(pool.length, pool.length - rrVisitors));
+        const visible = pool.sort(() => Math.random() - 0.5).slice(0, seeCount);
+        const card = visible.find(c => c.type === "tesla") || visible[Math.floor(Math.random() * visible.length)];
+        players[cp] = { ...players[cp], visitedRR: true, factoryCard: card };
+        rrVisitors++;
+        if (log) log(`  ⚙ ${players[cp].faction} visite la Rouge River → ${card.name}`);
       }
 
       // ── Enlist ongoing (soi + voisins) ──

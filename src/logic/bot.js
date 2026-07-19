@@ -9,6 +9,7 @@ import { transportUnits } from './transport.js';
 import { BOT_PROFILES } from './botProfiles.js';
 import { BALANCE } from '../data/balance.js';
 import { getMechAbilities } from '../data/mechAbilities.js';
+import { getPlanBottomBonus } from './planEffects.js';
 
 // ══════════════════════════════════════════════════════
 // Strategic Bot AI — based on Scythe competitive strategy
@@ -224,8 +225,21 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
     // Le bâtisseur fait la course aux jetons (gains de pop des rencontres)
     if (purpose === "hero" && ctx && ctx.encounterHexes && ctx.encounterHexes.has(hexId)) s += prof.encounterPull;
 
-    // Move toward Rouge River if haven't visited
-    if (purpose === "hero" && hexId === 22 && !p.rrVisited) s += 1;
+    // Rouge River : plan d'usine (gros avantage permanent) + l'hex vaut
+    // 3 territoires au score → destination majeure du héros tant qu'il n'a
+    // pas visité — forte prise sur l'hex, convergence progressive sinon
+    if (purpose === "hero" && !p.visitedRR && !p.factoryCard) {
+      if (hexId === 22) s += 14;
+      else {
+        const rr = hMap[22];
+        if (rr) {
+          const d = Math.sqrt((hex.rx - rr.rx) ** 2 + (hex.ry - rr.ry) ** 2);
+          s += Math.max(0, 4 - Math.round(d / 180));
+        }
+      }
+    }
+    // L'Usine reste un territoire triple : y camper garde de la valeur
+    if (hexId === 22 && p.visitedRR) s += 3;
 
     // Aimant à magot : se rapprocher du gros tas vaut des points (raid en 2-3 tours)
     if (hoardHex !== null && hexId !== hoardHex) {
@@ -533,6 +547,10 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const bottomAction = BOTTOM[col];
   const botCosts = getBottomCost(p);
   const bc = botCosts[col];
+  // Bonus du plan d'usine (Rouge River) : réduction de coût appliquée AVANT
+  // le test de solvabilité ; pièces/puissance créditées après l'action
+  const planB = getPlanBottomBonus(p, bottomAction);
+  if (bc && planB.costReduction > 0) bc.qty = Math.max(0, bc.qty - planB.costReduction);
   const altResB = FACTIONS[p.faction]?.deployAltRes;
   const canAffordBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && altResB && countRes(p, altResB) >= bc.qty));
   let bottomDone = false;
@@ -635,6 +653,12 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       }
       if (p.recruits >= 4 && !p.starRecruits) { p.stars++; p.starRecruits = true; logs.push(`⭐ ${f.name}: 4 recrues !`); }
     }
+  }
+  // Gains du plan d'usine une fois l'action bottom réellement effectuée
+  if (bottomDone && (planB.bonusCoins > 0 || planB.bonusPower > 0)) {
+    p.coins += planB.bonusCoins;
+    p.power = Math.min(p.power + planB.bonusPower, 16);
+    logs.push(`🤖⚙ ${f.name}: ${p.factoryCard.name} → ${planB.bonusCoins > 0 ? `+${planB.bonusCoins}$ ` : ""}${planB.bonusPower > 0 ? `+${planB.bonusPower}⚡` : ""}`.trim());
   }
 
   // ── AUTOMATIC STARS ──
