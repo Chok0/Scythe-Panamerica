@@ -2554,7 +2554,16 @@ export default function App(){
               const hex=hMap[hidStr];if(!hex)return [];
               return units.map((u,ui)=>{
                 const ox=(ui-(units.length-1)/2)*22;
-                return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}/>;
+                // Action Move : cliquer directement le pion à déplacer (au lieu
+                // du picker de liste). Si le hex est une destination valide de
+                // l'unité déjà sélectionnée, le clic doit passer au hex.
+                const movKey=u.type==="hero"?"hero":u.id;
+                const isMovable=selAction==="Move"&&u.factionId===me.faction&&(movableUnits.get(hex.id)||[]).some(mu=>mu.id===movKey);
+                const isSel=!!moveSource&&moveSource.unitId===movKey&&moveSource.fromHex===hex.id;
+                const clickable=isMovable&&!isSel&&!(moveSource&&validMoves.has(hex.id));
+                return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}
+                  selectable={clickable} selected={isSel}
+                  onClick={clickable?(e)=>{e.stopPropagation();doMove(u.type,movKey,hex.id);}:undefined}/>;
               });
             })}
             {(()=>{
