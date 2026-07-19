@@ -104,12 +104,15 @@ const V3_RIVER_CUTS = new Set([
 ]);
 const V3_RIVERS = DEFAULT_RIVERS.filter(([a, b]) => !V3_RIVER_CUTS.has(`${Math.min(a, b)}-${Math.max(a, b)}`));
 
+// Positions des jetons de rencontre sur les cartes jouables (v2 et v3)
+const ENCOUNTER_HEXES = [4, 9, 14, 15, 29, 30, 31, 40, 41];
+
 // ── Carte v2 (configuration initiale) — reste sélectionnable au démarrage ──
 export const CLASSIC_V2_MAP = {
   name: "panamerica-v2",
   hexes: DEFAULT_HEXES,
   rivers: DEFAULT_RIVERS,
-  encounterHexes: [2, 4, 14, 16, 20, 27, 29, 35, 41],
+  encounterHexes: ENCOUNTER_HEXES,
   starts: null,
 };
 
@@ -118,7 +121,7 @@ export const DEFAULT_MAP = {
   name: "panamerica-v3",
   hexes: V3_HEXES,
   rivers: V3_RIVERS,
-  encounterHexes: [2, 4, 14, 16, 20, 27, 29, 35, 41],
+  encounterHexes: ENCOUNTER_HEXES,
   // starts: null → workerHex statiques de factions.js
   starts: null,
 };
