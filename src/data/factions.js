@@ -4,11 +4,11 @@ export const FACTIONS = {
   confederation: {
     name: "Confédération", color: "#808080", hero: "J. Cole", companion: "Dixie",
     power: 4, cards: 1, workerHex: [36, 32], riverwalk: ["plaine", "village"], rwName: "Gué",
-    ability: "Servitude",
-    // Compensation asymétrique (façon Scythe original) mesurée par simulation :
-    // sans elle, le trio Conf/Bayou/Dominion finit pauvre (≈2,5$) et à pop de
-    // palier 1 → tout son score est amputé. Voir RAPPORT_SIMULATION.md.
-    startBonus: { coins: 7, pop: 6 },
+    ability: "Servitude", abilityDesc: "Capture les ouvriers ennemis vaincus (-2 Pop, max 2)",
+    // Compensation asymétrique (façon Scythe original) mesurée par simulation —
+    // POPULARITÉ uniquement : les pièces de départ viennent exclusivement du
+    // plateau joueur (règle Scythe). Voir RAPPORT_SIMULATION.md.
+    startBonus: { pop: 6 },
     fObj: {
       name: "Le Joug", desc: "2 ouvriers capturés + 3+ hex avec ouvriers",
       check: p => (p.capturedWorkers || 0) >= 2 && p.workers.length >= 3,
@@ -17,8 +17,8 @@ export const FACTIONS = {
   frente: {
     name: "Frente Libre", color: "#A05020", hero: "E. Rojas", companion: "Trueno",
     power: 2, cards: 3, workerHex: [41, 45], riverwalk: ["sierra", "desert"], rwName: "Sentier",
-    ability: "Tierra Minada",
-    startBonus: { coins: 2, pop: 2 },
+    ability: "Tierra Minada", abilityDesc: "Le héros pose un piège sur chaque hex atteint (max 4)",
+    startBonus: { pop: 2 },
     fObj: {
       name: "Terre Libérée", desc: "4 Traps + 3 ouvriers sur Sierras/Déserts",
       check: p => (p.trapTokens || []).length >= 4 && p.workers.filter(w => {
@@ -30,7 +30,8 @@ export const FACTIONS = {
   nations: {
     name: "Nations Souv.", color: "#20B2AA", hero: "Aiyana", companion: "Koda",
     power: 3, cards: 2, workerHex: [10, 17], riverwalk: ["plaine", "foret"], rwName: "Piste",
-    ability: "Esprit Sauvage", deployAltRes: "bois", deployAltName: "Esprit Sauvage",
+    ability: "Esprit Sauvage", abilityDesc: "Déploie ses mechas avec du bois ou du métal",
+    deployAltRes: "bois", deployAltName: "Esprit Sauvage",
         fObj: {
       name: "Le Grand Retour", desc: "5+ hex Plaine/Forêt contrôlés",
       check: p => {
@@ -49,7 +50,7 @@ export const FACTIONS = {
     // sur la fiche (imprimables, jamais négatives) : 2 pièces, 1 popularité,
     // quel que soit le plateau joueur.
     power: 1, cards: 1, workerHex: [2, 6], riverwalk: ["foret", "village"], rwName: "Portage",
-    ability: "Comptoir",
+    ability: "Comptoir", abilityDesc: "Le héros pose un comptoir sur chaque hex atteint (max 4, +1 territoire chacun)",
     startAbs: { coins: 2, pop: 1 },
         fObj: {
       name: "Réseau Invisible", desc: "4 Comptoirs non adjacents entre eux + héros sur un Lac",
@@ -64,8 +65,9 @@ export const FACTIONS = {
   bayou: {
     name: "Bayou", color: "#7B2D8B", hero: "Cap. Zeke", companion: "Croc",
     power: 2, cards: 3, workerHex: [35, 28], riverwalk: ["desert", "village"], rwName: "Mangrove",
-    ability: "Chimère", deployAltRes: "bois", deployAltName: "Bois flotté",
-    startBonus: { coins: 8, pop: 6 },
+    ability: "Chimère", abilityDesc: "Capture un mecha de l'Empire détruit (1×/partie) · déploie avec du bois",
+    deployAltRes: "bois", deployAltName: "Bois flotté",
+    startBonus: { pop: 6 },
     fObj: {
       name: "Le Prédateur", desc: "1 mecha capturé + 2 Empire détruits",
       check: p => (p.capturedMech || 0) >= 1 && (p.empireKills || 0) >= 2,
@@ -74,8 +76,9 @@ export const FACTIONS = {
   dominion: {
     name: "Dominion", color: "#CC2222", hero: "Col. Whitfield", companion: "Sterling",
     power: 3, cards: 2, workerHex: [0, 4], riverwalk: ["foret", "plaine"], rwName: "Queen's Road",
-    ability: "Commerce Impérial", isExtension: true,
-    startBonus: { coins: 8, pop: 5 },
+    ability: "Commerce Impérial", abilityDesc: "1×/tour : 1 ressource → 1💰 ou 1🃏 · Import : 2💰 → 1 ressource",
+    isExtension: true,
+    startBonus: { pop: 5 },
     fObj: {
       name: "Le Tribut", desc: "10+ pièces via Commerce Impérial",
       check: p => (p.imperialCoins || 0) >= 10,
