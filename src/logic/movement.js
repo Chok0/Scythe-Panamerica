@@ -60,6 +60,10 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails, 
     // l'arrêt forcé est géré dans getValidMoves/findPathWaypoints.
     if (adj.includes(toId) && hasR(fromId, toId)) {
       if (ignoreRivers) return true;
+      // L'Usine Rouge River a ses ponts : toujours accessible malgré les
+      // rivières (aucune faction n'a « factory » dans son riverwalk, sinon
+      // l'approche par l'hex 26 était un cul-de-sac)
+      if (to.t === "factory") return true;
       if (hasRiverwalk) return f.riverwalk.includes(to.t);
       return false;
     }

@@ -10,7 +10,7 @@ import { getCombatBonus } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
 import { EMPIRE_START, drawEmpireCombat } from '../data/empire.js';
 import { ENCOUNTERS } from '../data/encounters.js';
-import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA } from '../data/plans.js';
+import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } from '../data/plans.js';
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
 import { structureBonusDetail } from '../data/structureBonus.js';
@@ -30,7 +30,8 @@ import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from 
 import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { getPlanBottomBonus, auraPowerCount } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
-import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, BuildingSlot, RecruitSlot, RESOURCE_ICONS, BUILDING_ICONS } from './svg/ActionIcons.jsx';
+import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, RESOURCE_ICONS, BUILDING_ICONS } from './svg/ActionIcons.jsx';
+import { getMechAbilities } from '../data/mechAbilities.js';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 import { TERRAIN_TEXTURES, TERRAIN_TILE } from '../assets/terrains/index.js';
 import { BOARD_IMAGE } from '../assets/map/index.js';
@@ -585,6 +586,19 @@ export default function App(){
         n[cp]=er.player;logs.push(er.log);
         setEncounterTokens(prev=>{const s=new Set(prev);s.delete(encHex);return s;});
       }
+      // ── ROUGE RIVER BOT : héros sur l'Usine (1re visite) → plan auto ──
+      // Même règle que le joueur : le tirage rétrécit avec les visiteurs
+      // précédents, Tesla accessible avec les fragments requis
+      if(n[cp].hero===FACTORY_RR_HEX&&!n[cp].visitedRR){
+        const hasFrag=(n[cp].fragments||0)>=TESLA_FRAGMENTS_REQUIRED;
+        const pool=hasFrag?[...PLANS_FORD,...PLANS_TESLA]:[...PLANS_FORD];
+        const seeCount=Math.max(1,Math.min(pool.length,pool.length-rrVisitors));
+        const visible=shuffleArray(pool).slice(0,seeCount);
+        const card=visible.find(c=>c.type==="tesla")||visible[Math.floor(Math.random()*visible.length)];
+        n[cp]={...n[cp],visitedRR:true,factoryCard:card};
+        setRrVisitors(prev=>prev+1);
+        logs.push(`⚙ ${FACTIONS[n[cp].faction].name} visite la Rouge River → plan « ${card.name} »${card.type==="tesla"?" (Tesla)":""}`);
+      }
       // ── ENLIST ONGOING: bot did a bottom action → trigger for self + neighbors ──
       if(result.bottomCol>=0){
         const enlistResult=applyEnlistOngoing(n,cp,result.bottomCol,FACTIONS);
@@ -609,7 +623,7 @@ export default function App(){
       }
     },350);
     return()=>clearTimeout(timer);
-  },[botRunning,currentP,players,phase,empire,turn,rails,encounterTokens,addLog,addLogs]);
+  },[botRunning,currentP,players,phase,empire,turn,rails,encounterTokens,rrVisitors,addLog,addLogs]);
 
   // After top-row → show bottom-row option
   const endHumanTurn=useCallback((col)=>{
@@ -674,9 +688,9 @@ export default function App(){
 
   // ── BOTTOM-ROW: DEPLOY ──
   // Nations "Esprit Sauvage": can deploy with metal OR bois
-  const ABILITY_NAMES=["Speed","Riverwalk","Combat","Position"];
-  const ABILITY_DESC=["Déplacement +1 hex","Traverser rivières","Bonus combat +1⚡","Recul au choix"];
-  const ABILITY_ICONS=["🏃","🌊","⚔","📍"];
+  // Capacités de mecha SPÉCIFIQUES à la faction du joueur (noms + descriptions
+  // depuis data/mechAbilities.js — les mécaniques sont dans movement/combat)
+  const myMechAbilities=getMechAbilities(me?.faction);
 
   const doDeploy=useCallback((targetHex,overrideRes)=>{
     if(!me||me.mechs.length>=4)return;
@@ -709,7 +723,7 @@ export default function App(){
       const n=[...prev];const p={...n[0],unlockedAbilities:[...(n[0].unlockedAbilities||[]),abilityIdx]};
       n[0]=p;return n;
     });
-    addLog(`🔓 Ability débloquée : ${ABILITY_ICONS[abilityIdx]} ${ABILITY_NAMES[abilityIdx]}`);
+    addLog(`🔓 Ability débloquée : ${myMechAbilities[abilityIdx]?.icon||""} ${myMechAbilities[abilityIdx]?.name||""}`);
     const source=pendingAbility;
     setPendingAbility(null);
     if(source&&source.source==="deploy") finishBottom(source.col);
@@ -998,6 +1012,12 @@ export default function App(){
     return m;
   },[me,selAction,myFaction]);
 
+  // Mode « amélioration sur cartes » : pendant l'action Améliorer, les cartes
+  // d'action restent affichées et leurs cases de cubes deviennent cliquables
+  // (source en rangée haut, destination en rangée bas + bouton Valider)
+  const upgradePicking=!!me&&pendingBottom?.action==="Upgrade"&&(me.upgrades||0)<6
+    &&(()=>{const c=getBottomCost(me)[BOTTOM.indexOf("Upgrade")];return !!c&&countRes(me,c.res)>=c.qty;})();
+
   // Cibles cliquables sur la carte pour les actions bottom Deploy/Build
   // (en plus des boutons du panneau : cliquer l'hex surligné place directement)
   const actionTargets=useMemo(()=>{
@@ -1197,7 +1217,18 @@ export default function App(){
       
       // ── PÉAGE DE MARÉCAGE : -1♥ par ouvrier, -1⚡ par unité de combat qui y entre ──
       const toll=marshToll(p,hexId,moveSource.unitType,marshCarried);
-      if(toll)addLog(toll);
+      if(toll){
+        addLog(toll);
+        // Toast de perte au centre — le système de floaters automatique ne
+        // suit que les gains, les pertes du péage sont poussées ici
+        const bx=window.innerWidth*0.5;const by=window.innerHeight*0.40;let stack=0;
+        if(moveSource.unitType==="worker"){
+          spawnFloater("-❤","#e0708a",bx,by,"big");
+        }else{
+          spawnFloater("-⚡","#e0603a",bx,by,"big");stack++;
+          if(marshCarried>0)spawnFloater(`-${marshCarried>1?marshCarried:""}❤`,"#e0708a",bx,by+stack*72,"big");
+        }
+      }
 
       p.movesLeft=(me.movesLeft||moveLimit)-1;p.movedUnits=[...(me.movedUnits||[]),moveSource.unitId];
 
@@ -1312,7 +1343,7 @@ export default function App(){
         }
         // Rouge River (hex #22) — first visit by this hero?
         if(hexId===FACTORY_RR_HEX&&!me.visitedRR){
-          const hasFragments=(me.fragments||0)>=2;
+          const hasFragments=(me.fragments||0)>=TESLA_FRAGMENTS_REQUIRED;
           const available=hasFragments?[...PLANS_FORD,...PLANS_TESLA]:[...PLANS_FORD];
           const shuffled=shuffleArray(available);
           const seeCount=Math.max(1,Math.min(shuffled.length,shuffled.length-rrVisitors));
@@ -1741,7 +1772,7 @@ export default function App(){
         addLog(`🏆 +2 Popularité`);
       } else if(reward==="fragment"){
         p.fragments=(p.fragments||0)+1;
-        addLog(`🏆 +1 Fragment Tesla (${p.fragments}/2)`);
+        addLog(`🏆 +1 Fragment Tesla (${p.fragments}/${TESLA_FRAGMENTS_REQUIRED})`);
       }
       n[0]=p;return n;
     });
@@ -2197,7 +2228,7 @@ export default function App(){
           {players.length>1&&<button onClick={()=>setShowOpponents(s=>!s)} title="Voir les adversaires" style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:6,fontSize:15,fontWeight:700,background:showOpponents?"rgba(200,112,64,0.18)":"rgba(200,112,64,0.06)",color:"var(--rust)",border:"1px solid var(--border-dark)",fontFamily:"var(--font-title)"}}>
             👥 {players.length-1}<span style={{fontSize:10,transform:showOpponents?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
           </button>}
-          {(me.fragments||0)>0&&<div style={{fontSize:14,padding:"4px 8px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:"#a080d0"}}>{me.fragments}/2 frag.</div>}
+          {(me.fragments||0)>0&&<div style={{fontSize:14,padding:"4px 8px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:"#a080d0"}}>{me.fragments}/{TESLA_FRAGMENTS_REQUIRED} frag.</div>}
           {/* Annuler / Refaire (dans le tour humain) */}
           {(()=>{const canUndo=isMyTurn&&!botRunning&&undoStack.length>0;const canRedo=isMyTurn&&!botRunning&&redoStack.length>0;return<>
             <button onClick={undo} disabled={!canUndo} title="Annuler le dernier coup" style={{width:32,height:32,borderRadius:6,fontSize:17,fontWeight:700,background:"transparent",color:canUndo?"var(--gold)":"var(--text-ghost)",border:`1px solid ${canUndo?"var(--gold-dim)":"var(--border)"}`,cursor:canUndo?"pointer":"not-allowed"}}>↶</button>
@@ -2529,7 +2560,16 @@ export default function App(){
               const hex=hMap[hidStr];if(!hex)return [];
               return units.map((u,ui)=>{
                 const ox=(ui-(units.length-1)/2)*22;
-                return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}/>;
+                // Action Move : cliquer directement le pion à déplacer (au lieu
+                // du picker de liste). Si le hex est une destination valide de
+                // l'unité déjà sélectionnée, le clic doit passer au hex.
+                const movKey=u.type==="hero"?"hero":u.id;
+                const isMovable=selAction==="Move"&&u.factionId===me.faction&&(movableUnits.get(hex.id)||[]).some(mu=>mu.id===movKey);
+                const isSel=!!moveSource&&moveSource.unitId===movKey&&moveSource.fromHex===hex.id;
+                const clickable=isMovable&&!isSel&&!(moveSource&&validMoves.has(hex.id));
+                return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}
+                  selectable={clickable} selected={isSel}
+                  onClick={clickable?(e)=>{e.stopPropagation();doMove(u.type,movKey,hex.id);}:undefined}/>;
               });
             })}
             {(()=>{
@@ -2660,7 +2700,7 @@ export default function App(){
                     <div><div style={{fontFamily:"var(--font-title)",color:"var(--success)",fontSize:23,fontWeight:700}}>Victoire !</div><div style={{fontSize:14,color:"var(--text-dim)"}}>Choisissez votre butin</div></div>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-                    {[{k:"metal",icon:"⚙",label:"2 Métal",sub:"Ferraille"},{k:"pop",icon:"♥",label:"+2 Pop",sub:"Acclamation"},{k:"fragment",icon:"🔬",label:"Fragment",sub:`Tesla (${(me.fragments||0)}/2)`}].map(r=>(
+                    {[{k:"metal",icon:"⚙",label:"2 Métal",sub:"Ferraille"},{k:"pop",icon:"♥",label:"+2 Pop",sub:"Acclamation"},{k:"fragment",icon:"🔬",label:"Fragment",sub:`Tesla (${(me.fragments||0)}/${TESLA_FRAGMENTS_REQUIRED})`}].map(r=>(
                       <button key={r.k} onClick={()=>claimReward(r.k)} style={{background:"var(--bg3)",border:"1px solid var(--border-light)",borderRadius:10,padding:"18px 10px",color:"var(--text)",textAlign:"center",fontFamily:"inherit"}}>
                         <div style={{fontSize:30,marginBottom:8}}>{r.icon}</div>
                         <div style={{fontSize:15,fontWeight:700}}>{r.label}</div>
@@ -2847,7 +2887,7 @@ export default function App(){
                 <div style={{fontSize:14,color:"var(--text-dim)",marginTop:4}}>Mecha déployé — débloque une capacité</div>
               </div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                {ABILITY_NAMES.map((name,idx)=>{
+                {myMechAbilities.map((ab,idx)=>{
                   const already=(me.unlockedAbilities||[]).includes(idx);
                   return(
                     <button key={idx} onClick={()=>{if(!already)confirmAbility(idx);}} disabled={already}
@@ -2860,9 +2900,9 @@ export default function App(){
                       onMouseEnter={e=>{if(!already)e.currentTarget.style.borderColor="var(--rust)";e.currentTarget.style.background="rgba(200,112,64,0.1)";}}
                       onMouseLeave={e=>{e.currentTarget.style.borderColor=already?"var(--border)":"var(--rust-dark)";e.currentTarget.style.background=already?"rgba(0,0,0,0.3)":"var(--bg3)";}}
                     >
-                      <div style={{fontSize:32,marginBottom:6}}>{ABILITY_ICONS[idx]}</div>
-                      <div style={{fontSize:16,fontWeight:700,fontFamily:"var(--font-title)",color:already?"var(--text-muted)":"var(--rust)",letterSpacing:1}}>{name}</div>
-                      <div style={{fontSize:13,color:already?"var(--text-muted)":"var(--text-dim)",marginTop:4}}>{already?"Déjà débloqué":ABILITY_DESC[idx]}</div>
+                      <div style={{fontSize:32,marginBottom:6}}>{ab.icon}</div>
+                      <div style={{fontSize:16,fontWeight:700,fontFamily:"var(--font-title)",color:already?"var(--text-muted)":"var(--rust)",letterSpacing:1}}>{ab.name}</div>
+                      <div style={{fontSize:13,color:already?"var(--text-muted)":"var(--text-dim)",marginTop:4}}>{already?"Déjà débloqué":ab.desc}</div>
                     </button>
                   );
                 })}
@@ -2886,6 +2926,18 @@ export default function App(){
             <span style={{fontSize:15,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-title)",textShadow:"0 1px 3px rgba(0,0,0,0.8)"}}>{myFaction.name}</span>
           </div>
         </div>
+
+        {/* ── Capacité de faction — rappel permanent en jeu ── */}
+        {myFaction.ability&&(
+          <div title={`${myFaction.ability} — ${myFaction.abilityDesc||""}`}
+            style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:13,display:"flex",gap:6,alignItems:"flex-start",background:"rgba(200,112,64,0.05)"}}>
+            <span>🏴</span>
+            <div style={{minWidth:0}}>
+              <span style={{fontWeight:700,fontFamily:"var(--font-title)",color:"var(--rust)"}}>{myFaction.ability}</span>
+              <div style={{color:"var(--text-dim)",fontSize:12,lineHeight:1.45}}>{myFaction.abilityDesc}</div>
+            </div>
+          </div>
+        )}
 
         {/* ── Scoreboard ── */}
         <div style={{padding:"6px 8px",borderBottom:"1px solid var(--border)",flexShrink:0}}>
@@ -2929,8 +2981,9 @@ export default function App(){
         {/* ── Actions area ── */}
         <div style={{flex:1,overflow:"auto",padding:0}}>
 
-          {/* Player mat — 4 vertical action cards, grouped: columns 0+1 (top pair) / columns 2+3 (bottom pair) with strong separator */}
-          {isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&!pendingBottom&&(
+          {/* Player mat — 4 vertical action cards, grouped: columns 0+1 (top pair) / columns 2+3 (bottom pair) with strong separator.
+              Restent visibles pendant l'Améliorer (upgradePicking) : les cases de cubes y sont cliquées directement */}
+          {isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&(!pendingBottom||upgradePicking)&&(
             <div style={{display:"flex",flexDirection:"column",gap:0}}>
               {myMat.topRow.map((action,i)=>{
                 // Plan « Le Blueprint Perdu » : peut rejouer la même colonne deux tours de suite
@@ -2975,13 +3028,18 @@ export default function App(){
                 const recIdx=(me.enlistMap||[])[i];
                 const rec=recIdx!=null?ENLIST_ONGOING[recIdx]:null;
                 const RIcon=rec?RESOURCE_ICONS[rec.svgKey]:null;
+                // Icône du bonus débloqué par un cube d'amélioration sur l'action du haut
+                // (affichée en case fantôme dans la rangée, pas en carré abstrait à part)
+                const topBonusRes={Move:"worker",Bolster:"power",Trade:"pop",Produce:"nourriture"}[action]||"coins";
+                // Gain intrinsèque de l'action du bas (la flèche ↑ pour Améliorer)
+                const bottomGainRes=bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":bottomAction==="Enlist"?"pop":"upgrade";
                 // Action group separator: strong between pairs (after index 1), light between actions within a pair (after index 0, 2)
                 const isGroupEnd=i===1;
                 const isLastAction=i===3;
                 return(
                   <React.Fragment key={action}>
-                  <button onClick={()=>{if(!disabled){pushHistory();setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
-                    onMouseEnter={e=>{if(!disabled)e.currentTarget.style.borderColor=myFaction?.color||"var(--rust)";}}
+                  <button onClick={()=>{if(upgradePicking)return;if(!disabled){pushHistory();setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
+                    onMouseEnter={e=>{if(!disabled&&!upgradePicking)e.currentTarget.style.borderColor=myFaction?.color||"var(--rust)";}}
                     onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border-dark)";}}
                     style={{
                     padding:0,margin:"0 8px 8px",borderRadius:8,overflow:"hidden",textAlign:"left",
@@ -2999,27 +3057,48 @@ export default function App(){
                       {disabled?<span style={{marginLeft:"auto",fontSize:12,color:"var(--text-muted)",fontStyle:"italic"}}>joué</span>
                         :<span style={{marginLeft:"auto",fontSize:12,fontWeight:700,color:bottomData.max?"var(--success)":"var(--gold-dim)",whiteSpace:"nowrap"}}>{bottomData.max?"✓ max":bottomData.prog}</span>}
                     </div>
-                    {/* RANGÉE HAUT — gains de l'action + réserve de cubes d'amélioration */}
+                    {/* RANGÉE HAUT — gains de l'action (+ cases fantômes des bonus à débloquer)
+                        avec, alignée à droite, la case Bâtiment domiciliée sur cette colonne */}
                     <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8}}>
-                      <div style={{flex:1,minWidth:0}}><ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact /></div>
-                      {topPark>0&&<div title={`${cubesTop}/${topPark} cube(s) d'amélioration encore en réserve sur ${FR_TOP[action]||action}`} style={{display:"flex",gap:3,flexShrink:0}}>
-                        {Array.from({length:topPark}).map((_,k)=><UpgradeSlot key={k} filled={k<cubesTop} size={20}/>)}
+                      <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:3,flexWrap:"wrap"}}>
+                        <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact size={21} />
+                        {Array.from({length:topPark}).map((_,k)=>{
+                          // Améliorer : le prochain cube retirable de cette colonne se clique directement
+                          const isCube=k<cubesTop;
+                          const pickable=upgradePicking&&isCube&&k===cubesTop-1;
+                          return <GhostSquare key={k} resource={topBonusRes} kind="gain" filled={!isCube} size={21}
+                            selected={pickable&&bottomPick?.upgradeFrom===i}
+                            onClick={pickable?(e)=>{e.stopPropagation();setBottomPick(prev=>({...(prev||{}),upgradeFrom:i}));}:undefined}
+                            title={pickable?`① Retirer ce cube de ${FR_TOP[action]||action}`:!isCube?"Bonus débloqué (cube d'amélioration retiré)":"Bonus à débloquer via Améliorer"}/>;
+                        })}
+                      </div>
+                      {colBuilding&&<div style={{width:168,flexShrink:0,display:"flex",alignSelf:"stretch"}}>
+                        <BuildingSlot Icon={BIcon} name={colBuilding.name} effect={colBuilding.effect} revealed={!!builtEntry} extra={builtEntry?`#${builtEntry.hexId}`:null}/>
                       </div>}
                     </div>
-                    {/* RANGÉE BAS — coût lu comme une séquence : cases fixes → cubes déjà posés (réduction acquise) → cases pointillées (réduction encore possible) → gain */}
-                    <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:3,flexWrap:"wrap",background:"rgba(0,0,0,0.28)",borderTop:"1px solid var(--border)"}}>
-                      {bc&&<>
-                        {Array.from({length:fixedQty}).map((_,k)=><ActionSquare key={`f${k}`} type="cost" resource={bc.res} size={23}/>)}
-                        {Array.from({length:cubesBot}).map((_,k)=><UpgradeSlot key={`u${k}`} filled size={23} title="Réduction acquise (cube posé)"/>)}
-                        {Array.from({length:reducAvail}).map((_,k)=><UpgradeSlot key={`r${k}`} size={23} title="Réduction encore possible via Améliorer"/>)}
-                        <span style={{color:"var(--text-muted)",fontSize:10,margin:"0 1px"}}>→</span>
-                      </>}
-                      <ActionRow gain={upBonus>0?Array(upBonus).fill("coins"):[bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":bottomAction==="Enlist"?"pop":"power"]} compact />
-                    </div>
-                    {/* BANDE COLONNE — le bâtiment et la recrue « domiciliés » ici, façon plateau original */}
-                    <div style={{padding:"7px 10px 9px",display:"flex",alignItems:"stretch",gap:8,background:"rgba(0,0,0,0.16)",borderTop:"1px dashed var(--border)"}}>
-                      {colBuilding&&<BuildingSlot Icon={BIcon} name={colBuilding.name} effect={colBuilding.effect} revealed={!!builtEntry} extra={builtEntry?`#${builtEntry.hexId}`:null}/>}
-                      <RecruitSlot Icon={RIcon} label={rec?rec.label:null} placed={!!rec}/>
+                    {/* RANGÉE BAS — coût lu comme une séquence : cases fixes → cubes déjà posés
+                        (réduction acquise) → coûts fantômes (encore annulables) → gains,
+                        avec, alignée à droite, la case Recrue de cette colonne */}
+                    <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8,background:"rgba(0,0,0,0.28)",borderTop:"1px solid var(--border)"}}>
+                      <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:3,flexWrap:"wrap"}}>
+                        {bc&&<>
+                          {Array.from({length:fixedQty}).map((_,k)=><ActionSquare key={`f${k}`} type="cost" resource={bc.res} size={21}/>)}
+                          {Array.from({length:cubesBot}).map((_,k)=><UpgradeSlot key={`u${k}`} filled size={21} title="Réduction acquise (cube posé)"/>)}
+                          {Array.from({length:reducAvail}).map((_,k)=>{
+                            // Améliorer : la prochaine case de réduction de cette colonne se clique directement
+                            const pickable=upgradePicking&&k===0;
+                            return <GhostSquare key={`r${k}`} resource={bc.res} kind="cost" size={21}
+                              selected={pickable&&bottomPick?.upgradeTo===i}
+                              onClick={pickable?(e)=>{e.stopPropagation();setBottomPick(prev=>({...(prev||{}),upgradeTo:i}));}:undefined}
+                              title={pickable?`② Placer le cube ici : -1 coût sur ${FR_BOT[bottomAction]||bottomAction}`:"Coût encore annulable via Améliorer"}/>;
+                          })}
+                          <span style={{width:6,flexShrink:0}}/>
+                        </>}
+                        <ActionRow gain={[...(upBonus>0?Array(upBonus).fill("coins"):[]),bottomGainRes]} compact size={21} />
+                      </div>
+                      <div style={{width:168,flexShrink:0,display:"flex",alignSelf:"stretch"}}>
+                        <RecruitSlot Icon={RIcon} label={rec?rec.label:null} placed={!!rec}/>
+                      </div>
                     </div>
                   </button>
                   </React.Fragment>
@@ -3192,30 +3271,22 @@ export default function App(){
                     (mat.bottomSlots||[]).forEach((s,ci)=>{if((me.cubesOnBottom||[])[ci]<s)validBottoms.push(ci);});
                   }
                   if(validTops.length===0||validBottoms.length===0) return <div style={{fontSize:13,color:"var(--text-muted)"}}>Plus de cubes disponibles</div>;
-                  if(!bottomPick||bottomPick.upgradeFrom===undefined) return <div>
-                    <div style={{fontSize:12,color:"#4caf50",marginBottom:6,fontWeight:600}}>① Retirer un cube du top :</div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                      {validTops.map(ci=><button key={ci} onClick={()=>setBottomPick({upgradeFrom:ci})} className="act-btn" style={{borderColor:"#4caf50"}}>
-                        <span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:"#4caf50",marginRight:4,verticalAlign:"middle"}}/>
-                        {me.topRow[ci]} ({(me.cubesOnTop||[])[ci]}🟩)
-                      </button>)}
-                    </div>
-                  </div>;
+                  // Sélection directe SUR LES CARTES D'ACTION (au-dessus) : cube
+                  // source en rangée haut, case de réduction en rangée bas —
+                  // le panneau ne porte plus que le statut et la validation
+                  const from=bottomPick?.upgradeFrom;const to=bottomPick?.upgradeTo;
+                  const ready=from!=null&&to!=null;
                   return <div>
-                    <div style={{fontSize:12,color:"#4caf50",marginBottom:4}}>① {me.topRow[bottomPick.upgradeFrom]} sélectionné</div>
-                    <div style={{fontSize:12,color:"var(--brass)",marginBottom:6,fontWeight:600}}>② Placer le cube sur un bottom :</div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                      {validBottoms.map(ci=>{
-                        const bCost=mat.bottomCosts[ci];
-                        return <button key={ci} onClick={()=>{doUpgrade(bottomPick.upgradeFrom,ci);setBottomPick(null);}} className="act-btn" style={{borderColor:"var(--brass)"}}>
-                          {BOTTOM[ci]} <span style={{fontSize:13,opacity:0.7}}>(-1 coût, +{bCost.bonus}$)</span>
-                          <span style={{display:"inline-flex",gap:1,marginLeft:4}}>
-                            {Array.from({length:(mat.bottomSlots||[])[ci]}).map((_2,si)=><span key={si} style={{display:"inline-block",width:6,height:6,borderRadius:1,background:si<(me.cubesOnBottom||[])[ci]?"#4caf50":"#333",border:"1px solid #555"}}/>)}
-                          </span>
-                        </button>;
-                      })}
+                    <div style={{fontSize:13,color:"var(--text-dim)",lineHeight:1.6,marginBottom:8}}>
+                      Cliquez sur les cartes d'action ci-dessus :<br/>
+                      <span style={{color:from!=null?"#8fbf6a":"#4caf50",fontWeight:600}}>① cube à retirer (rangée haut){from!=null?` — ${FR_TOP[me.topRow[from]]||me.topRow[from]} ✓`:""}</span><br/>
+                      <span style={{color:to!=null?"#8fbf6a":"var(--brass)",fontWeight:600}}>② coût à réduire (rangée bas){to!=null?` — ${FR_BOT[BOTTOM[to]]||BOTTOM[to]} ✓ (+${mat.bottomCosts[to].bonus||0}$)`:""}</span>
                     </div>
-                    <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre source</button>
+                    <button disabled={!ready} onClick={()=>{doUpgrade(from,to);setBottomPick(null);}} className="act-btn"
+                      style={{width:"100%",fontWeight:700,...(ready?{background:"#3a6a3a",color:"#fff",border:"none"}:{opacity:0.45,cursor:"not-allowed"})}}>
+                      ✓ Valider l'amélioration
+                    </button>
+                    {(from!=null||to!=null)&&<button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:13,opacity:0.7,minHeight:34,width:"100%"}}>↩ Réinitialiser la sélection</button>}
                   </div>;
                 })()}
                 {ba==="Deploy"&&!maxed&&(()=>{
@@ -3474,12 +3545,12 @@ export default function App(){
               {starDetail==="mech"&&(<div>
                 <div style={{fontSize:14,fontWeight:700,color:"var(--brass)",marginBottom:8,fontFamily:"var(--font-title)"}}>Mechas & capacités</div>
                 <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:8}}>Déployés : {me.mechs.length}/4 {me.mechs.length>0&&`(hex ${me.mechs.map(m=>`#${m.hexId}`).join(", ")})`} · Chaque déploiement débloque UNE capacité au choix :</div>
-                {ABILITY_NAMES.map((nm,idx)=>{const unlocked=(me.unlockedAbilities||[]).includes(idx);return(
+                {myMechAbilities.map((ab,idx)=>{const unlocked=(me.unlockedAbilities||[]).includes(idx);return(
                   <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:6,marginBottom:5,background:unlocked?"rgba(200,112,64,0.1)":"rgba(0,0,0,0.25)",border:unlocked?"1px solid var(--rust-dark)":"1px dashed var(--border-dark)",opacity:unlocked?1:0.75}}>
-                    <span style={{fontSize:23,opacity:unlocked?1:0.5}}>{ABILITY_ICONS[idx]}</span>
+                    <span style={{fontSize:23,opacity:unlocked?1:0.5}}>{ab.icon}</span>
                     <div style={{flex:1}}>
-                      <div style={{fontSize:15,fontWeight:700,color:unlocked?"var(--rust)":"var(--text-dim)"}}>{nm}</div>
-                      <div style={{fontSize:14,color:"var(--text-dim)"}}>{ABILITY_DESC[idx]}</div>
+                      <div style={{fontSize:15,fontWeight:700,color:unlocked?"var(--rust)":"var(--text-dim)"}}>{ab.name}</div>
+                      <div style={{fontSize:14,color:"var(--text-dim)"}}>{ab.desc}</div>
                     </div>
                     <span style={{fontSize:14,color:unlocked?"#8fbf6a":"var(--text-muted)",fontWeight:700}}>{unlocked?"✓":"—"}</span>
                   </div>

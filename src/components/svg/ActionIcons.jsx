@@ -73,7 +73,21 @@ export const IconWorker = ({ size = 16, color = "#fff" }) => (
 
 export const IconMech = ({ size = 16, color = "#fff" }) => (
   <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="8,2 14,8 8,14 2,8" fill={color} fillOpacity="0.1" />
+    {/* Marcheur de combat : antenne, cockpit bombé, hublot, jambes écartées */}
+    <path d="M8 3 V1.5" />
+    <path d="M4.5 8.5 V6.5 C4.5 4.4 6 3 8 3 C10 3 11.5 4.4 11.5 6.5 V8.5 Z" fill={color} fillOpacity="0.12" />
+    <circle cx="8" cy="5.8" r="1" fill={color} stroke="none" opacity="0.6" />
+    <path d="M5.5 8.5 L4.5 13" />
+    <path d="M10.5 8.5 L11.5 13" />
+    <path d="M3 13 H6" />
+    <path d="M10 13 H13" />
+  </svg>
+);
+
+export const IconUpgrade = ({ size = 16, color = "#fff" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 13.5 V4.5" />
+    <path d="M3.5 8 L8 2.5 L12.5 8" />
   </svg>
 );
 
@@ -126,6 +140,7 @@ export const RESOURCE_ICONS = {
   pop: IconPop,
   worker: IconWorker,
   mech: IconMech,
+  upgrade: IconUpgrade,
 };
 
 // Map building type (BUILDING_TYPES[i].type from data/mats.js) to icon component
@@ -166,8 +181,8 @@ export function OrPill() {
 }
 
 // ═══ ActionRow — PAY → GAIN layout ═══
-export function ActionRow({ pay = [], gain = [], altGain, compact = false }) {
-  const sqSize = compact ? 23 : 26;
+export function ActionRow({ pay = [], gain = [], altGain, compact = false, size }) {
+  const sqSize = size || (compact ? 23 : 26);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
       {pay.length > 0 && <>
@@ -214,6 +229,34 @@ export function UpgradeSlot({ filled = false, size = 23, title }) {
   );
 }
 
+// ═══ GhostSquare — case fantôme intégrée à la séquence : elle prévisualise
+// l'icône concernée (gain à débloquer en rangée haut, coût annulable en rangée
+// bas) en pointillé estompé. filled = cube d'amélioration posé → case réelle. ═══
+// onClick (action Améliorer) : la case devient cliquable — bordure verte
+// accentuée quand sélectionnable, dorée lumineuse quand sélectionnée.
+export function GhostSquare({ resource, kind = "gain", filled = false, size = 23, title, onClick, selected }) {
+  const Icon = RESOURCE_ICONS[resource];
+  const iconSize = Math.round(size * 0.65);
+  return (
+    <div title={title} onClick={onClick} style={{
+      width: size, height: size, borderRadius: 3, flexShrink: 0,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      ...(filled ? {
+        background: kind === "cost" ? "var(--cost-bg)" : "var(--gain-bg)",
+        border: "1.5px solid var(--cube-border)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)",
+      } : {
+        background: "transparent",
+        border: `1.5px dashed ${kind === "cost" ? "rgba(160,48,48,0.6)" : "rgba(150,150,140,0.5)"}`,
+      }),
+      ...(onClick ? { cursor: "pointer", border: `1.5px dashed ${selected ? "#e6c96a" : "#4caf50"}` } : {}),
+      ...(selected ? { border: "2px solid #e6c96a", boxShadow: "0 0 8px rgba(230,201,106,0.85)", background: "rgba(230,201,106,0.18)" } : {}),
+    }}>
+      {Icon && <Icon size={iconSize} color={selected ? "#f0e0a8" : filled ? "rgba(255,255,255,0.9)" : kind === "cost" ? "rgba(200,110,110,0.55)" : "rgba(200,200,190,0.45)"} />}
+    </div>
+  );
+}
+
 // ═══ BuildingSlot — le pion Bâtiment de cette colonne : encore en réserve
 // (silhouette fantôme, pointillé) ou construit (icône pleine, effet révélé). ═══
 export function BuildingSlot({ Icon, name, effect, revealed, extra }) {
@@ -239,8 +282,8 @@ export function BuildingSlot({ Icon, name, effect, revealed, extra }) {
           whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
         }}>{name}{extra ? ` · ${extra}` : ""}</div>
         <div style={{
-          fontSize: 11.5, color: revealed ? "var(--gold)" : "var(--text-muted)",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+          fontSize: 11.5, color: revealed ? "var(--gold)" : "var(--text-muted)", lineHeight: 1.2,
+          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
         }}>{effect}</div>
       </div>
     </div>

@@ -68,7 +68,7 @@ export const RULES = [
         content: "L'Usine centrale (Rouge River) propose 2 types de plans au lieu d'un :",
         list: [
           "Plans Ford — 5 plans utilitaires, toujours accessibles",
-          "Plans Tesla — 5 plans puissants, accessibles uniquement avec 2 Fragments Tesla",
+          "Plans Tesla — 5 plans puissants, accessibles avec 1 Fragment Tesla",
           "Fragments Tesla — obtenus via rencontres ou récompenses de combat PvE"
         ]
       },
@@ -123,7 +123,7 @@ export const RULES = [
     sections: [
       {
         title: "Règles de Base",
-        content: "Chaque unité peut se déplacer d'1 hex par action Move. Vous ne pouvez pas traverser les rivières sauf avec Riverwalk (capacité de mecha) ou certains plans. Les lacs sont infranchissables."
+        content: "Chaque unité peut se déplacer d'1 hex par action Move. Vous ne pouvez pas traverser les rivières sauf avec Riverwalk (capacité de mecha) ou certains plans. Les lacs sont infranchissables. Exception : l'Usine Rouge River a ses ponts — on peut toujours y entrer malgré les rivières."
       },
       {
         title: "Marécages (péage)",
