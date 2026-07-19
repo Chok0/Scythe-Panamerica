@@ -4,16 +4,16 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { TERRAINS } from '../data/terrains.js';
 import { FACTIONS, FACTION_IDS } from '../data/factions.js';
-import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, CURRENT_MAP, DEFAULT_MAP, loadMap, baseHexAt, homeBaseHex, isBaseHex } from '../data/hexes.js';
+import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, CURRENT_MAP, DEFAULT_MAP, CLASSIC_V2_MAP, loadMap, baseHexAt, homeBaseHex, isBaseHex } from '../data/hexes.js';
 import { generateAcceptedMap } from '../data/mapGen.js';
 import { getCombatBonus } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
-import { EMPIRE_START, EMPIRE_RAILS, drawEmpireCombat } from '../data/empire.js';
+import { EMPIRE_START, drawEmpireCombat } from '../data/empire.js';
 import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA } from '../data/plans.js';
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
-import { pickStructureBonus, structureBonusDetail } from '../data/structureBonus.js';
+import { structureBonusDetail } from '../data/structureBonus.js';
 import { reconcileHand, topCardsSum, spendTopCards, handSummary } from '../logic/cards.js';
 import RulesPage from './RulesPage.jsx';
 import AmbientSound from './AmbientSound.jsx';
@@ -21,7 +21,7 @@ import SetupScreen from './SetupScreen.jsx';
 import { countRes, spendRes, getWorkerHexes } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel, PRODUCE_TIERS } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
-import { getValidMoves, findPathWaypoints } from '../logic/movement.js';
+import { getValidMoves, findPathWaypoints, marshToll } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer } from '../logic/player.js';
 import { botTurn } from '../logic/bot.js';
@@ -35,20 +35,53 @@ import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 import { TERRAIN_TEXTURES, TERRAIN_TILE } from '../assets/terrains/index.js';
 import { BOARD_IMAGE } from '../assets/map/index.js';
 
+// ═══ Marqueurs de piste (popularité / puissance) ═══
+// Cœur aux couleurs de la faction, portant la valeur courante de popularité.
+const HeartMarker=({color,value,size=26})=>(
+  <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center",filter:"drop-shadow(0 1px 3px rgba(0,0,0,0.75))",zIndex:2}}>
+    <svg width={size} height={size} viewBox="0 0 16 16">
+      <path d="M8 14 C8 14 2 10 2 6.5 C2 4 4 2 6 2 C7 2 7.6 2.5 8 3 C8.4 2.5 9 2 10 2 C12 2 14 4 14 6.5 C14 10 8 14 8 14Z" fill={color} stroke="rgba(255,255,255,0.85)" strokeWidth="0.9" strokeLinejoin="round"/>
+    </svg>
+    <span style={{position:"absolute",top:"44%",left:"50%",transform:"translate(-50%,-50%)",fontSize:Math.round(size*0.42),fontWeight:900,color:"#fff",fontFamily:"var(--font-mono)",textShadow:"0 1px 2px rgba(0,0,0,0.85)",lineHeight:1}}>{value}</span>
+  </div>
+);
+
+// Éclair aux couleurs de la faction, portant la valeur courante de puissance.
+const BoltMarker=({color,value,height=24})=>(
+  <div style={{display:"flex",alignItems:"center",gap:2,padding:"0 7px 0 4px",height,borderRadius:height/2,
+    background:color,border:"1px solid rgba(255,255,255,0.8)",boxShadow:"0 1px 4px rgba(0,0,0,0.7)"}}>
+    <svg width={Math.round(height*0.62)} height={Math.round(height*0.62)} viewBox="0 0 16 16">
+      <polygon points="9,1 4,9 7.5,9 7,15 12,7 8.5,7" fill="#fff" stroke="rgba(0,0,0,0.35)" strokeWidth="0.5"/>
+    </svg>
+    <span style={{fontSize:Math.round(height*0.52),fontWeight:900,color:"#fff",fontFamily:"var(--font-mono)",textShadow:"0 1px 2px rgba(0,0,0,0.7)",lineHeight:1}}>{value}</span>
+  </div>
+);
+
+// Étoile de fin de piste (pop 18 / puissance 16) : fantôme en pointillés tant
+// que l'étoile n'est pas obtenue, pleine et dorée une fois atteinte.
+const TrackStar=({size=13,earned=false})=>(
+  <svg width={size} height={size} viewBox="0 0 24 24" style={{flexShrink:0,display:"block"}}>
+    <path d="M12 2.5l2.83 5.9 6.47.84-4.75 4.48 1.21 6.4L12 17.02l-5.76 3.1 1.21-6.4-4.75-4.48 6.47-.84z"
+      fill={earned?"var(--gold)":"none"} stroke="var(--gold)" strokeWidth="1.8"
+      strokeDasharray={earned?undefined:"3 2.4"} opacity={earned?0.95:0.5} strokeLinejoin="round"/>
+  </svg>
+);
+
 export default function App(){
   const[phase,setPhase]=useState("setup");
   const[selFaction,setSelFaction]=useState(null);
   const[selMat,setSelMat]=useState(null);
   const[numBots,setNumBots]=useState(2);
-  const[randomMap,setRandomMap]=useState(false);
-  const[empireEnabled,setEmpireEnabled]=useState(true); // bots de l'Empire activables/désactivables au setup
+  const[mapChoice,setMapChoice]=useState("v3"); // "v3" (défaut) | "v2" (configuration initiale) | "random" (procédurale)
+  // Bots de l'Empire désactivés par défaut — mécanique réservée au mode campagne
+  const[empireEnabled,setEmpireEnabled]=useState(false);
   const[difficulty,setDifficulty]=useState("normal");
   const[structureBonus,setStructureBonus]=useState(null); // tuile bonus de construction tirée au début
   const[players,setPlayers]=useState([]);
   const[currentP,setCurrentP]=useState(0);
   const[turn,setTurn]=useState(1);
   const[empire,setEmpire]=useState(Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])));
-  const[rails,setRails]=useState([...EMPIRE_RAILS]); // shared rail network: array of [hexA, hexB]
+  const[rails,setRails]=useState([]); // shared rail network: array of [hexA, hexB] — la carte de base démarre SANS rails (EMPIRE_RAILS réservés à la campagne)
   const[railPlacement,setRailPlacement]=useState(null); // {remaining:3, fromHex:null} for placing rails after Gare build
   const[selHex,setSelHex]=useState(null);
   const[selAction,setSelAction]=useState(null);
@@ -73,6 +106,7 @@ export default function App(){
   const[hovHex,setHovHex]=useState(null);
   const[clickRipple,setClickRipple]=useState(null); // {hexId, key} for ripple animation
   const[showOpponents,setShowOpponents]=useState(false); // barre du haut dépliée : ressources + étoiles adverses
+  const[showScoring,setShowScoring]=useState(false); // tiroir latéral : barème de score de fin de partie
   const[floaters,setFloaters]=useState([]); // animations de gain : {id,icon,color,x,y,label}
   const[log,setLog]=useState([]);
   const[botRunning,setBotRunning]=useState(false);
@@ -273,23 +307,26 @@ export default function App(){
 
   const startGame=useCallback(()=>{
     if(!selFaction||!selMat)return;
-    // Carte : procédurale (validée par les règles de non-acceptation) ou celle d'origine
-    if(randomMap){
+    // Carte : v3 (défaut), configuration initiale (v2), ou procédurale
+    if(mapChoice==="random"){
       const gen=generateAcceptedMap(Math.random);
       loadMap(gen.map);
       addLog(`🗺 Carte procédurale générée (${gen.tries} essai${gen.tries>1?"s":""})`);
+    } else if(mapChoice==="v2"){
+      loadMap(CLASSIC_V2_MAP);
+      addLog(`🗺 Carte classique — configuration initiale (v2)`);
     } else {
       loadMap(DEFAULT_MAP);
     }
     setEncounterTokens(new Set(CURRENT_MAP.encounterHexes));
     setEmpire(empireEnabled?Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])):{});
-    if(!empireEnabled)addLog(`🤖 Bots de l'Empire désactivés pour cette partie`);
-    setRails([...EMPIRE_RAILS]);
+    if(empireEnabled)addLog(`🤖 Bots de l'Empire activés (mécanique campagne)`);
+    // La carte de base démarre sans rails — seules les Gares en posent
+    setRails([]);
     setRrVisitors(0);
-    // Bonus de construction : tuile tirée au hasard, visible de tous
-    const sb=pickStructureBonus();
-    setStructureBonus(sb);
-    addLog(`🏦 Bonus de construction : ${sb.icon} ${sb.name} — +${sb.coins}$ ${sb.desc}`);
+    // 🏦 Tuiles bonus $ retirées du jeu de base — l'idée est réservée à la
+    // mission « Ruée vers l'or » du mode campagne (voir docs/campagne.md)
+    setStructureBonus(null);
     const usedFactions=[selFaction];const usedMats=[selMat];
     const ps=[createPlayer(selFaction,selMat,false)];
     const availF=FACTION_IDS.filter(f=>!usedFactions.includes(f));
@@ -324,7 +361,7 @@ export default function App(){
       const y=Math.max(MAP_BASE.y,Math.min(MAP_BASE.y+MAP_BASE.h-zh,heroHex.ry-zh/2));
       setMapView({x,y,w:zw,h:zh});
     }
-  },[selFaction,selMat,numBots,randomMap,empireEnabled,difficulty,addLog]);
+  },[selFaction,selMat,numBots,mapChoice,empireEnabled,difficulty,addLog]);
 
   const revealObjective=useCallback((objIdx)=>{
     const p=players[0];if(!p||p.objectiveRevealed)return;
@@ -838,10 +875,12 @@ export default function App(){
   // ongoing, bonus de bâtiment au Bolster…) fait « pop » l'icône correspondante.
   // Joueur → près de la barre du haut ; adversaires → mini au-dessus de leur base.
   const prevStatsRef=useRef(null);
-  const spawnFloater=useCallback((icon,color,x,y,mini)=>{
+  // variant : "big" (gains du joueur — gros toast au centre de l'écran),
+  // "mini" (gains adverses au-dessus de leur base), sinon taille standard
+  const spawnFloater=useCallback((icon,color,x,y,variant)=>{
     const id=`${Date.now()}_${Math.random().toString(36).slice(2,7)}`;
-    setFloaters(f=>[...f,{id,icon,color,x,y,mini}]);
-    setTimeout(()=>setFloaters(f=>f.filter(z=>z.id!==id)),1500);
+    setFloaters(f=>[...f,{id,icon,color,x,y,variant}]);
+    setTimeout(()=>setFloaters(f=>f.filter(z=>z.id!==id)),variant==="big"?1800:1500);
   },[]);
   useEffect(()=>{
     if(phase!=="playing"||players.length===0){prevStatsRef.current=null;return;}
@@ -858,14 +897,17 @@ export default function App(){
           const d=snap[pi][k]-pr[k];
           if(d>0&&d<=12){
             if(pi===0){
-              const bx=window.innerWidth*0.34+stack*30;
-              spawnFloater(`+${d>1?d:""}${icon}`,color,bx,54,false);
+              // Gain du joueur : gros toast au CENTRE de l'écran (empilé
+              // verticalement si plusieurs gains simultanés)
+              const bx=window.innerWidth*0.5;
+              const by=window.innerHeight*0.40+stack*72;
+              spawnFloater(`+${d>1?d:""}${icon}`,color,bx,by,"big");
             } else if(rect&&mv){
               const hb=HOME_BASES[p.faction];
               const sx=rect.left+(hb.rx-mv.x)/mv.w*rect.width;
               const sy=rect.top+(hb.ry-mv.y)/mv.h*rect.height;
               if(sx>rect.left&&sx<rect.right&&sy>rect.top&&sy<rect.bottom)
-                spawnFloater(`+${d>1?d:""}${icon}`,color,sx+stack*16,sy-24,true);
+                spawnFloater(`+${d>1?d:""}${icon}`,color,sx+stack*16,sy-24,"mini");
             }
             stack++;
           }
@@ -1115,6 +1157,7 @@ export default function App(){
       Object.keys(me.resources).forEach(k=>{p.resources[k]={...me.resources[k]};});
       const fromHex=moveSource.fromHex;
       let transportLog="";
+      let marshCarried=0; // ouvriers transportés par un mecha → paient aussi le péage
       
       // ── SCYTHE RULE: workers cannot enter enemy-occupied hexes ──
       if(moveSource.unitType==="worker"){
@@ -1138,6 +1181,7 @@ export default function App(){
         // ressources restent (stratégie d'expansion : le mech continue seul)
         const tr=transportUnits(p, fromHex, hexId, "mech", {carryWorkers:carryOnMove,carryRes:carryOnMove});
         p=tr.player;
+        marshCarried=tr.carried.workers;
         if(tr.carried.workers>0) transportLog+=` 👷×${tr.carried.workers}`;
         if(tr.carried.resTypes.length>0) transportLog+=` 📦${tr.carried.resTypes.join(",")}`;
       }
@@ -1151,6 +1195,10 @@ export default function App(){
         }
       }
       
+      // ── PÉAGE DE MARÉCAGE : -1♥ par ouvrier, -1⚡ par unité de combat qui y entre ──
+      const toll=marshToll(p,hexId,moveSource.unitType,marshCarried);
+      if(toll)addLog(toll);
+
       p.movesLeft=(me.movesLeft||moveLimit)-1;p.movedUnits=[...(me.movedUnits||[]),moveSource.unitId];
 
       // ── PLAN « Iron Horse » (move_mine) : chaque déplacement mine 1 ressource du terrain d'arrivée ──
@@ -1890,7 +1938,7 @@ export default function App(){
 
   // ══════════ SETUP SCREEN ══════════
   if(phase==="setup"){
-    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} randomMap={randomMap} setRandomMap={setRandomMap} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
+    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} mapChoice={mapChoice} setMapChoice={setMapChoice} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
   }
 
   // (pick_objective phase removed — player keeps both objectives per Scythe rules)
@@ -1940,6 +1988,33 @@ export default function App(){
         starScore,terScore,resScore,total,starMult,terMult,resMult,
         sbCount:sbDetail.count,sbCoins:sbDetail.coins};
     }).sort((a,b)=>b.total-a.total);
+
+    // Export du journal de partie (JSON) — données pour l'entraînement de l'IA
+    // et l'étude des bugs : classement complet + log horodaté de tous les coups
+    const downloadJournal=()=>{
+      const data={
+        jeu:"Scythe Panamerica",
+        date:new Date().toISOString(),
+        carte:CURRENT_MAP.name,
+        tours:turn,
+        difficulte:difficulty,
+        classement:scores.map((s,i)=>({
+          rang:i+1,faction:s.faction,nom:s.name,bot:s.isBot,total:s.total,
+          etoiles:s.stars,pop:s.pop,palier_pop:["0-6","7-12","13-18"][s.popTier],
+          territoires:s.territories,bonus_usine:s.factoryBonus,comptoirs:s.flagBonus,
+          ressources:s.totalRes,paires:s.resPairs,argent:s.coins,
+          detail:{etoiles:s.starScore,territoires:s.terScore,ressources:s.resScore},
+        })),
+        journal:log.map(e=>({tour:e.turn,etape:e.step,cat:e.cat,ts:e.ts,msg:e.msg})),
+      };
+      const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;
+      a.download=`scythe-journal-${new Date().toISOString().slice(0,19).replace(/[:T]/g,"-")}.json`;
+      document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+    };
 
     return(
       <div style={{minHeight:"100vh",background:"linear-gradient(170deg,#1A1710 0%,#1A1710 40%,#1A1710 100%)",color:"var(--text)",display:"flex",flexDirection:"column",alignItems:"center",padding:"32px 16px",overflow:"auto"}}>
@@ -1993,11 +2068,18 @@ export default function App(){
           ))}
         </div>
 
-        <button onClick={()=>{setPhase("setup");setPlayers([]);setLog([]);setTurn(1);setEmpire(Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])));setRails([...EMPIRE_RAILS]);setRailPlacement(null);setSelFaction(null);setSelMat(null);}} style={{
-          marginTop:24,padding:"12px 40px",fontSize:15,letterSpacing:4,textTransform:"uppercase",
-          background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:6,fontWeight:700,
-          fontFamily:"var(--font-title)",cursor:"pointer",
-        }}>Nouvelle Partie</button>
+        <div style={{display:"flex",gap:12,marginTop:24,flexWrap:"wrap",justifyContent:"center"}}>
+          <button onClick={()=>{setPhase("setup");setPlayers([]);setLog([]);setTurn(1);setEmpire({});setRails([]);setRailPlacement(null);setSelFaction(null);setSelMat(null);}} style={{
+            padding:"12px 40px",fontSize:15,letterSpacing:4,textTransform:"uppercase",
+            background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:6,fontWeight:700,
+            fontFamily:"var(--font-title)",cursor:"pointer",
+          }}>Nouvelle Partie</button>
+          <button onClick={downloadJournal} title="Exporter le journal complet de la partie en JSON (classement + tous les coups) — utile pour analyser l'IA et les bugs" style={{
+            padding:"12px 30px",fontSize:15,letterSpacing:2,textTransform:"uppercase",
+            background:"transparent",color:"var(--gold)",border:"1px solid var(--gold-dim)",borderRadius:6,fontWeight:700,
+            fontFamily:"var(--font-title)",cursor:"pointer",
+          }}>💾 Télécharger le journal</button>
+        </div>
       </div>
     );
   }
@@ -2007,18 +2089,18 @@ export default function App(){
   const isMyTurn=currentP===0&&!botRunning;
   const selHexData=selHex!==null?hMap[selHex]:null;
 
-  // Ressources d'un joueur → pills (partagé barre du haut / panneau adversaires)
+  // Ressources d'un joueur → compteurs (partagé barre du haut / panneau adversaires).
+  // Ordre demandé : Métal / Bois / Céréales / Pétrole // Argent / Cartes munitions.
+  // (Ouvriers et mechas retirés : leurs valeurs sont lisibles sur la rangée d'objectifs.)
   const playerStats=(p)=>{
     const tot=(t)=>{let s=0;Object.values(p.resources).forEach(r=>{if(r[t])s+=r[t];});return s;};
     return[
-      {svgKey:"coins",val:p.coins,color:"var(--gold)",label:"$"},
-      {svgKey:"combatCards",val:p.combatCards,color:"#bbaacc",label:"CC"},
-      {svgKey:"metal",val:tot("metal"),color:"#99aabb",label:"Mét"},
+      {svgKey:"metal",val:tot("metal"),color:"#99aabb",label:"Métal"},
       {svgKey:"bois",val:tot("bois"),color:"#7aaa55",label:"Bois"},
-      {svgKey:"nourriture",val:tot("nourriture"),color:"#d4b050",label:"Nour"},
-      {svgKey:"petrole",val:tot("petrole"),color:"#8a90a0",label:"Pét"},
-      {svgKey:"worker",val:p.workers.length,color:"#c89966",label:"Ouv"},
-      {svgKey:"mech",val:p.mechs.length,color:"#99aabb",label:"Mech"},
+      {svgKey:"nourriture",val:tot("nourriture"),color:"#d4b050",label:"Céréales"},
+      {svgKey:"petrole",val:tot("petrole"),color:"#8a90a0",label:"Pétrole"},
+      {svgKey:"coins",val:p.coins,color:"var(--gold)",label:"Argent",sep:true},
+      {svgKey:"combatCards",val:p.combatCards,color:"#bbaacc",label:"Cartes munitions"},
     ];
   };
   // Vocabulaire couplé façon Scythe (en-tête de chaque cellule d'action)
@@ -2058,32 +2140,39 @@ export default function App(){
 
       {/* ═══ TOP RESOURCE BAR ═══ */}
       <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",padding:"6px 16px",gap:10,background:"linear-gradient(180deg,#282013,#1c150c)",borderBottom:"1px solid var(--panel-edge)",boxShadow:"inset 0 -1px 0 rgba(216,201,163,0.07)",flexShrink:0,height:"var(--top-h)",overflow:"hidden"}}>
-        {/* Faction badge */}
-        <div style={{display:"flex",alignItems:"center",gap:8,marginRight:4,flexShrink:0}}>
-          <div style={{width:36,height:36,borderRadius:"50%",background:myFaction.color+"22",border:`2px solid ${myFaction.color}`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
-            <img src={FACTION_LOGOS[me.faction]} alt="" style={{width:"82%",height:"82%",objectFit:"contain"}}/>
+        {/* Faction badge — logo agrandi */}
+        <div style={{display:"flex",alignItems:"center",gap:10,marginRight:4,flexShrink:0}}>
+          <div style={{width:54,height:54,borderRadius:"50%",background:myFaction.color+"22",border:`2px solid ${myFaction.color}`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0,boxShadow:`0 0 10px ${myFaction.color}33`}}>
+            <img src={FACTION_LOGOS[me.faction]} alt="" style={{width:"86%",height:"86%",objectFit:"contain"}}/>
           </div>
           <div style={{lineHeight:1.2}}>
-            <div style={{fontSize:16,fontWeight:700,color:myFaction.color,fontFamily:"var(--font-title)"}}>{myFaction.name}</div>
+            <div style={{fontSize:18,fontWeight:700,color:myFaction.color,fontFamily:"var(--font-title)"}}>{myFaction.name}</div>
             <div style={{fontSize:13,color:"var(--text-dim)",fontFamily:"var(--font-body)"}}>{myMat.name} · T{turn}</div>
           </div>
         </div>
         {botRunning&&<span style={{color:"var(--rust)",fontSize:14,animation:"pulse 1s infinite",marginRight:4,display:"flex",alignItems:"center",gap:3}}>{React.createElement(RESOURCE_ICONS.metal,{size:12,color:"var(--rust)"})} IA…</span>}
         {/* Divider */}
         <div style={{width:1,height:28,background:"var(--border-light)",flexShrink:0}}/>
-        {/* Resource counters — SVG icons */}
+        {/* Resource counters — grandes icônes SVG, sans bloc :
+            Métal / Bois / Céréales / Pétrole ‖ Argent / Cartes munitions */}
         {(()=>{
           const stats=playerStats(me);
-          return stats.map((s,i)=>{
+          return stats.map(s=>{
             const Icon=RESOURCE_ICONS[s.svgKey];
             const isCards=s.svgKey==="combatCards";
             return(
-            <div key={i} className="res-pill" title={isCards?"Cartes de combat — cliquer pour voir la main":s.label}
-              onClick={isCards?()=>setShowCards(v=>!v):undefined}
-              style={isCards?{cursor:"pointer",borderColor:showCards?"var(--gold-dim)":undefined}:undefined}>
-              <span className="res-icon" style={{display:"flex",alignItems:"center"}}>{Icon?<Icon size={19} color={s.color}/>:s.svgKey}</span>
-              <span className="res-val" style={{color:s.color}}>{s.val}</span>
-            </div>
+            <React.Fragment key={s.svgKey}>
+              {s.sep&&<div style={{width:1,height:34,background:"var(--border-light)",flexShrink:0,margin:"0 6px"}}/>}
+              <div title={isCards?"Cartes munitions — cliquer pour voir la main":s.label}
+                onClick={isCards?()=>setShowCards(v=>!v):undefined}
+                style={{display:"flex",alignItems:"center",gap:6,flexShrink:0,padding:"3px 5px",borderRadius:6,
+                  cursor:isCards?"pointer":"default",
+                  background:isCards&&showCards?"rgba(212,178,84,0.12)":"transparent",
+                  boxShadow:isCards&&showCards?"inset 0 0 0 1px var(--gold-dim)":"none"}}>
+                {Icon?<Icon size={28} color={s.color}/>:null}
+                <span style={{fontSize:24,fontWeight:700,fontFamily:"var(--font-mono)",color:s.color,lineHeight:1}}>{s.val}</span>
+              </div>
+            </React.Fragment>
           );});
         })()}
         {/* ── Rangée d'ÉTOILES À OBTENIR (icône grisée → étoile posée si atteint) ──
@@ -2165,65 +2254,96 @@ export default function App(){
         </div>
       )}
 
-      {/* ═══ LEFT: POPULARITY TRACK ═══ (la piste de puissance est désormais en
-            bas d'écran, cf. bande horizontale sous la grille principale) */}
-      <div style={{display:"flex",gap:4,background:"linear-gradient(180deg,#241d12,#171209 60%,#100c07)",borderRight:"1px solid var(--panel-edge)",boxShadow:"inset -1px 0 0 rgba(216,201,163,0.06)",padding:"4px 4px",overflow:"hidden"}}>
-        {/* Popularity track */}
-        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center"}}>
+      {/* ═══ LEFT: POPULARITY TRACK ═══ (la piste de puissance est en bas d'écran ;
+            le barème de score est replié dans un tiroir latéral — bande à flèche) */}
+      <div style={{display:"flex",gap:3,background:"linear-gradient(180deg,#241d12,#171209 60%,#100c07)",borderRight:"1px solid var(--panel-edge)",boxShadow:"inset -1px 0 0 rgba(216,201,163,0.06)",padding:"4px 3px 4px 4px",overflow:"hidden"}}>
+        {/* Popularity track — le cœur (couleur faction) marque la position, chiffre
+            dessus ; les cases vides gardent leur chiffre grisé ; les lignes dorées
+            marquent les paliers de score (6/7 et 12/13) ; étoile de fin à 18. */}
+        <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",minWidth:0}}>
           <div style={{fontSize:9,color:"var(--brass)",letterSpacing:1,textTransform:"uppercase",marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>Pop</div>
           <div style={{flex:1,display:"flex",flexDirection:"column-reverse",gap:1,width:"100%"}}>
             {Array.from({length:19},(_,i)=>i).map(v=>{
               const tier=v<=6?0:v<=12?1:2;
-              const tierColors=["var(--oxide)","var(--brass)","var(--gold)"];
+              const tierFills=["rgba(122,92,58,0.30)","rgba(196,160,96,0.26)","rgba(212,178,84,0.28)"];
+              const tierLines=["var(--oxide)","var(--brass)","var(--gold)"];
+              const isCur=v===me.pop;
               return(
-                <div key={v} style={{
-                  flex:1,minHeight:0,width:"100%",borderRadius:2,
-                  background:v<=me.pop?`linear-gradient(90deg,${tierColors[tier]}cc,${tierColors[tier]})`:"rgba(255,255,255,0.03)",
-                  border:v<=me.pop?`1px solid ${tierColors[tier]}`:"1px solid rgba(255,255,255,0.04)",
+                <div key={v} title={v===18?"18 — étoile Popularité max":`Popularité ${v}`} style={{
+                  flex:1,minHeight:0,width:"100%",borderRadius:2,position:"relative",
+                  background:v<=me.pop?tierFills[tier]:"rgba(255,255,255,0.02)",
+                  border:"1px solid rgba(255,255,255,0.04)",
+                  // palier de score : ligne marquée entre 6/7 et 12/13
+                  borderBottom:v===7||v===13?`2px solid ${tierLines[tier]}`:"1px solid rgba(255,255,255,0.04)",
                   display:"flex",alignItems:"center",justifyContent:"center",
-                  fontSize:9,fontWeight:v===me.pop?900:400,
-                  color:v<=me.pop?"#fff":"#2a2010",
-                  boxShadow:v===me.pop?"0 0 6px rgba(200,160,60,0.5)":"none",
-                  borderLeft:v===7||v===13?`2px solid ${tierColors[tier]}88`:"none",
-                }}>{v%2===0?v:""}</div>
+                }}>
+                  {v===18&&<span style={{position:"absolute",left:3,top:"50%",transform:"translateY(-50%)",display:"flex"}}><TrackStar size={12} earned={me.pop>=18}/></span>}
+                  {isCur
+                    ?<HeartMarker color={myFaction.color} value={v}/>
+                    :<span style={{fontSize:10,fontWeight:600,fontFamily:"var(--font-mono)",color:"var(--text-ghost)"}}>{v}</span>}
+                </div>
               );
             })}
           </div>
           <div style={{fontSize:18,fontWeight:700,color:"var(--brass)",marginTop:4,fontFamily:"var(--font-title)"}}>{me.pop}</div>
         </div>
-        {/* ── BARÈME DE SCORE par palier de popularité (aide-mémoire fidèle à
-              Scythe) : ⭐ étoiles / 🗺 territoires / 📦 paires de ressources.
-              Aligné sur les 3 bandes de la piste (le palier actif est surligné). ── */}
-        {(()=>{
-          const curTier=me.pop<=6?0:me.pop<=12?1:2;
-          const bands=[
-            {t:2,range:"13-18",star:5,ter:4,res:3},
-            {t:1,range:"7-12",star:4,ter:3,res:2},
-            {t:0,range:"0-6",star:3,ter:2,res:1},
-          ];
-          return(
-            <div style={{width:42,display:"flex",flexDirection:"column",alignItems:"stretch",paddingTop:14,paddingBottom:24}}>
-              <div style={{fontSize:8,color:"var(--gold-dim)",textAlign:"center",letterSpacing:0.5,marginBottom:4,fontFamily:"var(--font-title)",fontWeight:700}}>$/pt</div>
-              <div style={{flex:1,display:"grid",gridTemplateRows:"1fr 1fr 1fr",gap:3}}>
-                {bands.map(b=>{const active=b.t===curTier;return(
-                  <div key={b.t} title={`Popularité ${b.range} : chaque ⭐ vaut ${b.star}$, chaque territoire ${b.ter}$, chaque paire de ressources ${b.res}$`}
-                    style={{flex:1,display:"flex",flexDirection:"column",justifyContent:"center",gap:1,borderRadius:4,padding:"2px 3px",
-                      background:active?"rgba(212,178,84,0.16)":"rgba(255,255,255,0.02)",
-                      border:active?"1px solid var(--gold)":"1px solid var(--border)"}}>
-                    <div style={{fontSize:8,color:active?"var(--gold)":"var(--text-muted)",textAlign:"center",fontFamily:"var(--font-mono)",fontWeight:700}}>{b.range}</div>
-                    <div style={{display:"flex",justifyContent:"space-around",fontSize:10,fontWeight:800,fontFamily:"var(--font-mono)",color:active?"#e8dcc4":"var(--text-dim)"}}>
-                      <span title="par étoile" style={{color:active?"var(--gold)":"var(--gold-dim)"}}>⭐{b.star}</span>
-                    </div>
-                    <div style={{display:"flex",justifyContent:"space-around",fontSize:10,fontWeight:800,fontFamily:"var(--font-mono)",color:active?"#e8dcc4":"var(--text-dim)"}}>
-                      <span title="par territoire">🗺{b.ter}</span><span title="par paire de ressources">📦{b.res}</span>
-                    </div>
-                  </div>
-                );})}
-              </div>
-            </div>
-          );
-        })()}
+        {/* ── Bande-tiroir du BARÈME DE SCORE : repliée en permanence, une petite
+              flèche l'ouvre en panneau latéral détaillé (affiché plus grand). ── */}
+        <button onClick={()=>setShowScoring(v=>!v)} title="Barème de score de fin de partie"
+          style={{width:17,flexShrink:0,borderRadius:5,border:"1px solid var(--gold-dim)",
+            background:showScoring?"linear-gradient(90deg,rgba(212,178,84,0.22),rgba(212,178,84,0.10))":"linear-gradient(90deg,rgba(212,178,84,0.10),rgba(212,178,84,0.03))",
+            color:"var(--gold)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:8,cursor:"pointer",padding:"6px 0"}}>
+          <span style={{fontSize:9,transition:"transform .2s",transform:showScoring?"rotate(180deg)":"none"}}>▶</span>
+          <span style={{writingMode:"vertical-rl",fontSize:9,letterSpacing:2,textTransform:"uppercase",fontFamily:"var(--font-title)",fontWeight:700}}>Score</span>
+          <span style={{fontSize:9,transition:"transform .2s",transform:showScoring?"rotate(180deg)":"none"}}>▶</span>
+        </button>
       </div>
+
+      {/* ═══ TIROIR LATÉRAL : BARÈME DE SCORE (⭐ étoiles / 🗺 territoires /
+            📦 paires de ressources, par palier de popularité) ═══ */}
+      {showScoring&&(()=>{
+        const curTier=me.pop<=6?0:me.pop<=12?1:2;
+        const bands=[
+          {t:2,range:"13-18",star:5,ter:4,res:3},
+          {t:1,range:"7-12",star:4,ter:3,res:2},
+          {t:0,range:"0-6",star:3,ter:2,res:1},
+        ];
+        return(
+          <div style={{position:"fixed",top:"calc(var(--top-h) + 8px)",left:"calc(var(--left-w) + 6px)",zIndex:45,width:330,maxHeight:"calc(100vh - var(--top-h) - 56px)",overflowY:"auto",
+            background:"linear-gradient(180deg,#211a10,#14100a)",border:"1px solid var(--gold-dim)",borderRadius:12,boxShadow:"0 10px 40px rgba(0,0,0,0.7)",animation:"slideUp 0.2s ease"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 16px",borderBottom:"1px solid var(--border)"}}>
+              <span style={{fontSize:22}}>💰</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontFamily:"var(--font-title)",fontSize:18,fontWeight:800,color:"var(--gold)"}}>Barème de fin de partie</div>
+                <div style={{fontSize:13,color:"var(--text-dim)"}}>Votre palier suit votre popularité — ♥ {me.pop} actuellement.</div>
+              </div>
+              <button onClick={()=>setShowScoring(false)} style={{width:26,height:26,borderRadius:6,background:"rgba(0,0,0,0.4)",border:"1px solid var(--border)",color:"var(--text-dim)",fontSize:16,cursor:"pointer",flexShrink:0}}>✕</button>
+            </div>
+            <div style={{padding:"12px 14px",display:"flex",flexDirection:"column",gap:8}}>
+              {bands.map(b=>{const active=b.t===curTier;return(
+                <div key={b.t} style={{borderRadius:10,padding:"10px 12px",
+                  background:active?"rgba(212,178,84,0.14)":"rgba(255,255,255,0.02)",
+                  border:active?"1px solid var(--gold)":"1px solid var(--border)"}}>
+                  <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:6}}>
+                    <span style={{fontSize:19,fontWeight:900,fontFamily:"var(--font-mono)",color:active?"var(--gold)":"var(--text-dim)"}}>♥ {b.range}</span>
+                    <span style={{fontSize:12,color:active?"var(--gold)":"var(--text-muted)",textTransform:"uppercase",letterSpacing:1,fontFamily:"var(--font-title)",fontWeight:700}}>{active?"— votre palier":"de popularité"}</span>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6,textAlign:"center"}}>
+                    {[["⭐",b.star,"par étoile"],["🗺",b.ter,"par territoire"],["📦",b.res,"par paire de ressources"]].map(([ic,val,lab])=>(
+                      <div key={lab} style={{borderRadius:8,padding:"8px 4px",background:"rgba(0,0,0,0.3)",border:"1px solid var(--border)"}}>
+                        <div style={{fontSize:17}}>{ic}</div>
+                        <div style={{fontSize:21,fontWeight:900,fontFamily:"var(--font-mono)",color:active?"#e8dcc4":"var(--text-dim)"}}>{val}$</div>
+                        <div style={{fontSize:11,color:"var(--text-muted)",lineHeight:1.25}}>{lab}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );})}
+              <div style={{fontSize:12.5,color:"var(--text-muted)",lineHeight:1.5}}>S'ajoute à l'argent en caisse. Les paliers sont marqués par les lignes dorées sur la piste de popularité.</div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ═══ CENTER: MAP + OVERLAYS ═══ */}
       <div style={{position:"relative",overflow:"hidden",background:"radial-gradient(ellipse at 50% 45%,#16140e,var(--bg-map))",cursor:isPanning?"grabbing":"grab",touchAction:"none"}}>
@@ -2270,7 +2390,7 @@ export default function App(){
           <rect x="20" y="20" width="980" height="990" fill="url(#mapbg)"/>
           {/* Fond de plateau peint (carte classique) — sous la grille en fil de fer.
               Cadrage aligné sur la zone des hexagones ; ajustable via ces 4 valeurs. */}
-          {!randomMap && <image href={BOARD_IMAGE} x={44} y={30} width={952} height={968} preserveAspectRatio="none" opacity={0.98} style={{pointerEvents:"none"}}/>}
+          {mapChoice!=="random" && <image href={BOARD_IMAGE} x={44} y={30} width={952} height={968} preserveAspectRatio="none" opacity={0.98} style={{pointerEvents:"none"}}/>}
           <rect x="20" y="20" width="980" height="990" fill="url(#mapvig)"/>
           {/* Compass */}
           <g transform="translate(920,90)" opacity={0.2}>
@@ -2330,7 +2450,7 @@ export default function App(){
             // occupé par deux factions à la fois hors résolution de combat.
             const controlColor=!isBaseHex(hex.id)?(allHexContents[hex.id]?.[0]?.color||null):null;
             return(<g key={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
-              <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc} controlColor={controlColor} wireframe={!randomMap}/>
+              <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc} controlColor={controlColor} wireframe={mapChoice!=="random"}/>
               {/* Bonus de construction : pastille $ sur les tuiles qualifiées */}
               {isBonusTile&&<g style={{pointerEvents:"none"}}>
                 <circle cx={hex.rx-26} cy={hex.ry+24} r={8} fill="rgba(6,5,3,0.75)" stroke="#d4b254" strokeWidth={1}/>
@@ -3276,27 +3396,31 @@ export default function App(){
         </div>
       </div>
 
-      {/* ═══ BOTTOM: POWER TRACK (horizontale, pleine largeur) — bascule demandée
-            en bas d'écran ; un point de couleur par adversaire marque sa position
-            actuelle sur la piste, en plus de la mienne (remplissage rouge). ═══ */}
-      <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",gap:10,padding:"5px 16px",height:32,background:"linear-gradient(0deg,#241d12,#171209)",borderTop:"1px solid var(--panel-edge)",boxShadow:"inset 0 1px 0 rgba(216,201,163,0.06)",flexShrink:0,overflow:"hidden"}}>
+      {/* ═══ BOTTOM: POWER TRACK (horizontale, pleine largeur) — l'éclair (couleur
+            faction) marque la position, chiffre dessus ; chiffres grisés sur les
+            cases vides ; palier 7 = maximum engageable dans un combat ; étoile de
+            fin de piste à 16. Un point de couleur par adversaire marque sa position. ═══ */}
+      <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",gap:10,padding:"5px 16px",height:36,background:"linear-gradient(0deg,#241d12,#171209)",borderTop:"1px solid var(--panel-edge)",boxShadow:"inset 0 1px 0 rgba(216,201,163,0.06)",flexShrink:0}}>
         <div style={{fontSize:10,color:"var(--rust)",letterSpacing:1,textTransform:"uppercase",fontFamily:"var(--font-title)",fontWeight:700,flexShrink:0}}>Puissance</div>
-        <div style={{flex:1,display:"flex",gap:2,height:20,position:"relative"}}>
+        <div style={{flex:1,display:"flex",gap:2,height:22,position:"relative"}}>
           {Array.from({length:17},(_,v)=>v).map(v=>{
             const opponentsHere=players.slice(1).filter(op=>op.power===v);
+            const isCur=v===me.power;
+            const isCombatCap=v===7; // palier : maximum de puissance engageable dans un combat
             return(
-              <div key={v} style={{
+              <div key={v} title={isCombatCap?"7 — maximum de puissance engageable dans un combat":v===16?"16 — étoile Puissance max":`Puissance ${v}`} style={{
                 flex:1,minWidth:0,borderRadius:2,position:"relative",
-                background:v<=me.power?"linear-gradient(180deg,#bb3838,#8b2020)":"rgba(255,255,255,0.03)",
-                border:v<=me.power?"1px solid #dd4444":"1px solid rgba(255,255,255,0.04)",
-                display:"flex",alignItems:"center",justifyContent:"center",
-                fontSize:9,fontWeight:v===me.power?900:400,
-                color:v<=me.power?"#fff":"#3a2a2a",
-                boxShadow:v===me.power?"0 0 6px rgba(220,50,30,0.5)":"none",
+                background:v<=me.power?"rgba(187,56,56,0.16)":"rgba(255,255,255,0.03)",
+                border:isCombatCap?"1px solid var(--rust)":"1px solid rgba(255,255,255,0.05)",
+                borderRight:isCombatCap?"2px solid var(--rust)":undefined,
+                display:"flex",alignItems:"center",justifyContent:"center",gap:3,
               }}>
-                {v%2===0?v:""}
+                {!isCur&&<span style={{fontSize:10,fontWeight:isCombatCap?800:600,fontFamily:"var(--font-mono)",color:isCombatCap?"var(--rust)":"var(--text-ghost)"}}>{v}</span>}
+                {isCombatCap&&!isCur&&<span style={{fontSize:9,opacity:0.75}}>⚔</span>}
+                {v===16&&<span style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)",display:"flex"}}><TrackStar size={12} earned={me.power>=16}/></span>}
+                {isCur&&<div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",zIndex:2}}><BoltMarker color={myFaction.color} value={v}/></div>}
                 {opponentsHere.length>0&&(
-                  <div style={{position:"absolute",top:-9,left:"50%",transform:"translateX(-50%)",display:"flex",gap:2}}>
+                  <div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",display:"flex",gap:2,zIndex:3}}>
                     {opponentsHere.map(op=>(
                       <div key={op.faction} title={`${FACTIONS[op.faction].name} : ${op.power}⚡`} style={{width:7,height:7,borderRadius:"50%",background:FACTIONS[op.faction].color,border:"1px solid rgba(6,5,3,0.9)"}}/>
                     ))}
@@ -3428,8 +3552,8 @@ export default function App(){
           {floaters.map(f=>(
             <div key={f.id} className="floater" style={{
               position:"absolute",left:f.x,top:f.y,transform:"translate(-50%,-50%)",
-              fontSize:f.mini?13:22,fontWeight:900,color:f.color,
-              textShadow:"0 1px 3px rgba(0,0,0,0.9),0 0 6px rgba(0,0,0,0.6)",
+              fontSize:f.variant==="big"?58:f.variant==="mini"?13:22,fontWeight:900,color:f.color,
+              textShadow:f.variant==="big"?"0 2px 6px rgba(0,0,0,0.95),0 0 18px rgba(0,0,0,0.7)":"0 1px 3px rgba(0,0,0,0.9),0 0 6px rgba(0,0,0,0.6)",
               fontFamily:"var(--font-title)",whiteSpace:"nowrap",
             }}>{f.icon}</div>
           ))}

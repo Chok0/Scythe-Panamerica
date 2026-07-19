@@ -87,9 +87,11 @@
   --surface-3: #2A2418;
 
   /* Sizing */
-  /* Barres élargies pour absorber la typo agrandie sans rogner le texte */
-  --top-h: 62px;
-  --left-w: 118px;
+  /* Barres élargies pour absorber la typo agrandie sans rogner le texte ;
+     barre du haut rehaussée pour le grand logo de faction + grandes icônes */
+  --top-h: 72px;
+  /* Colonne gauche resserrée : le barème de score est replié dans un tiroir */
+  --left-w: 96px;
   /* Panneau droit adaptatif : 340px minimum, s'élargit sur grands écrans */
   --right-w: clamp(340px, 25vw, 440px);
   --btn-min: 44px;

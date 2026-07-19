@@ -30,7 +30,7 @@ const frameStyle = (selected) => ({
   boxShadow: bevel(selected),
 });
 
-export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, randomMap, setRandomMap, difficulty, setDifficulty, empireEnabled, setEmpireEnabled, startGame, onShowRules }) {
+export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, mapChoice, setMapChoice, difficulty, setDifficulty, empireEnabled, setEmpireEnabled, startGame, onShowRules }) {
   const [hoverFaction, setHoverFaction] = useState(null);
   const previewId = hoverFaction || selFaction;
   const preview = previewId ? FACTIONS[previewId] : null;
@@ -88,24 +88,34 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
           {DIFFICULTIES.find(d=>d.key===difficulty)?.desc}
         </div>
 
+        <div style={{color:"var(--gold-dim)",fontSize:13,fontWeight:600,marginBottom:10,letterSpacing:3,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Carte</div>
+        <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",justifyContent:"center"}}>
+          {[
+            {key:"v3",label:"🗺 Classique",desc:"carte retouchée (v3) — recommandée"},
+            {key:"v2",label:"🗺 Originale",desc:"configuration initiale de la carte (v2)"},
+            {key:"random",label:"🎲 Procédurale",desc:"nouvelle carte à chaque partie"},
+          ].map(m=>(
+            <button key={m.key} onClick={()=>setMapChoice(m.key)} title={m.desc} style={{
+              padding:"10px 20px",fontSize:12,letterSpacing:2,
+              background:mapChoice===m.key?"rgba(201,168,76,0.12)":"transparent",
+              color:mapChoice===m.key?"var(--gold)":"var(--text-muted)",
+              border:mapChoice===m.key?"1px solid var(--gold)":"1px solid var(--border)",
+              borderRadius:4,fontFamily:"'Bitter',serif",fontWeight:700,boxShadow:bevel(mapChoice===m.key),
+            }}>{m.label}</button>
+          ))}
+        </div>
+        <div style={{fontSize:11,color:"var(--text-dim)",marginBottom:20,fontStyle:"italic"}}>
+          {{v3:"Carte retouchée (v3) — recommandée",v2:"Configuration initiale de la carte (v2)",random:"Nouvelle carte générée à chaque partie"}[mapChoice]}
+        </div>
         <div style={{display:"flex",gap:10,marginBottom:32,flexWrap:"wrap",justifyContent:"center"}}>
-          <button onClick={()=>setRandomMap(r=>!r)} style={{
-            padding:"10px 24px",fontSize:12,letterSpacing:2,
-            background:randomMap?"rgba(201,168,76,0.12)":"transparent",
-            color:randomMap?"var(--gold)":"var(--text-muted)",
-            border:randomMap?"1px solid var(--gold)":"1px solid var(--border)",
-            borderRadius:4,fontFamily:"'Bitter',serif",fontWeight:700,boxShadow:bevel(randomMap),
-          }}>
-            🗺 Carte {randomMap?"PROCÉDURALE":"classique"} {randomMap?"— nouvelle carte à chaque partie":""}
-          </button>
-          <button onClick={()=>setEmpireEnabled(e=>!e)} title="Les mechas de l'Empire patrouillent la carte et attaquent en fin de tour" style={{
+          <button onClick={()=>setEmpireEnabled(e=>!e)} title="Mécanique réservée au futur mode campagne — les mechas de l'Empire patrouillent la carte et attaquent en fin de tour" style={{
             padding:"10px 24px",fontSize:12,letterSpacing:2,
             background:empireEnabled?"rgba(201,168,76,0.12)":"transparent",
             color:empireEnabled?"var(--gold)":"var(--text-muted)",
             border:empireEnabled?"1px solid var(--gold)":"1px solid var(--border)",
             borderRadius:4,fontFamily:"'Bitter',serif",fontWeight:700,boxShadow:bevel(empireEnabled),
           }}>
-            🤖 Bots de l'Empire : {empireEnabled?"ACTIVÉS":"désactivés"}
+            🤖 Bots de l'Empire : {empireEnabled?"ACTIVÉS":"désactivés"} <span style={{opacity:0.7}}>(campagne)</span>
           </button>
         </div>
 

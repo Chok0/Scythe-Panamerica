@@ -8,12 +8,23 @@ import { FACTION_ICON_MAP, HERO_ICON_MAP, WORKER_ICON_MAP } from './FactionIcons
 // hexes with a thin cream separation line like the printed Scythe board
 
 // ═══════════════════════════════════════════════════════════════════
-// SVG resource icons for hex overlay — hard black/white, high contrast
+// SVG resource icons for hex overlay — posées sur un badge HEXAGONAL dont le
+// fond porte la couleur de la ressource (cohérence formelle avec le plateau) :
+// bleu pétrole, jaune céréales, marron bois, gris métal, crème village.
 // ═══════════════════════════════════════════════════════════════════
-const HexResIcon = React.memo(({ cx, cy, resType }) => {
+export const RES_BADGE = {
+  metal:      { bg: "#9aa2ac", light: false },  // gris
+  bois:       { bg: "#8a5a32", light: true },   // marron
+  nourriture: { bg: "#e2b93e", light: false },  // jaune (céréales)
+  petrole:    { bg: "#3e6f9e", light: true },   // bleu
+  ouvriers:   { bg: "#e8dcc4", light: false },  // villages — crème neutre
+};
+
+const HexResIcon = React.memo(({ cx, cy, resType, light = false }) => {
   const s = 22; // icône de ressource — renforcée (les hex sont désaturés dessous)
   const x = cx - s / 2, y = cy - s / 2;
-  const col = "rgba(14,10,5,0.9)"; // trait plus dense → l'icône ressort nettement
+  // Trait sombre sur fonds clairs, ivoire sur fonds saturés (bleu/marron)
+  const col = light ? "rgba(255,251,240,0.96)" : "rgba(14,10,5,0.9)";
   const sw = "2";
   if (resType === "metal") return (
     <g transform={`translate(${x},${y})`} style={{ pointerEvents: "none" }}>
@@ -106,11 +117,15 @@ export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory, isSrc
         style={{ pointerEvents: "none" }}
       />}
       {/* Resource SVG icon — top of hex so units don't cover it.
-          Disque clair derrière l'icône pour un contraste net sur tout terrain */}
-      {t.res && <>
-        <circle cx={hex.rx} cy={hex.ry - 24} r={15} fill="rgba(232,220,196,0.82)" stroke="rgba(14,10,5,0.5)" strokeWidth={1} style={{ pointerEvents: "none" }} />
-        <HexResIcon cx={hex.rx} cy={hex.ry - 24} resType={t.res} />
-      </>}
+          Badge HEXAGONAL (même logique formelle que le plateau) au fond couleur
+          de la ressource : bleu pétrole, jaune céréales, marron bois, gris métal */}
+      {t.res && (() => {
+        const badge = RES_BADGE[t.res] || { bg: "rgba(232,220,196,0.82)", light: false };
+        return <>
+          <polygon points={hPts(hex.rx, hex.ry - 24, 16)} fill={badge.bg} stroke="rgba(14,10,5,0.55)" strokeWidth={1.2} opacity={0.94} style={{ pointerEvents: "none" }} />
+          <HexResIcon cx={hex.rx} cy={hex.ry - 24} resType={t.res} light={badge.light} />
+        </>;
+      })()}
       {/* Factory special: subtle pulsing ring */}
       {isFactory && <>
         <polygon points={hPts(hex.rx, hex.ry, HS + 4)} fill="none" stroke="#8A2A2A" strokeWidth={0.6} opacity={0.2} strokeDasharray="5 3">

@@ -112,7 +112,9 @@ export default function AmbientSound() {
 
   return (
     <div style={{
-      position: 'fixed', bottom: 8, right: 328, zIndex: 100,
+      /* au-dessus de la piste de puissance (36px) et à gauche du panneau droit
+         pour ne masquer ni la piste ni l'en-tête du journal */
+      position: 'fixed', bottom: 42, right: 'calc(var(--right-w) + 8px)', zIndex: 100,
       display: 'flex', alignItems: 'center', gap: 6,
       background: 'rgba(10,9,6,0.8)', borderRadius: 4,
       padding: '4px 8px', border: '1px solid rgba(42,36,24,0.5)',

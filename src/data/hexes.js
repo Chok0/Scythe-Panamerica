@@ -77,11 +77,38 @@ export const LEGACY_MAP = {
   starts: null,
 };
 
-// ── Carte par défaut (dessinée à la main, retouches v2) ──
-export const DEFAULT_MAP = {
-  name: "panamerica",
+// ── v3 (carte par défaut) : retouches terrain + rivières ──
+// Terrains : 8→forêt, 11→toundra (pétrole), 12→plaine, 16→montagne (métal),
+// 28→village, 37→montagne, 38→désert (pétrole)
+const V3_TERRAIN_CHANGES = {
+  8: "foret", 11: "toundra", 12: "plaine", 16: "montagne",
+  28: "village", 37: "montagne", 38: "desert",
+};
+const V3_HEXES = DEFAULT_HEXES.map(h => V3_TERRAIN_CHANGES[h.id] ? { ...h, t: V3_TERRAIN_CHANGES[h.id] } : h);
+// Rivières retirées en v3 : bords de lacs superflus (5, 13) et abords des
+// marécages (3, 20, 25) devenus franchissables (règle du péage de marécage)
+const V3_RIVER_CUTS = new Set([
+  "1-5", "6-13", "28-31",          // bords de lacs / retouche demandée
+  "0-3", "3-10",                    // marécage 3
+  "16-20", "20-23",                 // marécage 20
+  "17-25", "25-32",                 // marécage 25
+]);
+const V3_RIVERS = DEFAULT_RIVERS.filter(([a, b]) => !V3_RIVER_CUTS.has(`${Math.min(a, b)}-${Math.max(a, b)}`));
+
+// ── Carte v2 (configuration initiale) — reste sélectionnable au démarrage ──
+export const CLASSIC_V2_MAP = {
+  name: "panamerica-v2",
   hexes: DEFAULT_HEXES,
   rivers: DEFAULT_RIVERS,
+  encounterHexes: [2, 4, 14, 16, 20, 27, 29, 35, 41],
+  starts: null,
+};
+
+// ── Carte par défaut (v3) ──
+export const DEFAULT_MAP = {
+  name: "panamerica-v3",
+  hexes: V3_HEXES,
+  rivers: V3_RIVERS,
   encounterHexes: [2, 4, 14, 16, 20, 27, 29, 35, 41],
   // starts: null → workerHex statiques de factions.js
   starts: null,

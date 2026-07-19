@@ -52,7 +52,7 @@ export const RULES = [
           "Forêt 🌲 — produit du Bois",
           "Village 🏘 — recrute des Ouvriers",
           "Lac 〰 — infranchissable (sauf capacités spéciales)",
-          "Marécage ≋ — terrain spécial, pas de ressource"
+          "Marécage ≋ — pas de ressource. Franchissable par tous, mais la traversée se paie : -1 Popularité par ouvrier, -1 Puissance par héros/mecha, et l'unité doit s'y arrêter"
         ]
       },
       {
@@ -61,7 +61,7 @@ export const RULES = [
       },
       {
         title: "Réseau de Rails",
-        content: "Un réseau ferroviaire partagé entre tous les joueurs. Construire une Gare pose 3 segments de rails : chaque segment doit partir de la Gare ou d'un rail existant (réseau connexe), jamais sur un lac ou un marécage. Les rails permettent le déplacement instantané entre hex connectés. L'Empire possède aussi ses propres rails."
+        content: "Un réseau ferroviaire partagé entre tous les joueurs. La carte démarre sans aucun rail : construire une Gare pose 3 segments de rails, chaque segment devant partir de la Gare ou d'un rail existant (réseau connexe), jamais sur un lac ou un marécage. Les rails permettent le déplacement instantané entre hex connectés."
       },
       {
         title: "Rouge River & Plans",
@@ -124,6 +124,10 @@ export const RULES = [
       {
         title: "Règles de Base",
         content: "Chaque unité peut se déplacer d'1 hex par action Move. Vous ne pouvez pas traverser les rivières sauf avec Riverwalk (capacité de mecha) ou certains plans. Les lacs sont infranchissables."
+      },
+      {
+        title: "Marécages (péage)",
+        content: "Tout le monde peut entrer sur un marécage, mais la traversée coûte -1 Popularité par ouvrier et -1 Puissance par unité de combat (héros ou mecha) qui y entre — les ouvriers transportés par un mecha paient aussi. Impossible de le traverser sans s'arrêter : même avec un déplacement de 2 hex, l'unité est stoppée sur le marécage."
       },
       {
         title: "La Base (drapeau)",

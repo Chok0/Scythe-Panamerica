@@ -187,7 +187,8 @@ const playGame = (gameIdx, log) => {
     p.objective = Math.random() > 0.5 ? o1 : o2;
   });
   let empire = Object.fromEntries(EMPIRE_START.map(e => [e.id, e.hexId]));
-  let rails = [...EMPIRE_RAILS];
+  // Aligné sur le jeu de base : plus de rails initiaux (EMPIRE_RAILS = campagne)
+  let rails = [];
   let encounterTokens = new Set(CURRENT_MAP.encounterHexes);
   const issues = [];
   const combatStats = { pveAttacks: 0, pveWins: 0, defenses: 0, defWins: 0, pvp: 0, encounters: 0 };
