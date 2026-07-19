@@ -10,7 +10,7 @@ import { getCombatBonus } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
 import { EMPIRE_START, drawEmpireCombat } from '../data/empire.js';
 import { ENCOUNTERS } from '../data/encounters.js';
-import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA } from '../data/plans.js';
+import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } from '../data/plans.js';
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
 import { structureBonusDetail } from '../data/structureBonus.js';
@@ -1324,7 +1324,7 @@ export default function App(){
         }
         // Rouge River (hex #22) — first visit by this hero?
         if(hexId===FACTORY_RR_HEX&&!me.visitedRR){
-          const hasFragments=(me.fragments||0)>=2;
+          const hasFragments=(me.fragments||0)>=TESLA_FRAGMENTS_REQUIRED;
           const available=hasFragments?[...PLANS_FORD,...PLANS_TESLA]:[...PLANS_FORD];
           const shuffled=shuffleArray(available);
           const seeCount=Math.max(1,Math.min(shuffled.length,shuffled.length-rrVisitors));
@@ -1753,7 +1753,7 @@ export default function App(){
         addLog(`🏆 +2 Popularité`);
       } else if(reward==="fragment"){
         p.fragments=(p.fragments||0)+1;
-        addLog(`🏆 +1 Fragment Tesla (${p.fragments}/2)`);
+        addLog(`🏆 +1 Fragment Tesla (${p.fragments}/${TESLA_FRAGMENTS_REQUIRED})`);
       }
       n[0]=p;return n;
     });
@@ -2209,7 +2209,7 @@ export default function App(){
           {players.length>1&&<button onClick={()=>setShowOpponents(s=>!s)} title="Voir les adversaires" style={{display:"flex",alignItems:"center",gap:4,padding:"6px 10px",borderRadius:6,fontSize:15,fontWeight:700,background:showOpponents?"rgba(200,112,64,0.18)":"rgba(200,112,64,0.06)",color:"var(--rust)",border:"1px solid var(--border-dark)",fontFamily:"var(--font-title)"}}>
             👥 {players.length-1}<span style={{fontSize:10,transform:showOpponents?"rotate(180deg)":"none",transition:"transform 0.2s"}}>▼</span>
           </button>}
-          {(me.fragments||0)>0&&<div style={{fontSize:14,padding:"4px 8px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:"#a080d0"}}>{me.fragments}/2 frag.</div>}
+          {(me.fragments||0)>0&&<div style={{fontSize:14,padding:"4px 8px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:"#a080d0"}}>{me.fragments}/{TESLA_FRAGMENTS_REQUIRED} frag.</div>}
           {/* Annuler / Refaire (dans le tour humain) */}
           {(()=>{const canUndo=isMyTurn&&!botRunning&&undoStack.length>0;const canRedo=isMyTurn&&!botRunning&&redoStack.length>0;return<>
             <button onClick={undo} disabled={!canUndo} title="Annuler le dernier coup" style={{width:32,height:32,borderRadius:6,fontSize:17,fontWeight:700,background:"transparent",color:canUndo?"var(--gold)":"var(--text-ghost)",border:`1px solid ${canUndo?"var(--gold-dim)":"var(--border)"}`,cursor:canUndo?"pointer":"not-allowed"}}>↶</button>
@@ -2672,7 +2672,7 @@ export default function App(){
                     <div><div style={{fontFamily:"var(--font-title)",color:"var(--success)",fontSize:23,fontWeight:700}}>Victoire !</div><div style={{fontSize:14,color:"var(--text-dim)"}}>Choisissez votre butin</div></div>
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-                    {[{k:"metal",icon:"⚙",label:"2 Métal",sub:"Ferraille"},{k:"pop",icon:"♥",label:"+2 Pop",sub:"Acclamation"},{k:"fragment",icon:"🔬",label:"Fragment",sub:`Tesla (${(me.fragments||0)}/2)`}].map(r=>(
+                    {[{k:"metal",icon:"⚙",label:"2 Métal",sub:"Ferraille"},{k:"pop",icon:"♥",label:"+2 Pop",sub:"Acclamation"},{k:"fragment",icon:"🔬",label:"Fragment",sub:`Tesla (${(me.fragments||0)}/${TESLA_FRAGMENTS_REQUIRED})`}].map(r=>(
                       <button key={r.k} onClick={()=>claimReward(r.k)} style={{background:"var(--bg3)",border:"1px solid var(--border-light)",borderRadius:10,padding:"18px 10px",color:"var(--text)",textAlign:"center",fontFamily:"inherit"}}>
                         <div style={{fontSize:30,marginBottom:8}}>{r.icon}</div>
                         <div style={{fontSize:15,fontWeight:700}}>{r.label}</div>

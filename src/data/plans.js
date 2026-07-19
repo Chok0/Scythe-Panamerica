@@ -8,6 +8,9 @@ export const PLANS_FORD = [
   { id: "F5", name: "Five Dollar Day", type: "ford", desc: "1×/tour : -2$ → +2 Pop +1 ouvrier / Upgrade +3$", topBonus: "pop_worker", bottomBonus: "upgrade_profit" },
 ];
 
+// Fragments Tesla requis pour accéder aux plans Tesla à la Rouge River
+export const TESLA_FRAGMENTS_REQUIRED = 1;
+
 export const PLANS_TESLA = [
   { id: "T1", name: "Golem", type: "tesla", desc: "Mechas : 2 hex par Move / Deploy +2 Pui", topBonus: "remote_move", bottomBonus: "deploy_power" },
   { id: "T2", name: "L'Onde Tesla", type: "tesla", desc: "Bolster : +1 Pui par mecha proche du héros / Build sans ouvrier (héros/mecha suffit)", topBonus: "aura_power", bottomBonus: "build_no_worker" },

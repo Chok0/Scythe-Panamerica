@@ -101,13 +101,13 @@ export const ENCOUNTERS = [
   { id: 10, name: "Le Télégraphe Fantôme", desc: "Un appareil crépite des messages codés. Qui écoute ?",
     choices: [
       { label: "Relayer les messages", icon: "♥", desc: "+1 pop, +1 carte combat", effect: p => { gainPop(p, 1); p.combatCards += 1; } },
-      { label: "Décrypter les codes", icon: "🃏", desc: "-2$, +3 cartes combat", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.combatCards += 3; } },
+      { label: "Décrypter les codes", icon: "🔬", desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
       { label: "Détourner le réseau", icon: "⚡", desc: "-2 pop, +4 puissance", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); gainPow(p, 4); } },
     ] },
   { id: 11, name: "Le Cimetière de Mechas", desc: "Des dizaines de colosses rouillés. Mémoire ou ferraille ?",
     choices: [
       { label: "Rendre hommage", icon: "♥", desc: "+1 pop, +2 métal", effect: p => { gainPop(p, 1); addRes(p, "metal", 2); } },
-      { label: "Démonter les carcasses", icon: "💰", desc: "-2$, +4 métal", available: p => p.coins >= 2, effect: p => { p.coins -= 2; addRes(p, "metal", 4); } },
+      { label: "Fouiller les prototypes", icon: "🔬", desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
       { label: "Reconstruire un colosse", icon: "⬡", desc: "-3 pop, +1 mecha", grantsMech: true, available: p => p.pop >= 3 && p.mechs.length < 4, effect: p => { p.pop = Math.max(0, p.pop - 3); addMech(p); } },
     ] },
   { id: 12, name: "La Contrebandière", desc: "Elle vend de tout. Armes, nourriture, secrets.",
@@ -135,5 +135,4 @@ export const ENCOUNTERS = [
       { label: "Investir son domaine", icon: "🏗", desc: "-2 pop, +1 bâtiment", grantsBuilding: true, available: p => p.pop >= 2 && canEncBuild(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
     ] },
 ];
-
-export const ENCOUNTER_HEXES = [2, 4, 14, 16, 20, 27, 29, 35, 41];
+// (les positions des jetons de rencontre vivent dans data/hexes.js — ENCOUNTER_HEXES)
