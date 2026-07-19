@@ -232,11 +232,13 @@ export function UpgradeSlot({ filled = false, size = 23, title }) {
 // ═══ GhostSquare — case fantôme intégrée à la séquence : elle prévisualise
 // l'icône concernée (gain à débloquer en rangée haut, coût annulable en rangée
 // bas) en pointillé estompé. filled = cube d'amélioration posé → case réelle. ═══
-export function GhostSquare({ resource, kind = "gain", filled = false, size = 23, title }) {
+// onClick (action Améliorer) : la case devient cliquable — bordure verte
+// accentuée quand sélectionnable, dorée lumineuse quand sélectionnée.
+export function GhostSquare({ resource, kind = "gain", filled = false, size = 23, title, onClick, selected }) {
   const Icon = RESOURCE_ICONS[resource];
   const iconSize = Math.round(size * 0.65);
   return (
-    <div title={title} style={{
+    <div title={title} onClick={onClick} style={{
       width: size, height: size, borderRadius: 3, flexShrink: 0,
       display: "flex", alignItems: "center", justifyContent: "center",
       ...(filled ? {
@@ -247,8 +249,10 @@ export function GhostSquare({ resource, kind = "gain", filled = false, size = 23
         background: "transparent",
         border: `1.5px dashed ${kind === "cost" ? "rgba(160,48,48,0.6)" : "rgba(150,150,140,0.5)"}`,
       }),
+      ...(onClick ? { cursor: "pointer", border: `1.5px dashed ${selected ? "#e6c96a" : "#4caf50"}` } : {}),
+      ...(selected ? { border: "2px solid #e6c96a", boxShadow: "0 0 8px rgba(230,201,106,0.85)", background: "rgba(230,201,106,0.18)" } : {}),
     }}>
-      {Icon && <Icon size={iconSize} color={filled ? "rgba(255,255,255,0.9)" : kind === "cost" ? "rgba(200,110,110,0.55)" : "rgba(200,200,190,0.45)"} />}
+      {Icon && <Icon size={iconSize} color={selected ? "#f0e0a8" : filled ? "rgba(255,255,255,0.9)" : kind === "cost" ? "rgba(200,110,110,0.55)" : "rgba(200,200,190,0.45)"} />}
     </div>
   );
 }

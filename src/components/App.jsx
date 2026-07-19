@@ -1012,6 +1012,12 @@ export default function App(){
     return m;
   },[me,selAction,myFaction]);
 
+  // Mode « amélioration sur cartes » : pendant l'action Améliorer, les cartes
+  // d'action restent affichées et leurs cases de cubes deviennent cliquables
+  // (source en rangée haut, destination en rangée bas + bouton Valider)
+  const upgradePicking=!!me&&pendingBottom?.action==="Upgrade"&&(me.upgrades||0)<6
+    &&(()=>{const c=getBottomCost(me)[BOTTOM.indexOf("Upgrade")];return !!c&&countRes(me,c.res)>=c.qty;})();
+
   // Cibles cliquables sur la carte pour les actions bottom Deploy/Build
   // (en plus des boutons du panneau : cliquer l'hex surligné place directement)
   const actionTargets=useMemo(()=>{
@@ -2975,8 +2981,9 @@ export default function App(){
         {/* ── Actions area ── */}
         <div style={{flex:1,overflow:"auto",padding:0}}>
 
-          {/* Player mat — 4 vertical action cards, grouped: columns 0+1 (top pair) / columns 2+3 (bottom pair) with strong separator */}
-          {isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&!pendingBottom&&(
+          {/* Player mat — 4 vertical action cards, grouped: columns 0+1 (top pair) / columns 2+3 (bottom pair) with strong separator.
+              Restent visibles pendant l'Améliorer (upgradePicking) : les cases de cubes y sont cliquées directement */}
+          {isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&(!pendingBottom||upgradePicking)&&(
             <div style={{display:"flex",flexDirection:"column",gap:0}}>
               {myMat.topRow.map((action,i)=>{
                 // Plan « Le Blueprint Perdu » : peut rejouer la même colonne deux tours de suite
@@ -3031,8 +3038,8 @@ export default function App(){
                 const isLastAction=i===3;
                 return(
                   <React.Fragment key={action}>
-                  <button onClick={()=>{if(!disabled){pushHistory();setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
-                    onMouseEnter={e=>{if(!disabled)e.currentTarget.style.borderColor=myFaction?.color||"var(--rust)";}}
+                  <button onClick={()=>{if(upgradePicking)return;if(!disabled){pushHistory();setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
+                    onMouseEnter={e=>{if(!disabled&&!upgradePicking)e.currentTarget.style.borderColor=myFaction?.color||"var(--rust)";}}
                     onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border-dark)";}}
                     style={{
                     padding:0,margin:"0 8px 8px",borderRadius:8,overflow:"hidden",textAlign:"left",
@@ -3055,8 +3062,15 @@ export default function App(){
                     <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8}}>
                       <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:3,flexWrap:"wrap"}}>
                         <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact size={21} />
-                        {Array.from({length:topPark}).map((_,k)=><GhostSquare key={k} resource={topBonusRes} kind="gain" filled={k>=cubesTop} size={21}
-                          title={k>=cubesTop?"Bonus débloqué (cube d'amélioration retiré)":"Bonus à débloquer via Améliorer"}/>)}
+                        {Array.from({length:topPark}).map((_,k)=>{
+                          // Améliorer : le prochain cube retirable de cette colonne se clique directement
+                          const isCube=k<cubesTop;
+                          const pickable=upgradePicking&&isCube&&k===cubesTop-1;
+                          return <GhostSquare key={k} resource={topBonusRes} kind="gain" filled={!isCube} size={21}
+                            selected={pickable&&bottomPick?.upgradeFrom===i}
+                            onClick={pickable?(e)=>{e.stopPropagation();setBottomPick(prev=>({...(prev||{}),upgradeFrom:i}));}:undefined}
+                            title={pickable?`① Retirer ce cube de ${FR_TOP[action]||action}`:!isCube?"Bonus débloqué (cube d'amélioration retiré)":"Bonus à débloquer via Améliorer"}/>;
+                        })}
                       </div>
                       {colBuilding&&<div style={{width:168,flexShrink:0,display:"flex",alignSelf:"stretch"}}>
                         <BuildingSlot Icon={BIcon} name={colBuilding.name} effect={colBuilding.effect} revealed={!!builtEntry} extra={builtEntry?`#${builtEntry.hexId}`:null}/>
@@ -3070,7 +3084,14 @@ export default function App(){
                         {bc&&<>
                           {Array.from({length:fixedQty}).map((_,k)=><ActionSquare key={`f${k}`} type="cost" resource={bc.res} size={21}/>)}
                           {Array.from({length:cubesBot}).map((_,k)=><UpgradeSlot key={`u${k}`} filled size={21} title="Réduction acquise (cube posé)"/>)}
-                          {Array.from({length:reducAvail}).map((_,k)=><GhostSquare key={`r${k}`} resource={bc.res} kind="cost" size={21} title="Coût encore annulable via Améliorer"/>)}
+                          {Array.from({length:reducAvail}).map((_,k)=>{
+                            // Améliorer : la prochaine case de réduction de cette colonne se clique directement
+                            const pickable=upgradePicking&&k===0;
+                            return <GhostSquare key={`r${k}`} resource={bc.res} kind="cost" size={21}
+                              selected={pickable&&bottomPick?.upgradeTo===i}
+                              onClick={pickable?(e)=>{e.stopPropagation();setBottomPick(prev=>({...(prev||{}),upgradeTo:i}));}:undefined}
+                              title={pickable?`② Placer le cube ici : -1 coût sur ${FR_BOT[bottomAction]||bottomAction}`:"Coût encore annulable via Améliorer"}/>;
+                          })}
                           <span style={{width:6,flexShrink:0}}/>
                         </>}
                         <ActionRow gain={[...(upBonus>0?Array(upBonus).fill("coins"):[]),bottomGainRes]} compact size={21} />
@@ -3250,30 +3271,22 @@ export default function App(){
                     (mat.bottomSlots||[]).forEach((s,ci)=>{if((me.cubesOnBottom||[])[ci]<s)validBottoms.push(ci);});
                   }
                   if(validTops.length===0||validBottoms.length===0) return <div style={{fontSize:13,color:"var(--text-muted)"}}>Plus de cubes disponibles</div>;
-                  if(!bottomPick||bottomPick.upgradeFrom===undefined) return <div>
-                    <div style={{fontSize:12,color:"#4caf50",marginBottom:6,fontWeight:600}}>① Retirer un cube du top :</div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                      {validTops.map(ci=><button key={ci} onClick={()=>setBottomPick({upgradeFrom:ci})} className="act-btn" style={{borderColor:"#4caf50"}}>
-                        <span style={{display:"inline-block",width:8,height:8,borderRadius:2,background:"#4caf50",marginRight:4,verticalAlign:"middle"}}/>
-                        {me.topRow[ci]} ({(me.cubesOnTop||[])[ci]}🟩)
-                      </button>)}
-                    </div>
-                  </div>;
+                  // Sélection directe SUR LES CARTES D'ACTION (au-dessus) : cube
+                  // source en rangée haut, case de réduction en rangée bas —
+                  // le panneau ne porte plus que le statut et la validation
+                  const from=bottomPick?.upgradeFrom;const to=bottomPick?.upgradeTo;
+                  const ready=from!=null&&to!=null;
                   return <div>
-                    <div style={{fontSize:12,color:"#4caf50",marginBottom:4}}>① {me.topRow[bottomPick.upgradeFrom]} sélectionné</div>
-                    <div style={{fontSize:12,color:"var(--brass)",marginBottom:6,fontWeight:600}}>② Placer le cube sur un bottom :</div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                      {validBottoms.map(ci=>{
-                        const bCost=mat.bottomCosts[ci];
-                        return <button key={ci} onClick={()=>{doUpgrade(bottomPick.upgradeFrom,ci);setBottomPick(null);}} className="act-btn" style={{borderColor:"var(--brass)"}}>
-                          {BOTTOM[ci]} <span style={{fontSize:13,opacity:0.7}}>(-1 coût, +{bCost.bonus}$)</span>
-                          <span style={{display:"inline-flex",gap:1,marginLeft:4}}>
-                            {Array.from({length:(mat.bottomSlots||[])[ci]}).map((_2,si)=><span key={si} style={{display:"inline-block",width:6,height:6,borderRadius:1,background:si<(me.cubesOnBottom||[])[ci]?"#4caf50":"#333",border:"1px solid #555"}}/>)}
-                          </span>
-                        </button>;
-                      })}
+                    <div style={{fontSize:13,color:"var(--text-dim)",lineHeight:1.6,marginBottom:8}}>
+                      Cliquez sur les cartes d'action ci-dessus :<br/>
+                      <span style={{color:from!=null?"#8fbf6a":"#4caf50",fontWeight:600}}>① cube à retirer (rangée haut){from!=null?` — ${FR_TOP[me.topRow[from]]||me.topRow[from]} ✓`:""}</span><br/>
+                      <span style={{color:to!=null?"#8fbf6a":"var(--brass)",fontWeight:600}}>② coût à réduire (rangée bas){to!=null?` — ${FR_BOT[BOTTOM[to]]||BOTTOM[to]} ✓ (+${mat.bottomCosts[to].bonus||0}$)`:""}</span>
                     </div>
-                    <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre source</button>
+                    <button disabled={!ready} onClick={()=>{doUpgrade(from,to);setBottomPick(null);}} className="act-btn"
+                      style={{width:"100%",fontWeight:700,...(ready?{background:"#3a6a3a",color:"#fff",border:"none"}:{opacity:0.45,cursor:"not-allowed"})}}>
+                      ✓ Valider l'amélioration
+                    </button>
+                    {(from!=null||to!=null)&&<button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:13,opacity:0.7,minHeight:34,width:"100%"}}>↩ Réinitialiser la sélection</button>}
                   </div>;
                 })()}
                 {ba==="Deploy"&&!maxed&&(()=>{

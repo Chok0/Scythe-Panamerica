@@ -123,7 +123,7 @@ export const RULES = [
     sections: [
       {
         title: "Règles de Base",
-        content: "Chaque unité peut se déplacer d'1 hex par action Move. Vous ne pouvez pas traverser les rivières sauf avec Riverwalk (capacité de mecha) ou certains plans. Les lacs sont infranchissables."
+        content: "Chaque unité peut se déplacer d'1 hex par action Move. Vous ne pouvez pas traverser les rivières sauf avec Riverwalk (capacité de mecha) ou certains plans. Les lacs sont infranchissables. Exception : l'Usine Rouge River a ses ponts — on peut toujours y entrer malgré les rivières."
       },
       {
         title: "Marécages (péage)",
