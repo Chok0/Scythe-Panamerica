@@ -30,7 +30,7 @@ import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from 
 import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { getPlanBottomBonus, auraPowerCount } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
-import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, BuildingSlot, RecruitSlot, RESOURCE_ICONS, BUILDING_ICONS } from './svg/ActionIcons.jsx';
+import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, RESOURCE_ICONS, BUILDING_ICONS } from './svg/ActionIcons.jsx';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 import { TERRAIN_TEXTURES, TERRAIN_TILE } from '../assets/terrains/index.js';
 import { BOARD_IMAGE } from '../assets/map/index.js';
@@ -2975,6 +2975,11 @@ export default function App(){
                 const recIdx=(me.enlistMap||[])[i];
                 const rec=recIdx!=null?ENLIST_ONGOING[recIdx]:null;
                 const RIcon=rec?RESOURCE_ICONS[rec.svgKey]:null;
+                // Icône du bonus débloqué par un cube d'amélioration sur l'action du haut
+                // (affichée en case fantôme dans la rangée, pas en carré abstrait à part)
+                const topBonusRes={Move:"worker",Bolster:"power",Trade:"pop",Produce:"nourriture"}[action]||"coins";
+                // Gain intrinsèque de l'action du bas (la flèche ↑ pour Améliorer)
+                const bottomGainRes=bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":bottomAction==="Enlist"?"pop":"upgrade";
                 // Action group separator: strong between pairs (after index 1), light between actions within a pair (after index 0, 2)
                 const isGroupEnd=i===1;
                 const isLastAction=i===3;
@@ -2999,27 +3004,34 @@ export default function App(){
                       {disabled?<span style={{marginLeft:"auto",fontSize:12,color:"var(--text-muted)",fontStyle:"italic"}}>joué</span>
                         :<span style={{marginLeft:"auto",fontSize:12,fontWeight:700,color:bottomData.max?"var(--success)":"var(--gold-dim)",whiteSpace:"nowrap"}}>{bottomData.max?"✓ max":bottomData.prog}</span>}
                     </div>
-                    {/* RANGÉE HAUT — gains de l'action + réserve de cubes d'amélioration */}
+                    {/* RANGÉE HAUT — gains de l'action (+ cases fantômes des bonus à débloquer)
+                        avec, alignée à droite, la case Bâtiment domiciliée sur cette colonne */}
                     <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8}}>
-                      <div style={{flex:1,minWidth:0}}><ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact /></div>
-                      {topPark>0&&<div title={`${cubesTop}/${topPark} cube(s) d'amélioration encore en réserve sur ${FR_TOP[action]||action}`} style={{display:"flex",gap:3,flexShrink:0}}>
-                        {Array.from({length:topPark}).map((_,k)=><UpgradeSlot key={k} filled={k<cubesTop} size={20}/>)}
+                      <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:3,flexWrap:"wrap"}}>
+                        <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact size={21} />
+                        {Array.from({length:topPark}).map((_,k)=><GhostSquare key={k} resource={topBonusRes} kind="gain" filled={k>=cubesTop} size={21}
+                          title={k>=cubesTop?"Bonus débloqué (cube d'amélioration retiré)":"Bonus à débloquer via Améliorer"}/>)}
+                      </div>
+                      {colBuilding&&<div style={{width:168,flexShrink:0,display:"flex",alignSelf:"stretch"}}>
+                        <BuildingSlot Icon={BIcon} name={colBuilding.name} effect={colBuilding.effect} revealed={!!builtEntry} extra={builtEntry?`#${builtEntry.hexId}`:null}/>
                       </div>}
                     </div>
-                    {/* RANGÉE BAS — coût lu comme une séquence : cases fixes → cubes déjà posés (réduction acquise) → cases pointillées (réduction encore possible) → gain */}
-                    <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:3,flexWrap:"wrap",background:"rgba(0,0,0,0.28)",borderTop:"1px solid var(--border)"}}>
-                      {bc&&<>
-                        {Array.from({length:fixedQty}).map((_,k)=><ActionSquare key={`f${k}`} type="cost" resource={bc.res} size={23}/>)}
-                        {Array.from({length:cubesBot}).map((_,k)=><UpgradeSlot key={`u${k}`} filled size={23} title="Réduction acquise (cube posé)"/>)}
-                        {Array.from({length:reducAvail}).map((_,k)=><UpgradeSlot key={`r${k}`} size={23} title="Réduction encore possible via Améliorer"/>)}
-                        <span style={{color:"var(--text-muted)",fontSize:10,margin:"0 1px"}}>→</span>
-                      </>}
-                      <ActionRow gain={upBonus>0?Array(upBonus).fill("coins"):[bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":bottomAction==="Enlist"?"pop":"power"]} compact />
-                    </div>
-                    {/* BANDE COLONNE — le bâtiment et la recrue « domiciliés » ici, façon plateau original */}
-                    <div style={{padding:"7px 10px 9px",display:"flex",alignItems:"stretch",gap:8,background:"rgba(0,0,0,0.16)",borderTop:"1px dashed var(--border)"}}>
-                      {colBuilding&&<BuildingSlot Icon={BIcon} name={colBuilding.name} effect={colBuilding.effect} revealed={!!builtEntry} extra={builtEntry?`#${builtEntry.hexId}`:null}/>}
-                      <RecruitSlot Icon={RIcon} label={rec?rec.label:null} placed={!!rec}/>
+                    {/* RANGÉE BAS — coût lu comme une séquence : cases fixes → cubes déjà posés
+                        (réduction acquise) → coûts fantômes (encore annulables) → gains,
+                        avec, alignée à droite, la case Recrue de cette colonne */}
+                    <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8,background:"rgba(0,0,0,0.28)",borderTop:"1px solid var(--border)"}}>
+                      <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:3,flexWrap:"wrap"}}>
+                        {bc&&<>
+                          {Array.from({length:fixedQty}).map((_,k)=><ActionSquare key={`f${k}`} type="cost" resource={bc.res} size={21}/>)}
+                          {Array.from({length:cubesBot}).map((_,k)=><UpgradeSlot key={`u${k}`} filled size={21} title="Réduction acquise (cube posé)"/>)}
+                          {Array.from({length:reducAvail}).map((_,k)=><GhostSquare key={`r${k}`} resource={bc.res} kind="cost" size={21} title="Coût encore annulable via Améliorer"/>)}
+                          <span style={{width:6,flexShrink:0}}/>
+                        </>}
+                        <ActionRow gain={[...(upBonus>0?Array(upBonus).fill("coins"):[]),bottomGainRes]} compact size={21} />
+                      </div>
+                      <div style={{width:168,flexShrink:0,display:"flex",alignSelf:"stretch"}}>
+                        <RecruitSlot Icon={RIcon} label={rec?rec.label:null} placed={!!rec}/>
+                      </div>
                     </div>
                   </button>
                   </React.Fragment>

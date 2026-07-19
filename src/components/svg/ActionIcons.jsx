@@ -77,6 +77,13 @@ export const IconMech = ({ size = 16, color = "#fff" }) => (
   </svg>
 );
 
+export const IconUpgrade = ({ size = 16, color = "#fff" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 13.5 V4.5" />
+    <path d="M3.5 8 L8 2.5 L12.5 8" />
+  </svg>
+);
+
 // ═══ SVG Building Icons — même vocabulaire graphique (trait simple, silhouette
 // unique, pas de détail interne fin) pour rester lisible à 16-18px. ═══
 
@@ -126,6 +133,7 @@ export const RESOURCE_ICONS = {
   pop: IconPop,
   worker: IconWorker,
   mech: IconMech,
+  upgrade: IconUpgrade,
 };
 
 // Map building type (BUILDING_TYPES[i].type from data/mats.js) to icon component
@@ -166,8 +174,8 @@ export function OrPill() {
 }
 
 // ═══ ActionRow — PAY → GAIN layout ═══
-export function ActionRow({ pay = [], gain = [], altGain, compact = false }) {
-  const sqSize = compact ? 23 : 26;
+export function ActionRow({ pay = [], gain = [], altGain, compact = false, size }) {
+  const sqSize = size || (compact ? 23 : 26);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
       {pay.length > 0 && <>
@@ -214,6 +222,30 @@ export function UpgradeSlot({ filled = false, size = 23, title }) {
   );
 }
 
+// ═══ GhostSquare — case fantôme intégrée à la séquence : elle prévisualise
+// l'icône concernée (gain à débloquer en rangée haut, coût annulable en rangée
+// bas) en pointillé estompé. filled = cube d'amélioration posé → case réelle. ═══
+export function GhostSquare({ resource, kind = "gain", filled = false, size = 23, title }) {
+  const Icon = RESOURCE_ICONS[resource];
+  const iconSize = Math.round(size * 0.65);
+  return (
+    <div title={title} style={{
+      width: size, height: size, borderRadius: 3, flexShrink: 0,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      ...(filled ? {
+        background: kind === "cost" ? "var(--cost-bg)" : "var(--gain-bg)",
+        border: "1.5px solid var(--cube-border)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)",
+      } : {
+        background: "transparent",
+        border: `1.5px dashed ${kind === "cost" ? "rgba(160,48,48,0.6)" : "rgba(150,150,140,0.5)"}`,
+      }),
+    }}>
+      {Icon && <Icon size={iconSize} color={filled ? "rgba(255,255,255,0.9)" : kind === "cost" ? "rgba(200,110,110,0.55)" : "rgba(200,200,190,0.45)"} />}
+    </div>
+  );
+}
+
 // ═══ BuildingSlot — le pion Bâtiment de cette colonne : encore en réserve
 // (silhouette fantôme, pointillé) ou construit (icône pleine, effet révélé). ═══
 export function BuildingSlot({ Icon, name, effect, revealed, extra }) {
@@ -239,8 +271,8 @@ export function BuildingSlot({ Icon, name, effect, revealed, extra }) {
           whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
         }}>{name}{extra ? ` · ${extra}` : ""}</div>
         <div style={{
-          fontSize: 11.5, color: revealed ? "var(--gold)" : "var(--text-muted)",
-          whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+          fontSize: 11.5, color: revealed ? "var(--gold)" : "var(--text-muted)", lineHeight: 1.2,
+          display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden",
         }}>{effect}</div>
       </div>
     </div>
