@@ -159,14 +159,15 @@ export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory, isSrc
 // ═══════════════════════════════════════════════════════════════════
 // Unit tokens — bigger, fully opaque, high contrast on map
 // ═══════════════════════════════════════════════════════════════════
-export const UnitToken = React.memo(({ type, cx, cy, color, label, icon, factionId, onClick, selectable, selected }) => {
+export const UnitToken = React.memo(({ type, cx, cy, color, label, icon, factionId, onClick, selectable, selected, scale = 1 }) => {
   // Wrapper animé : la position vit dans un transform CSS → le pion GLISSE
   // d'un hex à l'autre (transition) au lieu de téléporter.
   // onClick (action Move) : le pion redevient cliquable malgré le
   // pointerEvents:none de la couche unités — sélection directe au clic.
+  // scale : léger rétrécissement quand l'hex est bondé (disposition en pack).
   const wrap = (children) => (
     <g onClick={onClick}
-      style={{ transform: `translate(${cx}px, ${cy}px)`, transition: "transform 0.55s cubic-bezier(0.22,0.61,0.36,1)",
+      style={{ transform: `translate(${cx}px, ${cy}px) scale(${scale})`, transition: "transform 0.55s cubic-bezier(0.22,0.61,0.36,1)",
         ...(onClick ? { pointerEvents: "auto", cursor: "pointer" } : {}) }}>
       {(selectable || selected) && (
         <circle cx={0} cy={1} r={23} fill="none" stroke="#e6c96a" strokeWidth={selected ? 3 : 1.8}

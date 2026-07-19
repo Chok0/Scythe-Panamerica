@@ -2579,8 +2579,19 @@ export default function App(){
             })}
             {Object.entries(allHexContents).flatMap(([hidStr,units])=>{
               const hex=hMap[hidStr];if(!hex)return [];
+              // Disposition en PACK : rangées compactes centrées (3 pions max
+              // par rangée, léger rétrécissement quand l'hex est bondé) au lieu
+              // d'une ligne qui débordait sur les hexes voisins dès 4 unités —
+              // chaque pion reste cliquable individuellement
+              const n=units.length;
+              const perRow=n<=2?2:3;
+              const nRows=Math.ceil(n/perRow);
+              const packScale=n>=7?0.8:n>=5?0.88:1;
               return units.map((u,ui)=>{
-                const ox=(ui-(units.length-1)/2)*22;
+                const row=Math.floor(ui/perRow);
+                const inRow=(row===nRows-1)?(n-row*perRow):perRow;
+                const ox=((ui%perRow)-(inRow-1)/2)*24*packScale;
+                const oy=(row-(nRows-1)/2)*21*packScale;
                 // Action Move : cliquer directement le pion à déplacer (au lieu
                 // du picker de liste). Si le hex est une destination valide de
                 // l'unité déjà sélectionnée, le clic doit passer au hex.
@@ -2588,7 +2599,7 @@ export default function App(){
                 const isMovable=selAction==="Move"&&u.factionId===me.faction&&(movableUnits.get(hex.id)||[]).some(mu=>mu.id===movKey);
                 const isSel=!!moveSource&&moveSource.unitId===movKey&&moveSource.fromHex===hex.id;
                 const clickable=isMovable&&!isSel&&!(moveSource&&validMoves.has(hex.id));
-                return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}
+                return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6+oy} scale={packScale} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}
                   selectable={clickable} selected={isSel}
                   onClick={clickable?(e)=>{e.stopPropagation();doMove(u.type,movKey,hex.id);}:undefined}/>;
               });
