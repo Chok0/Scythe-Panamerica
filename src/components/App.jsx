@@ -2644,8 +2644,9 @@ export default function App(){
               <image href={FACTION_LOGOS[fid]} x={hb.rx-11} y={hb.ry-29} width={22} height={22}/>
             </g>);
           })}
-          {/* Watermark */}
-          <g opacity={0.04} style={{fontFamily:"var(--font-title)"}}>
+          {/* Watermark — pointerEvents:none : dernier élément du SVG, sans ça il
+              avale les clics sur l'usine et les hexes du centre de la carte */}
+          <g opacity={0.04} style={{fontFamily:"var(--font-title)",pointerEvents:"none"}}>
             <text x="510" y="505" textAnchor="middle" fontSize="80" fill="#c9a84c" letterSpacing="25">1920+</text>
           </g>
         </svg>
