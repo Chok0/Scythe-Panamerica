@@ -84,10 +84,38 @@ export const IconMech = ({ size = 16, color = "#fff" }) => (
   </svg>
 );
 
+// Amélioration : la ROUE DENTÉE traditionnelle (le lingot du métal reste
+// hexagonal — pas de collision visuelle entre les deux)
 export const IconUpgrade = ({ size = 16, color = "#fff" }) => (
-  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M8 13.5 V4.5" />
-    <path d="M3.5 8 L8 2.5 L12.5 8" />
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round">
+    <circle cx="8" cy="8" r="3.4" />
+    <circle cx="8" cy="8" r="1.2" fill={color} stroke="none" opacity="0.6" />
+    <line x1="8" y1="4.6" x2="8" y2="2.6" />
+    <line x1="8" y1="11.4" x2="8" y2="13.4" />
+    <line x1="4.6" y1="8" x2="2.6" y2="8" />
+    <line x1="11.4" y1="8" x2="13.4" y2="8" />
+    <line x1="10.4" y1="5.6" x2="11.82" y2="4.18" />
+    <line x1="10.4" y1="10.4" x2="11.82" y2="11.82" />
+    <line x1="5.6" y1="10.4" x2="4.18" y2="11.82" />
+    <line x1="5.6" y1="5.6" x2="4.18" y2="4.18" />
+  </svg>
+);
+
+// Construction : le marteau
+export const IconHammer = ({ size = 16, color = "#fff" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2.8" y="2.2" width="6.4" height="3.6" rx="0.8" transform="rotate(45 6 4)" fill={color} fillOpacity="0.12" />
+    <path d="M8.2 7.8 L13.5 13.1" />
+  </svg>
+);
+
+// Enrôlement : deux silhouettes (la recrue rejoint les rangs)
+export const IconRecruit = ({ size = 16, color = "#fff" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round">
+    <circle cx="5.5" cy="5" r="2.4" />
+    <path d="M1.5 14 C1.5 11 3.2 9.5 5.5 9.5 C7.8 9.5 9.5 11 9.5 14" />
+    <circle cx="11.5" cy="4.5" r="1.9" opacity="0.75" />
+    <path d="M9.6 13.5 C10 10.8 10.6 9.2 11.9 9.2 C13.4 9.2 14.3 10.8 14.6 13.5" opacity="0.75" />
   </svg>
 );
 
@@ -141,6 +169,23 @@ export const RESOURCE_ICONS = {
   worker: IconWorker,
   mech: IconMech,
   upgrade: IconUpgrade,
+};
+
+// ═══ Glyph — rend l'icône SVG CANONIQUE d'un pictogramme texte connu
+// (⬡ mecha, ⬆ amélioration, 🏗 construction, 🤝 recrue…) : tous les menus
+// partagent ainsi le même vocabulaire visuel. L'hexagone nu ⬡ est réservé
+// à la notion de territoire — le mecha a sa silhouette de marcheur.
+// Un picto non mappé reste affiché en texte. ═══
+export const GLYPH_ICONS = {
+  "⬡": IconMech, "⬆": IconUpgrade, "🏗": IconHammer, "🤝": IconRecruit,
+  "👷": IconWorker, "●": IconWorker, "♥": IconPop, "💰": IconCoin,
+  "🃏": IconCard, "⚡": IconPower, "🌽": IconFood, "🛢": IconOil,
+  "🪵": IconWood, "⚙": IconMetal,
+};
+export const Glyph = ({ icon, size = 16, color = "#e8dcc8", style }) => {
+  const Cmp = GLYPH_ICONS[icon];
+  if (!Cmp) return <span style={style}>{icon}</span>;
+  return <span style={{ display: "inline-flex", verticalAlign: "-0.18em", ...style }}><Cmp size={size} color={color} /></span>;
 };
 
 // Map building type (BUILDING_TYPES[i].type from data/mats.js) to icon component

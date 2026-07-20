@@ -30,7 +30,7 @@ import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from 
 import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { getPlanBottomBonus, auraPowerCount } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
-import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, RESOURCE_ICONS, BUILDING_ICONS } from './svg/ActionIcons.jsx';
+import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, RESOURCE_ICONS, BUILDING_ICONS, Glyph } from './svg/ActionIcons.jsx';
 import { getMechAbilities } from '../data/mechAbilities.js';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 import { TERRAIN_TEXTURES, TERRAIN_TILE } from '../assets/terrains/index.js';
@@ -2236,7 +2236,7 @@ export default function App(){
               style={{position:"relative",width:36,height:36,borderRadius:7,border:starDetail===s.key?"1px solid var(--gold)":"1px solid var(--border)",
                 background:s.done?"rgba(232,200,96,0.16)":starDetail===s.key?"rgba(212,178,84,0.12)":"rgba(255,255,255,0.02)",
                 display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:0}}>
-              <span style={{fontSize:21,filter:s.done?"none":"brightness(0) invert(1)",opacity:s.done?0.4:0.7}}>{s.icon}</span>
+              <span style={{fontSize:21,opacity:s.done?0.4:0.75,display:"inline-flex"}}><Glyph icon={s.icon} size={20} color="#e8dcc8"/></span>
               {s.done&&<span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,filter:"drop-shadow(0 0 3px rgba(232,200,96,0.7))"}}>⭐</span>}
               {!s.done&&s.prog&&s.prog!=="…"&&<span style={{position:"absolute",bottom:-2,right:0,fontSize:9,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-mono)",background:"var(--bg)",borderRadius:2,padding:"0 2px"}}>{s.prog.split("/")[0]}</span>}
             </button>
@@ -2295,7 +2295,7 @@ export default function App(){
                     <div key={i} title={`${m.label} ${m.prog}`} style={{display:"flex",alignItems:"center",gap:2,padding:"2px 5px",borderRadius:4,fontSize:12,
                       background:m.done?"rgba(232,200,96,0.15)":"rgba(255,255,255,0.03)",
                       border:m.done?"1px solid rgba(232,200,96,0.4)":"1px solid var(--border)"}}>
-                      <span>{m.done?"⭐":m.icon}</span>
+                      <span>{m.done?"⭐":<Glyph icon={m.icon} size={15}/>}</span>
                       <span style={{color:m.done?"#e8c860":"var(--text-muted)",fontFamily:"var(--font-mono)"}}>{m.prog}</span>
                     </div>
                   ))}
@@ -2651,7 +2651,7 @@ export default function App(){
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               {unitPicker.units.map(u=>(
                 <button key={u.id} onClick={()=>doMove(u.type,u.id,unitPicker.hexId)} className="act-btn" style={{borderColor:myFaction.color+"88",fontSize:15}}>
-                  {u.icon} {u.label}
+                  <Glyph icon={u.icon} size={15}/> {u.label}
                 </button>
               ))}
               <button onClick={()=>setUnitPicker(null)} className="act-btn" style={{fontSize:14,opacity:0.7}}>✕</button>
@@ -2856,7 +2856,7 @@ export default function App(){
                       return(
                       <button key={ci} onClick={()=>{if(!locked)resolveEncounter(ci);}} className="enc-card" disabled={locked} style={locked?{opacity:0.35,cursor:"not-allowed"}:undefined}>
                         <div style={{display:"flex",alignItems:"center",gap:10}}>
-                          <span style={{fontSize:23,width:28,textAlign:"center"}}>{c.icon}</span>
+                          <span style={{fontSize:23,width:28,textAlign:"center",display:"inline-flex",justifyContent:"center"}}><Glyph icon={c.icon} size={22}/></span>
                           <div style={{flex:1}}>
                             <div style={{fontSize:15,fontWeight:700,color:"var(--text)"}}>{c.label}</div>
                             <div style={{fontSize:12,color:"var(--brass)",marginTop:2}}>{c.desc}</div>
@@ -3236,7 +3236,7 @@ export default function App(){
                     </div>;
                   })()}
                   {moveSource&&<div style={{color:"#C9A84C",fontSize:14,marginTop:8,fontStyle:"italic"}}>
-                    {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:moveSource.unitType==="mech"?"⬡ Mecha":"● Ouvrier"} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts), ou une autre de vos unités pour changer.
+                    {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:<><Glyph icon={moveSource.unitType==="mech"?"⬡":"●"} size={14}/> {moveSource.unitType==="mech"?"Mecha":"Ouvrier"}</>} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts), ou une autre de vos unités pour changer.
                   </div>}
                   {/* PACK UP — Nations free building move */}
                   {me.faction==="nations"&&(me.unlockedAbilities||[]).includes(3)&&(me.buildings||[]).length>0&&!me.packUpUsed&&!moveSource&&(()=>{
@@ -3386,7 +3386,7 @@ export default function App(){
                   const metalCount=countRes(me,"metal");const boisCount=countRes(me,"bois");
                   const qty=bc.qty;
                   const hasMetal=metalCount>=qty;const hasBois=boisCount>=qty;
-                  if(!deployAlt) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn">⬡ #{hid}</button>)}</div>:<div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
+                  if(!deployAlt) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn"><Glyph icon="⬡" size={14}/> #{hid}</button>)}</div>:<div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
                   // Nations: Esprit Sauvage — choose metal or bois
                   if(!hasMetal&&!hasBois) return <div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de métal ni de bois</div>;
                   if(!bottomPick||!bottomPick.deployRes) return <div>
@@ -3398,7 +3398,7 @@ export default function App(){
                   </div>;
                   return <div>
                     <div style={{fontSize:12,color:"var(--brass)",marginBottom:4}}>Deploy avec {bottomPick.deployRes} :</div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid,bottomPick.deployRes)} className="act-btn">⬡ #{hid}</button>)}</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid,bottomPick.deployRes)} className="act-btn"><Glyph icon="⬡" size={14}/> #{hid}</button>)}</div>
                     <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre ressource</button>
                   </div>;
                 })()}
@@ -3605,7 +3605,7 @@ export default function App(){
             {/* En-tête */}
             <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:"1px solid var(--border)",position:"relative"}}>
               <div style={{position:"relative",width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:8,background:s.done?"rgba(232,200,96,0.14)":"rgba(255,255,255,0.03)",border:`1px solid ${s.done?"var(--gold)":"var(--border)"}`}}>
-                <span style={{fontSize:25,filter:s.done?"none":"brightness(0) invert(1)",opacity:s.done?0.5:0.65}}>{s.icon}</span>
+                <span style={{fontSize:25,opacity:s.done?0.5:0.7,display:"inline-flex"}}><Glyph icon={s.icon} size={24} color="#e8dcc8"/></span>
                 {s.done&&<span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30}}>⭐</span>}
               </div>
               <div style={{flex:1,minWidth:0}}>
