@@ -3,9 +3,10 @@ import { FACTIONS, FACTION_IDS } from '../data/factions.js';
 import { MATS } from '../data/mats.js';
 import { TERRAINS } from '../data/terrains.js';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
+import { Glyph } from './svg/ActionIcons.jsx';
 
 const RES_EMOJI = { petrole: "🛢", metal: "⚙", bois: "🪵", nourriture: "🌽" };
-const BOTTOM_EMOJI = ["⬆", "⬡", "🏗", "🤝"]; // Upgrade, Deploy, Build, Enlist
+const BOTTOM_EMOJI = ["⬆", "⬡", "🏗", "🤝"]; // Upgrade, Deploy, Build, Enlist — rendus via Glyph (icônes SVG canoniques)
 // Emblème par plateau joueur — tient le rôle du blason de faction pour donner
 // aux cartes de plateau la même structure d'en-tête (emblème + nom doré).
 const MAT_ICONS = { 1: "🏭", 2: "🔧", 3: "🧭", 4: "⚒", 5: "🌾" };
@@ -210,7 +211,7 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
                 <div style={{fontSize:12,color:"var(--text-dim)",fontStyle:"italic"}}>{pm.topRow.join(" · ")}</div>
                 {/* Coûts des actions du bas — mono, atténué */}
                 <div style={{fontSize:12,color:"var(--text-dim)",fontFamily:"'IBM Plex Mono',monospace",display:"flex",flexWrap:"wrap",gap:"2px 8px"}} title="Coûts des actions bottom : Upgrade / Deploy / Build / Enlist (+bonus $ par cube posé)">
-                  {pm.bottomCosts.map((bc,i)=><span key={i} style={{whiteSpace:"nowrap"}}>{BOTTOM_EMOJI[i]}{bc.base}{RES_EMOJI[bc.res]}{bc.bonus>0?<span style={{color:"#8fc26a"}}>+{bc.bonus}$</span>:""}</span>)}
+                  {pm.bottomCosts.map((bc,i)=><span key={i} style={{whiteSpace:"nowrap"}}><Glyph icon={BOTTOM_EMOJI[i]} size={12} color="#b8a878"/>{bc.base}<Glyph icon={RES_EMOJI[bc.res]} size={12} color="#b8a878"/>{bc.bonus>0?<span style={{color:"#8fc26a"}}>+{bc.bonus}$</span>:""}</span>)}
                 </div>
               </button>
             );})}

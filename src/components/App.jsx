@@ -30,7 +30,7 @@ import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from 
 import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { getPlanBottomBonus, auraPowerCount } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
-import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, RESOURCE_ICONS, BUILDING_ICONS } from './svg/ActionIcons.jsx';
+import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, RESOURCE_ICONS, BUILDING_ICONS, Glyph } from './svg/ActionIcons.jsx';
 import { getMechAbilities } from '../data/mechAbilities.js';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 import { TERRAIN_TEXTURES, TERRAIN_TILE } from '../assets/terrains/index.js';
@@ -97,6 +97,8 @@ export default function App(){
   const[encounterTokens,setEncounterTokens]=useState(new Set(CURRENT_MAP.encounterHexes));
   const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
   const[moveSource,setMoveSource]=useState(null);
+  // Transport partiel (mech) : choix des ouvriers/ressources à emporter avant le déplacement
+  const[transportPick,setTransportPick]=useState(null);
   const[unitPicker,setUnitPicker]=useState(null); // {hexId,units:[{type,id,label}]} — plusieurs unités sur le hex cliqué
   const[carryOnMove,setCarryOnMove]=useState(true); // 🚚 emporter ouvriers/ressources au Move
   const[routeDrop,setRouteDrop]=useState(null); // 📦 dépose en route: {mids,destHex,endAfter}
@@ -1082,7 +1084,9 @@ export default function App(){
     }
   },[players,phase,addLog]);
 
-  const handleHexClick=useCallback((hexId)=>{
+  // transportOverride : {transport:{workers,res}} — quantités choisies dans le
+  // panneau de transport partiel (repasse par ce même flux après validation)
+  const handleHexClick=useCallback((hexId,transportOverride)=>{
     if(wasDragging.current){wasDragging.current=false;return;} // suppress click after drag
     if(phase!=="playing"||botRunning||combat)return;
     // Ripple effect on click
@@ -1172,6 +1176,19 @@ export default function App(){
         }
       }
       
+      // ── TRANSPORT PARTIEL (mech) : s'il y a de quoi emporter, ouvrir le
+      // panneau de quantités au lieu d'exécuter — la validation repasse ici
+      // avec transportOverride ──
+      if(moveSource.unitType==="mech"&&carryOnMove&&!transportOverride){
+        const wOnHex=me.workers.filter(w=>w.hexId===moveSource.fromHex).length;
+        const resOnHex=Object.fromEntries(Object.entries(me.resources[String(moveSource.fromHex)]||{}).filter(([,q])=>q>0));
+        if(wOnHex>0||Object.keys(resOnHex).length>0){
+          setTransportPick({toHex:hexId,fromHex:moveSource.fromHex,workersMax:wOnHex,workers:wOnHex,resMax:resOnHex,res:{...resOnHex}});
+          return;
+        }
+      }
+      setTransportPick(null);
+
       // No combat: normal move with TRANSPORT (Scythe rules)
       let p={...me, workers:[...me.workers], mechs:[...me.mechs], resources:{...me.resources}};
       Object.keys(me.resources).forEach(k=>{p.resources[k]={...me.resources[k]};});
@@ -1198,8 +1215,12 @@ export default function App(){
       else if(moveSource.unitType==="mech"){
         p.mechs=p.mechs.map(m=>m.id===moveSource.unitId?{...m,hexId}:m);
         // Mech carries workers + resources — 🚚 désactivé = les ouvriers et
-        // ressources restent (stratégie d'expansion : le mech continue seul)
-        const tr=transportUnits(p, fromHex, hexId, "mech", {carryWorkers:carryOnMove,carryRes:carryOnMove});
+        // ressources restent (stratégie d'expansion : le mech continue seul).
+        // Avec transport partiel validé : quantités choisies, le reste sur place.
+        const tp=transportOverride?.transport;
+        const tr=transportUnits(p, fromHex, hexId, "mech", tp
+          ?{carryWorkers:tp.workers>0,carryRes:true,workerCount:tp.workers,resCounts:tp.res}
+          :{carryWorkers:carryOnMove,carryRes:carryOnMove});
         p=tr.player;
         marshCarried=tr.carried.workers;
         if(tr.carried.workers>0) transportLog+=` 👷×${tr.carried.workers}`;
@@ -1386,7 +1407,7 @@ export default function App(){
       else{setMoveSource(null);setUnitPicker({hexId,units});}
       return;
     }
-    if(moveSource){setMoveSource(null);return;}
+    if(moveSource){setMoveSource(null);setTransportPick(null);return;}
     setUnitPicker(null);
     setSelHex(hexId);
   },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory]);
@@ -2003,9 +2024,9 @@ export default function App(){
       // Factory = 3 extra territories if controlled
       // Règle originale : l'Usine compte 3 territoires EN TOUT (1 + bonus 2)
       const factoryBonus=unitHexes.has(22)?2:0;
-      // Resources — rule: only resources on territories you control are scored,
-      // plafonnées à 12 (mesuré par simulation : la thésaurisation illimitée
-      // faisait de l'Acadiane un coffre-fort à 61% de winrate — voir rapport)
+      // Resources — rule: only resources on territories you control are scored.
+      // Pas de plafond (BALANCE.resScoringCap=9999) : le contre du gros magot
+      // est le pillage — il attire les raids, pas une règle de score.
       let totalRes=0;Object.entries(p.resources).forEach(([hid,r])=>{if(unitHexes.has(parseInt(hid)))Object.values(r).forEach(n=>totalRes+=n);});
       const resPairs=Math.floor(Math.min(totalRes,BALANCE.resScoringCap)/2);
       const starScore=p.stars*starMult;
@@ -2215,7 +2236,7 @@ export default function App(){
               style={{position:"relative",width:36,height:36,borderRadius:7,border:starDetail===s.key?"1px solid var(--gold)":"1px solid var(--border)",
                 background:s.done?"rgba(232,200,96,0.16)":starDetail===s.key?"rgba(212,178,84,0.12)":"rgba(255,255,255,0.02)",
                 display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:0}}>
-              <span style={{fontSize:21,filter:s.done?"none":"brightness(0) invert(1)",opacity:s.done?0.4:0.7}}>{s.icon}</span>
+              <span style={{fontSize:21,opacity:s.done?0.4:0.75,display:"inline-flex"}}><Glyph icon={s.icon} size={20} color="#e8dcc8"/></span>
               {s.done&&<span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,filter:"drop-shadow(0 0 3px rgba(232,200,96,0.7))"}}>⭐</span>}
               {!s.done&&s.prog&&s.prog!=="…"&&<span style={{position:"absolute",bottom:-2,right:0,fontSize:9,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-mono)",background:"var(--bg)",borderRadius:2,padding:"0 2px"}}>{s.prog.split("/")[0]}</span>}
             </button>
@@ -2274,7 +2295,7 @@ export default function App(){
                     <div key={i} title={`${m.label} ${m.prog}`} style={{display:"flex",alignItems:"center",gap:2,padding:"2px 5px",borderRadius:4,fontSize:12,
                       background:m.done?"rgba(232,200,96,0.15)":"rgba(255,255,255,0.03)",
                       border:m.done?"1px solid rgba(232,200,96,0.4)":"1px solid var(--border)"}}>
-                      <span>{m.done?"⭐":m.icon}</span>
+                      <span>{m.done?"⭐":<Glyph icon={m.icon} size={15}/>}</span>
                       <span style={{color:m.done?"#e8c860":"var(--text-muted)",fontFamily:"var(--font-mono)"}}>{m.prog}</span>
                     </div>
                   ))}
@@ -2558,8 +2579,19 @@ export default function App(){
             })}
             {Object.entries(allHexContents).flatMap(([hidStr,units])=>{
               const hex=hMap[hidStr];if(!hex)return [];
+              // Disposition en PACK : rangées compactes centrées (3 pions max
+              // par rangée, léger rétrécissement quand l'hex est bondé) au lieu
+              // d'une ligne qui débordait sur les hexes voisins dès 4 unités —
+              // chaque pion reste cliquable individuellement
+              const n=units.length;
+              const perRow=n<=2?2:3;
+              const nRows=Math.ceil(n/perRow);
+              const packScale=n>=7?0.8:n>=5?0.88:1;
               return units.map((u,ui)=>{
-                const ox=(ui-(units.length-1)/2)*22;
+                const row=Math.floor(ui/perRow);
+                const inRow=(row===nRows-1)?(n-row*perRow):perRow;
+                const ox=((ui%perRow)-(inRow-1)/2)*24*packScale;
+                const oy=(row-(nRows-1)/2)*21*packScale;
                 // Action Move : cliquer directement le pion à déplacer (au lieu
                 // du picker de liste). Si le hex est une destination valide de
                 // l'unité déjà sélectionnée, le clic doit passer au hex.
@@ -2567,7 +2599,7 @@ export default function App(){
                 const isMovable=selAction==="Move"&&u.factionId===me.faction&&(movableUnits.get(hex.id)||[]).some(mu=>mu.id===movKey);
                 const isSel=!!moveSource&&moveSource.unitId===movKey&&moveSource.fromHex===hex.id;
                 const clickable=isMovable&&!isSel&&!(moveSource&&validMoves.has(hex.id));
-                return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}
+                return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6+oy} scale={packScale} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}
                   selectable={clickable} selected={isSel}
                   onClick={clickable?(e)=>{e.stopPropagation();doMove(u.type,movKey,hex.id);}:undefined}/>;
               });
@@ -2619,13 +2651,73 @@ export default function App(){
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               {unitPicker.units.map(u=>(
                 <button key={u.id} onClick={()=>doMove(u.type,u.id,unitPicker.hexId)} className="act-btn" style={{borderColor:myFaction.color+"88",fontSize:15}}>
-                  {u.icon} {u.label}
+                  <Glyph icon={u.icon} size={15}/> {u.label}
                 </button>
               ))}
               <button onClick={()=>setUnitPicker(null)} className="act-btn" style={{fontSize:14,opacity:0.7}}>✕</button>
             </div>
           </div>
         )}
+
+        {/* ═══ TRANSPORT PARTIEL — répartition façon balance à deux plateaux
+            (modèle Scythe Digital Edition) : hex qui GARDE à gauche, mecha qui
+            EMBARQUE à droite, ‹ › « » par ligne + tout-laisser/tout-embarquer ═══ */}
+        {transportPick&&(()=>{
+          const tp=transportPick;
+          const sq={width:24,height:24,borderRadius:4,border:"1px solid var(--border)",background:"var(--bg3)",color:"var(--gold-dim)",cursor:"pointer",fontSize:13,fontWeight:800,lineHeight:1,padding:0};
+          const bigSq={...sq,width:32,height:32,fontSize:15,color:"var(--gold)"};
+          const setW=(v)=>setTransportPick(t=>({...t,workers:Math.max(0,Math.min(t.workersMax,v))}));
+          const setR=(rt,v)=>setTransportPick(t=>({...t,res:{...t.res,[rt]:Math.max(0,Math.min(t.resMax[rt],v))}}));
+          const row=(key,Icon,taken,max,set,divider)=>(
+            <div key={key} style={{display:"flex",alignItems:"center",gap:5,padding:"3px 0",borderBottom:divider?"1px dashed var(--border-dark)":"none",marginBottom:divider?4:0}}>
+              <button style={sq} title="Tout laisser sur l'hex" onClick={()=>set(0)}>«</button>
+              <button style={sq} title="En laisser 1 de plus" onClick={()=>set(taken-1)}>‹</button>
+              <span style={{width:20,textAlign:"center",fontFamily:"var(--font-mono)",fontSize:14,color:max-taken>0?"var(--text)":"var(--text-muted)"}}>{max-taken}</span>
+              <div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
+                <span style={{width:20,display:"flex",justifyContent:"center",flexShrink:0}}>{Icon&&<Icon size={17} color="#d8c9a3"/>}</span>
+                <div style={{flex:1,height:5,borderRadius:3,background:"rgba(0,0,0,0.55)",border:"1px solid var(--border-dark)",position:"relative"}}>
+                  <div style={{position:"absolute",right:0,top:0,bottom:0,width:`${max?taken/max*100:0}%`,background:"linear-gradient(90deg,#8a6c2e,#c9a84c)",borderRadius:3,transition:"width 0.15s ease"}}/>
+                </div>
+              </div>
+              <span style={{width:20,textAlign:"center",fontFamily:"var(--font-mono)",fontSize:14,color:taken>0?"var(--gold)":"var(--text-muted)"}}>{taken}</span>
+              <button style={sq} title="En embarquer 1 de plus" onClick={()=>set(taken+1)}>›</button>
+              <button style={sq} title="Tout embarquer" onClick={()=>set(max)}>»</button>
+            </div>
+          );
+          const MechIcon=RESOURCE_ICONS.mech,WorkerIcon=RESOURCE_ICONS.worker;
+          return(
+          <div style={{position:"absolute",bottom:16,left:"50%",transform:"translateX(-50%)",zIndex:8,width:400,
+            background:"linear-gradient(180deg,#241d12,#14100a)",border:"1px solid var(--gold-dim)",borderRadius:10,
+            boxShadow:"0 6px 30px rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",animation:"slideUp 0.2s ease",overflow:"hidden"}}>
+            <div style={{textAlign:"center",padding:"5px 0",fontFamily:"var(--font-title)",fontSize:14,letterSpacing:5,fontWeight:800,color:"var(--gold)",borderBottom:"1px solid var(--border)",background:"rgba(0,0,0,0.3)"}}>TRANSPORT</div>
+            <div style={{display:"flex",alignItems:"stretch",gap:8,padding:"8px 10px 4px"}}>
+              {/* Plateau gauche : l'hex de départ (ce qui RESTE) */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:42,paddingBottom:2}}>
+                <span title={`Reste sur l'hex #${tp.fromHex}`} style={{fontSize:24,lineHeight:1,color:"#8a8070"}}>⬡</span>
+                <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>#{tp.fromHex}</span>
+                <button style={bigSq} title="Tout laisser (le mecha part seul)"
+                  onClick={()=>setTransportPick(t=>({...t,workers:0,res:Object.fromEntries(Object.keys(t.resMax).map(k=>[k,0]))}))}>≪</button>
+              </div>
+              {/* Lignes : ouvriers (séparés) puis ressources */}
+              <div style={{flex:1,minWidth:0}}>
+                {tp.workersMax>0&&row("workers",WorkerIcon,tp.workers,tp.workersMax,setW,Object.keys(tp.resMax).length>0)}
+                {Object.entries(tp.resMax).map(([rt,mx])=>row(rt,RESOURCE_ICONS[rt],tp.res[rt]||0,mx,(v)=>setR(rt,v),false))}
+              </div>
+              {/* Plateau droit : le mecha (ce qui EMBARQUE) */}
+              <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:42,paddingBottom:2}}>
+                <span title={`Embarqué vers l'hex #${tp.toHex}`}>{MechIcon&&<MechIcon size={24} color="#c9a84c"/>}</span>
+                <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>#{tp.toHex}</span>
+                <button style={bigSq} title="Tout embarquer"
+                  onClick={()=>setTransportPick(t=>({...t,workers:t.workersMax,res:{...t.resMax}}))}>≫</button>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:6,padding:"4px 10px 10px"}}>
+              <button className="act-btn" style={{flex:1,fontWeight:700,minHeight:36,background:"#3a6a3a",color:"#fff",border:"none"}}
+                onClick={()=>{setTransportPick(null);handleHexClick(tp.toHex,{transport:{workers:tp.workers,res:tp.res}});}}>✓ Déplacer</button>
+              <button className="act-btn" style={{minHeight:36,opacity:0.7}} onClick={()=>setTransportPick(null)}>✕</button>
+            </div>
+          </div>);
+        })()}
 
         {/* ═══ MODAL OVERLAYS (combat/encounter/RR) ═══ */}
         {(combat||encounter||encounterBuild||encounterEnlist||rougeRiver)&&(
@@ -2764,7 +2856,7 @@ export default function App(){
                       return(
                       <button key={ci} onClick={()=>{if(!locked)resolveEncounter(ci);}} className="enc-card" disabled={locked} style={locked?{opacity:0.35,cursor:"not-allowed"}:undefined}>
                         <div style={{display:"flex",alignItems:"center",gap:10}}>
-                          <span style={{fontSize:23,width:28,textAlign:"center"}}>{c.icon}</span>
+                          <span style={{fontSize:23,width:28,textAlign:"center",display:"inline-flex",justifyContent:"center"}}><Glyph icon={c.icon} size={22}/></span>
                           <div style={{flex:1}}>
                             <div style={{fontSize:15,fontWeight:700,color:"var(--text)"}}>{c.label}</div>
                             <div style={{fontSize:12,color:"var(--brass)",marginTop:2}}>{c.desc}</div>
@@ -3144,7 +3236,7 @@ export default function App(){
                     </div>;
                   })()}
                   {moveSource&&<div style={{color:"#C9A84C",fontSize:14,marginTop:8,fontStyle:"italic"}}>
-                    {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:moveSource.unitType==="mech"?"⬡ Mecha":"● Ouvrier"} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts), ou une autre de vos unités pour changer.
+                    {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:<><Glyph icon={moveSource.unitType==="mech"?"⬡":"●"} size={14}/> {moveSource.unitType==="mech"?"Mecha":"Ouvrier"}</>} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts), ou une autre de vos unités pour changer.
                   </div>}
                   {/* PACK UP — Nations free building move */}
                   {me.faction==="nations"&&(me.unlockedAbilities||[]).includes(3)&&(me.buildings||[]).length>0&&!me.packUpUsed&&!moveSource&&(()=>{
@@ -3233,7 +3325,7 @@ export default function App(){
                   <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité (à la place)</button>
                 </div>}
               </div>);})()}
-              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
+              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setTransportPick(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
             </div>
           )}
 
@@ -3294,7 +3386,7 @@ export default function App(){
                   const metalCount=countRes(me,"metal");const boisCount=countRes(me,"bois");
                   const qty=bc.qty;
                   const hasMetal=metalCount>=qty;const hasBois=boisCount>=qty;
-                  if(!deployAlt) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn">⬡ #{hid}</button>)}</div>:<div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
+                  if(!deployAlt) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn"><Glyph icon="⬡" size={14}/> #{hid}</button>)}</div>:<div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
                   // Nations: Esprit Sauvage — choose metal or bois
                   if(!hasMetal&&!hasBois) return <div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de métal ni de bois</div>;
                   if(!bottomPick||!bottomPick.deployRes) return <div>
@@ -3306,7 +3398,7 @@ export default function App(){
                   </div>;
                   return <div>
                     <div style={{fontSize:12,color:"var(--brass)",marginBottom:4}}>Deploy avec {bottomPick.deployRes} :</div>
-                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid,bottomPick.deployRes)} className="act-btn">⬡ #{hid}</button>)}</div>
+                    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid,bottomPick.deployRes)} className="act-btn"><Glyph icon="⬡" size={14}/> #{hid}</button>)}</div>
                     <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre ressource</button>
                   </div>;
                 })()}
@@ -3513,7 +3605,7 @@ export default function App(){
             {/* En-tête */}
             <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:"1px solid var(--border)",position:"relative"}}>
               <div style={{position:"relative",width:44,height:44,display:"flex",alignItems:"center",justifyContent:"center",borderRadius:8,background:s.done?"rgba(232,200,96,0.14)":"rgba(255,255,255,0.03)",border:`1px solid ${s.done?"var(--gold)":"var(--border)"}`}}>
-                <span style={{fontSize:25,filter:s.done?"none":"brightness(0) invert(1)",opacity:s.done?0.5:0.65}}>{s.icon}</span>
+                <span style={{fontSize:25,opacity:s.done?0.5:0.7,display:"inline-flex"}}><Glyph icon={s.icon} size={24} color="#e8dcc8"/></span>
                 {s.done&&<span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:30}}>⭐</span>}
               </div>
               <div style={{flex:1,minWidth:0}}>

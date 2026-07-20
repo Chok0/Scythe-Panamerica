@@ -124,8 +124,8 @@ const scorePlayer = (p) => {
   Object.entries(p.resources).forEach(([hid, r]) => {
     if (unitHexes.has(parseInt(hid))) Object.values(r).forEach(n => totalRes += n);
   });
-  // Plafond de scoring des ressources (BALANCE.resScoringCap, défaut 12) —
-  // sans lui, la stratégie « coffre-fort » domine (voir rapport §0 v6)
+  // Plafond de scoring des ressources : DÉSACTIVÉ par défaut (9999, voir
+  // balance.js — le contre du magot est le pillage) ; --ab resCap12 pour A/B
   const resPairs = Math.floor(Math.min(totalRes, BALANCE.resScoringCap) / 2);
   const starScore = p.stars * starMult;
   const terScore = (territories + factoryBonus + flagBonus) * terMult;

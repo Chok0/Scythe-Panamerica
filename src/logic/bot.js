@@ -112,6 +112,20 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof) => {
       score += 6;
       // Trade is good when we need resources for a bottom action
       if (canBottom && !bottomMaxed) score += 4;
+      // Manque STRUCTUREL : un bottom réclame une ressource qu'AUCUN hex
+      // ouvrier ne produit — le commerce est alors la seule voie (Acadiane :
+      // ni métal ni nourriture chez elle → Trade pour Deploy/Enlist, sinon
+      // la Gare). Volontairement limité à ce cas : un boost générique fait
+      // sur-échanger tous les bots (mesuré : -14 pts de winrate Confédération)
+      {
+        const need = neededResources(p);
+        const wRes = new Set(p.workers.map(w => TERRAINS[hMap[w.hexId]?.t]?.res).filter(Boolean));
+        const structural = Object.entries(need).filter(([r]) => !wRes.has(r));
+        if (structural.length > 0) {
+          const minGap = Math.min(...structural.map(([, m]) => m));
+          score += minGap <= 2 ? 8 : 5;
+        }
+      }
       // Also good for getting pop in late game
       if (phase === "late") score += 3;
       // Maintenir le palier de pop du profil — sous le palier 7, tout le score
@@ -571,8 +585,8 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         p.coins += (mat.bottomCosts[toC].bonus || 0);
         p.upgrades = (p.upgrades || 0) + 1;
         bottomDone = true;
-        if (p.upgrades >= 6 && !p.starUpgrades) { p.stars++; p.starUpgrades = true; logs.push(`⭐ ${f.name}: 6 upgrades !`); }
         logs.push(`🤖 ${f.name}: Upgrade ${p.upgrades}/6`);
+        if (p.upgrades >= 6 && !p.starUpgrades) { p.stars++; p.starUpgrades = true; logs.push(`⭐ ${f.name}: 6 upgrades !`); }
       }
     } else if (bottomAction === "Deploy" && p.mechs.length < 4) {
       const wh = getWorkerHexes(p);
@@ -593,8 +607,8 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         p.mechs.push({ id: `${p.faction}_m${p.mechs.length}`, hexId: th });
         p.unlockedAbilities = [...(p.unlockedAbilities || []), abilityIdx];
         bottomDone = true;
-        if (p.mechs.length >= 4 && !p.starMechs) { p.stars++; p.starMechs = true; logs.push(`⭐ ${f.name}: 4 mechas !`); }
         logs.push(`🤖 ${f.name}: Deploy #${th} → 🔓 ${abilityNames[abilityIdx]}`);
+        if (p.mechs.length >= 4 && !p.starMechs) { p.stars++; p.starMechs = true; logs.push(`⭐ ${f.name}: 4 mechas !`); }
       }
     } else if (bottomAction === "Build" && (p.buildings || []).length < 4) {
       const wh = getWorkerHexes(p).filter(h => !(p.buildings || []).some(b => b.hexId === h));
@@ -604,24 +618,34 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         const building = pickBuilding(p, avail, prof);
         p.buildings = [...(p.buildings || []), { type: building.type, hexId: wh[0] }];
         bottomDone = true;
-        if (p.buildings.length >= 4 && !p.starBuildings) { p.stars++; p.starBuildings = true; logs.push(`⭐ ${f.name}: 4 bâtiments !`); }
         logs.push(`🤖 ${f.name}: Build ${building.name} #${wh[0]}`);
-        // Gare: place rails
+        if (p.buildings.length >= 4 && !p.starBuildings) { p.stars++; p.starBuildings = true; logs.push(`⭐ ${f.name}: 4 bâtiments !`); }
+        // Gare: place rails — 3 segments SANS doublon : le filtre doit voir
+        // aussi les rails posés dans CETTE action (_pendingRails), sinon le
+        // bot ping-ponge sur la première arête (rail #36↔#32 posé 3 fois)
         if (building.type === "gare") {
-          let railFrom = wh[0];
+          p._pendingRails = p._pendingRails || [];
+          const taken = (a, b) => [...rails, ...p._pendingRails]
+            .some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+          const candidatesFrom = (from) => (ADJ[from] || []).filter(id => {
+            const h = hMap[id]; if (!h) return false;
+            if (h.base) return false;                       // pas de rail vers une base
+            if (h.t === "lac" || h.t === "marecage") return false; // R6: pas de rail sur l'eau
+            return !taken(from, id);
+          });
+          const endpoints = [wh[0]];
           for (let ri = 0; ri < 3; ri++) {
-            const adjH = (ADJ[railFrom] || []).filter(id => {
-              const h = hMap[id]; if (!h) return false;
-              if (h.t === "lac" || h.t === "marecage") return false; // R6: pas de rail sur l'eau
-              return !rails.some(([a, b]) => (a === railFrom && b === id) || (a === id && b === railFrom));
-            });
-            if (adjH.length > 0) {
-              const to = adjH[Math.floor(Math.random() * adjH.length)];
-              if (!p._pendingRails) p._pendingRails = [];
-              p._pendingRails.push([railFrom, to]);
-              logs.push(`🤖🛤 ${f.name}: Rail #${railFrom}↔#${to}`);
-              railFrom = to;
+            // Chaînage : repart du dernier point qui a encore une arête libre
+            let from = null, opts = [];
+            for (let ei = endpoints.length - 1; ei >= 0; ei--) {
+              opts = candidatesFrom(endpoints[ei]);
+              if (opts.length > 0) { from = endpoints[ei]; break; }
             }
+            if (from === null) break;
+            const to = opts[Math.floor(Math.random() * opts.length)];
+            p._pendingRails.push([from, to]);
+            logs.push(`🤖🛤 ${f.name}: Rail #${from}↔#${to}`);
+            if (!endpoints.includes(to)) endpoints.push(to);
           }
         }
       }

@@ -45,13 +45,20 @@ export const FACTIONS = {
   },
   acadiane: {
     name: "Acadiane", color: "#228B22", hero: "M. Thibodeau", companion: "Brume",
-    // Départ asymétrique mesuré (v9) : la meilleure productrice du plateau
-    // (péninsule à 3 ressources) démarre pauvre et discrète. Valeurs ABSOLUES
-    // sur la fiche (imprimables, jamais négatives) : 2 pièces, 1 popularité,
-    // quel que soit le plateau joueur.
-    power: 1, cards: 1, workerHex: [2, 6], riverwalk: ["foret", "village"], rwName: "Portage",
+    // Profil « Pologne » : commerçante polyvalente. Pas de métal sur sa
+    // péninsule → elle doit financer ses premiers Trade (métal pour déployer
+    // et sortir par Portage, ou Gare) : les pièces de départ viennent du
+    // plateau joueur comme pour tout le monde (l'ancien départ absolu
+    // 2$/1♥ la laissait hors jeu : 9% de winrate mesuré).
+    // Départ militaire aligné sur la Pologne de Scythe (2 Pui / 3 cartes) :
+    // à 1/1 elle était le sac de frappe du plateau
+    power: 2, cards: 3, workerHex: [2, 6], riverwalk: ["foret", "village"], rwName: "Portage",
     ability: "Comptoir", abilityDesc: "Le héros pose un comptoir sur chaque hex atteint (max 4, +1 territoire chacun)",
-    startAbs: { coins: 2, pop: 1 },
+    // Faction « populaire » façon Pologne : bonus de POPULARITÉ de départ
+    // (comme les autres factions compensées — les pièces restent au plateau).
+    // Sans lui elle plafonnait au palier 1 (pop ~6,7) : tout son score était
+    // amputé par les multiplicateurs ×3/×2/×1.
+    startBonus: { pop: 4 },
         fObj: {
       name: "Réseau Invisible", desc: "4 Comptoirs non adjacents entre eux + héros sur un Lac",
       // Nerf mesuré par simulation (65,6% → 58,1% de winrate) : le réseau doit être étalé
