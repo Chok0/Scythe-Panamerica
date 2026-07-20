@@ -3213,7 +3213,11 @@ export default function App(){
               {selAction==="Move"&&(
                 <div>
                   <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Déplacement ({(me.movedUnits||[]).length}/{moveLimit})</div>
-                  <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+1};return n;});addLog(`💰 +1$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner 1$ (pas de déplacement)</button>
+                  {/* Règle Scythe : l'action Move est SOIT déplacer, SOIT +1$ —
+                      l'option disparaît dès qu'une unité a bougé */}
+                  {(me.movedUnits||[]).length===0&&(
+                    <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+1};return n;});addLog(`💰 +1$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner 1$ (pas de déplacement)</button>
+                  )}
                   {!moveSource&&(
                     <div style={{padding:"10px 12px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:14,color:"var(--gold)",lineHeight:1.5}}>
                       👆 Cliquez sur la carte l'unité à déplacer (hexes surlignés en doré), puis sa destination.
