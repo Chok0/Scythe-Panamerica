@@ -112,6 +112,20 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof) => {
       score += 6;
       // Trade is good when we need resources for a bottom action
       if (canBottom && !bottomMaxed) score += 4;
+      // Manque STRUCTUREL : un bottom réclame une ressource qu'AUCUN hex
+      // ouvrier ne produit — le commerce est alors la seule voie (Acadiane :
+      // ni métal ni nourriture chez elle → Trade pour Deploy/Enlist, sinon
+      // la Gare). Volontairement limité à ce cas : un boost générique fait
+      // sur-échanger tous les bots (mesuré : -14 pts de winrate Confédération)
+      {
+        const need = neededResources(p);
+        const wRes = new Set(p.workers.map(w => TERRAINS[hMap[w.hexId]?.t]?.res).filter(Boolean));
+        const structural = Object.entries(need).filter(([r]) => !wRes.has(r));
+        if (structural.length > 0) {
+          const minGap = Math.min(...structural.map(([, m]) => m));
+          score += minGap <= 2 ? 8 : 5;
+        }
+      }
       // Also good for getting pop in late game
       if (phase === "late") score += 3;
       // Maintenir le palier de pop du profil — sous le palier 7, tout le score
