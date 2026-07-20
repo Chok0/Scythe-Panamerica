@@ -630,7 +630,7 @@ export default function App(){
   // After top-row → show bottom-row option
   const endHumanTurn=useCallback((col)=>{
     setPlayers(prev=>{const n=[...prev];n[0]={...n[0],lastCol:col,movesLeft:undefined,movedUnits:[],packUpUsed:false};return n;});
-    setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);
+    setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);setRouteDrop(null);
     // Show bottom-row option
     const bottomAction=BOTTOM[col];
     setPendingBottom({col,action:bottomAction});
@@ -948,7 +948,7 @@ export default function App(){
   // par-dessus des tirages aléatoires de l'IA). Les objets porteurs de
   // fonctions (objectifs) sont conservés par référence lors du clonage.
   const gameRef=useRef({});
-  gameRef.current={players,empire,rails,encounterTokens,rrVisitors};
+  gameRef.current={players,empire,rails,encounterTokens,rrVisitors,selAction,preActionSnapshot};
   const cloneVal=useCallback((v)=>{
     if(Array.isArray(v))return v.map(cloneVal);
     if(v&&typeof v==="object"){
@@ -959,7 +959,11 @@ export default function App(){
   },[]);
   const snapshotGame=useCallback(()=>{
     const g=gameRef.current;
-    return {players:g.players.map(cloneVal),empire:{...g.empire},rails:g.rails.map(r=>[...r]),encounterTokens:[...g.encounterTokens],rrVisitors:g.rrVisitors};
+    return {players:g.players.map(cloneVal),empire:{...g.empire},rails:g.rails.map(r=>[...r]),encounterTokens:[...g.encounterTokens],rrVisitors:g.rrVisitors,
+      // Contexte d'action : un undo de sous-coup (déplacement 2/2 → 1/2) doit
+      // rester DANS l'action en cours — sinon on peut garder le 1er déplacement
+      // et enchaîner une autre action top (Move gratuit + Produce).
+      selAction:g.selAction,preActionSnapshot:g.preActionSnapshot};
   },[cloneVal]);
   const restoreGame=useCallback((snap)=>{
     setPlayers(snap.players.map(cloneVal));
@@ -967,8 +971,9 @@ export default function App(){
     setRails(snap.rails.map(r=>[...r]));
     setEncounterTokens(new Set(snap.encounterTokens));
     setRrVisitors(snap.rrVisitors);
-    // annule tout état transitoire d'action en cours
-    setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);
+    // annule tout état transitoire d'action en cours — mais restaure le
+    // contexte d'action capturé (selAction/preActionSnapshot) du snapshot
+    setSelAction(snap.selAction??null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(snap.preActionSnapshot??null);setTradePicks([]);
     setPendingBottom(null);setBottomPick(null);setCombat(null);setEncounter(null);setRougeRiver(null);
     setEncounterBuild(false);setEncounterEnlist(null);
     setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);
@@ -1144,8 +1149,11 @@ export default function App(){
     }
     
     if(moveSource&&validMoves.has(hexId)){
-      // Snapshot avant CE déplacement → l'undo prend en compte chaque sous-coup
-      pushHistory();
+      // Snapshot avant CE déplacement → l'undo prend en compte chaque sous-coup.
+      // Pas de re-push à la validation du transport : le clic qui a ouvert le
+      // panneau a déjà poussé ce snapshot (sinon chaque déplacement de mech
+      // chargé compterait double dans la pile d'annulation).
+      if(!transportOverride)pushHistory();
       // Check for combat triggers before actually moving
       const movingCombatUnit=moveSource.unitType==="hero"||moveSource.unitType==="mech";
       
@@ -2719,8 +2727,8 @@ export default function App(){
           </div>);
         })()}
 
-        {/* ═══ MODAL OVERLAYS (combat/encounter/RR) ═══ */}
-        {(combat||encounter||encounterBuild||encounterEnlist||rougeRiver)&&(
+        {/* ═══ MODAL OVERLAYS (combat/encounter/RR/dépose en route) ═══ */}
+        {(combat||encounter||encounterBuild||encounterEnlist||rougeRiver||routeDrop)&&(
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
             <div style={{maxWidth:460,width:"92%",maxHeight:"80vh",overflow:"auto",borderRadius:12,border:"1px solid var(--border-light)",boxShadow:"0 10px 50px rgba(0,0,0,0.8)"}}>
 
@@ -3256,8 +3264,11 @@ export default function App(){
                     </div>;
                   })()}
                   {me.packUpUsed&&me.faction==="nations"&&<div style={{marginTop:6,fontSize:12,color:"var(--text-muted)"}}>📦 Pack Up utilisé ce tour</div>}
-                  {(me.movedUnits||[]).length>0&&(me.movedUnits||[]).length<moveLimit&&(
-                    <button onClick={()=>{addLog("✅ Mouvement terminé");endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginTop:8,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Terminer ({(me.movedUnits||[]).length}/{moveLimit})</button>
+                  {/* Filet de sécurité : visible aussi à la limite (2/2) — si un
+                      sous-flux (dépose en route…) n'a pas auto-terminé le tour,
+                      le joueur garde toujours une sortie */}
+                  {(me.movedUnits||[]).length>0&&(
+                    <button onClick={()=>{addLog("✅ Mouvement terminé");setRouteDrop(null);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginTop:8,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Terminer ({(me.movedUnits||[]).length}/{moveLimit})</button>
                   )}
                 </div>
               )}
@@ -3325,7 +3336,7 @@ export default function App(){
                   <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité (à la place)</button>
                 </div>}
               </div>);})()}
-              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setTransportPick(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
+              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setTransportPick(null);setRouteDrop(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
             </div>
           )}
 
