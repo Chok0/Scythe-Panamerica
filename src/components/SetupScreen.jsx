@@ -26,7 +26,7 @@ const bevel = (selected) => selected
   : "inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.45)";
 const frameStyle = (selected) => ({
   background: `${GRAIN}, ${selected ? "rgba(201,168,76,0.08)" : "rgba(20,18,12,0.82)"}`,
-  border: selected ? "2px solid var(--gold)" : "1px solid var(--border)",
+  border: `2px solid ${selected ? "var(--gold)" : "var(--border)"}`,
   borderRadius: 6,
   boxShadow: bevel(selected),
 });
