@@ -62,12 +62,11 @@ if (ABS.has('noDomImport')) BALANCE.imperialImport = false;
 if (ABS.has('resCap12')) BALANCE.resScoringCap = 12;
 //   --ab wfOff       → désactive complètement le White Flag (diagnostic Acadiane)
 if (ABS.has('wfOff')) BALANCE.whiteFlagEnabled = false;
-//   --ab acadRestore → annule le handicap de départ Acadiane v8 (contrôle)
-if (ABS.has('acadRestore')) { FACTIONS.acadiane.cards = 3; delete FACTIONS.acadiane.startBonus; }
 //   --ab domSame     → Dominion façon Rusviet : peut rejouer la même colonne
 if (ABS.has('domSame')) BALANCE.dominionRelentless = true;
-//   --ab noTrioBoost → retire la compensation de départ Conf/Bayou/Dominion (contrôle)
-if (ABS.has('noTrioBoost')) ['confederation', 'bayou', 'dominion'].forEach(f => { delete FACTIONS[f].startBonus; });
+// (acadRestore / noTrioBoost supprimés : les startBonus de popularité n'existent
+//  plus — la pop de départ vient du plateau joueur seul, règle Scythe. La
+//  compensation des factions se joue sur puissance/cartes dans factions.js.)
 //   --ab legacyMap   → carte v1 d'origine (avant retouches péninsules)
 if (ABS.has('legacyMap')) loadMap(LEGACY_MAP);
 // (le nerf acadianeHard testé en A/B est désormais le comportement par défaut — factions.js)

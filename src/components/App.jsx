@@ -11,7 +11,7 @@ import { BALANCE } from '../data/balance.js';
 import { EMPIRE_START, drawEmpireCombat } from '../data/empire.js';
 import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } from '../data/plans.js';
-import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing } from '../data/mats.js';
+import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
 import { structureBonusDetail } from '../data/structureBonus.js';
 import { reconcileHand, topCardsSum, spendTopCards, handSummary } from '../logic/cards.js';
@@ -128,7 +128,9 @@ export default function App(){
 
   const me=players[0];const myFaction=me?FACTIONS[me.faction]:null;const myMat=me?MATS.find(m=>m.id===me.matId):null;
   // Plan « Réseau Neuronal » (mass_move) : 3 déplacements par action Move au lieu de 2
-  const moveLimit=me?.factoryCard?.topBonus==="mass_move"?3:2;
+  // 2 unités de base, +1 par cube d'amélioration retiré de la colonne Move
+  // (le plan « mass_move » garantit au moins 3)
+  const moveLimit=Math.max(me?.factoryCard?.topBonus==="mass_move"?3:2, 2+(me?topUpgradeCount(me,"Move","worker"):0));
 
   useEffect(()=>{if(logRef.current)logRef.current.scrollTop=logRef.current.scrollHeight;},[log]);
 
@@ -668,7 +670,8 @@ export default function App(){
     const mat=MATS.find(m=>m.id===me.matId);
     if(!mat)return;
     if((me.cubesOnTop||[])[fromCol]<=0){addLog(`⚠ Pas de cube sur cette action top`);return;}
-    if((me.cubesOnBottom||[])[toCol]>=(mat.bottomSlots||[])[toCol]){addLog(`⚠ Plus de place sur cette action bottom`);return;}
+    // Plafond règle Scythe : jamais plus de (base - 1) cubes → coût min 1
+    if((me.cubesOnBottom||[])[toCol]>=maxBottomCubes(mat,toCol)){addLog(`⚠ Plus de place sur cette action bottom`);return;}
     setPlayers(prev=>{
       const n=[...prev];let p={...n[0]};
       p=spendRes(p,cost.res,effectiveQty);
@@ -1918,12 +1921,17 @@ export default function App(){
     const hasMemorial=(me.buildings||[]).some(b=>b.type==="memorial");
     setPlayers(prev=>{const n=[...prev];const p={...n[0]};p.coins--;
       if(type==="power"){
-        const bonus=hasArsenal?1:0;
+        // +1 si le cube d'amélioration de l'option ⚡ a été retiré (2 → 3)
+        const upg=topUpgradeCount(p,"Bolster","power");
+        const bonus=(hasArsenal?1:0)+upg;
         // Plan « L'Onde Tesla » : +1 Pui par mecha proche du héros
         const aura=auraPowerCount(p,hMap);
         p.power=Math.min(p.power+2+bonus+aura,16);
-        addLog(`💪 -1$ → +${2+bonus+aura} Pui${hasArsenal?" (Arsenal +1)":""}${aura>0?` (Onde Tesla +${aura})`:""}`);}
-      else{p.combatCards++;addLog(`🃏 -1$ → +1 CC`);}
+        addLog(`💪 -1$ → +${2+bonus+aura} Pui${upg?" (Amélioration +1)":""}${hasArsenal?" (Arsenal +1)":""}${aura>0?` (Onde Tesla +${aura})`:""}`);}
+      else{
+        // +1 si le cube d'amélioration de l'option 🃏 a été retiré (1 → 2)
+        const upg=topUpgradeCount(p,"Bolster","combatCards");
+        p.combatCards+=1+upg;addLog(`🃏 -1$ → +${1+upg} CC${upg?" (Amélioration +1)":""}`);}
       if(hasMemorial){p.pop=Math.min(p.pop+1,18);addLog(`🪦 Mémorial: +1 Pop`);}
       n[0]=p;return n;});
     endHumanTurn(myMat.topRow.indexOf("Bolster"));
@@ -1938,7 +1946,8 @@ export default function App(){
       addLog(`⚠ ${missing.join("+")} insuffisant(e)`);return;
     }
     const workersByHex={};me.workers.forEach(w=>{if(!workersByHex[w.hexId])workersByHex[w.hexId]=[];workersByHex[w.hexId].push(w);});
-    const hexIds=Object.keys(workersByHex).slice(0,2);
+    // 2 hex de base, +1 par cube d'amélioration retiré de la colonne Produce
+    const hexIds=Object.keys(workersByHex).slice(0,2+topUpgradeCount(me,"Produce","nourriture"));
     if(hexIds.length===0){addLog("⚠ Aucun ouvrier");return;}
     const costLabel=produceCostLabel(me.workers.length);
     setPlayers(prev=>{
@@ -1961,20 +1970,22 @@ export default function App(){
 
   // Trade en 2 temps : on remplit 2 emplacements (mêmes ou différents), puis
   // on CONFIRME — l'état est visible, rien ne part sans validation
+  // 2 ressources de base, +1 par cube d'amélioration retiré (option 📦)
+  const tradeSlots=2+(me?topUpgradeCount(me,"Trade","metal"):0);
+  const tradeLabel=(picks)=>{const c={};picks.forEach(r=>{c[r]=(c[r]||0)+1;});return Object.entries(c).map(([r,n])=>`+${n} ${r}`).join(", ");};
   const doTradePick=(resType)=>{
     if(!me||me.coins<1){addLog("⚠ Pas d'$");return;}
-    setTradePicks(prev=>prev.length>=2?prev:[...prev,resType]);
+    setTradePicks(prev=>prev.length>=tradeSlots?prev:[...prev,resType]);
   };
   const doTradeConfirm=()=>{
-    if(!me||me.coins<1||tradePicks.length!==2)return;
+    if(!me||me.coins<1||tradePicks.length!==tradeSlots)return;
     const picks=[...tradePicks];
     const workerHex=me.workers.length>0?me.workers[0].hexId:me.hero;
     setPlayers(prev=>{const n=[...prev];const p={...n[0],resources:{...n[0].resources}};const hid=String(workerHex);
       if(!p.resources[hid])p.resources[hid]={};
       picks.forEach(r=>{p.resources[hid][r]=(p.resources[hid][r]||0)+1;});
       p.coins--;n[0]=p;return n;});
-    const label=picks[0]===picks[1]?`+2 ${picks[0]}`:`+1 ${picks[0]}, +1 ${picks[1]}`;
-    addLog(`💰 -1$ → ${label} (sur #${workerHex})`);setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));
+    addLog(`💰 -1$ → ${tradeLabel(picks)} (sur #${workerHex})`);setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));
   };
 
   const allHexContents=useMemo(()=>{
@@ -3094,7 +3105,8 @@ export default function App(){
                 const mat=MATS.find(m=>m.id===me.matId);
                 const cubesTop=(me.cubesOnTop||[])[i]||0;
                 const cubesBot=(me.cubesOnBottom||[])[i]||0;
-                const maxBot=(mat?.bottomSlots||[])[i]||0;
+                // Cases utilisables plafonnées : le coût ne descend jamais sous 1
+                const maxBot=maxBottomCubes(mat,i);
                 // Coût de Produce VISIBLE sur la carte d'action : croît avec le
                 // nombre d'ouvriers sortis (4+ → ⚡, 6+ → ♥, 8 → $)
                 const pc=getProduceCost(me.workers.length);
@@ -3128,9 +3140,6 @@ export default function App(){
                 const recIdx=(me.enlistMap||[])[i];
                 const rec=recIdx!=null?ENLIST_ONGOING[recIdx]:null;
                 const RIcon=rec?RESOURCE_ICONS[rec.svgKey]:null;
-                // Icône du bonus débloqué par un cube d'amélioration sur l'action du haut
-                // (affichée en case fantôme dans la rangée, pas en carré abstrait à part)
-                const topBonusRes={Move:"worker",Bolster:"power",Trade:"pop",Produce:"nourriture"}[action]||"coins";
                 // Gain intrinsèque de l'action du bas (la flèche ↑ pour Améliorer)
                 const bottomGainRes=bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":bottomAction==="Enlist"?"pop":"upgrade";
                 // Action group separator: strong between pairs (after index 1), light between actions within a pair (after index 0, 2)
@@ -3161,16 +3170,26 @@ export default function App(){
                         avec, alignée à droite, la case Bâtiment domiciliée sur cette colonne */}
                     <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8}}>
                       <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:3,flexWrap:"wrap"}}>
-                        <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact size={21} />
-                        {Array.from({length:topPark}).map((_,k)=>{
-                          // Améliorer : le prochain cube retirable de cette colonne se clique directement
-                          const isCube=k<cubesTop;
-                          const pickable=upgradePicking&&isCube&&k===cubesTop-1;
-                          return <GhostSquare key={k} resource={topBonusRes} kind="gain" filled={!isCube} size={21}
-                            selected={pickable&&bottomPick?.upgradeFrom===i}
-                            onClick={pickable?(e)=>{e.stopPropagation();setBottomPick(prev=>({...(prev||{}),upgradeFrom:i}));}:undefined}
-                            title={pickable?`① Retirer ce cube de ${FR_TOP[action]||action}`:!isCube?"Bonus débloqué (cube d'amélioration retiré)":"Bonus à débloquer via Améliorer"}/>;
-                        })}
+                        {(()=>{
+                          // Chaque case d'amélioration correspond à une OPTION précise de
+                          // l'action (Soutien : ⚡+1 et 🃏+1 ; Commerce : ♥+1 et 📦+1…) et
+                          // se rend EN LIGNE à côté de l'option concernée — pas en vrac en
+                          // fin de rangée. Cube en place = bonus verrouillé (fantôme).
+                          const slots=Array.from({length:topPark},(_,k)=>topSlots(action,topPark)[k]||{res:"upgrade",label:"Amélioration"});
+                          const ghost=(k)=>{
+                            // Améliorer : le prochain cube retirable de cette colonne se clique directement
+                            const isCube=k<cubesTop;
+                            const pickable=upgradePicking&&isCube&&k===cubesTop-1;
+                            return <GhostSquare key={`t${k}`} resource={slots[k].res} kind="gain" filled={!isCube} size={21}
+                              selected={pickable&&bottomPick?.upgradeFrom===i}
+                              onClick={pickable?(e)=>{e.stopPropagation();setBottomPick(prev=>({...(prev||{}),upgradeFrom:i}));}:undefined}
+                              title={pickable?`① Retirer ce cube de ${FR_TOP[action]||action} (${slots[k].label})`:!isCube?`Bonus débloqué : ${slots[k].label}`:`À débloquer via Améliorer : ${slots[k].label}`}/>;
+                          };
+                          const gainGhosts=[],altGhosts=[];
+                          slots.forEach((s,k)=>{(s.res==="combatCards"||s.res==="pop"?altGhosts:gainGhosts).push(ghost(k));});
+                          return <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact size={21}
+                            gainSuffix={gainGhosts} altSuffix={altGhosts}/>;
+                        })()}
                       </div>
                       {colBuilding&&<div style={{width:168,flexShrink:0,display:"flex",alignSelf:"stretch"}}>
                         <BuildingSlot Icon={BIcon} name={colBuilding.name} effect={colBuilding.effect} revealed={!!builtEntry} extra={builtEntry?`#${builtEntry.hexId}`:null}/>
@@ -3276,12 +3295,12 @@ export default function App(){
                 <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Soutien (1$)</div>
                 {me.coins<1?<div style={{color:"#8A3030",fontSize:14}}>Pas assez d'$</div>:
                 <div style={{display:"flex",gap:10}}>
-                  <button onClick={()=>doBolster("power")} className="act-btn" style={{flex:1}}>⚡ +2 Puissance</button>
-                  <button onClick={()=>doBolster("cards")} className="act-btn" style={{flex:1}}>🃏 +1 Carte</button>
+                  <button onClick={()=>doBolster("power")} className="act-btn" style={{flex:1}}>⚡ +{2+topUpgradeCount(me,"Bolster","power")} Puissance</button>
+                  <button onClick={()=>doBolster("cards")} className="act-btn" style={{flex:1}}>🃏 +{1+topUpgradeCount(me,"Bolster","combatCards")} Carte{topUpgradeCount(me,"Bolster","combatCards")>0?"s":""}</button>
                 </div>}
               </div>)}
               {selAction==="Produce"&&(<div>
-                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Production (max 2 hex)</div>
+                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Production (max {2+topUpgradeCount(me,"Produce","nourriture")} hex)</div>
                 {(()=>{
                   const nw=me.workers.length;const costStr=produceCostLabel(nw);const canPay=canPayProduce(me);
                   return(<div>
@@ -3309,10 +3328,10 @@ export default function App(){
                 <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Commerce (1$)</div>
                 {me.coins<1?<div style={{color:"#8A3030",fontSize:14}}>Pas assez d'$</div>:
                 <div>
-                  <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:6}}>Choisissez 2 ressources (même type ou différentes) :</div>
-                  {/* 2 emplacements visibles — l'état de la sélection ne peut pas être raté */}
+                  <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:6}}>Choisissez {tradeSlots} ressources (mêmes types ou différents) :</div>
+                  {/* Emplacements visibles — l'état de la sélection ne peut pas être raté */}
                   <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
-                    {[0,1].map(i=>(
+                    {Array.from({length:tradeSlots}).map((_,i)=>(
                       <div key={i} style={{width:42,height:42,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:tradePicks[i]?20:13,
                         border:tradePicks[i]?"2px solid var(--gold)":"2px dashed var(--border-dark)",
                         background:tradePicks[i]?"rgba(212,178,84,0.12)":"transparent",
@@ -3321,19 +3340,19 @@ export default function App(){
                       </div>
                     ))}
                     <span style={{fontSize:13,color:"var(--text-dim)",flex:1}}>
-                      {tradePicks.length===0?"Cliquez 2 ressources ci-dessous":tradePicks.length===1?"Choisissez la 2e ressource":"Prêt — confirmez l'échange"}
+                      {tradePicks.length===0?`Cliquez ${tradeSlots} ressources ci-dessous`:tradePicks.length<tradeSlots?`Choisissez encore ${tradeSlots-tradePicks.length} ressource${tradeSlots-tradePicks.length>1?"s":""}`:"Prêt — confirmez l'échange"}
                     </span>
                     {tradePicks.length>0&&<button onClick={()=>setTradePicks([])} className="act-btn" style={{fontSize:13,padding:"6px 10px",minHeight:36,opacity:0.8}}>↩</button>}
                   </div>
                   <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                    {["metal","bois","nourriture","petrole"].map(r=><button key={r} onClick={()=>doTradePick(r)} disabled={tradePicks.length>=2} className="act-btn" style={{flex:1,minWidth:60,opacity:tradePicks.length>=2?0.4:1}}>{RES_ICO[r]} {r}</button>)}
+                    {["metal","bois","nourriture","petrole"].map(r=><button key={r} onClick={()=>doTradePick(r)} disabled={tradePicks.length>=tradeSlots} className="act-btn" style={{flex:1,minWidth:60,opacity:tradePicks.length>=tradeSlots?0.4:1}}>{RES_ICO[r]} {r}</button>)}
                   </div>
-                  {tradePicks.length===2&&(
+                  {tradePicks.length===tradeSlots&&(
                     <button onClick={doTradeConfirm} className="act-btn" style={{width:"100%",marginBottom:6,background:"#3a6a3a",color:"#fff",border:"none",fontWeight:700}}>
-                      💰 Échanger : -1$ → {tradePicks[0]===tradePicks[1]?`+2 ${tradePicks[0]}`:`+1 ${tradePicks[0]}, +1 ${tradePicks[1]}`}
+                      💰 Échanger : -1$ → {tradeLabel(tradePicks)}
                     </button>
                   )}
-                  <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité (à la place)</button>
+                  <button onClick={()=>{const gp=1+topUpgradeCount(me,"Trade","pop");setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+gp,18)};return n;});addLog(`💰 -1$ → +${gp} Pop`);setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +{1+topUpgradeCount(me,"Trade","pop")} Popularité (à la place)</button>
                 </div>}
               </div>);})()}
               <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setTransportPick(null);setRouteDrop(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
@@ -3371,7 +3390,7 @@ export default function App(){
                   const validTops=[];const validBottoms=[];
                   if(mat){
                     (me.cubesOnTop||[]).forEach((c,ci)=>{if(c>0)validTops.push(ci);});
-                    (mat.bottomSlots||[]).forEach((s,ci)=>{if((me.cubesOnBottom||[])[ci]<s)validBottoms.push(ci);});
+                    (mat.bottomSlots||[]).forEach((s,ci)=>{if((me.cubesOnBottom||[])[ci]<maxBottomCubes(mat,ci))validBottoms.push(ci);});
                   }
                   if(validTops.length===0||validBottoms.length===0) return <div style={{fontSize:13,color:"var(--text-muted)"}}>Plus de cubes disponibles</div>;
                   // Sélection directe SUR LES CARTES D'ACTION (au-dessus) : cube

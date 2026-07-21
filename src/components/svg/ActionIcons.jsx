@@ -226,7 +226,10 @@ export function OrPill() {
 }
 
 // ═══ ActionRow — PAY → GAIN layout ═══
-export function ActionRow({ pay = [], gain = [], altGain, compact = false, size }) {
+// gainSuffix / altSuffix : nœuds (cases d'amélioration GhostSquare) insérés
+// juste APRÈS l'option qu'ils améliorent — le « +2 (améliorable +3) ou +1
+// (améliorable +2) » se lit alors dans l'ordre, option par option.
+export function ActionRow({ pay = [], gain = [], altGain, compact = false, size, gainSuffix = null, altSuffix = null }) {
   const sqSize = size || (compact ? 23 : 26);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
@@ -235,9 +238,11 @@ export function ActionRow({ pay = [], gain = [], altGain, compact = false, size 
         <span style={{ color: "var(--text-muted)", fontSize: 10, margin: "0 1px" }}>→</span>
       </>}
       {gain.map((r, i) => <ActionSquare key={`g${i}`} type="gain" resource={r} size={sqSize} />)}
+      {gainSuffix}
       {altGain && <>
         <OrPill />
         {altGain.map((r, i) => <ActionSquare key={`a${i}`} type="gain" resource={r} size={sqSize} />)}
+        {altSuffix}
       </>}
     </div>
   );
@@ -274,9 +279,13 @@ export function UpgradeSlot({ filled = false, size = 23, title }) {
   );
 }
 
-// ═══ GhostSquare — case fantôme intégrée à la séquence : elle prévisualise
-// l'icône concernée (gain à débloquer en rangée haut, coût annulable en rangée
-// bas) en pointillé estompé. filled = cube d'amélioration posé → case réelle. ═══
+// ═══ GhostSquare — case intégrée à la séquence, liée à une amélioration.
+// kind="gain" (rangée haut) : bonus à débloquer → fantôme estompé tant que le
+// cube est en place, case réelle (filled) une fois le cube retiré.
+// kind="cost" (rangée bas) : coût ENCORE ACTIF tant qu'aucun cube n'est posé —
+// il se paie comme les coûts fixes → rouge plein comme un vrai coût, mais
+// bordure en POINTILLÉS pour signaler qu'une action Améliorer peut le faire
+// disparaître (le cube posé est rendu par UpgradeSlot, pas ici). ═══
 // onClick (action Améliorer) : la case devient cliquable — bordure verte
 // accentuée quand sélectionnable, dorée lumineuse quand sélectionnée.
 export function GhostSquare({ resource, kind = "gain", filled = false, size = 23, title, onClick, selected }) {
@@ -290,14 +299,17 @@ export function GhostSquare({ resource, kind = "gain", filled = false, size = 23
         background: kind === "cost" ? "var(--cost-bg)" : "var(--gain-bg)",
         border: "1.5px solid var(--cube-border)",
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)",
+      } : kind === "cost" ? {
+        background: "var(--cost-bg)",
+        border: "1.5px dashed var(--cost-border)",
       } : {
         background: "transparent",
-        border: `1.5px dashed ${kind === "cost" ? "rgba(160,48,48,0.6)" : "rgba(150,150,140,0.5)"}`,
+        border: "1.5px dashed rgba(150,150,140,0.5)",
       }),
       ...(onClick ? { cursor: "pointer", border: `1.5px dashed ${selected ? "#e6c96a" : "#4caf50"}` } : {}),
       ...(selected ? { border: "2px solid #e6c96a", boxShadow: "0 0 8px rgba(230,201,106,0.85)", background: "rgba(230,201,106,0.18)" } : {}),
     }}>
-      {Icon && <Icon size={iconSize} color={selected ? "#f0e0a8" : filled ? "rgba(255,255,255,0.9)" : kind === "cost" ? "rgba(200,110,110,0.55)" : "rgba(200,200,190,0.45)"} />}
+      {Icon && <Icon size={iconSize} color={selected ? "#f0e0a8" : filled || kind === "cost" ? "rgba(255,255,255,0.9)" : "rgba(200,200,190,0.45)"} />}
     </div>
   );
 }

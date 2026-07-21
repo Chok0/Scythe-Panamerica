@@ -1,7 +1,7 @@
 import { FACTIONS } from '../data/factions.js';
 import { TERRAINS } from '../data/terrains.js';
 import { hMap, ADJ, HEXES, HOME_BASES } from '../data/hexes.js';
-import { MATS, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, getBottomCost } from '../data/mats.js';
+import { MATS, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, getBottomCost, topUpgradeCount, maxBottomCubes } from '../data/mats.js';
 import { countRes, spendRes, getWorkerHexes } from './resources.js';
 import { canPayProduce, payProduce } from './production.js';
 import { getValidMoves, findPathWaypoints, marshToll } from './movement.js';
@@ -465,12 +465,15 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       // Strategic choice: power if low or pushing toward the 16-power star
       const needPower = p.power < 8 || (p.power >= 12 && !p.starPower);
       if (needPower) {
-        const bonus = hasArsenal ? 1 : 0;
+        // +1 si le cube d'amélioration de l'option ⚡ a été retiré (2 → 3)
+        const bonus = (hasArsenal ? 1 : 0) + topUpgradeCount(p, "Bolster", "power");
         p.power = Math.min(p.power + 2 + bonus, 16);
         logs.push(`🤖 ${f.name}: +${2 + bonus} pui${hasArsenal ? " (Arsenal)" : ""}`);
       } else {
-        p.combatCards++;
-        logs.push(`🤖 ${f.name}: +1 CC`);
+        // +1 si le cube d'amélioration de l'option 🃏 a été retiré (1 → 2)
+        const ccGain = 1 + topUpgradeCount(p, "Bolster", "combatCards");
+        p.combatCards += ccGain;
+        logs.push(`🤖 ${f.name}: +${ccGain} CC`);
       }
       if (hasMemorial) { p.pop = Math.min(p.pop + 1, 18); logs.push(`🤖🪦 ${f.name}: +1 Pop (Mémorial)`); }
       // Star check: power 16
@@ -496,7 +499,8 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       };
       const hexIds = Object.keys(byHex)
         .sort((a, b) => hexScore(b) - hexScore(a))
-        .slice(0, 2);
+        // 2 hex de base, +1 par cube d'amélioration retiré de la colonne Produce
+        .slice(0, 2 + topUpgradeCount(p, "Produce", "nourriture"));
       // Régime d'ouvriers : 5 en early (règle du corpus), puis 8 pour l'étoile
       // — le thésauriseur sort tous ses ouvriers tout de suite
       const workerCap = getPhase(p) === "early" ? prof.maxWorkersEarly : 8;
@@ -519,8 +523,10 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   } else if (action === "Trade") {
     if (p.coins >= 1 && ((prof.chasePopStar && p.pop >= 13 && !p.starPop) || (p.pop < prof.popTarget && (p.stars >= 1 || p.workers.length >= 5)))) {
       // Push toward the 18-pop star once in the top popularity tier
-      p.coins--; p.pop = Math.min(p.pop + 1, 18);
-      logs.push(`🤖 ${f.name}: +1 Pop`);
+      // (+1 si le cube d'amélioration de l'option ♥ a été retiré)
+      const popGain = 1 + topUpgradeCount(p, "Trade", "pop");
+      p.coins--; p.pop = Math.min(p.pop + popGain, 18);
+      logs.push(`🤖 ${f.name}: +${popGain} Pop`);
     } else if (p.coins >= 1) {
       // Strategic resource choice: pick what we need for upcoming bottom action
       const costs = getBottomCost(p);
@@ -548,8 +554,10 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
 
       const wHex = p.workers.length > 0 ? String(p.workers[0].hexId) : String(p.hero);
       if (!p.resources[wHex]) p.resources[wHex] = {};
-      p.resources[wHex][targetRes] = (p.resources[wHex][targetRes] || 0) + 2; p.coins--;
-      logs.push(`🤖 ${f.name}: +2 ${targetRes}`);
+      // 2 ressources de base, +1 si le cube de l'option 📦 a été retiré
+      const resGain = 2 + topUpgradeCount(p, "Trade", "metal");
+      p.resources[wHex][targetRes] = (p.resources[wHex][targetRes] || 0) + resGain; p.coins--;
+      logs.push(`🤖 ${f.name}: +${resGain} ${targetRes}`);
     } else {
       // No coins: take pop instead if possible (shouldn't happen often)
       logs.push(`🤖 ${f.name}: (pas d'$)`);
@@ -574,7 +582,8 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       const validTop = []; const validBottom = [];
       if (mat) {
         (p.cubesOnTop || []).forEach((c, i) => { if (c > 0) validTop.push(i); });
-        (mat.bottomSlots || []).forEach((s, i) => { if ((p.cubesOnBottom || [])[i] < s) validBottom.push(i); });
+        // Plafond règle Scythe : jamais plus de (base - 1) cubes → coût min 1
+        (mat.bottomSlots || []).forEach((s, i) => { if ((p.cubesOnBottom || [])[i] < maxBottomCubes(mat, i)) validBottom.push(i); });
       }
       if (validTop.length > 0 && validBottom.length > 0) {
         const sp = spendRes(p, bc.res, bc.qty); Object.assign(p, { resources: sp.resources });
