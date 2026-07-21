@@ -2751,66 +2751,6 @@ export default function App(){
           </div>
         )}
 
-        {/* ═══ TRANSPORT PARTIEL — répartition façon balance à deux plateaux
-            (modèle Scythe Digital Edition) : hex qui GARDE à gauche, mecha qui
-            EMBARQUE à droite, ‹ › « » par ligne + tout-laisser/tout-embarquer ═══ */}
-        {transportPick&&(()=>{
-          const tp=transportPick;
-          const sq={width:24,height:24,borderRadius:4,border:"1px solid var(--border)",background:"var(--bg3)",color:"var(--gold-dim)",cursor:"pointer",fontSize:13,fontWeight:800,lineHeight:1,padding:0};
-          const bigSq={...sq,width:32,height:32,fontSize:15,color:"var(--gold)"};
-          const setW=(v)=>setTransportPick(t=>({...t,workers:Math.max(0,Math.min(t.workersMax,v))}));
-          const setR=(rt,v)=>setTransportPick(t=>({...t,res:{...t.res,[rt]:Math.max(0,Math.min(t.resMax[rt],v))}}));
-          const row=(key,Icon,taken,max,set,divider)=>(
-            <div key={key} style={{display:"flex",alignItems:"center",gap:5,padding:"3px 0",borderBottom:divider?"1px dashed var(--border-dark)":"none",marginBottom:divider?4:0}}>
-              <button style={sq} title="Tout laisser sur l'hex" onClick={()=>set(0)}>«</button>
-              <button style={sq} title="En laisser 1 de plus" onClick={()=>set(taken-1)}>‹</button>
-              <span style={{width:20,textAlign:"center",fontFamily:"var(--font-mono)",fontSize:14,color:max-taken>0?"var(--text)":"var(--text-muted)"}}>{max-taken}</span>
-              <div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
-                <span style={{width:20,display:"flex",justifyContent:"center",flexShrink:0}}>{Icon&&<Icon size={17} color="#d8c9a3"/>}</span>
-                <div style={{flex:1,height:5,borderRadius:3,background:"rgba(0,0,0,0.55)",border:"1px solid var(--border-dark)",position:"relative"}}>
-                  <div style={{position:"absolute",right:0,top:0,bottom:0,width:`${max?taken/max*100:0}%`,background:"linear-gradient(90deg,#8a6c2e,#c9a84c)",borderRadius:3,transition:"width 0.15s ease"}}/>
-                </div>
-              </div>
-              <span style={{width:20,textAlign:"center",fontFamily:"var(--font-mono)",fontSize:14,color:taken>0?"var(--gold)":"var(--text-muted)"}}>{taken}</span>
-              <button style={sq} title="En embarquer 1 de plus" onClick={()=>set(taken+1)}>›</button>
-              <button style={sq} title="Tout embarquer" onClick={()=>set(max)}>»</button>
-            </div>
-          );
-          const MechIcon=RESOURCE_ICONS.mech,WorkerIcon=RESOURCE_ICONS.worker;
-          return(
-          <div style={{position:"absolute",bottom:16,left:"50%",transform:"translateX(-50%)",zIndex:8,width:400,
-            background:"linear-gradient(180deg,#241d12,#14100a)",border:"1px solid var(--gold-dim)",borderRadius:10,
-            boxShadow:"0 6px 30px rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",animation:"slideUp 0.2s ease",overflow:"hidden"}}>
-            <div style={{textAlign:"center",padding:"5px 0",fontFamily:"var(--font-title)",fontSize:14,letterSpacing:5,fontWeight:800,color:"var(--gold)",borderBottom:"1px solid var(--border)",background:"rgba(0,0,0,0.3)"}}>TRANSPORT</div>
-            <div style={{display:"flex",alignItems:"stretch",gap:8,padding:"8px 10px 4px"}}>
-              {/* Plateau gauche : l'hex de départ (ce qui RESTE) */}
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:42,paddingBottom:2}}>
-                <span title={`Reste sur l'hex #${tp.fromHex}`} style={{fontSize:24,lineHeight:1,color:"#8a8070"}}>⬡</span>
-                <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>#{tp.fromHex}</span>
-                <button style={bigSq} title="Tout laisser (le mecha part seul)"
-                  onClick={()=>setTransportPick(t=>({...t,workers:0,res:Object.fromEntries(Object.keys(t.resMax).map(k=>[k,0]))}))}>≪</button>
-              </div>
-              {/* Lignes : ouvriers (séparés) puis ressources */}
-              <div style={{flex:1,minWidth:0}}>
-                {tp.workersMax>0&&row("workers",WorkerIcon,tp.workers,tp.workersMax,setW,Object.keys(tp.resMax).length>0)}
-                {Object.entries(tp.resMax).map(([rt,mx])=>row(rt,RESOURCE_ICONS[rt],tp.res[rt]||0,mx,(v)=>setR(rt,v),false))}
-              </div>
-              {/* Plateau droit : le mecha (ce qui EMBARQUE) */}
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:42,paddingBottom:2}}>
-                <span title={`Embarqué vers l'hex #${tp.toHex}`}>{MechIcon&&<MechIcon size={24} color="#c9a84c"/>}</span>
-                <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>#{tp.toHex}</span>
-                <button style={bigSq} title="Tout embarquer"
-                  onClick={()=>setTransportPick(t=>({...t,workers:t.workersMax,res:{...t.resMax}}))}>≫</button>
-              </div>
-            </div>
-            <div style={{display:"flex",gap:6,padding:"4px 10px 10px"}}>
-              <button className="act-btn" style={{flex:1,fontWeight:700,minHeight:36,background:"#3a6a3a",color:"#fff",border:"none"}}
-                onClick={()=>{setTransportPick(null);handleHexClick(tp.toHex,{transport:{workers:tp.workers,res:tp.res}});}}>✓ Déplacer</button>
-              <button className="act-btn" style={{minHeight:36,opacity:0.7}} onClick={()=>setTransportPick(null)}>✕</button>
-            </div>
-          </div>);
-        })()}
-
         {/* ═══ MODAL OVERLAYS (combat/encounter/RR/dépose en route) ═══ */}
         {(combat||encounter||encounterBuild||encounterEnlist||rougeRiver||routeDrop)&&(
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
@@ -3343,6 +3283,66 @@ export default function App(){
                   {moveSource&&<div style={{color:"#C9A84C",fontSize:14,marginTop:8,fontStyle:"italic"}}>
                     {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:<><Glyph icon={moveSource.unitType==="mech"?"⬡":"●"} size={14}/> {moveSource.unitType==="mech"?"Mecha":"Ouvrier"}</>} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts), ou une autre de vos unités pour changer.
                   </div>}
+                  {/* ═══ TRANSPORT PARTIEL — répartition façon balance à deux plateaux
+                      (modèle Scythe Digital Edition) : hex qui GARDE à gauche, mecha qui
+                      EMBARQUE à droite, ‹ › « » par ligne + tout-laisser/tout-embarquer.
+                      Rendu ICI, dans le panneau d'action de droite (pas en overlay carte). ═══ */}
+                  {transportPick&&(()=>{
+                    const tp=transportPick;
+                    const sq={width:24,height:24,borderRadius:4,border:"1px solid var(--border)",background:"var(--bg3)",color:"var(--gold-dim)",cursor:"pointer",fontSize:13,fontWeight:800,lineHeight:1,padding:0};
+                    const bigSq={...sq,width:32,height:32,fontSize:15,color:"var(--gold)"};
+                    const setW=(v)=>setTransportPick(t=>({...t,workers:Math.max(0,Math.min(t.workersMax,v))}));
+                    const setR=(rt,v)=>setTransportPick(t=>({...t,res:{...t.res,[rt]:Math.max(0,Math.min(t.resMax[rt],v))}}));
+                    const row=(key,Icon,taken,max,set,divider)=>(
+                      <div key={key} style={{display:"flex",alignItems:"center",gap:5,padding:"3px 0",borderBottom:divider?"1px dashed var(--border-dark)":"none",marginBottom:divider?4:0}}>
+                        <button style={sq} title="Tout laisser sur l'hex" onClick={()=>set(0)}>«</button>
+                        <button style={sq} title="En laisser 1 de plus" onClick={()=>set(taken-1)}>‹</button>
+                        <span style={{width:20,textAlign:"center",fontFamily:"var(--font-mono)",fontSize:14,color:max-taken>0?"var(--text)":"var(--text-muted)"}}>{max-taken}</span>
+                        <div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
+                          <span style={{width:20,display:"flex",justifyContent:"center",flexShrink:0}}>{Icon&&<Icon size={17} color="#d8c9a3"/>}</span>
+                          <div style={{flex:1,height:5,borderRadius:3,background:"rgba(0,0,0,0.55)",border:"1px solid var(--border-dark)",position:"relative"}}>
+                            <div style={{position:"absolute",right:0,top:0,bottom:0,width:`${max?taken/max*100:0}%`,background:"linear-gradient(90deg,#8a6c2e,#c9a84c)",borderRadius:3,transition:"width 0.15s ease"}}/>
+                          </div>
+                        </div>
+                        <span style={{width:20,textAlign:"center",fontFamily:"var(--font-mono)",fontSize:14,color:taken>0?"var(--gold)":"var(--text-muted)"}}>{taken}</span>
+                        <button style={sq} title="En embarquer 1 de plus" onClick={()=>set(taken+1)}>›</button>
+                        <button style={sq} title="Tout embarquer" onClick={()=>set(max)}>»</button>
+                      </div>
+                    );
+                    const MechIcon=RESOURCE_ICONS.mech,WorkerIcon=RESOURCE_ICONS.worker;
+                    return(
+                    <div style={{marginTop:8,width:"100%",
+                      background:"linear-gradient(180deg,#241d12,#14100a)",border:"1px solid var(--gold-dim)",borderRadius:10,
+                      animation:"slideUp 0.2s ease",overflow:"hidden"}}>
+                      <div style={{textAlign:"center",padding:"5px 0",fontFamily:"var(--font-title)",fontSize:14,letterSpacing:5,fontWeight:800,color:"var(--gold)",borderBottom:"1px solid var(--border)",background:"rgba(0,0,0,0.3)"}}>TRANSPORT</div>
+                      <div style={{display:"flex",alignItems:"stretch",gap:8,padding:"8px 10px 4px"}}>
+                        {/* Plateau gauche : l'hex de départ (ce qui RESTE) */}
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:42,paddingBottom:2}}>
+                          <span title={`Reste sur l'hex #${tp.fromHex}`} style={{fontSize:24,lineHeight:1,color:"#8a8070"}}>⬡</span>
+                          <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>#{tp.fromHex}</span>
+                          <button style={bigSq} title="Tout laisser (le mecha part seul)"
+                            onClick={()=>setTransportPick(t=>({...t,workers:0,res:Object.fromEntries(Object.keys(t.resMax).map(k=>[k,0]))}))}>≪</button>
+                        </div>
+                        {/* Lignes : ouvriers (séparés) puis ressources */}
+                        <div style={{flex:1,minWidth:0}}>
+                          {tp.workersMax>0&&row("workers",WorkerIcon,tp.workers,tp.workersMax,setW,Object.keys(tp.resMax).length>0)}
+                          {Object.entries(tp.resMax).map(([rt,mx])=>row(rt,RESOURCE_ICONS[rt],tp.res[rt]||0,mx,(v)=>setR(rt,v),false))}
+                        </div>
+                        {/* Plateau droit : le mecha (ce qui EMBARQUE) */}
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:42,paddingBottom:2}}>
+                          <span title={`Embarqué vers l'hex #${tp.toHex}`}>{MechIcon&&<MechIcon size={24} color="#c9a84c"/>}</span>
+                          <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>#{tp.toHex}</span>
+                          <button style={bigSq} title="Tout embarquer"
+                            onClick={()=>setTransportPick(t=>({...t,workers:t.workersMax,res:{...t.resMax}}))}>≫</button>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",gap:6,padding:"4px 10px 10px"}}>
+                        <button className="act-btn" style={{flex:1,fontWeight:700,minHeight:36,background:"#3a6a3a",color:"#fff",border:"none"}}
+                          onClick={()=>{setTransportPick(null);handleHexClick(tp.toHex,{transport:{workers:tp.workers,res:tp.res}});}}>✓ Déplacer</button>
+                        <button className="act-btn" style={{minHeight:36,opacity:0.7}} onClick={()=>setTransportPick(null)}>✕</button>
+                      </div>
+                    </div>);
+                  })()}
                   {/* PACK UP — Nations free building move */}
                   {me.faction==="nations"&&(me.unlockedAbilities||[]).includes(3)&&(me.buildings||[]).length>0&&!me.packUpUsed&&!moveSource&&(()=>{
                     if(bottomPick&&bottomPick.packUp){
