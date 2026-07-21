@@ -107,6 +107,7 @@ export default function App(){
   const[redoStack,setRedoStack]=useState([]); // pile de rétablissement
   const[tradePicks,setTradePicks]=useState([]); // for Trade: array of picked resource types (0-2)
   const[producePicks,setProducePicks]=useState([]); // for Produce: hex choisis au clic (2-3 + Moulin en bonus)
+  const[abilityOffer,setAbilityOffer]=useState(null); // pouvoir de faction OPTIONNEL à confirmer: {type:"servitude"|"trap"|"flag", hexId}
   const[hovHex,setHovHex]=useState(null);
   const[clickRipple,setClickRipple]=useState(null); // {hexId, key} for ripple animation
   const[showOpponents,setShowOpponents]=useState(false); // barre du haut dépliée : ressources + étoiles adverses
@@ -1354,9 +1355,9 @@ export default function App(){
           // Lose 1 pop per displaced worker
           p.pop=Math.max(0,p.pop-displaced);
           addLog(`♥ -${displaced} Pop (ouvriers déplacés)`);
-          // Servitude (Confédération) : capturer un des ouvriers chassés
-          const serv=servitudeOnDisplace(p,hexId);
-          if(serv.captured){p=serv.player;addLog(`⛓ Servitude ! Ouvrier capturé (-2 Pop, ${p.capturedWorkers}/2)`);}
+          // Servitude (Confédération) : la capture est un CHOIX du joueur
+          // (-2 Pop, max 2) — proposée après le déplacement, plus d'office
+          if(p.faction==="confederation"&&p.pop>=2&&(p.capturedWorkers||0)<2)setAbilityOffer({type:"servitude",hexId});
         }
       }
       
@@ -1387,29 +1388,15 @@ export default function App(){
       
       // ── HERO-ONLY TRIGGERS ──
       if(moveSource.unitType==="hero"){
-        // ── TIERRA MINADA: Frente places trap after hero moves ──
-        if(me.faction==="frente"&&(me.trapTokens||[]).length<4){
-          const alreadyTrapped=(me.trapTokens||[]).some(t=>t.hexId===hexId);
-          if(!alreadyTrapped){
-            setPlayers(prev=>{
-              const n=[...prev];const p2={...n[0]};
-              p2.trapTokens=[...(p2.trapTokens||[]),{hexId,disarmed:false}];
-              n[0]=p2;return n;
-            });
-            addLog(`🪤 Tierra Minada ! Trap posé sur #${hexId} (${(me.trapTokens||[]).length+1}/4)`);
-          }
+        // ── TIERRA MINADA (Frente) : poser un piège ici est un CHOIX — les
+        // 4 jetons sont précieux, l'emplacement se décide (plus d'office) ──
+        if(me.faction==="frente"&&(me.trapTokens||[]).length<4&&!(me.trapTokens||[]).some(t=>t.hexId===hexId)){
+          setAbilityOffer({type:"trap",hexId});
         }
-        // ── COMPTOIR: Acadiane places flag after hero moves ──
-        if(me.faction==="acadiane"&&(me.flagTokens||[]).length<4){
-          const alreadyFlagged=(me.flagTokens||[]).some(f=>f.hexId===hexId);
-          if(!alreadyFlagged){
-            setPlayers(prev=>{
-              const n=[...prev];const p2={...n[0]};
-              p2.flagTokens=[...(p2.flagTokens||[]),{hexId}];
-              n[0]=p2;return n;
-            });
-            addLog(`🏴 Comptoir posé sur #${hexId} (${(me.flagTokens||[]).length+1}/4)`);
-          }
+        // ── COMPTOIR (Acadiane) : idem — l'objectif de faction exige des
+        // comptoirs NON adjacents, les poser partout d'office le sabotait ──
+        if(me.faction==="acadiane"&&(me.flagTokens||[]).length<4&&!(me.flagTokens||[]).some(f=>f.hexId===hexId)){
+          setAbilityOffer({type:"flag",hexId});
         }
         
         // Encounter token?
@@ -1783,17 +1770,10 @@ export default function App(){
           });
           addLog(`🧟 Chimère ! Mecha ${ef.name} capturé → 5e mecha Bayou !`);
         }
-        // Servitude: Confédération captures 1 enemy worker (max 2 total, costs 2 pop)
+        // Servitude : la capture est un CHOIX du joueur (-2 Pop, max 2) —
+        // proposée après la victoire, plus appliquée d'office
         if(me.faction==="confederation"&&preEnemyWorkers.length>0&&me.pop>=2&&(me.capturedWorkers||0)<2){
-          setPlayers(prev=>{
-            const n=[...prev];
-            const p={...n[0],workers:[...n[0].workers]};
-            p.pop=Math.max(0,p.pop-2);
-            p.workers.push({id:`${p.faction}_serv${p.workers.length}`,hexId:combat.hexId});
-            p.capturedWorkers=(p.capturedWorkers||0)+1;
-            n[0]=p;return n;
-          });
-          addLog(`⛓ Servitude ! Ouvrier ${ef.name} capturé (-2 Pop, ${(me.capturedWorkers||0)+1}/2)`);
+          setAbilityOffer({type:"servitude",hexId:combat.hexId});
         }
       } else {
         addLog(`❌ Défaite PvP... Retraite vers la base.`);
@@ -2788,8 +2768,8 @@ export default function App(){
           </div>
         )}
 
-        {/* ═══ MODAL OVERLAYS (combat/encounter/RR/dépose en route) ═══ */}
-        {(combat||encounter||encounterBuild||encounterEnlist||rougeRiver||routeDrop)&&(
+        {/* ═══ MODAL OVERLAYS (combat/encounter/RR/dépose en route/pouvoir optionnel) ═══ */}
+        {(combat||encounter||encounterBuild||encounterEnlist||rougeRiver||routeDrop||abilityOffer)&&(
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
             <div style={{maxWidth:460,width:"92%",maxHeight:"80vh",overflow:"auto",borderRadius:12,border:"1px solid var(--border-light)",boxShadow:"0 10px 50px rgba(0,0,0,0.8)"}}>
 
@@ -2912,6 +2892,52 @@ export default function App(){
                   ))}
                   <button onClick={()=>{const end=routeDrop.endAfter;setRouteDrop(null);if(end)endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginTop:6,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Continuer ▶</button>
                 </div>);
+              })()}
+
+              {/* CHOIX DE POUVOIR DE FACTION — Servitude / Tierra Minada / Comptoir
+                  sont des capacités OPTIONNELLES : confirmation demandée, plus
+                  d'application d'office (les autres modaux passent en premier) */}
+              {abilityOffer&&!combat&&!encounter&&!rougeRiver&&(()=>{
+                const o=abilityOffer;
+                const conf={
+                  servitude:{icon:"⛓",title:"Servitude",desc:`Capturer un ouvrier chassé sur #${o.hexId} ? Il rejoint vos rangs (−2 Popularité · ${me.capturedWorkers||0}/2 captures).`,yes:"⛓ Capturer (−2 Pop)"},
+                  trap:{icon:"🪤",title:"Tierra Minada",desc:`Poser un piège sur #${o.hexId} ? (${(me.trapTokens||[]).length}/4 posés — inflige −3⚡ à l'ennemi qui le déclenche)`,yes:"🪤 Poser le piège"},
+                  flag:{icon:"🏴",title:"Comptoir",desc:`Établir un comptoir sur #${o.hexId} ? (${(me.flagTokens||[]).length}/4 — +1 territoire au score ; rappel : l'objectif de faction exige des comptoirs NON adjacents entre eux)`,yes:"🏴 Établir le comptoir"},
+                }[o.type];
+                const apply=()=>{
+                  setPlayers(prev=>{
+                    const n=[...prev];const p={...n[0]};
+                    if(o.type==="servitude"){
+                      if(p.pop<2||(p.capturedWorkers||0)>=2)return prev;
+                      p.workers=[...p.workers,{id:`${p.faction}_serv${p.workers.length}`,hexId:o.hexId}];
+                      p.pop=Math.max(0,p.pop-2);p.capturedWorkers=(p.capturedWorkers||0)+1;
+                    }else if(o.type==="trap"){
+                      p.trapTokens=[...(p.trapTokens||[]),{hexId:o.hexId,disarmed:false}];
+                    }else{
+                      p.flagTokens=[...(p.flagTokens||[]),{hexId:o.hexId}];
+                    }
+                    n[0]=p;return n;
+                  });
+                  addLog(o.type==="servitude"?`⛓ Servitude ! Ouvrier capturé (-2 Pop, ${(me.capturedWorkers||0)+1}/2)`
+                    :o.type==="trap"?`🪤 Tierra Minada ! Trap posé sur #${o.hexId} (${(me.trapTokens||[]).length+1}/4)`
+                    :`🏴 Comptoir posé sur #${o.hexId} (${(me.flagTokens||[]).length+1}/4)`);
+                  setAbilityOffer(null);
+                };
+                return(
+                  <div style={{padding:"20px",background:"linear-gradient(180deg,#1a1608,var(--bg2))",borderRadius:10,border:"1px solid var(--rust)",animation:"slideUp 0.35s ease"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                      <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(201,168,76,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,border:"2px solid var(--gold)",flexShrink:0}}>{conf.icon}</div>
+                      <div>
+                        <div style={{fontFamily:"var(--font-title)",color:"var(--gold)",fontSize:18,fontWeight:700}}>{conf.title}</div>
+                        <div style={{fontSize:13,color:"var(--text-dim)",lineHeight:1.5,marginTop:3}}>{conf.desc}</div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={apply} className="act-btn" style={{flex:1,fontWeight:700,background:"#3a6a3a",color:"#fff",border:"none"}}>{conf.yes}</button>
+                      <button onClick={()=>{setAbilityOffer(null);addLog(`— ${conf.title} : pouvoir non utilisé`);}} className="act-btn" style={{flex:1,opacity:0.8}}>Non merci</button>
+                    </div>
+                  </div>
+                );
               })()}
 
               {/* ENCOUNTER */}
