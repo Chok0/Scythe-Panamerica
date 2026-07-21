@@ -1,6 +1,6 @@
 import { FACTIONS } from '../data/factions.js';
 import { TERRAINS } from '../data/terrains.js';
-import { hMap, ADJ, HEXES, HOME_BASES } from '../data/hexes.js';
+import { hMap, ADJ, HEXES, HOME_BASES, homeBaseHex } from '../data/hexes.js';
 import { MATS, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, getBottomCost, topUpgradeCount, maxBottomCubes } from '../data/mats.js';
 import { countRes, spendRes, getWorkerHexes } from './resources.js';
 import { canPayProduce, payProduce } from './production.js';
@@ -92,11 +92,18 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof) => {
   // Top action value
   if (action === "Produce") {
     if (canPayProduce(p)) {
+      // Seuls les hex PRODUCTIFS comptent : un ouvrier renvoyé à la base
+      // (t:"base", hors TERRAINS) ne produit rien — sans ce filtre le bot
+      // enchaînait des Produce à vide après une invasion subie (mesuré en
+      // partie réelle : tous ses ouvriers en base, Produce quand même)
+      const wHexes = new Set(p.workers.map(w => w.hexId).filter(hid => TERRAINS[hMap[hid]?.t]?.res));
+      if (wHexes.size === 0) {
+        score -= 12; // rien à produire : Move (évacuation) doit gagner
+      } else {
       score += 10 + prof.produceBoost;
       // High value early game for resource generation
       if (phase === "early") score += 8;
       // More workers = more production value
-      const wHexes = new Set(p.workers.map(w => w.hexId));
       score += Math.min(wHexes.size, 2) * 3;
       // Planification : produire vaut plus si nos ouvriers sont sur des hex
       // qui produisent les ressources dont nos bottoms ont besoin
@@ -105,6 +112,7 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof) => {
         const h = hMap[hid];
         const res = h && TERRAINS[h.t]?.res;
         if (res && need[res]) { score += 5; break; }
+      }
       }
     }
   } else if (action === "Trade") {
@@ -202,6 +210,11 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
         // sur avantage réel (corpus : unités isolées / 2v1), le blitz à force
         // égale et dès le début, le bâtisseur/thésauriseur presque jamais
         const defStrength = ctx.attackable.get ? (ctx.attackable.get(hexId) || 0) : 0;
+        // Riposte / défense du territoire : un envahisseur campé près de NOTRE
+        // base est attaquable MÊME en early game — sans quoi l'envahi ne
+        // réagit jamais (mesuré en partie réelle : invasion early impunie)
+        const homeH = homeBaseHex(p.faction);
+        const nearHome = homeH ? Math.sqrt((hex.rx - homeH.rx) ** 2 + (hex.ry - homeH.ry) ** 2) < 320 : false;
         // Butin : le vainqueur prend les ressources du hex — plus le magot est
         // gros, plus il attire (motivation au combat voulue par le design :
         // les empilements déclenchent des chaînes de batailles)
@@ -213,8 +226,8 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
         // contre-attaque (on ne pourra pas défendre le terrain gagné)
         const overextended = p.power <= 4 && !prof.earlyAttack;
         // Un gros magot (≥4) justifie le combat même sans étoile à la clé
-        if (!overextended && myStrength >= defStrength + prof.aggroMargin && (wantCombatStar || prof.earlyAttack || loot >= 4) && (prof.earlyAttack || getPhase(p) !== "early"))
-          s += (wantCombatStar ? prof.attackReward : Math.floor(prof.attackReward / 2)) + Math.min(4, myStrength - defStrength) + loot + threat;
+        if (!overextended && myStrength >= defStrength + prof.aggroMargin && (wantCombatStar || prof.earlyAttack || loot >= 4) && (prof.earlyAttack || getPhase(p) !== "early" || nearHome))
+          s += (wantCombatStar ? prof.attackReward : Math.floor(prof.attackReward / 2)) + Math.min(4, myStrength - defStrength) + loot + threat + (nearHome ? 6 : 0);
         else s -= 12;
       } else if (enemyHexes && enemyHexes.has(hexId)) {
         // Hex avec seulement des ouvriers ennemis : déplacement possible mais coûte de la pop
@@ -349,8 +362,30 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       }
     }
 
-    // Move hero strategically
-    const validHero = getValidMoves(p.hero, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
+    // ── Évacuation de la base : après un renvoi massif (invasion subie), la
+    // priorité absolue est de ressortir les ouvriers — 2 unités par Move
+    // (règle Scythe), donc 2 ouvriers de la pile ; héros et mech attendent.
+    // (mesuré en partie réelle : à 1 ouvrier/tour, l'envahi restait KO 6 tours)
+    let evacuated = 0;
+    const baseIdx = p.workers.map((w, i) => (hMap[w.hexId]?.base ? i : -1)).filter(i => i >= 0);
+    if (baseIdx.length >= 2) {
+      p.workers = [...p.workers];
+      for (const wi of baseIdx.slice(0, 2)) {
+        let wv = getValidMoves(p.workers[wi].hexId, p.faction, p.unlockedAbilities || [], p, rails);
+        if (enemyHexes) wv = wv.filter(id => !enemyHexes.has(id));
+        if (wv.length === 0) continue;
+        const wt = pickMoveTarget(wv, p, empire, enemyHexes, "worker", ctx, prof);
+        if (wt == null) continue;
+        p.workers[wi] = { ...p.workers[wi], hexId: wt };
+        logs.push(`🤖 ${f.name}: Ouv. (base) → #${wt}`);
+        const evToll = marshToll(p, wt, "worker");
+        if (evToll) logs.push(`🤖${evToll}`);
+        evacuated++;
+      }
+    }
+
+    // Move hero strategically (sauf si les 2 déplacements ont servi à évacuer)
+    const validHero = evacuated >= 2 ? [] : getValidMoves(p.hero, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
     if (validHero.length > 0) {
       const fromHex = p.hero;
       const target = pickMoveTarget(validHero, p, empire, enemyHexes, "hero", ctx, prof);
@@ -377,7 +412,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     // vraie cible (attaque, butin, leader, expansion late) ; sinon c'était
     // toujours l'ouvrier qui bougeait et les mechs restaient plantés
     let mechMoved = false;
-    if (p.mechs.length > 0) {
+    if (evacuated === 0 && p.mechs.length > 0) {
       const mi = Math.floor(Math.random() * p.mechs.length);
       const fromHexM = p.mechs[mi].hexId;
       const mv = getValidMoves(fromHexM, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
@@ -428,7 +463,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         }
       }
     }
-    if (!mechMoved && p.workers.length > 0) {
+    if (evacuated === 0 && !mechMoved && p.workers.length > 0) {
       // Corpus : « sortir les ouvriers du village » — déplacer un ouvrier du
       // hex le plus peuplé plutôt qu'un ouvrier au hasard
       const byHexW = {};
@@ -482,7 +517,12 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       if (p.power >= 16 && !p.starPower) { p.stars++; p.starPower = true; logs.push(`⭐ ${f.name}: Puissance max !`); }
     } else logs.push(`🤖 ${f.name}: (pas d'$)`);
   } else if (action === "Produce") {
-    if (!canPayProduce(p)) { logs.push(`🤖 ${f.name}: (coût prod.)`); } else {
+    // Ne payer que si au moins un hex ouvrier peut réellement produire
+    // (les ouvriers renvoyés à la base ne produisent rien)
+    const canYield = p.workers.some(w => TERRAINS[hMap[w.hexId]?.t]?.res);
+    if (!canPayProduce(p)) { logs.push(`🤖 ${f.name}: (coût prod.)`); }
+    else if (!canYield) { logs.push(`🤖 ${f.name}: (rien à produire — ouvriers en base)`); }
+    else {
       payProduce(p);
       const byHex = {}; p.workers.forEach(w => { if (!byHex[w.hexId]) byHex[w.hexId] = []; byHex[w.hexId].push(w); });
       // Pick best 2 hexes : d'abord ceux qui produisent une ressource MANQUANTE
@@ -500,6 +540,8 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         return s + byHex[hidStr].length;
       };
       const hexIds = Object.keys(byHex)
+        // hex non productifs exclus (base des ouvriers renvoyés, lacs…)
+        .filter(h => TERRAINS[hMap[parseInt(h)]?.t]?.res)
         .sort((a, b) => hexScore(b) - hexScore(a))
         // 2 hex de base, +1 par cube d'amélioration retiré de la colonne Produce
         .slice(0, 2 + topUpgradeCount(p, "Produce", "nourriture"));
