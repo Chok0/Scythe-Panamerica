@@ -2033,20 +2033,29 @@ export default function App(){
   // on CONFIRME — l'état est visible, rien ne part sans validation
   // 2 ressources de base, +1 par cube d'amélioration retiré (option 📦)
   const tradeSlots=2+(me?topUpgradeCount(me,"Trade","metal"):0);
-  const tradeLabel=(picks)=>{const c={};picks.forEach(r=>{c[r]=(c[r]||0)+1;});return Object.entries(c).map(([r,n])=>`+${n} ${r}`).join(", ");};
-  const doTradePick=(resType)=>{
+  // Règle Scythe : chaque ressource achetée atterrit sur un hex portant un de
+  // MES ouvriers, AU CHOIX (réparties librement) — tradePicks = [{res,hexId}],
+  // choisis en cliquant le chip de ressources au-dessus de l'hex (façon
+  // Scythe Digital Edition)
+  const tradeHexes=useMemo(()=>{
+    if(selAction!=="Trade"||!me)return [];
+    return [...new Set(me.workers.map(w=>w.hexId))].filter(h=>hMap[h]&&!hMap[h].base);
+  },[selAction,me]);
+  const tradeLabel=(picks)=>{const c={};picks.forEach(({res,hexId})=>{const k=`${res}#${hexId}`;c[k]=(c[k]||0)+1;});
+    return Object.entries(c).map(([k,n])=>{const[r,h]=k.split("#");return `+${n} ${r} (#${h})`;}).join(", ");};
+  const doTradePick=(resType,hexId)=>{
     if(!me||me.coins<1){addLog("⚠ Pas d'$");return;}
-    setTradePicks(prev=>prev.length>=tradeSlots?prev:[...prev,resType]);
+    setTradePicks(prev=>prev.length>=tradeSlots?prev:[...prev,{res:resType,hexId}]);
   };
   const doTradeConfirm=()=>{
     if(!me||me.coins<1||tradePicks.length!==tradeSlots)return;
     const picks=[...tradePicks];
-    const workerHex=me.workers.length>0?me.workers[0].hexId:me.hero;
-    setPlayers(prev=>{const n=[...prev];const p={...n[0],resources:{...n[0].resources}};const hid=String(workerHex);
-      if(!p.resources[hid])p.resources[hid]={};
-      picks.forEach(r=>{p.resources[hid][r]=(p.resources[hid][r]||0)+1;});
+    setPlayers(prev=>{const n=[...prev];const p={...n[0],resources:{...n[0].resources}};
+      picks.forEach(({res,hexId})=>{const hid=String(hexId);
+        p.resources[hid]={...(p.resources[hid]||{})};
+        p.resources[hid][res]=(p.resources[hid][res]||0)+1;});
       p.coins--;n[0]=p;return n;});
-    addLog(`💰 -1$ → ${tradeLabel(picks)} (sur #${workerHex})`);setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));
+    addLog(`💰 -1$ → ${tradeLabel(picks)}`);setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));
   };
 
   const allHexContents=useMemo(()=>{
@@ -2707,6 +2716,25 @@ export default function App(){
               <animate attributeName="opacity" from="0.6" to="0" dur="0.5s" fill="freeze"/>
             </circle>;
           })()}
+          {/* ═══ COMMERCE — chip des 4 ressources au-dessus de chaque hex à
+              ouvrier (façon Scythe Digital Edition) : cliquer une icône dépose
+              la ressource achetée SUR CET HEX (règle : les ressources
+              atterrissent sur un territoire portant un de vos ouvriers) ═══ */}
+          {selAction==="Trade"&&me&&me.coins>=1&&tradePicks.length<tradeSlots&&tradeHexes.map(hid=>{
+            const hex=hMap[hid];if(!hex)return null;
+            const RESL=["metal","bois","nourriture","petrole"];
+            const w=RESL.length*22+8,x0=hex.rx-w/2,y0=hex.ry-60;
+            return(<g key={`tr${hid}`} style={{cursor:"pointer"}}>
+              <rect x={x0} y={y0} width={w} height={26} rx={6} fill="rgba(14,12,8,0.92)" stroke="var(--gold-dim)" strokeWidth={1}/>
+              <path d={`M${hex.rx-5} ${y0+26} L${hex.rx+5} ${y0+26} L${hex.rx} ${y0+33} Z`} fill="rgba(14,12,8,0.92)" stroke="var(--gold-dim)" strokeWidth={1}/>
+              {RESL.map((r,i)=>{const Icon=RESOURCE_ICONS[r];return(
+                <g key={r} transform={`translate(${x0+5+i*22},${y0+5})`} onClick={(e)=>{e.stopPropagation();doTradePick(r,hid);}}>
+                  <title>{`+1 ${r} sur #${hid}`}</title>
+                  <rect x={-2} y={-3} width={21} height={22} rx={3} fill="transparent"/>
+                  <Icon size={16} color="#d8c9a3"/>
+                </g>);})}
+            </g>);
+          })}
           {/* Home Bases — purement décoratif : pointerEvents none pour que
               l'hex de base interactif en dessous reçoive bien les clics */}
           {Object.entries(HOME_BASES).map(([fid,hb])=>{
@@ -3407,24 +3435,27 @@ export default function App(){
                 <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Commerce (1$)</div>
                 {me.coins<1?<div style={{color:"#8A3030",fontSize:14}}>Pas assez d'$</div>:
                 <div>
-                  <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:6}}>Choisissez {tradeSlots} ressources (mêmes types ou différents) :</div>
+                  <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:6}}>
+                    Choisissez {tradeSlots} ressources <b>sur la carte</b> : cliquez une icône dans le chip au-dessus d'un hex portant un de vos ouvriers — c'est là qu'elle atterrit (règle Scythe, réparties librement).
+                  </div>
+                  {tradeHexes.length===0&&<div style={{fontSize:13,color:"#c07050",marginBottom:8}}>⚠ Aucun ouvrier sur le plateau — seule l'option ♥ est disponible.</div>}
                   {/* Emplacements visibles — l'état de la sélection ne peut pas être raté */}
                   <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
                     {Array.from({length:tradeSlots}).map((_,i)=>(
-                      <div key={i} style={{width:42,height:42,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:tradePicks[i]?20:13,
+                      <div key={i} style={{width:46,height:42,borderRadius:8,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontSize:tradePicks[i]?17:13,lineHeight:1.15,
                         border:tradePicks[i]?"2px solid var(--gold)":"2px dashed var(--border-dark)",
                         background:tradePicks[i]?"rgba(212,178,84,0.12)":"transparent",
                         color:tradePicks[i]?"var(--text)":"var(--text-muted)"}}>
-                        {tradePicks[i]?RES_ICO[tradePicks[i]]:i+1}
+                        {tradePicks[i]?<>
+                          <span>{RES_ICO[tradePicks[i].res]}</span>
+                          <span style={{fontSize:10,color:"var(--text-dim)",fontFamily:"var(--font-mono)"}}>#{tradePicks[i].hexId}</span>
+                        </>:i+1}
                       </div>
                     ))}
                     <span style={{fontSize:13,color:"var(--text-dim)",flex:1}}>
-                      {tradePicks.length===0?`Cliquez ${tradeSlots} ressources ci-dessous`:tradePicks.length<tradeSlots?`Choisissez encore ${tradeSlots-tradePicks.length} ressource${tradeSlots-tradePicks.length>1?"s":""}`:"Prêt — confirmez l'échange"}
+                      {tradePicks.length===0?`${tradeSlots} ressources à placer`:tradePicks.length<tradeSlots?`Encore ${tradeSlots-tradePicks.length} à placer`:"Prêt — confirmez l'échange"}
                     </span>
                     {tradePicks.length>0&&<button onClick={()=>setTradePicks([])} className="act-btn" style={{fontSize:13,padding:"6px 10px",minHeight:36,opacity:0.8}}>↩</button>}
-                  </div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                    {["metal","bois","nourriture","petrole"].map(r=><button key={r} onClick={()=>doTradePick(r)} disabled={tradePicks.length>=tradeSlots} className="act-btn" style={{flex:1,minWidth:60,opacity:tradePicks.length>=tradeSlots?0.4:1}}>{RES_ICO[r]} {r}</button>)}
                   </div>
                   {tradePicks.length===tradeSlots&&(
                     <button onClick={doTradeConfirm} className="act-btn" style={{width:"100%",marginBottom:6,background:"#3a6a3a",color:"#fff",border:"none",fontWeight:700}}>
