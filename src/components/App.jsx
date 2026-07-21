@@ -3278,7 +3278,8 @@ export default function App(){
               {selAction==="Move"&&(
                 <div>
                   <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Déplacement ({(me.movedUnits||[]).length}/{moveLimit})</div>
-                  <button onClick={()=>{const g=1+topUpgradeCount(me,"Move","coins");setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+g};return n;});addLog(`💰 +${g}$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner {1+topUpgradeCount(me,"Move","coins")}$ (pas de déplacement)</button>
+                  {/* Règle : Gagner est l'ALTERNATIVE au déplacement — plus proposé dès qu'une unité a bougé */}
+                  {(me.movedUnits||[]).length===0&&<button onClick={()=>{const g=1+topUpgradeCount(me,"Move","coins");setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+g};return n;});addLog(`💰 +${g}$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner {1+topUpgradeCount(me,"Move","coins")}$ (pas de déplacement)</button>}
                   {!moveSource&&(
                     <div style={{padding:"10px 12px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:14,color:"var(--gold)",lineHeight:1.5}}>
                       👆 Cliquez sur la carte l'unité à déplacer (hexes surlignés en doré), puis sa destination.
@@ -3465,6 +3466,20 @@ export default function App(){
                   <button onClick={()=>{const gp=1+topUpgradeCount(me,"Trade","pop");setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+gp,18)};return n;});addLog(`💰 -1$ → +${gp} Pop`);setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +{1+topUpgradeCount(me,"Trade","pop")} Popularité (à la place)</button>
                 </div>}
               </div>);})()}
+              {(()=>{
+                // Règle Scythe : l'action du HAUT est optionnelle — on peut
+                // l'ignorer (ex. Produire impayable) et passer directement à
+                // l'action du bas ; un Move entamé peut aussi se TERMINER
+                // avant la limite d'unités (arrêt volontaire, parfois utile)
+                const colIdx=myMat.topRow.indexOf(selAction);
+                if(colIdx<0)return null;
+                const moved=selAction==="Move"?(me.movedUnits||[]).length:0;
+                const label=moved>0
+                  ?`✓ Terminer le déplacement (${moved}/${moveLimit})`
+                  :`⤵ Passer ${FR_TOP[selAction]||selAction} → ${FR_BOT[BOTTOM[colIdx]]||BOTTOM[colIdx]}`;
+                return <button onClick={()=>{setTransportPick(null);endHumanTurn(colIdx);}} className="act-btn"
+                  style={{marginTop:8,width:"100%",fontWeight:600,...(moved>0?{background:"#3a6a3a",color:"#fff",border:"none"}:{opacity:0.85})}}>{label}</button>;
+              })()}
               <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setTransportPick(null);setRouteDrop(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
             </div>
           )}
