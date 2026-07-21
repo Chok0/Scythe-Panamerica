@@ -21,7 +21,7 @@ import SetupScreen from './SetupScreen.jsx';
 import { countRes, spendRes, getWorkerHexes } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel, PRODUCE_TIERS } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
-import { getValidMoves, findPathWaypoints, marshToll } from '../logic/movement.js';
+import { getValidMoves, getMoveSteps, marshToll } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer } from '../logic/player.js';
 import { botTurn } from '../logic/bot.js';
@@ -97,11 +97,11 @@ export default function App(){
   const[encounterTokens,setEncounterTokens]=useState(new Set(CURRENT_MAP.encounterHexes));
   const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
   const[moveSource,setMoveSource]=useState(null);
-  // Transport partiel (mech) : choix des ouvriers/ressources à emporter avant le déplacement
-  const[transportPick,setTransportPick]=useState(null);
   const[unitPicker,setUnitPicker]=useState(null); // {hexId,units:[{type,id,label}]} — plusieurs unités sur le hex cliqué
-  const[carryOnMove,setCarryOnMove]=useState(true); // 🚚 emporter ouvriers/ressources au Move
-  const[routeDrop,setRouteDrop]=useState(null); // 📦 dépose en route: {mids,destHex,endAfter}
+  // Chargement de l'unité sélectionnée (boîte dans la colonne d'action) :
+  // {workers:n, res:{type:qty}} — ce qui EMBARQUE au prochain pas ; le reste
+  // reste sur l'hex. Ré-initialisé « tout embarqué » à chaque hex atteint.
+  const[loadSel,setLoadSel]=useState(null);
   const[preActionSnapshot,setPreActionSnapshot]=useState(null); // snapshot of player[0] before action, for undo
   const[undoStack,setUndoStack]=useState([]); // pile d'annulation (snapshots d'état, dans le tour humain)
   const[redoStack,setRedoStack]=useState([]); // pile de rétablissement
@@ -630,7 +630,7 @@ export default function App(){
   // After top-row → show bottom-row option
   const endHumanTurn=useCallback((col)=>{
     setPlayers(prev=>{const n=[...prev];n[0]={...n[0],lastCol:col,movesLeft:undefined,movedUnits:[],packUpUsed:false};return n;});
-    setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);setRouteDrop(null);
+    setSelAction(null);setMoveSource(null);setLoadSel(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);
     // Show bottom-row option
     const bottomAction=BOTTOM[col];
     setPendingBottom({col,action:bottomAction});
@@ -976,7 +976,7 @@ export default function App(){
     setSelAction(snap.selAction??null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(snap.preActionSnapshot??null);setTradePicks([]);
     setPendingBottom(null);setBottomPick(null);setCombat(null);setEncounter(null);setRougeRiver(null);
     setEncounterBuild(false);setEncounterEnlist(null);
-    setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);
+    setRailPlacement(null);setPendingAbility(null);setLoadSel(null);
   },[cloneVal]);
   const pushHistory=useCallback(()=>{ setUndoStack(s=>[...s.slice(-40),snapshotGame()]); setRedoStack([]); },[snapshotGame]);
   const undo=useCallback(()=>{
@@ -990,7 +990,9 @@ export default function App(){
 
   const validMoves=useMemo(()=>{
     if(!moveSource||!me)return new Set();
-    let moves=getValidMoves(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails,moveSource.unitType);
+    // Déplacement décomposé : chaque clic = UN pas — les destinations proposées
+    // sont à 1 pas du hex courant (le budget restant vit dans moveSource.stepsLeft)
+    let moves=getValidMoves(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails,moveSource.unitType,1);
     // Workers cannot enter hexes with any enemy units
     if(moveSource.unitType==="worker"){
       const enemyHexes=new Set();
@@ -1004,6 +1006,50 @@ export default function App(){
     }
     return new Set(moves);
   },[moveSource,me,players,rails]);
+
+  // ── Fin du déplacement de l'unité en cours (déplacement décomposé) ──
+  // Appelé quand le joueur s'arrête avant d'épuiser ses pas : bouton « Arrêter
+  // ici », clic ailleurs, changement d'unité ou « Terminer ». Applique les
+  // effets d'arrivée (Tierra Minada / Comptoir / Iron Horse) sur l'hex d'arrêt,
+  // décompte l'unité, et termine l'action si la limite est atteinte.
+  // endTurnAfter : force la fin de l'action (bouton « Terminer »).
+  // Rend true si le tour s'est terminé.
+  const finalizeCurrentMove=useCallback((endTurnAfter=false)=>{
+    const ms=moveSource;
+    let count=(me?.movedUnits||[]).length;
+    if(ms?.started){
+      count+=1;
+      const hexId=ms.fromHex; // hex courant de l'unité = son point d'arrêt
+      let p={...me,workers:[...me.workers],mechs:[...me.mechs],resources:{...me.resources}};
+      Object.keys(me.resources).forEach(k=>{p.resources[k]={...me.resources[k]};});
+      p.movesLeft=(me.movesLeft||moveLimit)-1;
+      p.movedUnits=[...(me.movedUnits||[]),ms.unitId];
+      if(me.factoryCard?.topBonus==="move_mine"){
+        const destT=TERRAINS[hMap[hexId]?.t];
+        if(destT?.res&&destT.res!=="ouvriers"){
+          const hid=String(hexId);
+          if(!p.resources[hid])p.resources[hid]={};
+          p.resources[hid][destT.res]=(p.resources[hid][destT.res]||0)+1;
+          addLog(`⚙ ${me.factoryCard.name}: +1 ${destT.res} miné sur #${hexId}`);
+        }
+      }
+      if(ms.unitType==="hero"){
+        if(me.faction==="frente"&&(p.trapTokens||[]).length<4&&!(p.trapTokens||[]).some(t=>t.hexId===hexId)){
+          p.trapTokens=[...(p.trapTokens||[]),{hexId,disarmed:false}];
+          addLog(`🪤 Tierra Minada ! Trap posé sur #${hexId} (${p.trapTokens.length}/4)`);
+        }
+        if(me.faction==="acadiane"&&(p.flagTokens||[]).length<4&&!(p.flagTokens||[]).some(f=>f.hexId===hexId)){
+          p.flagTokens=[...(p.flagTokens||[]),{hexId}];
+          addLog(`🏴 Comptoir posé sur #${hexId} (${p.flagTokens.length}/4)`);
+        }
+      }
+      setPlayers(prev=>{const n=[...prev];n[0]=p;return n;});
+    }
+    setMoveSource(null);setLoadSel(null);
+    const shouldEnd=(endTurnAfter||count>=moveLimit)&&count>0;
+    if(shouldEnd){addLog(`✅ Mouvement terminé`);endHumanTurn(myMat.topRow.indexOf("Move"));}
+    return shouldEnd;
+  },[moveSource,me,moveLimit,addLog,endHumanTurn,myMat]);
 
   // Déplacement au clic : hex → unités du joueur encore déplaçables ce tour.
   // Cliquer un hex surligné sélectionne l'unité (picker si plusieurs).
@@ -1089,9 +1135,7 @@ export default function App(){
     }
   },[players,phase,addLog]);
 
-  // transportOverride : {transport:{workers,res}} — quantités choisies dans le
-  // panneau de transport partiel (repasse par ce même flux après validation)
-  const handleHexClick=useCallback((hexId,transportOverride)=>{
+  const handleHexClick=useCallback((hexId)=>{
     if(wasDragging.current){wasDragging.current=false;return;} // suppress click after drag
     if(phase!=="playing"||botRunning||combat)return;
     // Ripple effect on click
@@ -1149,25 +1193,35 @@ export default function App(){
     }
     
     if(moveSource&&validMoves.has(hexId)){
-      // Snapshot avant CE déplacement → l'undo prend en compte chaque sous-coup.
-      // Pas de re-push à la validation du transport : le clic qui a ouvert le
-      // panneau a déjà poussé ce snapshot (sinon chaque déplacement de mech
-      // chargé compterait double dans la pile d'annulation).
-      if(!transportOverride)pushHistory();
-      // Check for combat triggers before actually moving
+      // ── DÉPLACEMENT DÉCOMPOSÉ : chaque clic exécute UN pas ──
+      // L'unité reste sélectionnée tant qu'il lui reste des pas : on peut
+      // recharger/décharger entre deux pas (boîte de chargement, colonne de
+      // droite) ou s'arrêter avant d'épuiser le budget.
+      // Snapshot avant CE pas → l'undo annule pas par pas
+      pushHistory();
       const movingCombatUnit=moveSource.unitType==="hero"||moveSource.unitType==="mech";
-      
-      // Check PvE: Empire mecha on target hex
+      // Chargement du pas : quantités de la boîte, zéros explicites pour ce qui
+      // reste sur l'hex (transportUnits emporte TOUT ce qui n'est pas listé).
+      // Sans sélection (loadSel null) : tout embarque ; avec sélection : une
+      // clé absente = rien de ce type.
+      const resHere=me.resources[String(moveSource.fromHex)]||{};
+      const wHere=moveSource.unitType==="mech"?me.workers.filter(w=>w.hexId===moveSource.fromHex).length:0;
+      const load={
+        workers:Math.max(0,Math.min(loadSel?(loadSel.workers??0):wHere,wHere)),
+        res:Object.fromEntries(Object.keys(resHere).map(rt=>[rt,Math.max(0,Math.min(loadSel?(loadSel.res?.[rt]??0):resHere[rt],resHere[rt]))])),
+      };
+
+      // Check PvE: Empire mecha on target hex — le combat clôt le déplacement
       const empireOnHex=Object.entries(empire).filter(([_,hid])=>hid===hexId);
       if(movingCombatUnit&&empireOnHex.length>0){
         const card=drawEmpireCombat();
         setCombat({type:"pve",hexId,empireId:empireOnHex[0][0],empireCard:card,phase:"choose",powerSpend:0,cardsSpend:0,
-          moveData:{...moveSource}});
+          moveData:{...moveSource,load}});
         addLog(`⚔ Combat Empire ! ${card.name} (Force: ${card.power})`);
-        setMoveSource(null);
+        setMoveSource(null);setLoadSel(null);
         return;
       }
-      
+
       // Check PvP: enemy combat units (hero or mech) on target hex
       if(movingCombatUnit){
         for(let pi=1;pi<players.length;pi++){
@@ -1176,59 +1230,43 @@ export default function App(){
           const enemyMechs=ep.mechs.filter(m=>m.hexId===hexId);
           if(enemyHero||enemyMechs.length>0){
             setCombat({type:"pvp",hexId,enemyIdx:pi,phase:"choose",powerSpend:0,cardsSpend:0,
-              moveData:{...moveSource}});
+              moveData:{...moveSource,load}});
             addLog(`⚔ Combat PvP vs ${FACTIONS[ep.faction].name} sur #${hexId} !`);
-            setMoveSource(null);
+            setMoveSource(null);setLoadSel(null);
             return;
           }
         }
       }
-      
-      // ── TRANSPORT PARTIEL (mech) : s'il y a de quoi emporter, ouvrir le
-      // panneau de quantités au lieu d'exécuter — la validation repasse ici
-      // avec transportOverride ──
-      if(moveSource.unitType==="mech"&&carryOnMove&&!transportOverride){
-        const wOnHex=me.workers.filter(w=>w.hexId===moveSource.fromHex).length;
-        const resOnHex=Object.fromEntries(Object.entries(me.resources[String(moveSource.fromHex)]||{}).filter(([,q])=>q>0));
-        if(wOnHex>0||Object.keys(resOnHex).length>0){
-          setTransportPick({toHex:hexId,fromHex:moveSource.fromHex,workersMax:wOnHex,workers:wOnHex,resMax:resOnHex,res:{...resOnHex}});
-          return;
-        }
-      }
-      setTransportPick(null);
 
-      // No combat: normal move with TRANSPORT (Scythe rules)
+      // Exécution d'UN pas avec le chargement choisi
       let p={...me, workers:[...me.workers], mechs:[...me.mechs], resources:{...me.resources}};
       Object.keys(me.resources).forEach(k=>{p.resources[k]={...me.resources[k]};});
       const fromHex=moveSource.fromHex;
       let transportLog="";
       let marshCarried=0; // ouvriers transportés par un mecha → paient aussi le péage
-      
+
       // ── SCYTHE RULE: workers cannot enter enemy-occupied hexes ──
       if(moveSource.unitType==="worker"){
         for(let pi=1;pi<players.length;pi++){
           const ep=players[pi];
           const enemyOnHex=ep.hero===hexId||ep.mechs.some(m=>m.hexId===hexId)||ep.workers.some(w=>w.hexId===hexId);
-          if(enemyOnHex){addLog(`⚠ Les ouvriers ne peuvent pas entrer sur un hex ennemi`);setMoveSource(null);return;}
+          if(enemyOnHex){addLog(`⚠ Les ouvriers ne peuvent pas entrer sur un hex ennemi`);setMoveSource(null);setLoadSel(null);return;}
         }
       }
-      
+
       if(moveSource.unitType==="hero"){
         p.hero=hexId;
-        // Hero carries resources (not workers) — sauf si l'emport est désactivé
-        const tr=transportUnits(p, fromHex, hexId, "hero", {carryRes:carryOnMove});
+        // Hero carries resources (not workers) — quantités de la boîte
+        const tr=transportUnits(p, fromHex, hexId, "hero", {carryRes:true,resCounts:load.res});
         p=tr.player;
         if(tr.carried.resTypes.length>0) transportLog=` 📦${tr.carried.resTypes.join(",")}`;
       }
       else if(moveSource.unitType==="mech"){
         p.mechs=p.mechs.map(m=>m.id===moveSource.unitId?{...m,hexId}:m);
-        // Mech carries workers + resources — 🚚 désactivé = les ouvriers et
-        // ressources restent (stratégie d'expansion : le mech continue seul).
-        // Avec transport partiel validé : quantités choisies, le reste sur place.
-        const tp=transportOverride?.transport;
-        const tr=transportUnits(p, fromHex, hexId, "mech", tp
-          ?{carryWorkers:tp.workers>0,carryRes:true,workerCount:tp.workers,resCounts:tp.res}
-          :{carryWorkers:carryOnMove,carryRes:carryOnMove});
+        // Mech carries workers + resources — quantités de la boîte, le reste
+        // tient le terrain (stratégie d'expansion : le mech continue seul)
+        const tr=transportUnits(p, fromHex, hexId, "mech",
+          {carryWorkers:load.workers>0,carryRes:true,workerCount:load.workers,resCounts:load.res});
         p=tr.player;
         marshCarried=tr.carried.workers;
         if(tr.carried.workers>0) transportLog+=` 👷×${tr.carried.workers}`;
@@ -1236,14 +1274,12 @@ export default function App(){
       }
       else if(moveSource.unitType==="worker"){
         p.workers=p.workers.map(w=>w.id===moveSource.unitId?{...w,hexId}:w);
-        // L'ouvrier emporte les ressources de son hex (règle Scythe) si demandé
-        if(carryOnMove){
-          const tr=transportUnits(p, fromHex, hexId, "worker");
-          p=tr.player;
-          if(tr.carried.resTypes.length>0) transportLog=` 📦${tr.carried.resTypes.join(",")}`;
-        }
+        // L'ouvrier emporte les ressources de son hex (règle Scythe) — quantités de la boîte
+        const tr=transportUnits(p, fromHex, hexId, "worker", {carryRes:true,resCounts:load.res});
+        p=tr.player;
+        if(tr.carried.resTypes.length>0) transportLog=` 📦${tr.carried.resTypes.join(",")}`;
       }
-      
+
       // ── PÉAGE DE MARÉCAGE : -1♥ par ouvrier, -1⚡ par unité de combat qui y entre ──
       const toll=marshToll(p,hexId,moveSource.unitType,marshCarried);
       if(toll){
@@ -1259,16 +1295,24 @@ export default function App(){
         }
       }
 
-      p.movesLeft=(me.movesLeft||moveLimit)-1;p.movedUnits=[...(me.movedUnits||[]),moveSource.unitId];
+      // Budget de pas : le marécage impose l'arrêt (péage + fin du déplacement)
+      const isMarsh=hMap[hexId]?.t==="marecage";
+      const stepsLeft=isMarsh?0:moveSource.stepsLeft-1;
+      // Pause héros (rencontre / Rouge River) : l'arrivée clôt le déplacement
+      const heroPause=moveSource.unitType==="hero"&&(encounterTokens.has(hexId)||(hexId===FACTORY_RR_HEX&&!me.visitedRR));
+      const done=stepsLeft<=0||heroPause;
 
-      // ── PLAN « Iron Horse » (move_mine) : chaque déplacement mine 1 ressource du terrain d'arrivée ──
-      if(me.factoryCard?.topBonus==="move_mine"){
-        const destT=TERRAINS[hMap[hexId]?.t];
-        if(destT?.res&&destT.res!=="ouvriers"){
-          const hid=String(hexId);
-          if(!p.resources[hid])p.resources[hid]={};
-          p.resources[hid][destT.res]=(p.resources[hid][destT.res]||0)+1;
-          addLog(`⚙ ${me.factoryCard.name}: +1 ${destT.res} miné sur #${hexId}`);
+      if(done){
+        p.movesLeft=(me.movesLeft||moveLimit)-1;p.movedUnits=[...(me.movedUnits||[]),moveSource.unitId];
+        // ── PLAN « Iron Horse » (move_mine) : chaque déplacement mine 1 ressource du terrain d'arrivée ──
+        if(me.factoryCard?.topBonus==="move_mine"){
+          const destT=TERRAINS[hMap[hexId]?.t];
+          if(destT?.res&&destT.res!=="ouvriers"){
+            const hid=String(hexId);
+            if(!p.resources[hid])p.resources[hid]={};
+            p.resources[hid][destT.res]=(p.resources[hid][destT.res]||0)+1;
+            addLog(`⚙ ${me.factoryCard.name}: +1 ${destT.res} miné sur #${hexId}`);
+          }
         }
       }
 
@@ -1310,10 +1354,9 @@ export default function App(){
       }
       
       setPlayers(prev=>{const n=[...prev];n[0]=p;return n;});
-      addLog(`🚶 ${moveSource.unitType==="hero"?myFaction.hero:moveSource.unitId} → #${hexId}${transportLog}`);
-      setMoveSource(null);
-      
-      // ── CHECK TRAP TRIGGER: enemy trap on this hex? ──
+      addLog(`🚶 ${moveSource.unitType==="hero"?myFaction.hero:moveSource.unitId} → #${hexId}${transportLog}${!done&&stepsLeft>0?` (${stepsLeft} pas restant${stepsLeft>1?"s":""})`:""}`);
+
+      // ── CHECK TRAP TRIGGER: enemy trap on this hex? (à chaque hex traversé) ──
       if(moveSource.unitType==="hero"||moveSource.unitType==="mech"){
         for(let pi=1;pi<players.length;pi++){
           const ep=players[pi];
@@ -1333,8 +1376,21 @@ export default function App(){
           }
         }
       }
-      
-      // ── HERO-ONLY TRIGGERS ──
+
+      if(!done){
+        // Il reste des pas : l'unité reste sélectionnée, le pas suivant part du
+        // nouvel hex — la boîte de chargement se ré-initialise (tout embarqué)
+        setMoveSource({...moveSource,fromHex:hexId,stepsLeft,started:true});
+        const wNew=moveSource.unitType==="mech"?p.workers.filter(w=>w.hexId===hexId).length:0;
+        const resNew=p.resources[String(hexId)]||{};
+        setLoadSel({workers:wNew,res:{...resNew}});
+        return;
+      }
+
+      // ── Déplacement de l'unité TERMINÉ ──
+      setMoveSource(null);setLoadSel(null);
+
+      // ── HERO-ONLY TRIGGERS (à l'hex d'arrêt) ──
       if(moveSource.unitType==="hero"){
         // ── TIERRA MINADA: Frente places trap after hero moves ──
         if(me.faction==="frente"&&(me.trapTokens||[]).length<4){
@@ -1360,7 +1416,7 @@ export default function App(){
             addLog(`🏴 Comptoir posé sur #${hexId} (${(me.flagTokens||[]).length+1}/4)`);
           }
         }
-        
+
         // Encounter token?
         if(encounterTokens.has(hexId)){
           const shuffled=shuffleArray(ENCOUNTERS);
@@ -1383,22 +1439,8 @@ export default function App(){
           return; // Pause — player picks a card
         }
       }
-      
-      // ── DÉPOSE EN ROUTE (mech) : le trajet a des hexes intermédiaires ? ──
-      // Permet les passe-passe : déposer un ouvrier à mi-chemin, laisser du
-      // matériel au passage et continuer (relais de mechas, expansion…)
-      let dropOffer=null;
-      if(moveSource.unitType==="mech"&&carryOnMove){
-        const mids=findPathWaypoints(fromHex,hexId,me.faction,me.unlockedAbilities||[],me,rails)
-          .filter(hid=>{const h=hMap[hid];return h&&h.t!=="lac"&&h.t!=="marecage";});
-        const hasCargo=p.workers.some(w=>w.hexId===hexId)||Object.keys(p.resources[String(hexId)]||{}).length>0;
-        if(mids.length>0&&hasCargo){
-          dropOffer={mids,destHex:hexId,endAfter:p.movedUnits.length>=moveLimit};
-          setRouteDrop(dropOffer);
-          addLog(`📦 Dépose en route possible (passage par ${mids.map(m=>`#${m}`).join(", ")})`);
-        }
-      }
-      if(p.movedUnits.length>=moveLimit){addLog(`✅ Mouvement terminé`);if(!dropOffer)endHumanTurn(myMat.topRow.indexOf("Move"));}
+
+      if(p.movedUnits.length>=moveLimit){addLog(`✅ Mouvement terminé`);endHumanTurn(myMat.topRow.indexOf("Move"));}
       return;
     }
     // ── CIBLES D'ACTION BOTTOM : Deploy/Build en cliquant l'hex sur la carte ──
@@ -1412,13 +1454,19 @@ export default function App(){
       const units=movableUnits.get(hexId);
       setUnitPicker(null);
       if(units.length===1){doMove(units[0].type,units[0].id,hexId);}
-      else{setMoveSource(null);setUnitPicker({hexId,units});}
+      else{
+        // Changer d'unité pendant un déplacement entamé = l'unité en cours s'arrête là
+        if(moveSource?.started){if(finalizeCurrentMove())return;}
+        setMoveSource(null);setLoadSel(null);setUnitPicker({hexId,units});
+      }
       return;
     }
-    if(moveSource){setMoveSource(null);setTransportPick(null);return;}
+    // Clic ailleurs : un déplacement entamé s'arrête là (les pas faits sont faits),
+    // une simple sélection est juste annulée
+    if(moveSource){if(moveSource.started){finalizeCurrentMove();}else{setMoveSource(null);setLoadSel(null);}return;}
     setUnitPicker(null);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,loadSel,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,finalizeCurrentMove]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -1540,7 +1588,9 @@ export default function App(){
             // Player attacked → move unit to hex + transport
             if(combat.moveData.unitType==="hero")p.hero=combat.hexId;
             else if(combat.moveData.unitType==="mech")p.mechs=p.mechs.map(m=>m.id===combat.moveData.unitId?{...m,hexId:combat.hexId}:m);
-            const tr=transportUnits(p, combat.moveData.fromHex, combat.hexId, combat.moveData.unitType);
+            const ld=combat.moveData.load;
+            const tr=transportUnits(p, combat.moveData.fromHex, combat.hexId, combat.moveData.unitType,
+              ld?{carryWorkers:ld.workers>0,carryRes:true,workerCount:ld.workers,resCounts:ld.res}:undefined);
             p=tr.player;
             if(tr.carried.workers>0||tr.carried.resTypes.length>0) addLog(`🚚 Transport:${tr.carried.workers>0?` 👷×${tr.carried.workers}`:""}${tr.carried.resTypes.length>0?` 📦${tr.carried.resTypes.join(",")}`:""}`);
           }
@@ -1581,7 +1631,9 @@ export default function App(){
           Object.keys(prev[0].resources).forEach(k=>{n[0].resources[k]={...prev[0].resources[k]};});
           if(combat.moveData.unitType==="hero")n[0].hero=combat.hexId;
           else if(combat.moveData.unitType==="mech")n[0].mechs=n[0].mechs.map(m=>m.id===combat.moveData.unitId?{...m,hexId:combat.hexId}:m);
-          const tr=transportUnits(n[0], combat.moveData.fromHex, combat.hexId, combat.moveData.unitType);
+          const ld=combat.moveData.load;
+          const tr=transportUnits(n[0], combat.moveData.fromHex, combat.hexId, combat.moveData.unitType,
+            ld?{carryWorkers:ld.workers>0,carryRes:true,workerCount:ld.workers,resCounts:ld.res}:undefined);
           n[0]=tr.player;
           n[0].combatWins=(n[0].combatWins||0)+1;
           if(n[0].combatWins<=2&&!n[0][`starCombat${n[0].combatWins}`]){n[0].stars++;n[0][`starCombat${n[0].combatWins}`]=true;}
@@ -1650,7 +1702,9 @@ export default function App(){
           if(combat.moveData.unitType==="hero")n[0].hero=combat.hexId;
           else if(combat.moveData.unitType==="mech")n[0].mechs=n[0].mechs.map(m=>m.id===combat.moveData.unitId?{...m,hexId:combat.hexId}:m);
           // Transport workers+resources
-          const tr=transportUnits(n[0], combat.moveData.fromHex, combat.hexId, combat.moveData.unitType);
+          const ld=combat.moveData.load;
+          const tr=transportUnits(n[0], combat.moveData.fromHex, combat.hexId, combat.moveData.unitType,
+            ld?{carryWorkers:ld.workers>0,carryRes:true,workerCount:ld.workers,resCounts:ld.res}:undefined);
           n[0]=tr.player;
           n[0].combatWins=(n[0].combatWins||0)+1;
           if(n[0].combatWins<=2&&!n[0][`starCombat${n[0].combatWins}`]){n[0].stars++;n[0][`starCombat${n[0].combatWins}`]=true;}
@@ -1907,8 +1961,21 @@ export default function App(){
   },[rougeRiver,me,addLog,endHumanTurn,myMat]);
 
   const doMove=(unitType,unitId,fromHex)=>{
+    // Changer d'unité pendant un déplacement entamé : l'unité en cours s'arrête
+    // là (ses pas faits sont faits) — si cela termine l'action, on s'arrête.
+    // Une unité finalisée ne peut pas être re-sélectionnée (budget unique).
+    if(moveSource?.started){
+      const wasId=moveSource.unitId;
+      if(finalizeCurrentMove())return;
+      if(unitId===wasId)return;
+    }
+    if((me.movedUnits||[]).includes(unitId))return;
     if(!me.movesLeft)setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:moveLimit,movedUnits:[]};return n;});
-    setMoveSource({unitType,unitId,fromHex});setSelHex(null);setUnitPicker(null);
+    // Budget de pas de l'unité (Speed/plans) + chargement par défaut : tout embarqué
+    setMoveSource({unitType,unitId,fromHex,stepsLeft:getMoveSteps(me.unlockedAbilities||[],me,unitType),started:false});
+    const w=unitType==="mech"?me.workers.filter(x=>x.hexId===fromHex).length:0;
+    setLoadSel({workers:w,res:{...(me.resources[String(fromHex)]||{})}});
+    setSelHex(null);setUnitPicker(null);
   };
 
   const doBolster=(type)=>{
@@ -2668,68 +2735,9 @@ export default function App(){
           </div>
         )}
 
-        {/* ═══ TRANSPORT PARTIEL — répartition façon balance à deux plateaux
-            (modèle Scythe Digital Edition) : hex qui GARDE à gauche, mecha qui
-            EMBARQUE à droite, ‹ › « » par ligne + tout-laisser/tout-embarquer ═══ */}
-        {transportPick&&(()=>{
-          const tp=transportPick;
-          const sq={width:24,height:24,borderRadius:4,border:"1px solid var(--border)",background:"var(--bg3)",color:"var(--gold-dim)",cursor:"pointer",fontSize:13,fontWeight:800,lineHeight:1,padding:0};
-          const bigSq={...sq,width:32,height:32,fontSize:15,color:"var(--gold)"};
-          const setW=(v)=>setTransportPick(t=>({...t,workers:Math.max(0,Math.min(t.workersMax,v))}));
-          const setR=(rt,v)=>setTransportPick(t=>({...t,res:{...t.res,[rt]:Math.max(0,Math.min(t.resMax[rt],v))}}));
-          const row=(key,Icon,taken,max,set,divider)=>(
-            <div key={key} style={{display:"flex",alignItems:"center",gap:5,padding:"3px 0",borderBottom:divider?"1px dashed var(--border-dark)":"none",marginBottom:divider?4:0}}>
-              <button style={sq} title="Tout laisser sur l'hex" onClick={()=>set(0)}>«</button>
-              <button style={sq} title="En laisser 1 de plus" onClick={()=>set(taken-1)}>‹</button>
-              <span style={{width:20,textAlign:"center",fontFamily:"var(--font-mono)",fontSize:14,color:max-taken>0?"var(--text)":"var(--text-muted)"}}>{max-taken}</span>
-              <div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
-                <span style={{width:20,display:"flex",justifyContent:"center",flexShrink:0}}>{Icon&&<Icon size={17} color="#d8c9a3"/>}</span>
-                <div style={{flex:1,height:5,borderRadius:3,background:"rgba(0,0,0,0.55)",border:"1px solid var(--border-dark)",position:"relative"}}>
-                  <div style={{position:"absolute",right:0,top:0,bottom:0,width:`${max?taken/max*100:0}%`,background:"linear-gradient(90deg,#8a6c2e,#c9a84c)",borderRadius:3,transition:"width 0.15s ease"}}/>
-                </div>
-              </div>
-              <span style={{width:20,textAlign:"center",fontFamily:"var(--font-mono)",fontSize:14,color:taken>0?"var(--gold)":"var(--text-muted)"}}>{taken}</span>
-              <button style={sq} title="En embarquer 1 de plus" onClick={()=>set(taken+1)}>›</button>
-              <button style={sq} title="Tout embarquer" onClick={()=>set(max)}>»</button>
-            </div>
-          );
-          const MechIcon=RESOURCE_ICONS.mech,WorkerIcon=RESOURCE_ICONS.worker;
-          return(
-          <div style={{position:"absolute",bottom:16,left:"50%",transform:"translateX(-50%)",zIndex:8,width:400,
-            background:"linear-gradient(180deg,#241d12,#14100a)",border:"1px solid var(--gold-dim)",borderRadius:10,
-            boxShadow:"0 6px 30px rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",animation:"slideUp 0.2s ease",overflow:"hidden"}}>
-            <div style={{textAlign:"center",padding:"5px 0",fontFamily:"var(--font-title)",fontSize:14,letterSpacing:5,fontWeight:800,color:"var(--gold)",borderBottom:"1px solid var(--border)",background:"rgba(0,0,0,0.3)"}}>TRANSPORT</div>
-            <div style={{display:"flex",alignItems:"stretch",gap:8,padding:"8px 10px 4px"}}>
-              {/* Plateau gauche : l'hex de départ (ce qui RESTE) */}
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:42,paddingBottom:2}}>
-                <span title={`Reste sur l'hex #${tp.fromHex}`} style={{fontSize:24,lineHeight:1,color:"#8a8070"}}>⬡</span>
-                <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>#{tp.fromHex}</span>
-                <button style={bigSq} title="Tout laisser (le mecha part seul)"
-                  onClick={()=>setTransportPick(t=>({...t,workers:0,res:Object.fromEntries(Object.keys(t.resMax).map(k=>[k,0]))}))}>≪</button>
-              </div>
-              {/* Lignes : ouvriers (séparés) puis ressources */}
-              <div style={{flex:1,minWidth:0}}>
-                {tp.workersMax>0&&row("workers",WorkerIcon,tp.workers,tp.workersMax,setW,Object.keys(tp.resMax).length>0)}
-                {Object.entries(tp.resMax).map(([rt,mx])=>row(rt,RESOURCE_ICONS[rt],tp.res[rt]||0,mx,(v)=>setR(rt,v),false))}
-              </div>
-              {/* Plateau droit : le mecha (ce qui EMBARQUE) */}
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:42,paddingBottom:2}}>
-                <span title={`Embarqué vers l'hex #${tp.toHex}`}>{MechIcon&&<MechIcon size={24} color="#c9a84c"/>}</span>
-                <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>#{tp.toHex}</span>
-                <button style={bigSq} title="Tout embarquer"
-                  onClick={()=>setTransportPick(t=>({...t,workers:t.workersMax,res:{...t.resMax}}))}>≫</button>
-              </div>
-            </div>
-            <div style={{display:"flex",gap:6,padding:"4px 10px 10px"}}>
-              <button className="act-btn" style={{flex:1,fontWeight:700,minHeight:36,background:"#3a6a3a",color:"#fff",border:"none"}}
-                onClick={()=>{setTransportPick(null);handleHexClick(tp.toHex,{transport:{workers:tp.workers,res:tp.res}});}}>✓ Déplacer</button>
-              <button className="act-btn" style={{minHeight:36,opacity:0.7}} onClick={()=>setTransportPick(null)}>✕</button>
-            </div>
-          </div>);
-        })()}
 
-        {/* ═══ MODAL OVERLAYS (combat/encounter/RR/dépose en route) ═══ */}
-        {(combat||encounter||encounterBuild||encounterEnlist||rougeRiver||routeDrop)&&(
+        {/* ═══ MODAL OVERLAYS (combat/encounter/RR) ═══ */}
+        {(combat||encounter||encounterBuild||encounterEnlist||rougeRiver)&&(
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
             <div style={{maxWidth:460,width:"92%",maxHeight:"80vh",overflow:"auto",borderRadius:12,border:"1px solid var(--border-light)",boxShadow:"0 10px 50px rgba(0,0,0,0.8)"}}>
 
@@ -2812,42 +2820,6 @@ export default function App(){
                 </div>
               )}
 
-              {/* 📦 DÉPOSE EN ROUTE (mech) — passe-passe stratégiques */}
-              {routeDrop&&!combat&&!encounter&&(()=>{
-                const destKey=String(routeDrop.destHex);
-                const wAtDest=(me?.workers||[]).filter(w=>w.hexId===routeDrop.destHex).length;
-                const resAtDest=Object.entries(me?.resources?.[destKey]||{}).filter(([,q])=>q>0);
-                const dropWorker=(mid)=>{
-                  setPlayers(prev=>{const n=[...prev];const p2={...n[0],workers:[...n[0].workers]};
-                    const wi=p2.workers.findIndex(w=>w.hexId===routeDrop.destHex);
-                    if(wi>=0)p2.workers[wi]={...p2.workers[wi],hexId:mid};
-                    n[0]=p2;return n;});
-                  addLog(`📦 Ouvrier déposé sur #${mid} au passage`);
-                };
-                const dropRes=(mid)=>{
-                  setPlayers(prev=>{const n=[...prev];const p2={...n[0],resources:{...n[0].resources}};
-                    Object.keys(p2.resources).forEach(k=>{p2.resources[k]={...p2.resources[k]};});
-                    const src=p2.resources[destKey]||{};
-                    if(!p2.resources[String(mid)])p2.resources[String(mid)]={};
-                    Object.entries(src).forEach(([rt,q])=>{p2.resources[String(mid)][rt]=(p2.resources[String(mid)][rt]||0)+q;});
-                    delete p2.resources[destKey];
-                    n[0]=p2;return n;});
-                  addLog(`📦 Ressources déposées sur #${mid} au passage`);
-                };
-                return(
-                <div style={{padding:"16px",background:"linear-gradient(180deg,#141a10,var(--bg2))",borderRadius:10,border:"1px solid var(--gold-dim)",animation:"slideUp 0.35s ease",marginBottom:10}}>
-                  <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,fontSize:15,marginBottom:6}}>📦 Dépose en route — le mech est passé par {routeDrop.mids.map(m=>`#${m}`).join(", ")}</div>
-                  <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:8,fontStyle:"italic"}}>Déposez des ouvriers ou du matériel sur un hex de passage (expansion, relais, dépôt avant bataille)</div>
-                  {routeDrop.mids.map(mid=>(
-                    <div key={mid} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center"}}>
-                      <span style={{fontSize:14,color:"var(--text)",minWidth:36}}>#{mid}</span>
-                      <button disabled={wAtDest<1} onClick={()=>dropWorker(mid)} className="act-btn" style={{fontSize:13,opacity:wAtDest<1?0.4:1}}>● Déposer 1 ouvrier ({wAtDest} dispo)</button>
-                      <button disabled={resAtDest.length===0} onClick={()=>dropRes(mid)} className="act-btn" style={{fontSize:13,opacity:resAtDest.length===0?0.4:1}}>📦 Déposer les ressources ({resAtDest.map(([rt,q])=>`${q}${rt}`).join(",")||"—"})</button>
-                    </div>
-                  ))}
-                  <button onClick={()=>{const end=routeDrop.endAfter;setRouteDrop(null);if(end)endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginTop:6,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Continuer ▶</button>
-                </div>);
-              })()}
 
               {/* ENCOUNTER */}
               {encounter&&(
@@ -3215,8 +3187,9 @@ export default function App(){
                 <div>
                   <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Déplacement ({(me.movedUnits||[]).length}/{moveLimit})</div>
                   {/* Règle Scythe : l'action Move est SOIT déplacer, SOIT +1$ —
-                      l'option disparaît dès qu'une unité a bougé */}
-                  {(me.movedUnits||[]).length===0&&(
+                      l'option disparaît dès qu'une unité a bougé (même d'un
+                      seul pas non finalisé) */}
+                  {(me.movedUnits||[]).length===0&&!moveSource?.started&&(
                     <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+1};return n;});addLog(`💰 +1$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner 1$ (pas de déplacement)</button>
                   )}
                   {!moveSource&&(
@@ -3229,14 +3202,6 @@ export default function App(){
                       </div>
                     </div>
                   )}
-                  {/* 🚚 Choix d'emport (règle Scythe : le transport est optionnel) —
-                      désactivé, le mech laisse ouvriers+ressources tenir le terrain */}
-                  <button onClick={()=>setCarryOnMove(c=>!c)} className="act-btn" style={{marginTop:8,width:"100%",fontSize:14,
-                    background:carryOnMove?"rgba(201,168,76,0.12)":"transparent",
-                    border:carryOnMove?"1px solid var(--gold)":"1px solid var(--border)",
-                    color:carryOnMove?"var(--gold)":"var(--text-muted)"}}>
-                    🚚 Emporter ouvriers & ressources : {carryOnMove?"OUI":"NON (les laisser sur place)"}
-                  </button>
                   {/* Plan « River Rouge Special » : téléporter les ressources d'un hex vers le héros */}
                   {me.factoryCard?.topBonus==="teleport_res"&&!me.planTopUsed&&!moveSource&&(()=>{
                     const resHexes=Object.entries(me.resources).filter(([hid,r])=>parseInt(hid)!==me.hero&&Object.values(r).some(q=>q>0));
@@ -3248,9 +3213,57 @@ export default function App(){
                       </div>
                     </div>;
                   })()}
-                  {moveSource&&<div style={{color:"#C9A84C",fontSize:14,marginTop:8,fontStyle:"italic"}}>
-                    {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:<><Glyph icon={moveSource.unitType==="mech"?"⬡":"●"} size={14}/> {moveSource.unitType==="mech"?"Mecha":"Ouvrier"}</>} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts), ou une autre de vos unités pour changer.
-                  </div>}
+                  {moveSource&&(()=>{
+                    const ms=moveSource;
+                    const uLabel=ms.unitType==="hero"?`★ ${myFaction.hero}`:ms.unitType==="mech"?"⬡ Mecha":"● Ouvrier";
+                    return(<div style={{marginTop:8}}>
+                      <div style={{color:"#C9A84C",fontSize:14,fontStyle:"italic"}}>
+                        {uLabel} sélectionné (#{ms.fromHex}) — <b>{ms.stepsLeft} pas restant{ms.stepsLeft>1?"s":""}</b>.
+                        Cliquez un hex vert pour avancer d'un pas{ms.stepsLeft>1?" (déplacement décomposable : vous pouvez recharger/décharger entre deux pas)":""}.
+                      </div>
+                      {/* ── BOÎTE DE CHARGEMENT — ce qui EMBARQUE au prochain pas ──
+                          Le mecha emporte ouvriers + ressources, héros et ouvrier
+                          n'emportent que les ressources de leur hex. Ce qui n'est
+                          pas embarqué reste sur place (décharger = décocher). */}
+                      {(()=>{
+                        const from=ms.fromHex;
+                        const isMech=ms.unitType==="mech";
+                        const wMax=isMech?me.workers.filter(w=>w.hexId===from).length:0;
+                        const resMax=Object.fromEntries(Object.entries(me.resources[String(from)]||{}).filter(([,q])=>q>0));
+                        if(wMax===0&&Object.keys(resMax).length===0)return null;
+                        const sel={workers:Math.max(0,Math.min(loadSel?.workers??wMax,wMax)),res:{}};
+                        Object.keys(resMax).forEach(rt=>{sel.res[rt]=Math.max(0,Math.min(loadSel?.res?.[rt]??resMax[rt],resMax[rt]));});
+                        const setW=(v)=>setLoadSel({...sel,workers:Math.max(0,Math.min(wMax,v))});
+                        const setR=(rt,v)=>setLoadSel({...sel,res:{...sel.res,[rt]:Math.max(0,Math.min(resMax[rt],v))}});
+                        const sq={width:26,height:26,borderRadius:4,border:"1px solid var(--border)",background:"var(--bg3)",color:"var(--gold-dim)",cursor:"pointer",fontSize:14,fontWeight:800,lineHeight:1,padding:0};
+                        const row=(key,Icon,label,taken,max,set)=>(
+                          <div key={key} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 0"}}>
+                            <span style={{width:22,display:"flex",justifyContent:"center",flexShrink:0}}>{Icon&&<Icon size={17} color="#d8c9a3"/>}</span>
+                            <span style={{flex:1,fontSize:13,color:"var(--text-dim)"}}>{label}</span>
+                            <button style={sq} title="Tout laisser" onClick={()=>set(0)}>«</button>
+                            <button style={sq} onClick={()=>set(taken-1)}>‹</button>
+                            <span style={{width:44,textAlign:"center",fontFamily:"var(--font-mono)",fontSize:14,color:taken>0?"var(--gold)":"var(--text-muted)"}}>{taken}/{max}</span>
+                            <button style={sq} onClick={()=>set(taken+1)}>›</button>
+                            <button style={sq} title="Tout embarquer" onClick={()=>set(max)}>»</button>
+                          </div>
+                        );
+                        return(<div style={{marginTop:8,padding:"10px 12px",borderRadius:6,border:"1px solid var(--gold-dim)",background:"rgba(201,168,76,0.05)"}}>
+                          <div style={{fontSize:13,fontWeight:700,letterSpacing:1,color:"var(--gold)",marginBottom:4,fontFamily:"var(--font-title)"}}>📦 CHARGEMENT — hex #{from}</div>
+                          {wMax>0&&row("workers",RESOURCE_ICONS.worker,"Ouvriers",sel.workers,wMax,setW)}
+                          {Object.entries(resMax).map(([rt,mx])=>row(rt,RESOURCE_ICONS[rt],rt,sel.res[rt],mx,(v)=>setR(rt,v)))}
+                          <div style={{fontSize:11,color:"var(--text-muted)",marginTop:4,fontStyle:"italic"}}>
+                            Ce qui n'est pas embarqué reste sur l'hex.{!isMech&&" (seul le mecha transporte des ouvriers)"}
+                          </div>
+                        </div>);
+                      })()}
+                      {/* Arrêt volontaire : les pas restants sont abandonnés */}
+                      {ms.started&&ms.stepsLeft>0&&(
+                        <button onClick={()=>finalizeCurrentMove()} className="act-btn" style={{marginTop:8,width:"100%",fontSize:14,borderColor:"var(--gold-dim)",color:"var(--gold)"}}>
+                          ✋ S'arrêter ici (abandonner {ms.stepsLeft} pas)
+                        </button>
+                      )}
+                    </div>);
+                  })()}
                   {/* PACK UP — Nations free building move */}
                   {me.faction==="nations"&&(me.unlockedAbilities||[]).includes(3)&&(me.buildings||[]).length>0&&!me.packUpUsed&&!moveSource&&(()=>{
                     if(bottomPick&&bottomPick.packUp){
@@ -3269,11 +3282,10 @@ export default function App(){
                     </div>;
                   })()}
                   {me.packUpUsed&&me.faction==="nations"&&<div style={{marginTop:6,fontSize:12,color:"var(--text-muted)"}}>📦 Pack Up utilisé ce tour</div>}
-                  {/* Filet de sécurité : visible aussi à la limite (2/2) — si un
-                      sous-flux (dépose en route…) n'a pas auto-terminé le tour,
-                      le joueur garde toujours une sortie */}
-                  {(me.movedUnits||[]).length>0&&(
-                    <button onClick={()=>{addLog("✅ Mouvement terminé");setRouteDrop(null);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginTop:8,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Terminer ({(me.movedUnits||[]).length}/{moveLimit})</button>
+                  {/* Terminer l'action : finalise aussi l'unité en cours de
+                      déplacement (ses pas restants sont abandonnés) */}
+                  {((me.movedUnits||[]).length>0||moveSource?.started)&&(
+                    <button onClick={()=>finalizeCurrentMove(true)} className="act-btn" style={{marginTop:8,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Terminer ({(me.movedUnits||[]).length+(moveSource?.started?1:0)}/{moveLimit})</button>
                   )}
                 </div>
               )}
@@ -3341,7 +3353,7 @@ export default function App(){
                   <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité (à la place)</button>
                 </div>}
               </div>);})()}
-              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setTransportPick(null);setRouteDrop(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
+              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setLoadSel(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
             </div>
           )}
 

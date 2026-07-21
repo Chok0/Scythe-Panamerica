@@ -71,6 +71,19 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails, 
   });
 };
 
+// Budget de pas d'une unité : 1, +1 avec Speed (slot 0), et bonus des plans
+// Ford/Tesla (Trimotor 3 pas, Golem 2 pas mecha, Éclair 4 pas mecha).
+// Exporté pour le déplacement décomposé (pas-à-pas) côté UI.
+export const getMoveSteps = (abilities, player, unitType) => {
+  const hasSpeed = abilities && abilities.includes(0);
+  const plan = player?.factoryCard?.topBonus;
+  let steps = hasSpeed ? 2 : 1;
+  if (plan === "move_3") steps = Math.max(steps, 3);
+  if (plan === "remote_move" && unitType === "mech") steps = Math.max(steps, 2);
+  if (plan === "mech_sprint" && unitType === "mech") steps = Math.max(steps, 4);
+  return steps;
+};
+
 // Full movement: rail (free) + N steps.
 // Steps = 1, +1 avec Speed (slot 0), et bonus des plans Ford/Tesla :
 //   - Trimotor (move_3)      : 3 pas pour toutes les unités + ignore les rivières
@@ -79,14 +92,14 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails, 
 // Rail rules:
 //   - If starting on rail network: free teleport to any connected rail hex, then normal move
 //   - If a step lands on rail, the next step can start from any connected rail hex
-export const getValidMoves = (fromId, factionId, abilities, player, rails, unitType) => {
-  const hasSpeed = abilities && abilities.includes(0);
+// stepsOverride : limite explicite du nombre de pas (déplacement décomposé UI :
+// 1 pas par clic) — les bonus de plan/Speed restent portés par le budget appelant.
+export const getValidMoves = (fromId, factionId, abilities, player, rails, unitType, stepsOverride) => {
   const plan = player?.factoryCard?.topBonus;
-  let steps = hasSpeed ? 2 : 1;
+  let steps = getMoveSteps(abilities, player, unitType);
   let ignoreRivers = false;
-  if (plan === "move_3") { steps = Math.max(steps, 3); ignoreRivers = true; }
-  if (plan === "remote_move" && unitType === "mech") steps = Math.max(steps, 2);
-  if (plan === "mech_sprint" && unitType === "mech") steps = Math.max(steps, 4);
+  if (plan === "move_3") ignoreRivers = true;
+  if (stepsOverride != null) steps = stepsOverride;
 
   const all = new Set();
   let frontier = [fromId];
