@@ -503,11 +503,15 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         .sort((a, b) => hexScore(b) - hexScore(a))
         // 2 hex de base, +1 par cube d'amélioration retiré de la colonne Produce
         .slice(0, 2 + topUpgradeCount(p, "Produce", "nourriture"));
+      // Le hex du Moulin est un territoire BONUS (règle Scythe) : il produit
+      // en plus de la limite, même sans ouvrier (le Moulin compte pour +1)
+      const moulinB = (p.buildings || []).find(b => b.type === "moulin");
+      if (moulinB && !hexIds.includes(String(moulinB.hexId))) hexIds.push(String(moulinB.hexId));
       // Régime d'ouvriers : 5 en early (règle du corpus), puis 8 pour l'étoile
       // — le thésauriseur sort tous ses ouvriers tout de suite
       const workerCap = getPhase(p) === "early" ? prof.maxWorkersEarly : 8;
       hexIds.forEach(hidStr => {
-        const hid = parseInt(hidStr); const hex = hMap[hid]; const t = TERRAINS[hex?.t]; let wc = byHex[hidStr].length;
+        const hid = parseInt(hidStr); const hex = hMap[hid]; const t = TERRAINS[hex?.t]; let wc = (byHex[hidStr] || []).length;
         if (!t) return; // hex de base (ouvrier retraité) ou hex invalide : pas de production
         const hasMoulin = (p.buildings || []).some(b => b.type === "moulin" && b.hexId === hid);
         if (hasMoulin) wc++;

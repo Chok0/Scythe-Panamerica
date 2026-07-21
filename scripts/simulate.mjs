@@ -162,7 +162,12 @@ const checkInvariants = (p, round, issues) => {
   // Conservation des cubes d'upgrade (6 au total par plateau)
   const cubes = (p.cubesOnTop || []).reduce((a, b) => a + b, 0) + (p.cubesOnBottom || []).reduce((a, b) => a + b, 0);
   if (cubes !== 6) flag(`cubes upgrade non conservés: ${cubes} != 6`);
-  if (p.stars > 8) flag(`étoiles improbables: ${p.stars}`);
+  // 12 sources d'étoiles distinctes, toutes gardées par un booléen — un total
+  // >10 signalerait un double comptage. 9 est atteignable légitimement depuis
+  // v10 (combats défensifs pendant les tours adverses + tour final dense avec
+  // les améliorations réelles : 3 hex de production, Soutien +3…) — observé
+  // 1×/500 parties.
+  if (p.stars > 10) flag(`étoiles improbables: ${p.stars}`);
 };
 
 // ── Une partie complète ──

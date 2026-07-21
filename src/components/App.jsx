@@ -106,6 +106,7 @@ export default function App(){
   const[undoStack,setUndoStack]=useState([]); // pile d'annulation (snapshots d'état, dans le tour humain)
   const[redoStack,setRedoStack]=useState([]); // pile de rétablissement
   const[tradePicks,setTradePicks]=useState([]); // for Trade: array of picked resource types (0-2)
+  const[producePicks,setProducePicks]=useState([]); // for Produce: hex choisis au clic (2-3 + Moulin en bonus)
   const[hovHex,setHovHex]=useState(null);
   const[clickRipple,setClickRipple]=useState(null); // {hexId, key} for ripple animation
   const[showOpponents,setShowOpponents]=useState(false); // barre du haut dépliée : ressources + étoiles adverses
@@ -698,7 +699,9 @@ export default function App(){
   const myMechAbilities=getMechAbilities(me?.faction);
 
   const doDeploy=useCallback((targetHex,overrideRes)=>{
-    if(!me||me.mechs.length>=4)return;
+    // Garde de ré-entrée : le choix de capacité en cours = le Deploy de ce
+    // tour est déjà fait (un 2e clic déployait un 2e mecha, bug mesuré en jeu)
+    if(!me||me.mechs.length>=4||pendingAbility)return;
     const costs=getBottomCost(me);
     const depCost=costs[1]; // Deploy is bottom col 1
     const baseRes=overrideRes||depCost.res;
@@ -721,7 +724,7 @@ export default function App(){
     if(me.mechs.length+1>=4)addLog(`⭐ 4 Mechas déployés !`);
     // Show ability picker — finishBottom will be called after player picks
     setPendingAbility({source:"deploy",col:1});
-  },[me,addLog]);
+  },[me,addLog,pendingAbility]);
 
   const confirmAbility=useCallback((abilityIdx)=>{
     setPlayers(prev=>{
@@ -741,7 +744,9 @@ export default function App(){
 
   // ── BOTTOM-ROW: BUILD ──
   const doBuild=useCallback((targetHex,buildingType)=>{
-    if(!me||(me.buildings||[]).length>=4)return;
+    // Garde de ré-entrée : pendant la pose de rails (Gare), le Build de ce
+    // tour est déjà fait — pas de 2e bâtiment avant finishBottom
+    if(!me||(me.buildings||[]).length>=4||railPlacement)return;
     if((me.buildings||[]).some(b=>b.hexId===targetHex)){addLog(`⚠ Déjà un bâtiment sur #${targetHex}`);return;}
     if((me.buildings||[]).some(b=>b.type===buildingType)){addLog(`⚠ ${buildingType} déjà construit`);return;}
     const costs=getBottomCost(me);
@@ -768,7 +773,7 @@ export default function App(){
       return;
     }
     finishBottom(2);
-  },[me,addLog,finishBottom]);
+  },[me,addLog,finishBottom,railPlacement]);
 
   // ── PACK UP (Nations slot 3 — free building move during Move action) ──
   const doPackUpMove=useCallback((buildingIdx,targetHex)=>{
@@ -1032,7 +1037,11 @@ export default function App(){
   // (en plus des boutons du panneau : cliquer l'hex surligné place directement)
   const actionTargets=useMemo(()=>{
     const none={type:null,hexes:new Set()};
-    if(!me||!pendingBottom)return none;
+    // Une seule exécution de l'action du bas par tour : tant que le choix de
+    // capacité (Deploy) ou la pose de rails (Gare) est en cours, plus aucune
+    // cible cliquable — sinon un 2e clic redéclenchait doDeploy/doBuild
+    // (double mecha observé en partie réelle, une seule capacité débloquée)
+    if(!me||!pendingBottom||pendingAbility||railPlacement)return none;
     const workerHexes=getWorkerHexes(me);
     const isLand=(h)=>{const hx=hMap[h];return hx&&hx.t!=="lac"&&hx.t!=="marecage";};
     if(pendingBottom.action==="Deploy"&&me.mechs.length<4){
@@ -1056,7 +1065,7 @@ export default function App(){
       return{type:"build",hexes:new Set(base.filter(h=>!(me.buildings||[]).some(b=>b.hexId===h)))};
     }
     return none;
-  },[me,pendingBottom,bottomPick]);
+  },[me,pendingBottom,bottomPick,pendingAbility,railPlacement]);
 
   // Automatic stars for the human player (bots handle these in botTurn)
   useEffect(()=>{
@@ -1094,6 +1103,33 @@ export default function App(){
 
   // transportOverride : {transport:{workers,res}} — quantités choisies dans le
   // panneau de transport partiel (repasse par ce même flux après validation)
+  // ── Hexes de production éligibles (action Produce) : ceux qui portent mes
+  // ouvriers, plus le hex du Moulin — territoire BONUS de la règle Scythe,
+  // il ne compte pas dans la limite de 2 (3 avec amélioration)
+  const produceEligible=useMemo(()=>{
+    if(selAction!=="Produce"||!me)return new Set();
+    const s=new Set(me.workers.map(w=>w.hexId));
+    const moulin=(me.buildings||[]).find(b=>b.type==="moulin");
+    if(moulin)s.add(moulin.hexId);
+    return s;
+  },[selAction,me]);
+  // Pré-sélection à l'entrée dans l'action : si le choix est trivial (tous les
+  // hex d'ouvriers tiennent dans la limite), tout cocher — sinon laisser choisir
+  useEffect(()=>{
+    if(selAction!=="Produce"||!me){setProducePicks([]);return;}
+    const maxN=2+topUpgradeCount(me,"Produce","nourriture");
+    const workerHexes=[...new Set(me.workers.map(w=>w.hexId))];
+    const moulinHex=(me.buildings||[]).find(b=>b.type==="moulin")?.hexId;
+    if(workerHexes.length<=maxN){
+      const all=[...workerHexes];
+      if(moulinHex!=null&&!all.includes(moulinHex))all.push(moulinHex);
+      setProducePicks(all);
+    }else setProducePicks([]);
+    // volontairement déclenché sur selAction seul : la sélection appartient au
+    // joueur une fois l'action ouverte
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[selAction]);
+
   const handleHexClick=useCallback((hexId,transportOverride)=>{
     if(wasDragging.current){wasDragging.current=false;return;} // suppress click after drag
     if(phase!=="playing"||botRunning||combat)return;
@@ -1410,6 +1446,16 @@ export default function App(){
       else doBuild(hexId,bottomPick.building.type);
       return;
     }
+    // ── SÉLECTION DES HEX DE PRODUCTION (action Produce) : cocher/décocher ──
+    if(selAction==="Produce"&&produceEligible.has(hexId)){
+      if(producePicks.includes(hexId)){setProducePicks(p=>p.filter(h=>h!==hexId));return;}
+      const moulinHex=(me.buildings||[]).find(b=>b.type==="moulin")?.hexId;
+      const maxN=2+topUpgradeCount(me,"Produce","nourriture");
+      if(hexId!==moulinHex&&producePicks.filter(h=>h!==moulinHex).length>=maxN){
+        addLog(`⚠ Max ${maxN} hex de production (le Moulin est en bonus) — décochez-en un d'abord`);return;
+      }
+      setProducePicks(p=>[...p,hexId]);return;
+    }
     // ── SÉLECTION D'UNITÉ AU CLIC (action Move) : cliquer le pion à déplacer ──
     if(selAction==="Move"&&movableUnits.has(hexId)){
       const units=movableUnits.get(hexId);
@@ -1421,7 +1467,7 @@ export default function App(){
     if(moveSource){setMoveSource(null);setTransportPick(null);return;}
     setUnitPicker(null);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -1946,15 +1992,17 @@ export default function App(){
       addLog(`⚠ ${missing.join("+")} insuffisant(e)`);return;
     }
     const workersByHex={};me.workers.forEach(w=>{if(!workersByHex[w.hexId])workersByHex[w.hexId]=[];workersByHex[w.hexId].push(w);});
-    // 2 hex de base, +1 par cube d'amélioration retiré de la colonne Produce
-    const hexIds=Object.keys(workersByHex).slice(0,2+topUpgradeCount(me,"Produce","nourriture"));
-    if(hexIds.length===0){addLog("⚠ Aucun ouvrier");return;}
+    // Les hex CHOISIS par le joueur (clic sur la carte) — 2 de base, 3 avec
+    // l'amélioration ; le hex du Moulin est un territoire bonus hors limite
+    const moulinHex=(me.buildings||[]).find(b=>b.type==="moulin")?.hexId;
+    const hexIds=[...new Set(producePicks)].filter(h=>workersByHex[String(h)]||h===moulinHex).map(String);
+    if(hexIds.length===0){addLog("⚠ Sélectionnez vos hex de production (clic sur la carte)");return;}
     const costLabel=produceCostLabel(me.workers.length);
     setPlayers(prev=>{
       const n=[...prev];const p={...n[0],resources:{...n[0].resources},workers:[...n[0].workers]};
       payProduce(p);
       hexIds.forEach(hidStr=>{
-        const hid=parseInt(hidStr);const hex=hMap[hid];const t=TERRAINS[hex?.t];if(!t)return;let wCount=workersByHex[hidStr].length;
+        const hid=parseInt(hidStr);const hex=hMap[hid];const t=TERRAINS[hex?.t];if(!t)return;let wCount=(workersByHex[hidStr]||[]).length;
         // Moulin building: +1 production on this hex (as if +1 worker)
         const hasMoulin=(p.buildings||[]).some(b=>b.type==="moulin"&&b.hexId===hid);
         if(hasMoulin)wCount++;
@@ -1965,6 +2013,7 @@ export default function App(){
         else if(t.res&&t.res!=="ouvriers"){if(!p.resources[hidStr])p.resources[hidStr]={};p.resources[hidStr][t.res]=(p.resources[hidStr][t.res]||0)+wCount;addLog(`🏭 +${wCount} ${t.res} #${hid}${hasMoulin?" (Moulin +1)":""}${hasModelM?" (Model M ×2)":""}`);}
       });n[0]=p;return n;});
     if(costLabel!=="Gratuit")addLog(`💳 ${costLabel}`);
+    setProducePicks([]);
     endHumanTurn(myMat.topRow.indexOf("Produce"));
   };
 
@@ -2515,9 +2564,11 @@ export default function App(){
           })()}
           {/* Hexes */}
           {HEXES.map(hex=>{
-            const isV=validMoves.has(hex.id);const isSel=selHex===hex.id;const isHov=hovHex===hex.id;
+            // Produce : hex éligibles surlignés (isSrc), hex cochés en vert (isV)
+            const isV=validMoves.has(hex.id)||(selAction==="Produce"&&producePicks.includes(hex.id));
+            const isSel=selHex===hex.id;const isHov=hovHex===hex.id;
             const isFactory=hex.t==="factory";
-            const isSrc=(!moveSource&&movableUnits.has(hex.id))||actionTargets.hexes.has(hex.id);
+            const isSrc=(!moveSource&&movableUnits.has(hex.id))||actionTargets.hexes.has(hex.id)||produceEligible.has(hex.id);
             const isBonusTile=structureBonus&&hex.t!=="lac"&&hex.t!=="marecage"&&hex.t!=="factory"&&structureBonus.check(hex.id);
             // Territorial control contour (§2.3 refonte visuelle) : la première unité
             // présente sur l'hex porte la couleur de contrôle — un hex n'est jamais
@@ -3311,13 +3362,23 @@ export default function App(){
                 <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Production (max {2+topUpgradeCount(me,"Produce","nourriture")} hex)</div>
                 {(()=>{
                   const nw=me.workers.length;const costStr=produceCostLabel(nw);const canPay=canPayProduce(me);
+                  const maxN=2+topUpgradeCount(me,"Produce","nourriture");
+                  const moulinHex=(me.buildings||[]).find(b=>b.type==="moulin")?.hexId;
+                  const nbPicked=producePicks.filter(h=>h!==moulinHex).length;
+                  const moulinPicked=moulinHex!=null&&producePicks.includes(moulinHex);
                   return(<div>
                     {/* La piste des 6 ouvriers : chaque case libérée révèle son coût */}
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
                       <ProduceTrack nWorkers={nw} size={26}/>
                     </div>
+                    {/* Choix des hex AU CLIC sur la carte (le Moulin est un bonus hors limite) */}
+                    <div style={{padding:"8px 10px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:14,color:"var(--gold)",lineHeight:1.5,marginBottom:8}}>
+                      👆 Cliquez vos hex de production sur la carte (surlignés) — sélection : <b>{nbPicked}/{maxN}</b>{moulinHex!=null&&<span> {moulinPicked?"+ Moulin ✓":"· Moulin (bonus) à cocher"}</span>}
+                    </div>
                     <div style={{fontSize:14,color:canPay?"var(--text-dim)":"#ff5555",marginBottom:6}}>Coût actuel : {costStr} ({nw} ouvrier{nw>1?"s":""})</div>
-                    {canPay?<button onClick={doProduce} className="act-btn" style={{width:"100%"}}>⚒ Produire</button>:<div style={{color:"#8A3030"}}>Insuffisant</div>}
+                    {canPay
+                      ?<button onClick={doProduce} disabled={producePicks.length===0} className="act-btn" style={{width:"100%",...(producePicks.length===0?{opacity:0.45,cursor:"not-allowed"}:{})}}>⚒ Produire ({producePicks.length} hex)</button>
+                      :<div style={{color:"#8A3030"}}>Insuffisant</div>}
                   </div>);
                 })()}
               </div>)}
