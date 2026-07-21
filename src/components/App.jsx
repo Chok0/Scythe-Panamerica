@@ -1102,7 +1102,9 @@ export default function App(){
   },[players,phase,addLog]);
 
   // transportOverride : {transport:{workers,res}} — quantités choisies dans le
-  // panneau de transport partiel (repasse par ce même flux après validation)
+  // panneau de transport partiel (repasse par ce même flux après validation) ;
+  // {forceMove:true} — clic « ➤ Déplacer ici » du unitPicker quand l'hex cible
+  // portait aussi une unité à soi (ambiguïté destination/sélection tranchée)
   // ── Hexes de production éligibles (action Produce) : ceux qui portent mes
   // ouvriers, plus le hex du Moulin — territoire BONUS de la règle Scythe,
   // il ne compte pas dans la limite de 2 (3 avec amélioration)
@@ -1187,12 +1189,22 @@ export default function App(){
       }
     }
     
+    // ── MOVE : re-cliquer l'hex de l'unité sélectionnée = DÉSÉLECTION ──
+    if(moveSource&&hexId===moveSource.fromHex){setMoveSource(null);setTransportPick(null);return;}
     if(moveSource&&validMoves.has(hexId)){
+      // Hex cible portant aussi une de MES unités encore déplaçables : le clic
+      // est ambigu (destination ? nouvelle sélection ?) → unitPicker enrichi
+      // d'une option « Déplacer ici » — avant, le clic déplaçait la 1re unité
+      // alors qu'on voulait sélectionner la voisine (bug constaté en partie)
+      if(!transportOverride&&movableUnits.has(hexId)){
+        setUnitPicker({hexId,units:movableUnits.get(hexId),moveDest:true});
+        return;
+      }
       // Snapshot avant CE déplacement → l'undo prend en compte chaque sous-coup.
       // Pas de re-push à la validation du transport : le clic qui a ouvert le
       // panneau a déjà poussé ce snapshot (sinon chaque déplacement de mech
       // chargé compterait double dans la pile d'annulation).
-      if(!transportOverride)pushHistory();
+      if(!transportOverride?.transport)pushHistory();
       // Check for combat triggers before actually moving
       const movingCombatUnit=moveSource.unitType==="hero"||moveSource.unitType==="mech";
       
@@ -1226,7 +1238,7 @@ export default function App(){
       // ── TRANSPORT PARTIEL (mech) : s'il y a de quoi emporter, ouvrir le
       // panneau de quantités au lieu d'exécuter — la validation repasse ici
       // avec transportOverride ──
-      if(moveSource.unitType==="mech"&&carryOnMove&&!transportOverride){
+      if(moveSource.unitType==="mech"&&carryOnMove&&!transportOverride?.transport){
         const wOnHex=me.workers.filter(w=>w.hexId===moveSource.fromHex).length;
         const resOnHex=Object.fromEntries(Object.entries(me.resources[String(moveSource.fromHex)]||{}).filter(([,q])=>q>0));
         if(wOnHex>0||Object.keys(resOnHex).length>0){
@@ -2720,8 +2732,15 @@ export default function App(){
           <div style={{position:"absolute",bottom:16,left:"50%",transform:"translateX(-50%)",zIndex:8,
             background:"rgba(14,12,8,0.95)",border:"1px solid var(--gold-dim)",borderRadius:10,
             padding:"10px 14px",boxShadow:"0 6px 30px rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",animation:"slideUp 0.2s ease"}}>
-            <div style={{fontSize:14,color:"var(--gold)",fontWeight:700,marginBottom:8,fontFamily:"var(--font-title)"}}>Quelle unité déplacer depuis #{unitPicker.hexId} ?</div>
+            <div style={{fontSize:14,color:"var(--gold)",fontWeight:700,marginBottom:8,fontFamily:"var(--font-title)"}}>
+              {unitPicker.moveDest?`Hex #${unitPicker.hexId} — y déplacer l'unité sélectionnée, ou changer d'unité ?`:`Quelle unité déplacer depuis #${unitPicker.hexId} ?`}
+            </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {unitPicker.moveDest&&(
+                <button onClick={()=>{const h=unitPicker.hexId;setUnitPicker(null);handleHexClick(h,{forceMove:true});}} className="act-btn" style={{fontSize:15,borderColor:"var(--gold)",color:"var(--gold)",fontWeight:700}}>
+                  ➤ Déplacer ici
+                </button>
+              )}
               {unitPicker.units.map(u=>(
                 <button key={u.id} onClick={()=>doMove(u.type,u.id,unitPicker.hexId)} className="act-btn" style={{borderColor:myFaction.color+"88",fontSize:15}}>
                   <Glyph icon={u.icon} size={15}/> {u.label}
