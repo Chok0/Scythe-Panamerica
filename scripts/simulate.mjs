@@ -271,6 +271,8 @@ const playGame = (gameIdx, log) => {
           }
         } else {
           p.hero = hbHexOf(p.faction).id;
+          // Règle : le perdant pioche 1 carte s'il a engagé au moins 1 point
+          if (botTotal >= 1) p.combatCards++;
         }
       }
       players[cp] = p;
@@ -390,6 +392,8 @@ const playGame = (gameIdx, log) => {
               const hbh = hbHexOf(pl.faction);
               if (bp.hero === toId) bp.hero = hbh.id;
               bp.mechs = bp.mechs.map(m => m.hexId === toId ? { ...m, hexId: hbh.id } : m);
+              // Règle : le perdant pioche 1 carte s'il a engagé au moins 1 point
+              if (botTotal >= 1) bp.combatCards++;
             }
             players[pi] = bp;
             break;

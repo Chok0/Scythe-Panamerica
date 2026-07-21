@@ -44,6 +44,24 @@ export const spendTopCards = (p, n) => {
   return spent.reduce((a, b) => a + b, 0);
 };
 
+// Dépense des cartes PRÉCISES (choisies par le joueur dans sa main) : retire
+// une carte par valeur listée, resynchronise le compteur, renvoie la somme
+// engagée. Repli sur la plus forte en cas de désynchronisation improbable.
+export const spendPickedCards = (p, values) => {
+  reconcileHand(p);
+  const hand = [...p.cardHand];
+  let sum = 0;
+  for (const v of values) {
+    if (hand.length === 0) break;
+    let i = hand.indexOf(v);
+    if (i < 0) i = hand.indexOf(Math.max(...hand));
+    sum += hand[i]; hand.splice(i, 1);
+  }
+  p.cardHand = hand;
+  p.combatCards = hand.length;
+  return sum;
+};
+
 // Décompte par valeur pour l'affichage de la main : { valeur: nombre }
 export const handSummary = (p) => {
   const m = {};

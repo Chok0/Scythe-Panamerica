@@ -14,7 +14,7 @@ import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } fro
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
 import { structureBonusDetail } from '../data/structureBonus.js';
-import { reconcileHand, topCardsSum, spendTopCards, handSummary } from '../logic/cards.js';
+import { reconcileHand, topCardsSum, spendTopCards, spendPickedCards, handSummary } from '../logic/cards.js';
 import RulesPage from './RulesPage.jsx';
 import AmbientSound from './AmbientSound.jsx';
 import SetupScreen from './SetupScreen.jsx';
@@ -1487,8 +1487,11 @@ export default function App(){
     // Player combat ability bonus (attacker if player moved, defender if attacked)
     const isDefender=!!combat.empireAttacks||combat.type==="pvp_defense";
     const playerCBonus=getCombatBonus(me, combat.hexId, !isDefender);
-    // Contribution des cartes = SOMME des valeurs réelles engagées (main du joueur)
-    const playerCardVal=topCardsSum(me.cardHand,combat.cardsSpend);
+    // Cartes engagées : celles CHOISIES par le joueur (cardsPicked = indices
+    // dans la main triée) — repli sur les plus fortes si aucun choix explicite
+    const handSortedR=[...(me.cardHand||[])].sort((a,b)=>b-a);
+    const pickedVals=(combat.cardsPicked||[]).map(i=>handSortedR[i]).filter(v=>v!=null);
+    const playerCardVal=combat.cardsPicked?pickedVals.reduce((a,b)=>a+b,0):topCardsSum(me.cardHand,combat.cardsSpend);
     const playerTotal=combat.powerSpend + playerCBonus.powerBonus + playerCardVal;
     if(playerCBonus.name&&(playerCBonus.powerBonus>0||playerCBonus.cardBonus>0)){
       addLog(`🛡 ${playerCBonus.name}: ${playerCBonus.powerBonus>0?`+${playerCBonus.powerBonus}⚡ `:""}${playerCBonus.cardBonus>0?`+${playerCBonus.cardBonus}🃏`:""}`);
@@ -1512,7 +1515,8 @@ export default function App(){
         Object.keys(prev[0].resources).forEach(k=>{n[0].resources[k]={...prev[0].resources[k]};});
         n[atkIdx]={...n[atkIdx],workers:[...n[atkIdx].workers],mechs:[...n[atkIdx].mechs],resources:{...n[atkIdx].resources}};
         Object.keys(prev[atkIdx].resources).forEach(k=>{n[atkIdx].resources[k]={...prev[atkIdx].resources[k]};});
-        n[0].power-=combat.powerSpend;spendTopCards(n[0],combat.cardsSpend);
+        n[0].power-=combat.powerSpend;
+        if(combat.cardsPicked)spendPickedCards(n[0],pickedVals);else spendTopCards(n[0],combat.cardsSpend);
         n[atkIdx].power-=combat.botSpend;n[atkIdx].combatCards-=combat.botCards;
         if(win){
           // Le joueur repousse l'attaquant : retraite totale du bot + étoile défenseur
@@ -1569,8 +1573,12 @@ export default function App(){
       // Spend resources
       setPlayers(prev=>{
         const n=[...prev];const p={...n[0]};
-        p.power-=combat.powerSpend;spendTopCards(p,combat.cardsSpend);
+        p.power-=combat.powerSpend;
+        if(combat.cardsPicked)spendPickedCards(p,pickedVals);else spendTopCards(p,combat.cardsSpend);
         if(!win){
+          // Règle : le PERDANT pioche 1 carte s'il a engagé au moins 1 point
+          // (puissance ou carte) — appliquée aussi contre l'Empire
+          if(playerTotal>=1)p.combatCards=(p.combatCards||0)+1;
           if(isDefender){
             // Empire attacked us — retreat ALL our combat units from that hex to home base
             const hb=HOME_BASES[p.faction];
@@ -1701,7 +1709,8 @@ export default function App(){
         // Both spend power + cards
         n[0]={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
         Object.keys(prev[0].resources).forEach(k=>{n[0].resources[k]={...prev[0].resources[k]};});
-        n[0].power-=combat.powerSpend;spendTopCards(n[0],combat.cardsSpend);
+        n[0].power-=combat.powerSpend;
+        if(combat.cardsPicked)spendPickedCards(n[0],pickedVals);else spendTopCards(n[0],combat.cardsSpend);
         n[combat.enemyIdx]={...n[combat.enemyIdx],workers:[...n[combat.enemyIdx].workers],mechs:[...n[combat.enemyIdx].mechs],resources:{...n[combat.enemyIdx].resources}};
         Object.keys(prev[combat.enemyIdx].resources).forEach(k=>{n[combat.enemyIdx].resources[k]={...prev[combat.enemyIdx].resources[k]};});
         n[combat.enemyIdx].power-=botPower;n[combat.enemyIdx].combatCards-=botCards;
@@ -2796,9 +2805,10 @@ export default function App(){
                 const isAttacker=!combat.empireAttacks&&combat.type!=="pvp_defense";
                 const cBonus=getCombatBonus(me, combat.hexId, isAttacker);
                 const maxCards=Math.min(me.combatCards, combatUnits + cBonus.cardBonus);
-                // Cartes valuées : on engage les `cardsSpend` cartes les plus fortes de la main
+                // Cartes valuées : contribution = somme des cartes CHOISIES par le
+                // joueur dans sa main (clic sur chaque carte, plus d'auto-sélection)
                 const handSorted=[...(me.cardHand||[])].sort((a,b)=>b-a);
-                const cardVal=topCardsSum(me.cardHand,combat.cardsSpend);
+                const cardVal=(combat.cardsPicked||[]).reduce((a,ci)=>a+(handSorted[ci]||0),0);
                 const total=combat.powerSpend + cBonus.powerBonus + cardVal;
                 const isPve=combat.type==="pve";
                 const enemy=!isPve?players[combat.enemyIdx]:null;
@@ -2819,15 +2829,19 @@ export default function App(){
                       ))}</div>
                     </div>
                     {maxCards>0&&<div style={{marginBottom:14}}>
-                      <div style={{fontSize:14,color:"var(--brass)",marginBottom:8,fontWeight:600}}>🃏 Cartes engagées ({combat.cardsSpend}/{maxCards}) <span style={{fontWeight:400,color:"var(--text-muted)"}}>— les plus fortes de votre main, valeur = somme</span></div>
-                      <div style={{display:"flex",gap:5,marginBottom:8}}>{Array.from({length:maxCards+1},(_,i)=>i).map(v=>(
-                        <button key={v} onClick={()=>setCombat(prev=>({...prev,cardsSpend:v}))} className={`dial-btn ${combat.cardsSpend===v?"on":"off"}`}>{v}</button>
-                      ))}</div>
-                      {/* Votre main — les cartes engagées (les plus fortes) sont surlignées */}
-                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{handSorted.map((val,ci)=>{const played=ci<combat.cardsSpend;return(
-                        <span key={ci} style={{width:26,height:34,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,fontFamily:"var(--font-mono)",
-                          background:played?"linear-gradient(180deg,#8b2020,#bb3838)":"var(--bg3)",color:played?"#fff":"var(--text-dim)",
-                          border:played?"1px solid #dd4444":"1px solid var(--border)",boxShadow:played?"0 0 6px rgba(220,50,30,0.4)":"none"}}>{val}</span>
+                      <div style={{fontSize:14,color:"var(--brass)",marginBottom:8,fontWeight:600}}>🃏 Cartes engagées ({(combat.cardsPicked||[]).length}/{maxCards}) <span style={{fontWeight:400,color:"var(--text-muted)"}}>— cliquez les cartes de votre main à engager</span></div>
+                      {/* Votre main — chaque carte se choisit individuellement (clic = engager/retirer) */}
+                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{handSorted.map((val,ci)=>{
+                        const on=(combat.cardsPicked||[]).includes(ci);
+                        return(
+                        <button key={ci} title={on?"Retirer cette carte":"Engager cette carte"} onClick={()=>setCombat(prev=>{
+                          const cur=prev.cardsPicked||[];
+                          if(cur.includes(ci))return{...prev,cardsPicked:cur.filter(x=>x!==ci),cardsSpend:cur.length-1};
+                          if(cur.length>=maxCards)return prev;
+                          return{...prev,cardsPicked:[...cur,ci],cardsSpend:cur.length+1};
+                        })} style={{width:26,height:34,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,fontFamily:"var(--font-mono)",cursor:"pointer",padding:0,
+                          background:on?"linear-gradient(180deg,#8b2020,#bb3838)":"var(--bg3)",color:on?"#fff":"var(--text-dim)",
+                          border:on?"1px solid #dd4444":"1px solid var(--border)",boxShadow:on?"0 0 6px rgba(220,50,30,0.4)":"none"}}>{val}</button>
                       );})}</div>
                     </div>}
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16,padding:"12px 16px",background:"rgba(0,0,0,0.4)",borderRadius:10,border:"1px solid var(--border)"}}>
