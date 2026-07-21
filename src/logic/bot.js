@@ -369,18 +369,41 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     let evacuated = 0;
     const baseIdx = p.workers.map((w, i) => (hMap[w.hexId]?.base ? i : -1)).filter(i => i >= 0);
     if (baseIdx.length >= 2) {
-      p.workers = [...p.workers];
-      for (const wi of baseIdx.slice(0, 2)) {
-        let wv = getValidMoves(p.workers[wi].hexId, p.faction, p.unlockedAbilities || [], p, rails);
-        if (enemyHexes) wv = wv.filter(id => !enemyHexes.has(id));
-        if (wv.length === 0) continue;
-        const wt = pickMoveTarget(wv, p, empire, enemyHexes, "worker", ctx, prof);
-        if (wt == null) continue;
-        p.workers[wi] = { ...p.workers[wi], hexId: wt };
-        logs.push(`🤖 ${f.name}: Ouv. (base) → #${wt}`);
-        const evToll = marshToll(p, wt, "worker");
-        if (evToll) logs.push(`🤖${evToll}`);
-        evacuated++;
+      const baseHexId = p.workers[baseIdx[0]].hexId;
+      // Un mech renvoyé sur la base ? Il EMBARQUE toute la pile d'ouvriers en
+      // un seul déplacement (transport Scythe) — la base se vide d'un coup et
+      // le héros garde le 2e déplacement du tour
+      const mi = p.mechs.findIndex(m => m.hexId === baseHexId);
+      if (mi >= 0) {
+        let mv = getValidMoves(baseHexId, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
+        if (enemyHexes) mv = mv.filter(id => !enemyHexes.has(id));
+        const mt = mv.length > 0 ? pickMoveTarget(mv, p, empire, enemyHexes, "worker", ctx, prof) : null;
+        if (mt != null) {
+          p.mechs = [...p.mechs];
+          p.mechs[mi] = { ...p.mechs[mi], hexId: mt };
+          const tr = transportUnits(p, baseHexId, mt, "mech", { carryWorkers: true });
+          Object.assign(p, { workers: tr.player.workers, resources: tr.player.resources });
+          logs.push(`🤖 ${f.name}: Mech évacue la base → #${mt} 👷×${tr.carried.workers}`);
+          const mToll = marshToll(p, mt, "mech", tr.carried.workers);
+          if (mToll) logs.push(`🤖${mToll}`);
+          evacuated = 1; // 1 unité déplacée — le héros peut encore bouger
+        }
+      }
+      // Pas de mech disponible : 2 ouvriers sortent à pied
+      if (evacuated === 0) {
+        p.workers = [...p.workers];
+        for (const wi of baseIdx.slice(0, 2)) {
+          let wv = getValidMoves(p.workers[wi].hexId, p.faction, p.unlockedAbilities || [], p, rails);
+          if (enemyHexes) wv = wv.filter(id => !enemyHexes.has(id));
+          if (wv.length === 0) continue;
+          const wt = pickMoveTarget(wv, p, empire, enemyHexes, "worker", ctx, prof);
+          if (wt == null) continue;
+          p.workers[wi] = { ...p.workers[wi], hexId: wt };
+          logs.push(`🤖 ${f.name}: Ouv. (base) → #${wt}`);
+          const evToll = marshToll(p, wt, "worker");
+          if (evToll) logs.push(`🤖${evToll}`);
+          evacuated++;
+        }
       }
     }
 
