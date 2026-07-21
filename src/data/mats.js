@@ -28,14 +28,16 @@ export const BOTTOM = ["Upgrade", "Deploy", "Build", "Enlist"];
 // ── Améliorations de la rangée HAUT (modèle Scythe original) ──
 // Chaque case d'amélioration d'une colonne correspond à une OPTION précise de
 // l'action, débloquée quand son cube est retiré via Améliorer :
+//   Déplacer : 2 unités (améliorable 3) OU 1 pièce (améliorable 2)
 //   Soutien : +2⚡ (améliorable +3) OU +1🃏 (améliorable +2)
 //   Commerce : 2 ressources (améliorable 3) OU +1♥ (améliorable +2)
-//   Déplacer : 2 unités (+1 par cube) · Produire : 2 hex (+1)
+//   Produire : 2 hex (améliorable 3)
 // Les cubes se retirent du DERNIER indice vers le premier ; une colonne à n
 // cases utilise les n dernières entrées (topSlots) — le premier retrait
-// débloque donc la dernière entrée (⚡ pour Soutien, ♥ pour Commerce).
+// débloque donc la dernière entrée (unité pour Déplacer, ⚡ pour Soutien,
+// ♥ pour Commerce).
 export const TOP_UPGRADES = {
-  Move: [{ res: "worker", label: "+1 unité déplaçable" }, { res: "worker", label: "+1 unité déplaçable" }],
+  Move: [{ res: "coins", label: "+1 pièce (option 💰)" }, { res: "worker", label: "+1 unité déplaçable" }],
   Bolster: [{ res: "combatCards", label: "+1 Carte (option 🃏)" }, { res: "power", label: "+1 Puissance (option ⚡)" }],
   Trade: [{ res: "metal", label: "+1 ressource (option 📦)" }, { res: "pop", label: "+1 Popularité (option ♥)" }],
   Produce: [{ res: "nourriture", label: "+1 hex produit" }],

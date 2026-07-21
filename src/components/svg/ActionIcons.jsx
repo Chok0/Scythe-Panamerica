@@ -169,6 +169,8 @@ export const RESOURCE_ICONS = {
   worker: IconWorker,
   mech: IconMech,
   upgrade: IconUpgrade,
+  // Gain de l'action Construire : un chantier, pas un ouvrier
+  building: IconHammer,
 };
 
 // ═══ Glyph — rend l'icône SVG CANONIQUE d'un pictogramme texte connu

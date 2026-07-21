@@ -20,8 +20,10 @@ exclusivement du plateau joueur, comme dans le Scythe original. Les
    2 unités…). Désormais chaque case correspond à une option précise et
    s'applique réellement — humain ET bots (`TOP_UPGRADES` dans mats.js) :
    Soutien ⚡ +2→+3 et 🃏 +1→+2 · Commerce 📦 2→3 et ♥ +1→+2 ·
-   Déplacer +1 unité/cube · Produire +1 hex. Le rendu place chaque case en
-   ligne à côté de son option (plus d'⚡ fantômes empilés en fin de rangée).
+   Déplacer 2 unités→3 et Gain 1$→2$ · Produire +1 hex. Le rendu place chaque
+   case en ligne à côté de son option (plus d'⚡ fantômes empilés en fin de
+   rangée), et le gain de Construire porte un logo de chantier (plus
+   l'ouvrier, incohérent).
 2. **Un coût bottom pouvait tomber à 0** (Forge Deploy, Atelier/Terroir
    Upgrade, Fordisme Build). Règle rétablie : il reste TOUJOURS ≥ 1 ressource
    à payer — `bottomSlots` plafonnés à (base − 1) par colonne, total ramené à

@@ -330,8 +330,10 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   if (action === "Move" && p.coins <= 0) {
     // Scythe rule: Move's alternative is "gain 1$" — prevents the economic
     // deadlock (0 coins + 0 power = no Produce/Bolster/Trade possible)
-    p.coins++;
-    logs.push(`🤖 ${f.name}: +1$ (Move)`);
+    // (+1 si le cube d'amélioration de l'option 💰 a été retiré)
+    const coinGain = 1 + topUpgradeCount(p, "Move", "coins");
+    p.coins += coinGain;
+    logs.push(`🤖 ${f.name}: +${coinGain}$ (Move)`);
   } else if (action === "Move") {
     // Nations Pack Up (strategic building repositioning)
     if (p.faction === "nations" && (p.unlockedAbilities || []).includes(3) && (p.buildings || []).length > 0 && Math.random() < 0.3) {

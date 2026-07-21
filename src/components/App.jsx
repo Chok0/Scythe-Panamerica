@@ -128,7 +128,7 @@ export default function App(){
 
   const me=players[0];const myFaction=me?FACTIONS[me.faction]:null;const myMat=me?MATS.find(m=>m.id===me.matId):null;
   // Plan « Réseau Neuronal » (mass_move) : 3 déplacements par action Move au lieu de 2
-  // 2 unités de base, +1 par cube d'amélioration retiré de la colonne Move
+  // 2 unités de base, 3 si le cube de l'option « +1 unité » est retiré
   // (le plan « mass_move » garantit au moins 3)
   const moveLimit=Math.max(me?.factoryCard?.topBonus==="mass_move"?3:2, 2+(me?topUpgradeCount(me,"Move","worker"):0));
 
@@ -3112,7 +3112,7 @@ export default function App(){
                 const pc=getProduceCost(me.workers.length);
                 const producePay=[...Array(pc.pui).fill("power"),...Array(pc.pop).fill("pop"),...Array(pc.coins).fill("coins")];
                 const topActionRow={
-                  Move:{pay:[],gain:["worker","worker"],altGain:null,label:"Move"},
+                  Move:{pay:[],gain:["worker","worker"],altGain:["coins"],label:"Move"},
                   Bolster:{pay:["coins"],gain:["power","power"],altGain:["combatCards"],label:"Bolster"},
                   Trade:{pay:["coins"],gain:["metal","metal"],altGain:["pop"],label:"Trade"},
                   Produce:{pay:producePay,gain:["nourriture","nourriture"],altGain:null,label:"Produce"},
@@ -3141,7 +3141,7 @@ export default function App(){
                 const rec=recIdx!=null?ENLIST_ONGOING[recIdx]:null;
                 const RIcon=rec?RESOURCE_ICONS[rec.svgKey]:null;
                 // Gain intrinsèque de l'action du bas (la flèche ↑ pour Améliorer)
-                const bottomGainRes=bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":bottomAction==="Enlist"?"pop":"upgrade";
+                const bottomGainRes=bottomAction==="Deploy"?"mech":bottomAction==="Build"?"building":bottomAction==="Enlist"?"pop":"upgrade";
                 // Action group separator: strong between pairs (after index 1), light between actions within a pair (after index 0, 2)
                 const isGroupEnd=i===1;
                 const isLastAction=i===3;
@@ -3186,7 +3186,7 @@ export default function App(){
                               title={pickable?`① Retirer ce cube de ${FR_TOP[action]||action} (${slots[k].label})`:!isCube?`Bonus débloqué : ${slots[k].label}`:`À débloquer via Améliorer : ${slots[k].label}`}/>;
                           };
                           const gainGhosts=[],altGhosts=[];
-                          slots.forEach((s,k)=>{(s.res==="combatCards"||s.res==="pop"?altGhosts:gainGhosts).push(ghost(k));});
+                          slots.forEach((s,k)=>{(["combatCards","pop","coins"].includes(s.res)?altGhosts:gainGhosts).push(ghost(k));});
                           return <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact size={21}
                             gainSuffix={gainGhosts} altSuffix={altGhosts}/>;
                         })()}
@@ -3232,7 +3232,7 @@ export default function App(){
               {selAction==="Move"&&(
                 <div>
                   <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Déplacement ({(me.movedUnits||[]).length}/{moveLimit})</div>
-                  <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+1};return n;});addLog(`💰 +1$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner 1$ (pas de déplacement)</button>
+                  <button onClick={()=>{const g=1+topUpgradeCount(me,"Move","coins");setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+g};return n;});addLog(`💰 +${g}$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner {1+topUpgradeCount(me,"Move","coins")}$ (pas de déplacement)</button>
                   {!moveSource&&(
                     <div style={{padding:"10px 12px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:14,color:"var(--gold)",lineHeight:1.5}}>
                       👆 Cliquez sur la carte l'unité à déplacer (hexes surlignés en doré), puis sa destination.
