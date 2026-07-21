@@ -175,12 +175,6 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
               <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",fontSize:15,fontFamily:"'IBM Plex Mono',monospace"}}>
                 <span>⚡ <span style={{color:"var(--text)",fontWeight:600}}>{f.power}</span></span>
                 <span>🃏 <span style={{color:"var(--text)",fontWeight:600}}>{f.cards}</span></span>
-                {f.startBonus&&<span style={{color:"#8fc26a",fontWeight:600}}>
-                  {f.startBonus.coins?`💰+${f.startBonus.coins} `:""}♥+{f.startBonus.pop}
-                </span>}
-                {f.startAbs&&<span style={{color:"#d2a468",fontWeight:600}} title="Valeurs de départ fixes (remplacent celles du plateau joueur)">
-                  💰={f.startAbs.coins} ♥={f.startAbs.pop}
-                </span>}
               </div>
             </button>
           );})}

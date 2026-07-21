@@ -1,25 +1,71 @@
 // bottomCosts : chaque plateau a un profil de coûts DISTINCT (bases 2-4,
 // façon Scythe original) — avant v0.10, Atelier/Pionnier/Terroir partageaient
 // les mêmes bases [2,3,3,3] et seuls les bonus $ différaient.
+// bottomSlots (v0.11) : règle Scythe « un coût ne descend jamais sous
+// 1 ressource » — chaque colonne a au plus (base - 1) cases d'amélioration,
+// et le total par plateau reste 6 (l'étoile 6-Améliorations doit rester
+// atteignable : chaque amélioration pose un cube en bas).
 export const MATS = [
   { id: 1, name: "Fordisme", pop: 2, coins: 4, topRow: ["Move", "Bolster", "Produce", "Trade"],
-    topCubes: [1, 2, 1, 2], bottomSlots: [1, 1, 2, 2],
+    topCubes: [1, 2, 1, 2], bottomSlots: [1, 2, 1, 2],
     bottomCosts: [{ res: "petrole", base: 3, bonus: 0 }, { res: "metal", base: 3, bonus: 1 }, { res: "bois", base: 2, bonus: 2 }, { res: "nourriture", base: 3, bonus: 2 }] },
   { id: 2, name: "Atelier", pop: 2, coins: 5, topRow: ["Trade", "Produce", "Bolster", "Move"],
-    topCubes: [2, 1, 2, 1], bottomSlots: [2, 2, 1, 1],
+    topCubes: [2, 1, 2, 1], bottomSlots: [1, 2, 2, 1],
     bottomCosts: [{ res: "petrole", base: 2, bonus: 1 }, { res: "metal", base: 4, bonus: 0 }, { res: "bois", base: 3, bonus: 3 }, { res: "nourriture", base: 2, bonus: 1 }] },
   { id: 3, name: "Pionnier", pop: 2, coins: 6, topRow: ["Move", "Trade", "Produce", "Bolster"],
     topCubes: [2, 1, 1, 2], bottomSlots: [2, 1, 1, 2],
     bottomCosts: [{ res: "petrole", base: 3, bonus: 2 }, { res: "metal", base: 2, bonus: 1 }, { res: "bois", base: 4, bonus: 0 }, { res: "nourriture", base: 3, bonus: 3 }] },
   { id: 4, name: "Forge", pop: 3, coins: 6, topRow: ["Trade", "Bolster", "Move", "Produce"],
-    topCubes: [1, 2, 2, 1], bottomSlots: [1, 2, 2, 1],
+    topCubes: [1, 2, 2, 1], bottomSlots: [2, 1, 2, 1],
     bottomCosts: [{ res: "petrole", base: 4, bonus: 3 }, { res: "metal", base: 2, bonus: 0 }, { res: "bois", base: 3, bonus: 1 }, { res: "nourriture", base: 3, bonus: 2 }] },
   { id: 5, name: "Terroir", pop: 4, coins: 7, topRow: ["Move", "Trade", "Bolster", "Produce"],
-    topCubes: [2, 1, 2, 1], bottomSlots: [2, 1, 2, 1],
+    topCubes: [2, 1, 2, 1], bottomSlots: [1, 2, 2, 1],
     bottomCosts: [{ res: "petrole", base: 2, bonus: 0 }, { res: "metal", base: 3, bonus: 2 }, { res: "bois", base: 4, bonus: 2 }, { res: "nourriture", base: 2, bonus: 1 }] },
 ];
 
 export const BOTTOM = ["Upgrade", "Deploy", "Build", "Enlist"];
+
+// ── Améliorations de la rangée HAUT (modèle Scythe original) ──
+// Chaque case d'amélioration d'une colonne correspond à une OPTION précise de
+// l'action, débloquée quand son cube est retiré via Améliorer :
+//   Déplacer : 2 unités (améliorable 3) OU 1 pièce (améliorable 2)
+//   Soutien : +2⚡ (améliorable +3) OU +1🃏 (améliorable +2)
+//   Commerce : 2 ressources (améliorable 3) OU +1♥ (améliorable +2)
+//   Produire : 2 hex (améliorable 3)
+// Les cubes se retirent du DERNIER indice vers le premier ; une colonne à n
+// cases utilise les n dernières entrées (topSlots) — le premier retrait
+// débloque donc la dernière entrée (unité pour Déplacer, ⚡ pour Soutien,
+// ♥ pour Commerce).
+export const TOP_UPGRADES = {
+  Move: [{ res: "coins", label: "+1 pièce (option 💰)" }, { res: "worker", label: "+1 unité déplaçable" }],
+  Bolster: [{ res: "combatCards", label: "+1 Carte (option 🃏)" }, { res: "power", label: "+1 Puissance (option ⚡)" }],
+  Trade: [{ res: "metal", label: "+1 ressource (option 📦)" }, { res: "pop", label: "+1 Popularité (option ♥)" }],
+  Produce: [{ res: "nourriture", label: "+1 hex produit" }],
+};
+
+// Les n cases d'amélioration de la colonne (n = topCubes de ce plateau)
+export const topSlots = (action, n) => (TOP_UPGRADES[action] || []).slice(-n);
+
+// Bonus débloqués (res) sur la colonne `col` du joueur : les cases d'indice
+// >= cubes restants (les cubes occupent les premiers indices)
+export const topUnlocked = (p, col) => {
+  const mat = MATS.find(m => m.id === p.matId);
+  const n = (mat?.topCubes || [])[col] || 0;
+  const cubes = (p.cubesOnTop || [])[col] ?? n;
+  return topSlots((p.topRow || [])[col], n).slice(cubes).map(s => s.res);
+};
+
+// Nombre de bonus `res` débloqués pour une action top donnée du joueur
+export const topUpgradeCount = (p, action, res) => {
+  const col = (p.topRow || []).indexOf(action);
+  if (col < 0) return 0;
+  return topUnlocked(p, col).filter(r => r === res).length;
+};
+
+// Cases d'amélioration UTILISABLES d'une colonne bottom : jamais plus que
+// (base - 1) — le coût imprimé ne peut pas être annulé entièrement.
+export const maxBottomCubes = (mat, i) =>
+  Math.min((mat?.bottomSlots || [])[i] || 0, Math.max(0, ((mat?.bottomCosts || [])[i]?.base ?? 0) - 1));
 
 // Bonus IMMÉDIAT (une fois) d'un enrôlement, indexé par colonne d'action bottom
 // (différent du bonus PERMANENT choisi séparément). Partagé entre l'UI joueur
@@ -36,7 +82,10 @@ export const getBottomCost = (player) => {
   if (!mat) return [{ res: "petrole", qty: 2 }, { res: "metal", qty: 3 }, { res: "bois", qty: 3 }, { res: "nourriture", qty: 3 }];
   return mat.bottomCosts.map((bc, i) => ({
     res: bc.res,
-    qty: Math.max(0, bc.base - (player.cubesOnBottom || [])[i] || 0),
+    // Règle Scythe : les cubes réduisent le coût mais il reste TOUJOURS au
+    // moins 1 ressource à payer (les réductions de plan d'usine, elles,
+    // s'appliquent après et peuvent descendre plus bas).
+    qty: Math.max(bc.base > 0 ? 1 : 0, bc.base - ((player.cubesOnBottom || [])[i] || 0)),
     bonus: bc.bonus,
     base: bc.base,
   }));

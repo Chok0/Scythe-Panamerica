@@ -119,6 +119,35 @@ export const IconRecruit = ({ size = 16, color = "#fff" }) => (
   </svg>
 );
 
+// Combat : deux épées croisées (étoiles de combat — 1 par victoire)
+export const IconCombat = ({ size = 16, color = "#fff" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3.2 2.2 L12 11" />
+    <path d="M12.8 2.2 L4 11" />
+    <line x1="10.4" y1="11.4" x2="12.8" y2="9" />
+    <line x1="5.6" y1="11.4" x2="3.2" y2="9" />
+    <path d="M12.6 11.6 L13.8 12.8" />
+    <path d="M3.4 11.6 L2.2 12.8" />
+  </svg>
+);
+
+// Mission secrète : la cible
+export const IconTarget = ({ size = 16, color = "#fff" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round">
+    <circle cx="8" cy="8" r="6" />
+    <circle cx="8" cy="8" r="3.4" />
+    <circle cx="8" cy="8" r="1.1" fill={color} stroke="none" opacity="0.7" />
+  </svg>
+);
+
+// Objectif de faction : l'étendard
+export const IconBanner = ({ size = 16, color = "#fff" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4.5 1.5 V14.5" />
+    <path d="M4.5 2.5 H12.5 L10.5 5 L12.5 7.5 H4.5 Z" fill={color} fillOpacity="0.12" />
+  </svg>
+);
+
 // ═══ SVG Building Icons — même vocabulaire graphique (trait simple, silhouette
 // unique, pas de détail interne fin) pour rester lisible à 16-18px. ═══
 
@@ -169,6 +198,8 @@ export const RESOURCE_ICONS = {
   worker: IconWorker,
   mech: IconMech,
   upgrade: IconUpgrade,
+  // Gain de l'action Construire : un chantier, pas un ouvrier
+  building: IconHammer,
 };
 
 // ═══ Glyph — rend l'icône SVG CANONIQUE d'un pictogramme texte connu
@@ -181,6 +212,9 @@ export const GLYPH_ICONS = {
   "👷": IconWorker, "●": IconWorker, "♥": IconPop, "💰": IconCoin,
   "🃏": IconCard, "⚡": IconPower, "🌽": IconFood, "🛢": IconOil,
   "🪵": IconWood, "⚙": IconMetal,
+  // Pictos des objectifs d'étoiles — mêmes icônes SVG que le reste de l'UI
+  // (avant : ⚔/🎯/🏛 tombaient en emoji brut, seuls de leur espèce)
+  "⚔": IconCombat, "🎯": IconTarget, "🏛": IconBanner,
 };
 export const Glyph = ({ icon, size = 16, color = "#e8dcc8", style }) => {
   const Cmp = GLYPH_ICONS[icon];
@@ -226,7 +260,10 @@ export function OrPill() {
 }
 
 // ═══ ActionRow — PAY → GAIN layout ═══
-export function ActionRow({ pay = [], gain = [], altGain, compact = false, size }) {
+// gainSuffix / altSuffix : nœuds (cases d'amélioration GhostSquare) insérés
+// juste APRÈS l'option qu'ils améliorent — le « +2 (améliorable +3) ou +1
+// (améliorable +2) » se lit alors dans l'ordre, option par option.
+export function ActionRow({ pay = [], gain = [], altGain, compact = false, size, gainSuffix = null, altSuffix = null }) {
   const sqSize = size || (compact ? 23 : 26);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
@@ -235,10 +272,51 @@ export function ActionRow({ pay = [], gain = [], altGain, compact = false, size 
         <span style={{ color: "var(--text-muted)", fontSize: 10, margin: "0 1px" }}>→</span>
       </>}
       {gain.map((r, i) => <ActionSquare key={`g${i}`} type="gain" resource={r} size={sqSize} />)}
+      {gainSuffix}
       {altGain && <>
         <OrPill />
         {altGain.map((r, i) => <ActionSquare key={`a${i}`} type="gain" resource={r} size={sqSize} />)}
+        {altSuffix}
       </>}
+    </div>
+  );
+}
+
+// ═══ ProduceTrack — la piste des 6 ouvriers du plateau joueur (règle Scythe).
+// Chaque ouvrier produit au village quitte sa case et RÉVÈLE le coût imprimé
+// dessous : ⚡ sous la 2e case, ♥ sous la 4e, 💰 sous la 6e. Le coût de
+// Produire = la somme des icônes révélées (logique : getProduceCost). Un
+// ouvrier perdu revient couvrir sa case — le coût se réduit d'autant. ═══
+const PRODUCE_TRACK_COSTS = { 1: "power", 3: "pop", 5: "coins" };
+export function ProduceTrack({ nWorkers = 2, size = 20 }) {
+  const freed = Math.max(0, Math.min(6, nWorkers - 2));
+  const WIcon = RESOURCE_ICONS.worker;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
+      {Array.from({ length: 6 }).map((_, k) => {
+        const costRes = PRODUCE_TRACK_COSTS[k];
+        if (k >= freed) {
+          // Ouvrier encore parqué : il couvre le coût imprimé sous sa case
+          return (
+            <div key={k} title={`Ouvrier ${k + 1}/6 à sortir (Produire sur un village)${costRes ? " — sa sortie révélera un coût" : ""}`} style={{
+              width: size, height: size, borderRadius: 3, flexShrink: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: "var(--gain-bg)", border: "1.5px solid var(--gain-border)",
+            }}>
+              <WIcon size={Math.round(size * 0.65)} color="rgba(255,255,255,0.9)" />
+            </div>
+          );
+        }
+        if (costRes) {
+          // Case libérée : le coût imprimé dessous est désormais actif
+          return <ActionSquare key={k} type="cost" resource={costRes} size={size} />;
+        }
+        // Case libérée sans coût imprimé
+        return <div key={k} title="Case libérée" style={{
+          width: size, height: size, borderRadius: 3, flexShrink: 0,
+          border: "1.5px dashed var(--border-dark)", background: "transparent",
+        }} />;
+      })}
     </div>
   );
 }
@@ -274,9 +352,13 @@ export function UpgradeSlot({ filled = false, size = 23, title }) {
   );
 }
 
-// ═══ GhostSquare — case fantôme intégrée à la séquence : elle prévisualise
-// l'icône concernée (gain à débloquer en rangée haut, coût annulable en rangée
-// bas) en pointillé estompé. filled = cube d'amélioration posé → case réelle. ═══
+// ═══ GhostSquare — case intégrée à la séquence, liée à une amélioration.
+// kind="gain" (rangée haut) : bonus à débloquer → fantôme estompé tant que le
+// cube est en place, case réelle (filled) une fois le cube retiré.
+// kind="cost" (rangée bas) : coût ENCORE ACTIF tant qu'aucun cube n'est posé —
+// il se paie comme les coûts fixes → rouge plein comme un vrai coût, mais
+// bordure en POINTILLÉS pour signaler qu'une action Améliorer peut le faire
+// disparaître (le cube posé est rendu par UpgradeSlot, pas ici). ═══
 // onClick (action Améliorer) : la case devient cliquable — bordure verte
 // accentuée quand sélectionnable, dorée lumineuse quand sélectionnée.
 export function GhostSquare({ resource, kind = "gain", filled = false, size = 23, title, onClick, selected }) {
@@ -290,14 +372,17 @@ export function GhostSquare({ resource, kind = "gain", filled = false, size = 23
         background: kind === "cost" ? "var(--cost-bg)" : "var(--gain-bg)",
         border: "1.5px solid var(--cube-border)",
         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)",
+      } : kind === "cost" ? {
+        background: "var(--cost-bg)",
+        border: "1.5px dashed var(--cost-border)",
       } : {
         background: "transparent",
-        border: `1.5px dashed ${kind === "cost" ? "rgba(160,48,48,0.6)" : "rgba(150,150,140,0.5)"}`,
+        border: "1.5px dashed rgba(150,150,140,0.5)",
       }),
       ...(onClick ? { cursor: "pointer", border: `1.5px dashed ${selected ? "#e6c96a" : "#4caf50"}` } : {}),
       ...(selected ? { border: "2px solid #e6c96a", boxShadow: "0 0 8px rgba(230,201,106,0.85)", background: "rgba(230,201,106,0.18)" } : {}),
     }}>
-      {Icon && <Icon size={iconSize} color={selected ? "#f0e0a8" : filled ? "rgba(255,255,255,0.9)" : kind === "cost" ? "rgba(200,110,110,0.55)" : "rgba(200,200,190,0.45)"} />}
+      {Icon && <Icon size={iconSize} color={selected ? "#f0e0a8" : filled || kind === "cost" ? "rgba(255,255,255,0.9)" : "rgba(200,200,190,0.45)"} />}
     </div>
   );
 }

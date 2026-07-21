@@ -1,16 +1,11 @@
 // Coût croissant de Produce (règle Scythe) : plus on a sorti d'ouvriers,
 // plus produire coûte. On démarre avec 2 ouvriers, 6 autres à sortir (max 8).
+// La piste des 6 ouvriers (ProduceTrack) matérialise la règle : le coût est
+// IMPRIMÉ sous les cases — ⚡ sous la 2e sortie, ♥ sous la 4e, 💰 sous la 6e :
 //   1-3 ouvriers : gratuit          (0-1 sorti)
 //   4-5 ouvriers : 1 Puissance     (2-3 sortis)
 //   6-7 ouvriers : + 1 Popularité  (4-5 sortis)
 //   8   ouvriers : + 1 Pièce       (6 sortis)
-export const PRODUCE_TIERS = [
-  { min: 1, max: 3, label: "1-3", cost: "gratuit" },
-  { min: 4, max: 5, label: "4-5", cost: "1⚡" },
-  { min: 6, max: 7, label: "6-7", cost: "1⚡ 1♥" },
-  { min: 8, max: 8, label: "8", cost: "1⚡ 1♥ 1$" },
-];
-
 export const getProduceCost = (nWorkers) => {
   const pui = nWorkers >= 4 ? 1 : 0;
   const pop = nWorkers >= 6 ? 1 : 0;

@@ -1,7 +1,78 @@
 # Rapport de simulation — parties bot vs bot
 
-> `npm run sim -- --games 500 --seed 42` · **v9** : équilibrage final par
-> stats de départ asymétriques (façon fiches de faction de l'original).
+> `npm run sim -- --games 500 --seed 42` · **v10** : popularité 100 % plateau
+> joueur (règle Scythe stricte) + améliorations top réelles + coût bottom min 1.
+
+## 0-v10. Popularité plateau joueur seul, améliorations réelles, coût min 1
+
+### La règle appliquée à la lettre
+
+Décision (demande) : **la fiche de faction ne porte QUE le militaire**
+(puissance, cartes de combat) — popularité ET pièces de départ viennent
+exclusivement du plateau joueur, comme dans le Scythe original. Les
+`startBonus` de popularité (v6-v9) et le mécanisme `startAbs` sont supprimés
+(`factions.js`, `player.js`, SetupScreen, flags `--ab acadRestore/noTrioBoost`).
+
+### Deux corrections de règles au passage (relevées en partie réelle)
+
+1. **Les améliorations de la rangée haut étaient cosmétiques** : retirer un
+   cube n'améliorait RIEN (Soutien donnait +2⚡/+1🃏 constants, Move restait à
+   2 unités…). Désormais chaque case correspond à une option précise et
+   s'applique réellement — humain ET bots (`TOP_UPGRADES` dans mats.js) :
+   Soutien ⚡ +2→+3 et 🃏 +1→+2 · Commerce 📦 2→3 et ♥ +1→+2 ·
+   Déplacer 2 unités→3 et Gain 1$→2$ · Produire +1 hex. Le rendu place chaque
+   case en ligne à côté de son option (plus d'⚡ fantômes empilés en fin de
+   rangée), et le gain de Construire porte un logo de chantier (plus
+   l'ouvrier, incohérent).
+2. **Un coût bottom pouvait tomber à 0** (Forge Deploy, Atelier/Terroir
+   Upgrade, Fordisme Build). Règle rétablie : il reste TOUJOURS ≥ 1 ressource
+   à payer — `bottomSlots` plafonnés à (base − 1) par colonne, total ramené à
+   6 par plateau (l'étoile 6-Améliorations reste atteignable), plafond
+   appliqué partout (UI, placement humain, bots, `getBottomCost`).
+
+### Mesures (1000-3000 parties/batch, seed 42)
+
+| Faction | HEAD (bonus pop) | Sans bonus | + mécaniques corrigées |
+|---|---|---|---|
+| Confédération | 23,9 % | 20,7 % | 22,6 % |
+| Frente | 42,2 % | 47,6 % | 41,8 % |
+| Nations | 30,5 % | 39,9 % | 44,9 % |
+| Acadiane | 10,1 % | 10,6 % | 8,8 % |
+| Bayou | 29,4 % | 24,3 % | 24,4 % |
+| Dominion | 34,2 % | 27,1 % | 27,5 % |
+
+Lecture : les bonus de pop ne portaient plus l'équilibre (l'écart 10-42 %
+existait déjà avec eux) — les bots compensent en ACHETANT de la pop (Trade).
+
+### Compensations militaires testées en A/B — verdict : ≤ bruit
+
+Seul levier légitime restant sur une fiche de faction : ⚡/🃏 de départ.
+Batterie testée (1000-3000 parties/config) : Confédération 5/3 (+2,5 pts
+avant refonte, −1 après), Frente 1/2 et 1/1 (−5 avant, +2 après — non
+reproductible), Nations 2/1 (nul), Acadiane 4/4 et 5/4 (nul — son problème
+n'est pas militaire), Bayou 4/4 et 3/4 (±2), Dominion 4/3 (−2). Aucun effet
+ne survit au bruit (±3-4 pts) : **les stats identitaires sont conservées**
+(Conf 4/1, Frente 2/3, Nations 3/2, Acadiane 2/3, Bayou 2/3, Dominion 3/2).
+
+### Validation finale (3 seeds, 5000 parties, 0 crash / 0 invariant)
+
+| Faction | seed 42 (1000) | seed 7 (2000) | seed 123 (2000) |
+|---|---|---|---|
+| Frente | 41,8 % | 43,4 % | 45,6 % |
+| Nations | 44,9 % | 42,1 % | 40,8 % |
+| Dominion | 27,5 % | 26,7 % | 29,3 % |
+| Bayou | 24,4 % | 24,5 % | 25,4 % |
+| Confédération | 22,6 % | 22,4 % | 21,4 % |
+| Acadiane | 8,8 % | 11,2 % | 9,9 % |
+
+### Chantier restant (structurel, hors stats de départ)
+
+- **Acadiane ~10 %** : 1,7 étoile/partie, mechas 2,1/4 — pas de métal natif ni
+  d'alternative de déploiement. Levier suggéré : capacité (déployer via
+  comptoirs ? bois flotté ?) ou géographie, PAS les stats de départ (mesuré).
+- **Frente/Nations ~42-45 %** : nourriture native (Enlist) + déploiement
+  alternatif (Nations) — nerf militaire mesuré sans effet ; levier suggéré :
+  coût/portée de leurs capacités.
 
 ## 0-v9. Équilibrage par stats de départ — l'état final (imprimable)
 

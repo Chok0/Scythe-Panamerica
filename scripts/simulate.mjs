@@ -62,12 +62,11 @@ if (ABS.has('noDomImport')) BALANCE.imperialImport = false;
 if (ABS.has('resCap12')) BALANCE.resScoringCap = 12;
 //   --ab wfOff       → désactive complètement le White Flag (diagnostic Acadiane)
 if (ABS.has('wfOff')) BALANCE.whiteFlagEnabled = false;
-//   --ab acadRestore → annule le handicap de départ Acadiane v8 (contrôle)
-if (ABS.has('acadRestore')) { FACTIONS.acadiane.cards = 3; delete FACTIONS.acadiane.startBonus; }
 //   --ab domSame     → Dominion façon Rusviet : peut rejouer la même colonne
 if (ABS.has('domSame')) BALANCE.dominionRelentless = true;
-//   --ab noTrioBoost → retire la compensation de départ Conf/Bayou/Dominion (contrôle)
-if (ABS.has('noTrioBoost')) ['confederation', 'bayou', 'dominion'].forEach(f => { delete FACTIONS[f].startBonus; });
+// (acadRestore / noTrioBoost supprimés : les startBonus de popularité n'existent
+//  plus — la pop de départ vient du plateau joueur seul, règle Scythe. La
+//  compensation des factions se joue sur puissance/cartes dans factions.js.)
 //   --ab legacyMap   → carte v1 d'origine (avant retouches péninsules)
 if (ABS.has('legacyMap')) loadMap(LEGACY_MAP);
 // (le nerf acadianeHard testé en A/B est désormais le comportement par défaut — factions.js)
@@ -163,7 +162,12 @@ const checkInvariants = (p, round, issues) => {
   // Conservation des cubes d'upgrade (6 au total par plateau)
   const cubes = (p.cubesOnTop || []).reduce((a, b) => a + b, 0) + (p.cubesOnBottom || []).reduce((a, b) => a + b, 0);
   if (cubes !== 6) flag(`cubes upgrade non conservés: ${cubes} != 6`);
-  if (p.stars > 8) flag(`étoiles improbables: ${p.stars}`);
+  // 12 sources d'étoiles distinctes, toutes gardées par un booléen — un total
+  // >10 signalerait un double comptage. 9 est atteignable légitimement depuis
+  // v10 (combats défensifs pendant les tours adverses + tour final dense avec
+  // les améliorations réelles : 3 hex de production, Soutien +3…) — observé
+  // 1×/500 parties.
+  if (p.stars > 10) flag(`étoiles improbables: ${p.stars}`);
 };
 
 // ── Une partie complète ──
@@ -267,6 +271,8 @@ const playGame = (gameIdx, log) => {
           }
         } else {
           p.hero = hbHexOf(p.faction).id;
+          // Règle : le perdant pioche 1 carte s'il a engagé au moins 1 point
+          if (botTotal >= 1) p.combatCards++;
         }
       }
       players[cp] = p;
@@ -386,6 +392,8 @@ const playGame = (gameIdx, log) => {
               const hbh = hbHexOf(pl.faction);
               if (bp.hero === toId) bp.hero = hbh.id;
               bp.mechs = bp.mechs.map(m => m.hexId === toId ? { ...m, hexId: hbh.id } : m);
+              // Règle : le perdant pioche 1 carte s'il a engagé au moins 1 point
+              if (botTotal >= 1) bp.combatCards++;
             }
             players[pi] = bp;
             break;

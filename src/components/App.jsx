@@ -11,15 +11,15 @@ import { BALANCE } from '../data/balance.js';
 import { EMPIRE_START, drawEmpireCombat } from '../data/empire.js';
 import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } from '../data/plans.js';
-import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing } from '../data/mats.js';
+import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
 import { structureBonusDetail } from '../data/structureBonus.js';
-import { reconcileHand, topCardsSum, spendTopCards, handSummary } from '../logic/cards.js';
+import { reconcileHand, topCardsSum, spendTopCards, spendPickedCards, handSummary } from '../logic/cards.js';
 import RulesPage from './RulesPage.jsx';
 import AmbientSound from './AmbientSound.jsx';
 import SetupScreen from './SetupScreen.jsx';
 import { countRes, spendRes, getWorkerHexes } from '../logic/resources.js';
-import { canPayProduce, payProduce, getProduceCost, produceCostLabel, PRODUCE_TIERS } from '../logic/production.js';
+import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
 import { getValidMoves, findPathWaypoints, marshToll } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
@@ -30,7 +30,7 @@ import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from 
 import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { getPlanBottomBonus, auraPowerCount } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
-import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, RESOURCE_ICONS, BUILDING_ICONS, Glyph } from './svg/ActionIcons.jsx';
+import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, ProduceTrack, RESOURCE_ICONS, BUILDING_ICONS, Glyph } from './svg/ActionIcons.jsx';
 import { getMechAbilities } from '../data/mechAbilities.js';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 import { TERRAIN_TEXTURES, TERRAIN_TILE } from '../assets/terrains/index.js';
@@ -106,6 +106,8 @@ export default function App(){
   const[undoStack,setUndoStack]=useState([]); // pile d'annulation (snapshots d'état, dans le tour humain)
   const[redoStack,setRedoStack]=useState([]); // pile de rétablissement
   const[tradePicks,setTradePicks]=useState([]); // for Trade: array of picked resource types (0-2)
+  const[producePicks,setProducePicks]=useState([]); // for Produce: hex choisis au clic (2-3 + Moulin en bonus)
+  const[abilityOffer,setAbilityOffer]=useState(null); // pouvoir de faction OPTIONNEL à confirmer: {type:"servitude"|"trap"|"flag", hexId}
   const[hovHex,setHovHex]=useState(null);
   const[clickRipple,setClickRipple]=useState(null); // {hexId, key} for ripple animation
   const[showOpponents,setShowOpponents]=useState(false); // barre du haut dépliée : ressources + étoiles adverses
@@ -128,7 +130,9 @@ export default function App(){
 
   const me=players[0];const myFaction=me?FACTIONS[me.faction]:null;const myMat=me?MATS.find(m=>m.id===me.matId):null;
   // Plan « Réseau Neuronal » (mass_move) : 3 déplacements par action Move au lieu de 2
-  const moveLimit=me?.factoryCard?.topBonus==="mass_move"?3:2;
+  // 2 unités de base, 3 si le cube de l'option « +1 unité » est retiré
+  // (le plan « mass_move » garantit au moins 3)
+  const moveLimit=Math.max(me?.factoryCard?.topBonus==="mass_move"?3:2, 2+(me?topUpgradeCount(me,"Move","worker"):0));
 
   useEffect(()=>{if(logRef.current)logRef.current.scrollTop=logRef.current.scrollHeight;},[log]);
 
@@ -371,6 +375,16 @@ export default function App(){
     const obj=p.objectives?.[objIdx];if(!obj)return;
     if(obj.check(p)){setPlayers(prev=>{const n=[...prev];n[0]={...n[0],objectiveRevealed:true,revealedObjectiveIdx:objIdx,stars:n[0].stars+1};return n;});addLog(`⭐ "${obj.name}" révélé !`);}
     else addLog(`❌ "${obj.name}" — condition non remplie`);
+  },[players,addLog]);
+
+  // Objectif de faction : comme la mission secrète, le révéler est un CHOIX —
+  // garder une étoile « invisible » pour conclure par surprise est une
+  // stratégie légitime (le sandbagging du 4-étoiles)
+  const revealFObj=useCallback(()=>{
+    const p=players[0];const fc=FACTIONS[p?.faction];
+    if(!p||!fc?.fObj||p.fObjRevealed||!fc.fObj.check(p))return;
+    setPlayers(prev=>{const n=[...prev];n[0]={...n[0],stars:n[0].stars+1,fObjRevealed:true};return n;});
+    addLog(`🏛⭐ Objectif de faction "${fc.fObj.name}" révélé !`);
   },[players,addLog]);
 
   useEffect(()=>{
@@ -668,7 +682,8 @@ export default function App(){
     const mat=MATS.find(m=>m.id===me.matId);
     if(!mat)return;
     if((me.cubesOnTop||[])[fromCol]<=0){addLog(`⚠ Pas de cube sur cette action top`);return;}
-    if((me.cubesOnBottom||[])[toCol]>=(mat.bottomSlots||[])[toCol]){addLog(`⚠ Plus de place sur cette action bottom`);return;}
+    // Plafond règle Scythe : jamais plus de (base - 1) cubes → coût min 1
+    if((me.cubesOnBottom||[])[toCol]>=maxBottomCubes(mat,toCol)){addLog(`⚠ Plus de place sur cette action bottom`);return;}
     setPlayers(prev=>{
       const n=[...prev];let p={...n[0]};
       p=spendRes(p,cost.res,effectiveQty);
@@ -695,7 +710,9 @@ export default function App(){
   const myMechAbilities=getMechAbilities(me?.faction);
 
   const doDeploy=useCallback((targetHex,overrideRes)=>{
-    if(!me||me.mechs.length>=4)return;
+    // Garde de ré-entrée : le choix de capacité en cours = le Deploy de ce
+    // tour est déjà fait (un 2e clic déployait un 2e mecha, bug mesuré en jeu)
+    if(!me||me.mechs.length>=4||pendingAbility)return;
     const costs=getBottomCost(me);
     const depCost=costs[1]; // Deploy is bottom col 1
     const baseRes=overrideRes||depCost.res;
@@ -718,7 +735,7 @@ export default function App(){
     if(me.mechs.length+1>=4)addLog(`⭐ 4 Mechas déployés !`);
     // Show ability picker — finishBottom will be called after player picks
     setPendingAbility({source:"deploy",col:1});
-  },[me,addLog]);
+  },[me,addLog,pendingAbility]);
 
   const confirmAbility=useCallback((abilityIdx)=>{
     setPlayers(prev=>{
@@ -738,7 +755,9 @@ export default function App(){
 
   // ── BOTTOM-ROW: BUILD ──
   const doBuild=useCallback((targetHex,buildingType)=>{
-    if(!me||(me.buildings||[]).length>=4)return;
+    // Garde de ré-entrée : pendant la pose de rails (Gare), le Build de ce
+    // tour est déjà fait — pas de 2e bâtiment avant finishBottom
+    if(!me||(me.buildings||[]).length>=4||railPlacement)return;
     if((me.buildings||[]).some(b=>b.hexId===targetHex)){addLog(`⚠ Déjà un bâtiment sur #${targetHex}`);return;}
     if((me.buildings||[]).some(b=>b.type===buildingType)){addLog(`⚠ ${buildingType} déjà construit`);return;}
     const costs=getBottomCost(me);
@@ -765,7 +784,7 @@ export default function App(){
       return;
     }
     finishBottom(2);
-  },[me,addLog,finishBottom]);
+  },[me,addLog,finishBottom,railPlacement]);
 
   // ── PACK UP (Nations slot 3 — free building move during Move action) ──
   const doPackUpMove=useCallback((buildingIdx,targetHex)=>{
@@ -1029,7 +1048,11 @@ export default function App(){
   // (en plus des boutons du panneau : cliquer l'hex surligné place directement)
   const actionTargets=useMemo(()=>{
     const none={type:null,hexes:new Set()};
-    if(!me||!pendingBottom)return none;
+    // Une seule exécution de l'action du bas par tour : tant que le choix de
+    // capacité (Deploy) ou la pose de rails (Gare) est en cours, plus aucune
+    // cible cliquable — sinon un 2e clic redéclenchait doDeploy/doBuild
+    // (double mecha observé en partie réelle, une seule capacité débloquée)
+    if(!me||!pendingBottom||pendingAbility||railPlacement)return none;
     const workerHexes=getWorkerHexes(me);
     const isLand=(h)=>{const hx=hMap[h];return hx&&hx.t!=="lac"&&hx.t!=="marecage";};
     if(pendingBottom.action==="Deploy"&&me.mechs.length<4){
@@ -1053,7 +1076,7 @@ export default function App(){
       return{type:"build",hexes:new Set(base.filter(h=>!(me.buildings||[]).some(b=>b.hexId===h)))};
     }
     return none;
-  },[me,pendingBottom,bottomPick]);
+  },[me,pendingBottom,bottomPick,pendingAbility,railPlacement]);
 
   // Automatic stars for the human player (bots handle these in botTurn)
   useEffect(()=>{
@@ -1071,11 +1094,8 @@ export default function App(){
       setPlayers(prev=>{const n=[...prev];n[0]={...n[0],stars:n[0].stars+1,starWorkers:true};return n;});
       addLog(`⭐👷 8 ouvriers !`);return;
     }
-    const fc=FACTIONS[p.faction];
-    if(fc?.fObj&&!p.fObjRevealed&&fc.fObj.check(p)){
-      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],stars:n[0].stars+1,fObjRevealed:true};return n;});
-      addLog(`🏛⭐ Objectif de faction "${fc.fObj.name}" accompli !`);return;
-    }
+    // (l'objectif de FACTION ne se valide plus automatiquement : comme la
+    // mission secrète, le révéler est un CHOIX du joueur — revealFObj)
   },[players,phase,addLog]);
 
   // Fix #8: Immediate game end when ANY player reaches 6 stars (Scythe rule)
@@ -1090,7 +1110,36 @@ export default function App(){
   },[players,phase,addLog]);
 
   // transportOverride : {transport:{workers,res}} — quantités choisies dans le
-  // panneau de transport partiel (repasse par ce même flux après validation)
+  // panneau de transport partiel (repasse par ce même flux après validation) ;
+  // {forceMove:true} — clic « ➤ Déplacer ici » du unitPicker quand l'hex cible
+  // portait aussi une unité à soi (ambiguïté destination/sélection tranchée)
+  // ── Hexes de production éligibles (action Produce) : ceux qui portent mes
+  // ouvriers, plus le hex du Moulin — territoire BONUS de la règle Scythe,
+  // il ne compte pas dans la limite de 2 (3 avec amélioration)
+  const produceEligible=useMemo(()=>{
+    if(selAction!=="Produce"||!me)return new Set();
+    const s=new Set(me.workers.map(w=>w.hexId));
+    const moulin=(me.buildings||[]).find(b=>b.type==="moulin");
+    if(moulin)s.add(moulin.hexId);
+    return s;
+  },[selAction,me]);
+  // Pré-sélection à l'entrée dans l'action : si le choix est trivial (tous les
+  // hex d'ouvriers tiennent dans la limite), tout cocher — sinon laisser choisir
+  useEffect(()=>{
+    if(selAction!=="Produce"||!me){setProducePicks([]);return;}
+    const maxN=2+topUpgradeCount(me,"Produce","nourriture");
+    const workerHexes=[...new Set(me.workers.map(w=>w.hexId))];
+    const moulinHex=(me.buildings||[]).find(b=>b.type==="moulin")?.hexId;
+    if(workerHexes.length<=maxN){
+      const all=[...workerHexes];
+      if(moulinHex!=null&&!all.includes(moulinHex))all.push(moulinHex);
+      setProducePicks(all);
+    }else setProducePicks([]);
+    // volontairement déclenché sur selAction seul : la sélection appartient au
+    // joueur une fois l'action ouverte
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[selAction]);
+
   const handleHexClick=useCallback((hexId,transportOverride)=>{
     if(wasDragging.current){wasDragging.current=false;return;} // suppress click after drag
     if(phase!=="playing"||botRunning||combat)return;
@@ -1148,12 +1197,22 @@ export default function App(){
       }
     }
     
+    // ── MOVE : re-cliquer l'hex de l'unité sélectionnée = DÉSÉLECTION ──
+    if(moveSource&&hexId===moveSource.fromHex){setMoveSource(null);setTransportPick(null);return;}
     if(moveSource&&validMoves.has(hexId)){
+      // Hex cible portant aussi une de MES unités encore déplaçables : le clic
+      // est ambigu (destination ? nouvelle sélection ?) → unitPicker enrichi
+      // d'une option « Déplacer ici » — avant, le clic déplaçait la 1re unité
+      // alors qu'on voulait sélectionner la voisine (bug constaté en partie)
+      if(!transportOverride&&movableUnits.has(hexId)){
+        setUnitPicker({hexId,units:movableUnits.get(hexId),moveDest:true});
+        return;
+      }
       // Snapshot avant CE déplacement → l'undo prend en compte chaque sous-coup.
       // Pas de re-push à la validation du transport : le clic qui a ouvert le
       // panneau a déjà poussé ce snapshot (sinon chaque déplacement de mech
       // chargé compterait double dans la pile d'annulation).
-      if(!transportOverride)pushHistory();
+      if(!transportOverride?.transport)pushHistory();
       // Check for combat triggers before actually moving
       const movingCombatUnit=moveSource.unitType==="hero"||moveSource.unitType==="mech";
       
@@ -1187,7 +1246,7 @@ export default function App(){
       // ── TRANSPORT PARTIEL (mech) : s'il y a de quoi emporter, ouvrir le
       // panneau de quantités au lieu d'exécuter — la validation repasse ici
       // avec transportOverride ──
-      if(moveSource.unitType==="mech"&&carryOnMove&&!transportOverride){
+      if(moveSource.unitType==="mech"&&carryOnMove&&!transportOverride?.transport){
         const wOnHex=me.workers.filter(w=>w.hexId===moveSource.fromHex).length;
         const resOnHex=Object.fromEntries(Object.entries(me.resources[String(moveSource.fromHex)]||{}).filter(([,q])=>q>0));
         if(wOnHex>0||Object.keys(resOnHex).length>0){
@@ -1303,9 +1362,9 @@ export default function App(){
           // Lose 1 pop per displaced worker
           p.pop=Math.max(0,p.pop-displaced);
           addLog(`♥ -${displaced} Pop (ouvriers déplacés)`);
-          // Servitude (Confédération) : capturer un des ouvriers chassés
-          const serv=servitudeOnDisplace(p,hexId);
-          if(serv.captured){p=serv.player;addLog(`⛓ Servitude ! Ouvrier capturé (-2 Pop, ${p.capturedWorkers}/2)`);}
+          // Servitude (Confédération) : la capture est un CHOIX du joueur
+          // (-2 Pop, max 2) — proposée après le déplacement, plus d'office
+          if(p.faction==="confederation"&&p.pop>=2&&(p.capturedWorkers||0)<2)setAbilityOffer({type:"servitude",hexId});
         }
       }
       
@@ -1336,29 +1395,15 @@ export default function App(){
       
       // ── HERO-ONLY TRIGGERS ──
       if(moveSource.unitType==="hero"){
-        // ── TIERRA MINADA: Frente places trap after hero moves ──
-        if(me.faction==="frente"&&(me.trapTokens||[]).length<4){
-          const alreadyTrapped=(me.trapTokens||[]).some(t=>t.hexId===hexId);
-          if(!alreadyTrapped){
-            setPlayers(prev=>{
-              const n=[...prev];const p2={...n[0]};
-              p2.trapTokens=[...(p2.trapTokens||[]),{hexId,disarmed:false}];
-              n[0]=p2;return n;
-            });
-            addLog(`🪤 Tierra Minada ! Trap posé sur #${hexId} (${(me.trapTokens||[]).length+1}/4)`);
-          }
+        // ── TIERRA MINADA (Frente) : poser un piège ici est un CHOIX — les
+        // 4 jetons sont précieux, l'emplacement se décide (plus d'office) ──
+        if(me.faction==="frente"&&(me.trapTokens||[]).length<4&&!(me.trapTokens||[]).some(t=>t.hexId===hexId)){
+          setAbilityOffer({type:"trap",hexId});
         }
-        // ── COMPTOIR: Acadiane places flag after hero moves ──
-        if(me.faction==="acadiane"&&(me.flagTokens||[]).length<4){
-          const alreadyFlagged=(me.flagTokens||[]).some(f=>f.hexId===hexId);
-          if(!alreadyFlagged){
-            setPlayers(prev=>{
-              const n=[...prev];const p2={...n[0]};
-              p2.flagTokens=[...(p2.flagTokens||[]),{hexId}];
-              n[0]=p2;return n;
-            });
-            addLog(`🏴 Comptoir posé sur #${hexId} (${(me.flagTokens||[]).length+1}/4)`);
-          }
+        // ── COMPTOIR (Acadiane) : idem — l'objectif de faction exige des
+        // comptoirs NON adjacents, les poser partout d'office le sabotait ──
+        if(me.faction==="acadiane"&&(me.flagTokens||[]).length<4&&!(me.flagTokens||[]).some(f=>f.hexId===hexId)){
+          setAbilityOffer({type:"flag",hexId});
         }
         
         // Encounter token?
@@ -1407,6 +1452,16 @@ export default function App(){
       else doBuild(hexId,bottomPick.building.type);
       return;
     }
+    // ── SÉLECTION DES HEX DE PRODUCTION (action Produce) : cocher/décocher ──
+    if(selAction==="Produce"&&produceEligible.has(hexId)){
+      if(producePicks.includes(hexId)){setProducePicks(p=>p.filter(h=>h!==hexId));return;}
+      const moulinHex=(me.buildings||[]).find(b=>b.type==="moulin")?.hexId;
+      const maxN=2+topUpgradeCount(me,"Produce","nourriture");
+      if(hexId!==moulinHex&&producePicks.filter(h=>h!==moulinHex).length>=maxN){
+        addLog(`⚠ Max ${maxN} hex de production (le Moulin est en bonus) — décochez-en un d'abord`);return;
+      }
+      setProducePicks(p=>[...p,hexId]);return;
+    }
     // ── SÉLECTION D'UNITÉ AU CLIC (action Move) : cliquer le pion à déplacer ──
     if(selAction==="Move"&&movableUnits.has(hexId)){
       const units=movableUnits.get(hexId);
@@ -1418,7 +1473,7 @@ export default function App(){
     if(moveSource){setMoveSource(null);setTransportPick(null);return;}
     setUnitPicker(null);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -1426,8 +1481,11 @@ export default function App(){
     // Player combat ability bonus (attacker if player moved, defender if attacked)
     const isDefender=!!combat.empireAttacks||combat.type==="pvp_defense";
     const playerCBonus=getCombatBonus(me, combat.hexId, !isDefender);
-    // Contribution des cartes = SOMME des valeurs réelles engagées (main du joueur)
-    const playerCardVal=topCardsSum(me.cardHand,combat.cardsSpend);
+    // Cartes engagées : celles CHOISIES par le joueur (cardsPicked = indices
+    // dans la main triée) — repli sur les plus fortes si aucun choix explicite
+    const handSortedR=[...(me.cardHand||[])].sort((a,b)=>b-a);
+    const pickedVals=(combat.cardsPicked||[]).map(i=>handSortedR[i]).filter(v=>v!=null);
+    const playerCardVal=combat.cardsPicked?pickedVals.reduce((a,b)=>a+b,0):topCardsSum(me.cardHand,combat.cardsSpend);
     const playerTotal=combat.powerSpend + playerCBonus.powerBonus + playerCardVal;
     if(playerCBonus.name&&(playerCBonus.powerBonus>0||playerCBonus.cardBonus>0)){
       addLog(`🛡 ${playerCBonus.name}: ${playerCBonus.powerBonus>0?`+${playerCBonus.powerBonus}⚡ `:""}${playerCBonus.cardBonus>0?`+${playerCBonus.cardBonus}🃏`:""}`);
@@ -1451,7 +1509,8 @@ export default function App(){
         Object.keys(prev[0].resources).forEach(k=>{n[0].resources[k]={...prev[0].resources[k]};});
         n[atkIdx]={...n[atkIdx],workers:[...n[atkIdx].workers],mechs:[...n[atkIdx].mechs],resources:{...n[atkIdx].resources}};
         Object.keys(prev[atkIdx].resources).forEach(k=>{n[atkIdx].resources[k]={...prev[atkIdx].resources[k]};});
-        n[0].power-=combat.powerSpend;spendTopCards(n[0],combat.cardsSpend);
+        n[0].power-=combat.powerSpend;
+        if(combat.cardsPicked)spendPickedCards(n[0],pickedVals);else spendTopCards(n[0],combat.cardsSpend);
         n[atkIdx].power-=combat.botSpend;n[atkIdx].combatCards-=combat.botCards;
         if(win){
           // Le joueur repousse l'attaquant : retraite totale du bot + étoile défenseur
@@ -1508,8 +1567,12 @@ export default function App(){
       // Spend resources
       setPlayers(prev=>{
         const n=[...prev];const p={...n[0]};
-        p.power-=combat.powerSpend;spendTopCards(p,combat.cardsSpend);
+        p.power-=combat.powerSpend;
+        if(combat.cardsPicked)spendPickedCards(p,pickedVals);else spendTopCards(p,combat.cardsSpend);
         if(!win){
+          // Règle : le PERDANT pioche 1 carte s'il a engagé au moins 1 point
+          // (puissance ou carte) — appliquée aussi contre l'Empire
+          if(playerTotal>=1)p.combatCards=(p.combatCards||0)+1;
           if(isDefender){
             // Empire attacked us — retreat ALL our combat units from that hex to home base
             const hb=HOME_BASES[p.faction];
@@ -1640,7 +1703,8 @@ export default function App(){
         // Both spend power + cards
         n[0]={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
         Object.keys(prev[0].resources).forEach(k=>{n[0].resources[k]={...prev[0].resources[k]};});
-        n[0].power-=combat.powerSpend;spendTopCards(n[0],combat.cardsSpend);
+        n[0].power-=combat.powerSpend;
+        if(combat.cardsPicked)spendPickedCards(n[0],pickedVals);else spendTopCards(n[0],combat.cardsSpend);
         n[combat.enemyIdx]={...n[combat.enemyIdx],workers:[...n[combat.enemyIdx].workers],mechs:[...n[combat.enemyIdx].mechs],resources:{...n[combat.enemyIdx].resources}};
         Object.keys(prev[combat.enemyIdx].resources).forEach(k=>{n[combat.enemyIdx].resources[k]={...prev[combat.enemyIdx].resources[k]};});
         n[combat.enemyIdx].power-=botPower;n[combat.enemyIdx].combatCards-=botCards;
@@ -1713,17 +1777,10 @@ export default function App(){
           });
           addLog(`🧟 Chimère ! Mecha ${ef.name} capturé → 5e mecha Bayou !`);
         }
-        // Servitude: Confédération captures 1 enemy worker (max 2 total, costs 2 pop)
+        // Servitude : la capture est un CHOIX du joueur (-2 Pop, max 2) —
+        // proposée après la victoire, plus appliquée d'office
         if(me.faction==="confederation"&&preEnemyWorkers.length>0&&me.pop>=2&&(me.capturedWorkers||0)<2){
-          setPlayers(prev=>{
-            const n=[...prev];
-            const p={...n[0],workers:[...n[0].workers]};
-            p.pop=Math.max(0,p.pop-2);
-            p.workers.push({id:`${p.faction}_serv${p.workers.length}`,hexId:combat.hexId});
-            p.capturedWorkers=(p.capturedWorkers||0)+1;
-            n[0]=p;return n;
-          });
-          addLog(`⛓ Servitude ! Ouvrier ${ef.name} capturé (-2 Pop, ${(me.capturedWorkers||0)+1}/2)`);
+          setAbilityOffer({type:"servitude",hexId:combat.hexId});
         }
       } else {
         addLog(`❌ Défaite PvP... Retraite vers la base.`);
@@ -1918,12 +1975,17 @@ export default function App(){
     const hasMemorial=(me.buildings||[]).some(b=>b.type==="memorial");
     setPlayers(prev=>{const n=[...prev];const p={...n[0]};p.coins--;
       if(type==="power"){
-        const bonus=hasArsenal?1:0;
+        // +1 si le cube d'amélioration de l'option ⚡ a été retiré (2 → 3)
+        const upg=topUpgradeCount(p,"Bolster","power");
+        const bonus=(hasArsenal?1:0)+upg;
         // Plan « L'Onde Tesla » : +1 Pui par mecha proche du héros
         const aura=auraPowerCount(p,hMap);
         p.power=Math.min(p.power+2+bonus+aura,16);
-        addLog(`💪 -1$ → +${2+bonus+aura} Pui${hasArsenal?" (Arsenal +1)":""}${aura>0?` (Onde Tesla +${aura})`:""}`);}
-      else{p.combatCards++;addLog(`🃏 -1$ → +1 CC`);}
+        addLog(`💪 -1$ → +${2+bonus+aura} Pui${upg?" (Amélioration +1)":""}${hasArsenal?" (Arsenal +1)":""}${aura>0?` (Onde Tesla +${aura})`:""}`);}
+      else{
+        // +1 si le cube d'amélioration de l'option 🃏 a été retiré (1 → 2)
+        const upg=topUpgradeCount(p,"Bolster","combatCards");
+        p.combatCards+=1+upg;addLog(`🃏 -1$ → +${1+upg} CC${upg?" (Amélioration +1)":""}`);}
       if(hasMemorial){p.pop=Math.min(p.pop+1,18);addLog(`🪦 Mémorial: +1 Pop`);}
       n[0]=p;return n;});
     endHumanTurn(myMat.topRow.indexOf("Bolster"));
@@ -1938,14 +2000,17 @@ export default function App(){
       addLog(`⚠ ${missing.join("+")} insuffisant(e)`);return;
     }
     const workersByHex={};me.workers.forEach(w=>{if(!workersByHex[w.hexId])workersByHex[w.hexId]=[];workersByHex[w.hexId].push(w);});
-    const hexIds=Object.keys(workersByHex).slice(0,2);
-    if(hexIds.length===0){addLog("⚠ Aucun ouvrier");return;}
+    // Les hex CHOISIS par le joueur (clic sur la carte) — 2 de base, 3 avec
+    // l'amélioration ; le hex du Moulin est un territoire bonus hors limite
+    const moulinHex=(me.buildings||[]).find(b=>b.type==="moulin")?.hexId;
+    const hexIds=[...new Set(producePicks)].filter(h=>workersByHex[String(h)]||h===moulinHex).map(String);
+    if(hexIds.length===0){addLog("⚠ Sélectionnez vos hex de production (clic sur la carte)");return;}
     const costLabel=produceCostLabel(me.workers.length);
     setPlayers(prev=>{
       const n=[...prev];const p={...n[0],resources:{...n[0].resources},workers:[...n[0].workers]};
       payProduce(p);
       hexIds.forEach(hidStr=>{
-        const hid=parseInt(hidStr);const hex=hMap[hid];const t=TERRAINS[hex?.t];if(!t)return;let wCount=workersByHex[hidStr].length;
+        const hid=parseInt(hidStr);const hex=hMap[hid];const t=TERRAINS[hex?.t];if(!t)return;let wCount=(workersByHex[hidStr]||[]).length;
         // Moulin building: +1 production on this hex (as if +1 worker)
         const hasMoulin=(p.buildings||[]).some(b=>b.type==="moulin"&&b.hexId===hid);
         if(hasMoulin)wCount++;
@@ -1956,25 +2021,37 @@ export default function App(){
         else if(t.res&&t.res!=="ouvriers"){if(!p.resources[hidStr])p.resources[hidStr]={};p.resources[hidStr][t.res]=(p.resources[hidStr][t.res]||0)+wCount;addLog(`🏭 +${wCount} ${t.res} #${hid}${hasMoulin?" (Moulin +1)":""}${hasModelM?" (Model M ×2)":""}`);}
       });n[0]=p;return n;});
     if(costLabel!=="Gratuit")addLog(`💳 ${costLabel}`);
+    setProducePicks([]);
     endHumanTurn(myMat.topRow.indexOf("Produce"));
   };
 
   // Trade en 2 temps : on remplit 2 emplacements (mêmes ou différents), puis
   // on CONFIRME — l'état est visible, rien ne part sans validation
-  const doTradePick=(resType)=>{
+  // 2 ressources de base, +1 par cube d'amélioration retiré (option 📦)
+  const tradeSlots=2+(me?topUpgradeCount(me,"Trade","metal"):0);
+  // Règle Scythe : chaque ressource achetée atterrit sur un hex portant un de
+  // MES ouvriers, AU CHOIX (réparties librement) — tradePicks = [{res,hexId}],
+  // choisis en cliquant le chip de ressources au-dessus de l'hex (façon
+  // Scythe Digital Edition)
+  const tradeHexes=useMemo(()=>{
+    if(selAction!=="Trade"||!me)return [];
+    return [...new Set(me.workers.map(w=>w.hexId))].filter(h=>hMap[h]&&!hMap[h].base);
+  },[selAction,me]);
+  const tradeLabel=(picks)=>{const c={};picks.forEach(({res,hexId})=>{const k=`${res}#${hexId}`;c[k]=(c[k]||0)+1;});
+    return Object.entries(c).map(([k,n])=>{const[r,h]=k.split("#");return `+${n} ${r} (#${h})`;}).join(", ");};
+  const doTradePick=(resType,hexId)=>{
     if(!me||me.coins<1){addLog("⚠ Pas d'$");return;}
-    setTradePicks(prev=>prev.length>=2?prev:[...prev,resType]);
+    setTradePicks(prev=>prev.length>=tradeSlots?prev:[...prev,{res:resType,hexId}]);
   };
   const doTradeConfirm=()=>{
-    if(!me||me.coins<1||tradePicks.length!==2)return;
+    if(!me||me.coins<1||tradePicks.length!==tradeSlots)return;
     const picks=[...tradePicks];
-    const workerHex=me.workers.length>0?me.workers[0].hexId:me.hero;
-    setPlayers(prev=>{const n=[...prev];const p={...n[0],resources:{...n[0].resources}};const hid=String(workerHex);
-      if(!p.resources[hid])p.resources[hid]={};
-      picks.forEach(r=>{p.resources[hid][r]=(p.resources[hid][r]||0)+1;});
+    setPlayers(prev=>{const n=[...prev];const p={...n[0],resources:{...n[0].resources}};
+      picks.forEach(({res,hexId})=>{const hid=String(hexId);
+        p.resources[hid]={...(p.resources[hid]||{})};
+        p.resources[hid][res]=(p.resources[hid][res]||0)+1;});
       p.coins--;n[0]=p;return n;});
-    const label=picks[0]===picks[1]?`+2 ${picks[0]}`:`+1 ${picks[0]}, +1 ${picks[1]}`;
-    addLog(`💰 -1$ → ${label} (sur #${workerHex})`);setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));
+    addLog(`💰 -1$ → ${tradeLabel(picks)}`);setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));
   };
 
   const allHexContents=useMemo(()=>{
@@ -2174,7 +2251,9 @@ export default function App(){
     {key:"mech",icon:"⬡",name:"4 Mechas déployés",done:me.mechs.length>=4,prog:`${me.mechs.length}/4`,need:"Déployer 4 mechas (action Deploy, sur un hex avec un ouvrier)."},
     {key:"build",icon:"🏗",name:"4 Bâtiments",done:(me.buildings||[]).length>=4,prog:`${(me.buildings||[]).length}/4`,need:"Construire 4 bâtiments (action Build, sur un hex avec un ouvrier)."},
     {key:"recr",icon:"🤝",name:"4 Recrues",done:(me.recruits||0)>=4,prog:`${me.recruits||0}/4`,need:"Enrôler 4 recrues (action Enlist)."},
-    {key:"cbt",icon:"⚔",name:"2 Combats gagnés",done:(me.combatWins||0)>=2,prog:`${Math.min(me.combatWins||0,2)}/2`,need:"Gagner 2 combats (1 étoile par victoire, max 2)."},
+    // Règle Scythe : DEUX étoiles de combat distinctes, une par victoire
+    {key:"cbt1",icon:"⚔",name:"1er Combat gagné",done:(me.combatWins||0)>=1,prog:`${Math.min(me.combatWins||0,1)}/1`,need:"Gagner un combat (chaque victoire pose sa propre étoile)."},
+    {key:"cbt2",icon:"⚔",name:"2e Combat gagné",done:(me.combatWins||0)>=2,prog:`${Math.min(Math.max((me.combatWins||0)-1,0),1)}/1`,need:"Gagner un second combat (2e étoile de combat)."},
     {key:"obj",icon:"🎯",name:"Mission secrète",done:!!me.objectiveRevealed,prog:me.objectiveRevealed?"✓":"…",need:"Remplir la condition d'une de vos 2 missions secrètes puis la révéler."},
     {key:"fobj",icon:"🏛",name:"Objectif de faction",done:!!me.fObjRevealed,prog:me.fObjRevealed?"✓":"…",need:myFaction.fObj?`${myFaction.fObj.name} — ${myFaction.fObj.desc}`:"Accomplir l'objectif de votre faction."},
     {key:"wrk",icon:"👷",name:"8 Ouvriers",done:me.workers.length>=8,prog:`${me.workers.length}/8`,need:"Avoir 8 ouvriers sur le plateau (produits sur les villages)."},
@@ -2188,7 +2267,8 @@ export default function App(){
     {icon:"⬡",label:"Mech",done:p.mechs.length>=4,prog:`${p.mechs.length}/4`},
     {icon:"🏗",label:"Bât",done:(p.buildings||[]).length>=4,prog:`${(p.buildings||[]).length}/4`},
     {icon:"🤝",label:"Recr",done:(p.recruits||0)>=4,prog:`${p.recruits||0}/4`},
-    {icon:"⚔",label:"Cbt",done:(p.combatWins||0)>=2,prog:`${Math.min(p.combatWins||0,2)}/2`},
+    {icon:"⚔",label:"Cbt1",done:(p.combatWins||0)>=1,prog:`${Math.min(p.combatWins||0,1)}/1`},
+    {icon:"⚔",label:"Cbt2",done:(p.combatWins||0)>=2,prog:`${Math.min(Math.max((p.combatWins||0)-1,0),1)}/1`},
     {icon:"👷",label:"Ouv",done:p.workers.length>=8,prog:`${p.workers.length}/8`},
     {icon:"♥",label:"Pop",done:p.pop>=18,prog:`${p.pop}/18`},
     {icon:"⚡",label:"Pui",done:p.power>=16,prog:`${p.power}/16`},
@@ -2501,9 +2581,11 @@ export default function App(){
           })()}
           {/* Hexes */}
           {HEXES.map(hex=>{
-            const isV=validMoves.has(hex.id);const isSel=selHex===hex.id;const isHov=hovHex===hex.id;
+            // Produce : hex éligibles surlignés (isSrc), hex cochés en vert (isV)
+            const isV=validMoves.has(hex.id)||(selAction==="Produce"&&producePicks.includes(hex.id));
+            const isSel=selHex===hex.id;const isHov=hovHex===hex.id;
             const isFactory=hex.t==="factory";
-            const isSrc=(!moveSource&&movableUnits.has(hex.id))||actionTargets.hexes.has(hex.id);
+            const isSrc=(!moveSource&&movableUnits.has(hex.id))||actionTargets.hexes.has(hex.id)||produceEligible.has(hex.id);
             const isBonusTile=structureBonus&&hex.t!=="lac"&&hex.t!=="marecage"&&hex.t!=="factory"&&structureBonus.check(hex.id);
             // Territorial control contour (§2.3 refonte visuelle) : la première unité
             // présente sur l'hex porte la couleur de contrôle — un hex n'est jamais
@@ -2630,6 +2712,25 @@ export default function App(){
               <animate attributeName="opacity" from="0.6" to="0" dur="0.5s" fill="freeze"/>
             </circle>;
           })()}
+          {/* ═══ COMMERCE — chip des 4 ressources au-dessus de chaque hex à
+              ouvrier (façon Scythe Digital Edition) : cliquer une icône dépose
+              la ressource achetée SUR CET HEX (règle : les ressources
+              atterrissent sur un territoire portant un de vos ouvriers) ═══ */}
+          {selAction==="Trade"&&me&&me.coins>=1&&tradePicks.length<tradeSlots&&tradeHexes.map(hid=>{
+            const hex=hMap[hid];if(!hex)return null;
+            const RESL=["metal","bois","nourriture","petrole"];
+            const w=RESL.length*22+8,x0=hex.rx-w/2,y0=hex.ry-60;
+            return(<g key={`tr${hid}`} style={{cursor:"pointer"}}>
+              <rect x={x0} y={y0} width={w} height={26} rx={6} fill="rgba(14,12,8,0.92)" stroke="var(--gold-dim)" strokeWidth={1}/>
+              <path d={`M${hex.rx-5} ${y0+26} L${hex.rx+5} ${y0+26} L${hex.rx} ${y0+33} Z`} fill="rgba(14,12,8,0.92)" stroke="var(--gold-dim)" strokeWidth={1}/>
+              {RESL.map((r,i)=>{const Icon=RESOURCE_ICONS[r];return(
+                <g key={r} transform={`translate(${x0+5+i*22},${y0+5})`} onClick={(e)=>{e.stopPropagation();doTradePick(r,hid);}}>
+                  <title>{`+1 ${r} sur #${hid}`}</title>
+                  <rect x={-2} y={-3} width={21} height={22} rx={3} fill="transparent"/>
+                  <Icon size={16} color="#d8c9a3"/>
+                </g>);})}
+            </g>);
+          })}
           {/* Home Bases — purement décoratif : pointerEvents none pour que
               l'hex de base interactif en dessous reçoive bien les clics */}
           {Object.entries(HOME_BASES).map(([fid,hb])=>{
@@ -2655,8 +2756,15 @@ export default function App(){
           <div style={{position:"absolute",bottom:16,left:"50%",transform:"translateX(-50%)",zIndex:8,
             background:"rgba(14,12,8,0.95)",border:"1px solid var(--gold-dim)",borderRadius:10,
             padding:"10px 14px",boxShadow:"0 6px 30px rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",animation:"slideUp 0.2s ease"}}>
-            <div style={{fontSize:14,color:"var(--gold)",fontWeight:700,marginBottom:8,fontFamily:"var(--font-title)"}}>Quelle unité déplacer depuis #{unitPicker.hexId} ?</div>
+            <div style={{fontSize:14,color:"var(--gold)",fontWeight:700,marginBottom:8,fontFamily:"var(--font-title)"}}>
+              {unitPicker.moveDest?`Hex #${unitPicker.hexId} — y déplacer l'unité sélectionnée, ou changer d'unité ?`:`Quelle unité déplacer depuis #${unitPicker.hexId} ?`}
+            </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {unitPicker.moveDest&&(
+                <button onClick={()=>{const h=unitPicker.hexId;setUnitPicker(null);handleHexClick(h,{forceMove:true});}} className="act-btn" style={{fontSize:15,borderColor:"var(--gold)",color:"var(--gold)",fontWeight:700}}>
+                  ➤ Déplacer ici
+                </button>
+              )}
               {unitPicker.units.map(u=>(
                 <button key={u.id} onClick={()=>doMove(u.type,u.id,unitPicker.hexId)} className="act-btn" style={{borderColor:myFaction.color+"88",fontSize:15}}>
                   <Glyph icon={u.icon} size={15}/> {u.label}
@@ -2667,68 +2775,8 @@ export default function App(){
           </div>
         )}
 
-        {/* ═══ TRANSPORT PARTIEL — répartition façon balance à deux plateaux
-            (modèle Scythe Digital Edition) : hex qui GARDE à gauche, mecha qui
-            EMBARQUE à droite, ‹ › « » par ligne + tout-laisser/tout-embarquer ═══ */}
-        {transportPick&&(()=>{
-          const tp=transportPick;
-          const sq={width:24,height:24,borderRadius:4,border:"1px solid var(--border)",background:"var(--bg3)",color:"var(--gold-dim)",cursor:"pointer",fontSize:13,fontWeight:800,lineHeight:1,padding:0};
-          const bigSq={...sq,width:32,height:32,fontSize:15,color:"var(--gold)"};
-          const setW=(v)=>setTransportPick(t=>({...t,workers:Math.max(0,Math.min(t.workersMax,v))}));
-          const setR=(rt,v)=>setTransportPick(t=>({...t,res:{...t.res,[rt]:Math.max(0,Math.min(t.resMax[rt],v))}}));
-          const row=(key,Icon,taken,max,set,divider)=>(
-            <div key={key} style={{display:"flex",alignItems:"center",gap:5,padding:"3px 0",borderBottom:divider?"1px dashed var(--border-dark)":"none",marginBottom:divider?4:0}}>
-              <button style={sq} title="Tout laisser sur l'hex" onClick={()=>set(0)}>«</button>
-              <button style={sq} title="En laisser 1 de plus" onClick={()=>set(taken-1)}>‹</button>
-              <span style={{width:20,textAlign:"center",fontFamily:"var(--font-mono)",fontSize:14,color:max-taken>0?"var(--text)":"var(--text-muted)"}}>{max-taken}</span>
-              <div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
-                <span style={{width:20,display:"flex",justifyContent:"center",flexShrink:0}}>{Icon&&<Icon size={17} color="#d8c9a3"/>}</span>
-                <div style={{flex:1,height:5,borderRadius:3,background:"rgba(0,0,0,0.55)",border:"1px solid var(--border-dark)",position:"relative"}}>
-                  <div style={{position:"absolute",right:0,top:0,bottom:0,width:`${max?taken/max*100:0}%`,background:"linear-gradient(90deg,#8a6c2e,#c9a84c)",borderRadius:3,transition:"width 0.15s ease"}}/>
-                </div>
-              </div>
-              <span style={{width:20,textAlign:"center",fontFamily:"var(--font-mono)",fontSize:14,color:taken>0?"var(--gold)":"var(--text-muted)"}}>{taken}</span>
-              <button style={sq} title="En embarquer 1 de plus" onClick={()=>set(taken+1)}>›</button>
-              <button style={sq} title="Tout embarquer" onClick={()=>set(max)}>»</button>
-            </div>
-          );
-          const MechIcon=RESOURCE_ICONS.mech,WorkerIcon=RESOURCE_ICONS.worker;
-          return(
-          <div style={{position:"absolute",bottom:16,left:"50%",transform:"translateX(-50%)",zIndex:8,width:400,
-            background:"linear-gradient(180deg,#241d12,#14100a)",border:"1px solid var(--gold-dim)",borderRadius:10,
-            boxShadow:"0 6px 30px rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",animation:"slideUp 0.2s ease",overflow:"hidden"}}>
-            <div style={{textAlign:"center",padding:"5px 0",fontFamily:"var(--font-title)",fontSize:14,letterSpacing:5,fontWeight:800,color:"var(--gold)",borderBottom:"1px solid var(--border)",background:"rgba(0,0,0,0.3)"}}>TRANSPORT</div>
-            <div style={{display:"flex",alignItems:"stretch",gap:8,padding:"8px 10px 4px"}}>
-              {/* Plateau gauche : l'hex de départ (ce qui RESTE) */}
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:42,paddingBottom:2}}>
-                <span title={`Reste sur l'hex #${tp.fromHex}`} style={{fontSize:24,lineHeight:1,color:"#8a8070"}}>⬡</span>
-                <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>#{tp.fromHex}</span>
-                <button style={bigSq} title="Tout laisser (le mecha part seul)"
-                  onClick={()=>setTransportPick(t=>({...t,workers:0,res:Object.fromEntries(Object.keys(t.resMax).map(k=>[k,0]))}))}>≪</button>
-              </div>
-              {/* Lignes : ouvriers (séparés) puis ressources */}
-              <div style={{flex:1,minWidth:0}}>
-                {tp.workersMax>0&&row("workers",WorkerIcon,tp.workers,tp.workersMax,setW,Object.keys(tp.resMax).length>0)}
-                {Object.entries(tp.resMax).map(([rt,mx])=>row(rt,RESOURCE_ICONS[rt],tp.res[rt]||0,mx,(v)=>setR(rt,v),false))}
-              </div>
-              {/* Plateau droit : le mecha (ce qui EMBARQUE) */}
-              <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:42,paddingBottom:2}}>
-                <span title={`Embarqué vers l'hex #${tp.toHex}`}>{MechIcon&&<MechIcon size={24} color="#c9a84c"/>}</span>
-                <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>#{tp.toHex}</span>
-                <button style={bigSq} title="Tout embarquer"
-                  onClick={()=>setTransportPick(t=>({...t,workers:t.workersMax,res:{...t.resMax}}))}>≫</button>
-              </div>
-            </div>
-            <div style={{display:"flex",gap:6,padding:"4px 10px 10px"}}>
-              <button className="act-btn" style={{flex:1,fontWeight:700,minHeight:36,background:"#3a6a3a",color:"#fff",border:"none"}}
-                onClick={()=>{setTransportPick(null);handleHexClick(tp.toHex,{transport:{workers:tp.workers,res:tp.res}});}}>✓ Déplacer</button>
-              <button className="act-btn" style={{minHeight:36,opacity:0.7}} onClick={()=>setTransportPick(null)}>✕</button>
-            </div>
-          </div>);
-        })()}
-
-        {/* ═══ MODAL OVERLAYS (combat/encounter/RR/dépose en route) ═══ */}
-        {(combat||encounter||encounterBuild||encounterEnlist||rougeRiver||routeDrop)&&(
+        {/* ═══ MODAL OVERLAYS (combat/encounter/RR/dépose en route/pouvoir optionnel) ═══ */}
+        {(combat||encounter||encounterBuild||encounterEnlist||rougeRiver||routeDrop||abilityOffer)&&(
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
             <div style={{maxWidth:460,width:"92%",maxHeight:"80vh",overflow:"auto",borderRadius:12,border:"1px solid var(--border-light)",boxShadow:"0 10px 50px rgba(0,0,0,0.8)"}}>
 
@@ -2744,9 +2792,10 @@ export default function App(){
                 const isAttacker=!combat.empireAttacks&&combat.type!=="pvp_defense";
                 const cBonus=getCombatBonus(me, combat.hexId, isAttacker);
                 const maxCards=Math.min(me.combatCards, combatUnits + cBonus.cardBonus);
-                // Cartes valuées : on engage les `cardsSpend` cartes les plus fortes de la main
+                // Cartes valuées : contribution = somme des cartes CHOISIES par le
+                // joueur dans sa main (clic sur chaque carte, plus d'auto-sélection)
                 const handSorted=[...(me.cardHand||[])].sort((a,b)=>b-a);
-                const cardVal=topCardsSum(me.cardHand,combat.cardsSpend);
+                const cardVal=(combat.cardsPicked||[]).reduce((a,ci)=>a+(handSorted[ci]||0),0);
                 const total=combat.powerSpend + cBonus.powerBonus + cardVal;
                 const isPve=combat.type==="pve";
                 const enemy=!isPve?players[combat.enemyIdx]:null;
@@ -2767,15 +2816,19 @@ export default function App(){
                       ))}</div>
                     </div>
                     {maxCards>0&&<div style={{marginBottom:14}}>
-                      <div style={{fontSize:14,color:"var(--brass)",marginBottom:8,fontWeight:600}}>🃏 Cartes engagées ({combat.cardsSpend}/{maxCards}) <span style={{fontWeight:400,color:"var(--text-muted)"}}>— les plus fortes de votre main, valeur = somme</span></div>
-                      <div style={{display:"flex",gap:5,marginBottom:8}}>{Array.from({length:maxCards+1},(_,i)=>i).map(v=>(
-                        <button key={v} onClick={()=>setCombat(prev=>({...prev,cardsSpend:v}))} className={`dial-btn ${combat.cardsSpend===v?"on":"off"}`}>{v}</button>
-                      ))}</div>
-                      {/* Votre main — les cartes engagées (les plus fortes) sont surlignées */}
-                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{handSorted.map((val,ci)=>{const played=ci<combat.cardsSpend;return(
-                        <span key={ci} style={{width:26,height:34,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,fontFamily:"var(--font-mono)",
-                          background:played?"linear-gradient(180deg,#8b2020,#bb3838)":"var(--bg3)",color:played?"#fff":"var(--text-dim)",
-                          border:played?"1px solid #dd4444":"1px solid var(--border)",boxShadow:played?"0 0 6px rgba(220,50,30,0.4)":"none"}}>{val}</span>
+                      <div style={{fontSize:14,color:"var(--brass)",marginBottom:8,fontWeight:600}}>🃏 Cartes engagées ({(combat.cardsPicked||[]).length}/{maxCards}) <span style={{fontWeight:400,color:"var(--text-muted)"}}>— cliquez les cartes de votre main à engager</span></div>
+                      {/* Votre main — chaque carte se choisit individuellement (clic = engager/retirer) */}
+                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{handSorted.map((val,ci)=>{
+                        const on=(combat.cardsPicked||[]).includes(ci);
+                        return(
+                        <button key={ci} title={on?"Retirer cette carte":"Engager cette carte"} onClick={()=>setCombat(prev=>{
+                          const cur=prev.cardsPicked||[];
+                          if(cur.includes(ci))return{...prev,cardsPicked:cur.filter(x=>x!==ci),cardsSpend:cur.length-1};
+                          if(cur.length>=maxCards)return prev;
+                          return{...prev,cardsPicked:[...cur,ci],cardsSpend:cur.length+1};
+                        })} style={{width:26,height:34,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,fontFamily:"var(--font-mono)",cursor:"pointer",padding:0,
+                          background:on?"linear-gradient(180deg,#8b2020,#bb3838)":"var(--bg3)",color:on?"#fff":"var(--text-dim)",
+                          border:on?"1px solid #dd4444":"1px solid var(--border)",boxShadow:on?"0 0 6px rgba(220,50,30,0.4)":"none"}}>{val}</button>
                       );})}</div>
                     </div>}
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16,padding:"12px 16px",background:"rgba(0,0,0,0.4)",borderRadius:10,border:"1px solid var(--border)"}}>
@@ -2846,6 +2899,52 @@ export default function App(){
                   ))}
                   <button onClick={()=>{const end=routeDrop.endAfter;setRouteDrop(null);if(end)endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginTop:6,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Continuer ▶</button>
                 </div>);
+              })()}
+
+              {/* CHOIX DE POUVOIR DE FACTION — Servitude / Tierra Minada / Comptoir
+                  sont des capacités OPTIONNELLES : confirmation demandée, plus
+                  d'application d'office (les autres modaux passent en premier) */}
+              {abilityOffer&&!combat&&!encounter&&!rougeRiver&&(()=>{
+                const o=abilityOffer;
+                const conf={
+                  servitude:{icon:"⛓",title:"Servitude",desc:`Capturer un ouvrier chassé sur #${o.hexId} ? Il rejoint vos rangs (−2 Popularité · ${me.capturedWorkers||0}/2 captures).`,yes:"⛓ Capturer (−2 Pop)"},
+                  trap:{icon:"🪤",title:"Tierra Minada",desc:`Poser un piège sur #${o.hexId} ? (${(me.trapTokens||[]).length}/4 posés — inflige −3⚡ à l'ennemi qui le déclenche)`,yes:"🪤 Poser le piège"},
+                  flag:{icon:"🏴",title:"Comptoir",desc:`Établir un comptoir sur #${o.hexId} ? (${(me.flagTokens||[]).length}/4 — +1 territoire au score ; rappel : l'objectif de faction exige des comptoirs NON adjacents entre eux)`,yes:"🏴 Établir le comptoir"},
+                }[o.type];
+                const apply=()=>{
+                  setPlayers(prev=>{
+                    const n=[...prev];const p={...n[0]};
+                    if(o.type==="servitude"){
+                      if(p.pop<2||(p.capturedWorkers||0)>=2)return prev;
+                      p.workers=[...p.workers,{id:`${p.faction}_serv${p.workers.length}`,hexId:o.hexId}];
+                      p.pop=Math.max(0,p.pop-2);p.capturedWorkers=(p.capturedWorkers||0)+1;
+                    }else if(o.type==="trap"){
+                      p.trapTokens=[...(p.trapTokens||[]),{hexId:o.hexId,disarmed:false}];
+                    }else{
+                      p.flagTokens=[...(p.flagTokens||[]),{hexId:o.hexId}];
+                    }
+                    n[0]=p;return n;
+                  });
+                  addLog(o.type==="servitude"?`⛓ Servitude ! Ouvrier capturé (-2 Pop, ${(me.capturedWorkers||0)+1}/2)`
+                    :o.type==="trap"?`🪤 Tierra Minada ! Trap posé sur #${o.hexId} (${(me.trapTokens||[]).length+1}/4)`
+                    :`🏴 Comptoir posé sur #${o.hexId} (${(me.flagTokens||[]).length+1}/4)`);
+                  setAbilityOffer(null);
+                };
+                return(
+                  <div style={{padding:"20px",background:"linear-gradient(180deg,#1a1608,var(--bg2))",borderRadius:10,border:"1px solid var(--rust)",animation:"slideUp 0.35s ease"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                      <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(201,168,76,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,border:"2px solid var(--gold)",flexShrink:0}}>{conf.icon}</div>
+                      <div>
+                        <div style={{fontFamily:"var(--font-title)",color:"var(--gold)",fontSize:18,fontWeight:700}}>{conf.title}</div>
+                        <div style={{fontSize:13,color:"var(--text-dim)",lineHeight:1.5,marginTop:3}}>{conf.desc}</div>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={apply} className="act-btn" style={{flex:1,fontWeight:700,background:"#3a6a3a",color:"#fff",border:"none"}}>{conf.yes}</button>
+                      <button onClick={()=>{setAbilityOffer(null);addLog(`— ${conf.title} : pouvoir non utilisé`);}} className="act-btn" style={{flex:1,opacity:0.8}}>Non merci</button>
+                    </div>
+                  </div>
+                );
               })()}
 
               {/* ENCOUNTER */}
@@ -3094,16 +3193,16 @@ export default function App(){
                 const mat=MATS.find(m=>m.id===me.matId);
                 const cubesTop=(me.cubesOnTop||[])[i]||0;
                 const cubesBot=(me.cubesOnBottom||[])[i]||0;
-                const maxBot=(mat?.bottomSlots||[])[i]||0;
-                // Coût de Produce VISIBLE sur la carte d'action : croît avec le
-                // nombre d'ouvriers sortis (4+ → ⚡, 6+ → ♥, 8 → $)
-                const pc=getProduceCost(me.workers.length);
-                const producePay=[...Array(pc.pui).fill("power"),...Array(pc.pop).fill("pop"),...Array(pc.coins).fill("coins")];
+                // Cases utilisables plafonnées : le coût ne descend jamais sous 1
+                const maxBot=maxBottomCubes(mat,i);
+                // Le coût de Produce n'est plus une liste calculée : il se LIT sur
+                // la piste des 6 ouvriers rendue sous la rangée (ProduceTrack) —
+                // chaque case libérée révèle son coût imprimé (⚡/♥/💰)
                 const topActionRow={
-                  Move:{pay:[],gain:["worker","worker"],altGain:null,label:"Move"},
+                  Move:{pay:[],gain:["worker","worker"],altGain:["coins"],label:"Move"},
                   Bolster:{pay:["coins"],gain:["power","power"],altGain:["combatCards"],label:"Bolster"},
                   Trade:{pay:["coins"],gain:["metal","metal"],altGain:["pop"],label:"Trade"},
-                  Produce:{pay:producePay,gain:["nourriture","nourriture"],altGain:null,label:"Produce"},
+                  Produce:{pay:[],gain:["nourriture","nourriture"],altGain:null,label:"Produce"},
                 }[action]||{pay:[],gain:[],altGain:null,label:action};
                 const bottomData={
                   Upgrade:{prog:`${me.upgrades||0}/6`,max:(me.upgrades||0)>=6},
@@ -3128,11 +3227,8 @@ export default function App(){
                 const recIdx=(me.enlistMap||[])[i];
                 const rec=recIdx!=null?ENLIST_ONGOING[recIdx]:null;
                 const RIcon=rec?RESOURCE_ICONS[rec.svgKey]:null;
-                // Icône du bonus débloqué par un cube d'amélioration sur l'action du haut
-                // (affichée en case fantôme dans la rangée, pas en carré abstrait à part)
-                const topBonusRes={Move:"worker",Bolster:"power",Trade:"pop",Produce:"nourriture"}[action]||"coins";
                 // Gain intrinsèque de l'action du bas (la flèche ↑ pour Améliorer)
-                const bottomGainRes=bottomAction==="Deploy"?"mech":bottomAction==="Build"?"worker":bottomAction==="Enlist"?"pop":"upgrade";
+                const bottomGainRes=bottomAction==="Deploy"?"mech":bottomAction==="Build"?"building":bottomAction==="Enlist"?"pop":"upgrade";
                 // Action group separator: strong between pairs (after index 1), light between actions within a pair (after index 0, 2)
                 const isGroupEnd=i===1;
                 const isLastAction=i===3;
@@ -3160,17 +3256,33 @@ export default function App(){
                     {/* RANGÉE HAUT — gains de l'action (+ cases fantômes des bonus à débloquer)
                         avec, alignée à droite, la case Bâtiment domiciliée sur cette colonne */}
                     <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8}}>
-                      <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:3,flexWrap:"wrap"}}>
-                        <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact size={21} />
-                        {Array.from({length:topPark}).map((_,k)=>{
-                          // Améliorer : le prochain cube retirable de cette colonne se clique directement
-                          const isCube=k<cubesTop;
-                          const pickable=upgradePicking&&isCube&&k===cubesTop-1;
-                          return <GhostSquare key={k} resource={topBonusRes} kind="gain" filled={!isCube} size={21}
-                            selected={pickable&&bottomPick?.upgradeFrom===i}
-                            onClick={pickable?(e)=>{e.stopPropagation();setBottomPick(prev=>({...(prev||{}),upgradeFrom:i}));}:undefined}
-                            title={pickable?`① Retirer ce cube de ${FR_TOP[action]||action}`:!isCube?"Bonus débloqué (cube d'amélioration retiré)":"Bonus à débloquer via Améliorer"}/>;
-                        })}
+                      <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:4}}>
+                        <div style={{display:"flex",alignItems:"center",gap:3,flexWrap:"wrap"}}>
+                        {(()=>{
+                          // Chaque case d'amélioration correspond à une OPTION précise de
+                          // l'action (Soutien : ⚡+1 et 🃏+1 ; Commerce : ♥+1 et 📦+1…) et
+                          // se rend EN LIGNE à côté de l'option concernée — pas en vrac en
+                          // fin de rangée. Cube en place = bonus verrouillé (fantôme).
+                          const slots=Array.from({length:topPark},(_,k)=>topSlots(action,topPark)[k]||{res:"upgrade",label:"Amélioration"});
+                          const ghost=(k)=>{
+                            // Améliorer : le prochain cube retirable de cette colonne se clique directement
+                            const isCube=k<cubesTop;
+                            const pickable=upgradePicking&&isCube&&k===cubesTop-1;
+                            return <GhostSquare key={`t${k}`} resource={slots[k].res} kind="gain" filled={!isCube} size={21}
+                              selected={pickable&&bottomPick?.upgradeFrom===i}
+                              onClick={pickable?(e)=>{e.stopPropagation();setBottomPick(prev=>({...(prev||{}),upgradeFrom:i}));}:undefined}
+                              title={pickable?`① Retirer ce cube de ${FR_TOP[action]||action} (${slots[k].label})`:!isCube?`Bonus débloqué : ${slots[k].label}`:`À débloquer via Améliorer : ${slots[k].label}`}/>;
+                          };
+                          const gainGhosts=[],altGhosts=[];
+                          slots.forEach((s,k)=>{(["combatCards","pop","coins"].includes(s.res)?altGhosts:gainGhosts).push(ghost(k));});
+                          return <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact size={21}
+                            gainSuffix={gainGhosts} altSuffix={altGhosts}/>;
+                        })()}
+                        </div>
+                        {/* Piste des 6 ouvriers (règle Scythe) : chaque case libérée
+                            révèle le coût imprimé dessous — le coût de Produire se
+                            lit directement sur la piste */}
+                        {action==="Produce"&&<ProduceTrack nWorkers={me.workers.length} size={19}/>}
                       </div>
                       {colBuilding&&<div style={{width:168,flexShrink:0,display:"flex",alignSelf:"stretch"}}>
                         <BuildingSlot Icon={BIcon} name={colBuilding.name} effect={colBuilding.effect} revealed={!!builtEntry} extra={builtEntry?`#${builtEntry.hexId}`:null}/>
@@ -3213,7 +3325,8 @@ export default function App(){
               {selAction==="Move"&&(
                 <div>
                   <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Déplacement ({(me.movedUnits||[]).length}/{moveLimit})</div>
-                  <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+1};return n;});addLog(`💰 +1$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner 1$ (pas de déplacement)</button>
+                  {/* Règle : Gagner est l'ALTERNATIVE au déplacement — plus proposé dès qu'une unité a bougé */}
+                  {(me.movedUnits||[]).length===0&&<button onClick={()=>{const g=1+topUpgradeCount(me,"Move","coins");setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+g};return n;});addLog(`💰 +${g}$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner {1+topUpgradeCount(me,"Move","coins")}$ (pas de déplacement)</button>}
                   {!moveSource&&(
                     <div style={{padding:"10px 12px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:14,color:"var(--gold)",lineHeight:1.5}}>
                       👆 Cliquez sur la carte l'unité à déplacer (hexes surlignés en doré), puis sa destination.
@@ -3246,6 +3359,66 @@ export default function App(){
                   {moveSource&&<div style={{color:"#C9A84C",fontSize:14,marginTop:8,fontStyle:"italic"}}>
                     {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:<><Glyph icon={moveSource.unitType==="mech"?"⬡":"●"} size={14}/> {moveSource.unitType==="mech"?"Mecha":"Ouvrier"}</>} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts), ou une autre de vos unités pour changer.
                   </div>}
+                  {/* ═══ TRANSPORT PARTIEL — répartition façon balance à deux plateaux
+                      (modèle Scythe Digital Edition) : hex qui GARDE à gauche, mecha qui
+                      EMBARQUE à droite, ‹ › « » par ligne + tout-laisser/tout-embarquer.
+                      Rendu ICI, dans le panneau d'action de droite (pas en overlay carte). ═══ */}
+                  {transportPick&&(()=>{
+                    const tp=transportPick;
+                    const sq={width:24,height:24,borderRadius:4,border:"1px solid var(--border)",background:"var(--bg3)",color:"var(--gold-dim)",cursor:"pointer",fontSize:13,fontWeight:800,lineHeight:1,padding:0};
+                    const bigSq={...sq,width:32,height:32,fontSize:15,color:"var(--gold)"};
+                    const setW=(v)=>setTransportPick(t=>({...t,workers:Math.max(0,Math.min(t.workersMax,v))}));
+                    const setR=(rt,v)=>setTransportPick(t=>({...t,res:{...t.res,[rt]:Math.max(0,Math.min(t.resMax[rt],v))}}));
+                    const row=(key,Icon,taken,max,set,divider)=>(
+                      <div key={key} style={{display:"flex",alignItems:"center",gap:5,padding:"3px 0",borderBottom:divider?"1px dashed var(--border-dark)":"none",marginBottom:divider?4:0}}>
+                        <button style={sq} title="Tout laisser sur l'hex" onClick={()=>set(0)}>«</button>
+                        <button style={sq} title="En laisser 1 de plus" onClick={()=>set(taken-1)}>‹</button>
+                        <span style={{width:20,textAlign:"center",fontFamily:"var(--font-mono)",fontSize:14,color:max-taken>0?"var(--text)":"var(--text-muted)"}}>{max-taken}</span>
+                        <div style={{flex:1,display:"flex",alignItems:"center",gap:6}}>
+                          <span style={{width:20,display:"flex",justifyContent:"center",flexShrink:0}}>{Icon&&<Icon size={17} color="#d8c9a3"/>}</span>
+                          <div style={{flex:1,height:5,borderRadius:3,background:"rgba(0,0,0,0.55)",border:"1px solid var(--border-dark)",position:"relative"}}>
+                            <div style={{position:"absolute",right:0,top:0,bottom:0,width:`${max?taken/max*100:0}%`,background:"linear-gradient(90deg,#8a6c2e,#c9a84c)",borderRadius:3,transition:"width 0.15s ease"}}/>
+                          </div>
+                        </div>
+                        <span style={{width:20,textAlign:"center",fontFamily:"var(--font-mono)",fontSize:14,color:taken>0?"var(--gold)":"var(--text-muted)"}}>{taken}</span>
+                        <button style={sq} title="En embarquer 1 de plus" onClick={()=>set(taken+1)}>›</button>
+                        <button style={sq} title="Tout embarquer" onClick={()=>set(max)}>»</button>
+                      </div>
+                    );
+                    const MechIcon=RESOURCE_ICONS.mech,WorkerIcon=RESOURCE_ICONS.worker;
+                    return(
+                    <div style={{marginTop:8,width:"100%",
+                      background:"linear-gradient(180deg,#241d12,#14100a)",border:"1px solid var(--gold-dim)",borderRadius:10,
+                      animation:"slideUp 0.2s ease",overflow:"hidden"}}>
+                      <div style={{textAlign:"center",padding:"5px 0",fontFamily:"var(--font-title)",fontSize:14,letterSpacing:5,fontWeight:800,color:"var(--gold)",borderBottom:"1px solid var(--border)",background:"rgba(0,0,0,0.3)"}}>TRANSPORT</div>
+                      <div style={{display:"flex",alignItems:"stretch",gap:8,padding:"8px 10px 4px"}}>
+                        {/* Plateau gauche : l'hex de départ (ce qui RESTE) */}
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:42,paddingBottom:2}}>
+                          <span title={`Reste sur l'hex #${tp.fromHex}`} style={{fontSize:24,lineHeight:1,color:"#8a8070"}}>⬡</span>
+                          <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>#{tp.fromHex}</span>
+                          <button style={bigSq} title="Tout laisser (le mecha part seul)"
+                            onClick={()=>setTransportPick(t=>({...t,workers:0,res:Object.fromEntries(Object.keys(t.resMax).map(k=>[k,0]))}))}>≪</button>
+                        </div>
+                        {/* Lignes : ouvriers (séparés) puis ressources */}
+                        <div style={{flex:1,minWidth:0}}>
+                          {tp.workersMax>0&&row("workers",WorkerIcon,tp.workers,tp.workersMax,setW,Object.keys(tp.resMax).length>0)}
+                          {Object.entries(tp.resMax).map(([rt,mx])=>row(rt,RESOURCE_ICONS[rt],tp.res[rt]||0,mx,(v)=>setR(rt,v),false))}
+                        </div>
+                        {/* Plateau droit : le mecha (ce qui EMBARQUE) */}
+                        <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:42,paddingBottom:2}}>
+                          <span title={`Embarqué vers l'hex #${tp.toHex}`}>{MechIcon&&<MechIcon size={24} color="#c9a84c"/>}</span>
+                          <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>#{tp.toHex}</span>
+                          <button style={bigSq} title="Tout embarquer"
+                            onClick={()=>setTransportPick(t=>({...t,workers:t.workersMax,res:{...t.resMax}}))}>≫</button>
+                        </div>
+                      </div>
+                      <div style={{display:"flex",gap:6,padding:"4px 10px 10px"}}>
+                        <button className="act-btn" style={{flex:1,fontWeight:700,minHeight:36,background:"#3a6a3a",color:"#fff",border:"none"}}
+                          onClick={()=>{setTransportPick(null);handleHexClick(tp.toHex,{transport:{workers:tp.workers,res:tp.res}});}}>✓ Déplacer</button>
+                        <button className="act-btn" style={{minHeight:36,opacity:0.7}} onClick={()=>setTransportPick(null)}>✕</button>
+                      </div>
+                    </div>);
+                  })()}
                   {/* PACK UP — Nations free building move */}
                   {me.faction==="nations"&&(me.unlockedAbilities||[]).includes(3)&&(me.buildings||[]).length>0&&!me.packUpUsed&&!moveSource&&(()=>{
                     if(bottomPick&&bottomPick.packUp){
@@ -3276,30 +3449,31 @@ export default function App(){
                 <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Soutien (1$)</div>
                 {me.coins<1?<div style={{color:"#8A3030",fontSize:14}}>Pas assez d'$</div>:
                 <div style={{display:"flex",gap:10}}>
-                  <button onClick={()=>doBolster("power")} className="act-btn" style={{flex:1}}>⚡ +2 Puissance</button>
-                  <button onClick={()=>doBolster("cards")} className="act-btn" style={{flex:1}}>🃏 +1 Carte</button>
+                  <button onClick={()=>doBolster("power")} className="act-btn" style={{flex:1}}>⚡ +{2+topUpgradeCount(me,"Bolster","power")} Puissance</button>
+                  <button onClick={()=>doBolster("cards")} className="act-btn" style={{flex:1}}>🃏 +{1+topUpgradeCount(me,"Bolster","combatCards")} Carte{topUpgradeCount(me,"Bolster","combatCards")>0?"s":""}</button>
                 </div>}
               </div>)}
               {selAction==="Produce"&&(<div>
-                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Production (max 2 hex)</div>
+                <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Production (max {2+topUpgradeCount(me,"Produce","nourriture")} hex)</div>
                 {(()=>{
                   const nw=me.workers.length;const costStr=produceCostLabel(nw);const canPay=canPayProduce(me);
+                  const maxN=2+topUpgradeCount(me,"Produce","nourriture");
+                  const moulinHex=(me.buildings||[]).find(b=>b.type==="moulin")?.hexId;
+                  const nbPicked=producePicks.filter(h=>h!==moulinHex).length;
+                  const moulinPicked=moulinHex!=null&&producePicks.includes(moulinHex);
                   return(<div>
-                    {/* Jauge des paliers de coût — le palier courant est surligné */}
-                    <div style={{display:"flex",gap:4,marginBottom:8}}>
-                      {PRODUCE_TIERS.map(t=>{
-                        const active=nw>=t.min&&nw<=t.max;
-                        return <div key={t.label} style={{flex:1,textAlign:"center",padding:"5px 4px",borderRadius:5,fontSize:12,lineHeight:1.4,
-                          border:active?"1px solid var(--gold)":"1px solid var(--border)",
-                          background:active?"rgba(212,178,84,0.12)":"transparent",
-                          color:active?"var(--gold)":"var(--text-muted)"}}>
-                          <div style={{fontWeight:700}}>{t.label} 👷</div>
-                          <div>{t.cost}</div>
-                        </div>;
-                      })}
+                    {/* La piste des 6 ouvriers : chaque case libérée révèle son coût */}
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                      <ProduceTrack nWorkers={nw} size={26}/>
+                    </div>
+                    {/* Choix des hex AU CLIC sur la carte (le Moulin est un bonus hors limite) */}
+                    <div style={{padding:"8px 10px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:14,color:"var(--gold)",lineHeight:1.5,marginBottom:8}}>
+                      👆 Cliquez vos hex de production sur la carte (surlignés) — sélection : <b>{nbPicked}/{maxN}</b>{moulinHex!=null&&<span> {moulinPicked?"+ Moulin ✓":"· Moulin (bonus) à cocher"}</span>}
                     </div>
                     <div style={{fontSize:14,color:canPay?"var(--text-dim)":"#ff5555",marginBottom:6}}>Coût actuel : {costStr} ({nw} ouvrier{nw>1?"s":""})</div>
-                    {canPay?<button onClick={doProduce} className="act-btn" style={{width:"100%"}}>⚒ Produire</button>:<div style={{color:"#8A3030"}}>Insuffisant</div>}
+                    {canPay
+                      ?<button onClick={doProduce} disabled={producePicks.length===0} className="act-btn" style={{width:"100%",...(producePicks.length===0?{opacity:0.45,cursor:"not-allowed"}:{})}}>⚒ Produire ({producePicks.length} hex)</button>
+                      :<div style={{color:"#8A3030"}}>Insuffisant</div>}
                   </div>);
                 })()}
               </div>)}
@@ -3309,33 +3483,50 @@ export default function App(){
                 <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:8,fontSize:16}}>Commerce (1$)</div>
                 {me.coins<1?<div style={{color:"#8A3030",fontSize:14}}>Pas assez d'$</div>:
                 <div>
-                  <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:6}}>Choisissez 2 ressources (même type ou différentes) :</div>
-                  {/* 2 emplacements visibles — l'état de la sélection ne peut pas être raté */}
+                  <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:6}}>
+                    Choisissez {tradeSlots} ressources <b>sur la carte</b> : cliquez une icône dans le chip au-dessus d'un hex portant un de vos ouvriers — c'est là qu'elle atterrit (règle Scythe, réparties librement).
+                  </div>
+                  {tradeHexes.length===0&&<div style={{fontSize:13,color:"#c07050",marginBottom:8}}>⚠ Aucun ouvrier sur le plateau — seule l'option ♥ est disponible.</div>}
+                  {/* Emplacements visibles — l'état de la sélection ne peut pas être raté */}
                   <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
-                    {[0,1].map(i=>(
-                      <div key={i} style={{width:42,height:42,borderRadius:8,display:"flex",alignItems:"center",justifyContent:"center",fontSize:tradePicks[i]?20:13,
+                    {Array.from({length:tradeSlots}).map((_,i)=>(
+                      <div key={i} style={{width:46,height:42,borderRadius:8,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontSize:tradePicks[i]?17:13,lineHeight:1.15,
                         border:tradePicks[i]?"2px solid var(--gold)":"2px dashed var(--border-dark)",
                         background:tradePicks[i]?"rgba(212,178,84,0.12)":"transparent",
                         color:tradePicks[i]?"var(--text)":"var(--text-muted)"}}>
-                        {tradePicks[i]?RES_ICO[tradePicks[i]]:i+1}
+                        {tradePicks[i]?<>
+                          <span>{RES_ICO[tradePicks[i].res]}</span>
+                          <span style={{fontSize:10,color:"var(--text-dim)",fontFamily:"var(--font-mono)"}}>#{tradePicks[i].hexId}</span>
+                        </>:i+1}
                       </div>
                     ))}
                     <span style={{fontSize:13,color:"var(--text-dim)",flex:1}}>
-                      {tradePicks.length===0?"Cliquez 2 ressources ci-dessous":tradePicks.length===1?"Choisissez la 2e ressource":"Prêt — confirmez l'échange"}
+                      {tradePicks.length===0?`${tradeSlots} ressources à placer`:tradePicks.length<tradeSlots?`Encore ${tradeSlots-tradePicks.length} à placer`:"Prêt — confirmez l'échange"}
                     </span>
                     {tradePicks.length>0&&<button onClick={()=>setTradePicks([])} className="act-btn" style={{fontSize:13,padding:"6px 10px",minHeight:36,opacity:0.8}}>↩</button>}
                   </div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:8}}>
-                    {["metal","bois","nourriture","petrole"].map(r=><button key={r} onClick={()=>doTradePick(r)} disabled={tradePicks.length>=2} className="act-btn" style={{flex:1,minWidth:60,opacity:tradePicks.length>=2?0.4:1}}>{RES_ICO[r]} {r}</button>)}
-                  </div>
-                  {tradePicks.length===2&&(
+                  {tradePicks.length===tradeSlots&&(
                     <button onClick={doTradeConfirm} className="act-btn" style={{width:"100%",marginBottom:6,background:"#3a6a3a",color:"#fff",border:"none",fontWeight:700}}>
-                      💰 Échanger : -1$ → {tradePicks[0]===tradePicks[1]?`+2 ${tradePicks[0]}`:`+1 ${tradePicks[0]}, +1 ${tradePicks[1]}`}
+                      💰 Échanger : -1$ → {tradeLabel(tradePicks)}
                     </button>
                   )}
-                  <button onClick={()=>{setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+1,18)};return n;});addLog("💰 -1$ → +1 Pop");setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +1 Popularité (à la place)</button>
+                  <button onClick={()=>{const gp=1+topUpgradeCount(me,"Trade","pop");setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+gp,18)};return n;});addLog(`💰 -1$ → +${gp} Pop`);setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +{1+topUpgradeCount(me,"Trade","pop")} Popularité (à la place)</button>
                 </div>}
               </div>);})()}
+              {(()=>{
+                // Règle Scythe : l'action du HAUT est optionnelle — on peut
+                // l'ignorer (ex. Produire impayable) et passer directement à
+                // l'action du bas ; un Move entamé peut aussi se TERMINER
+                // avant la limite d'unités (arrêt volontaire, parfois utile)
+                const colIdx=myMat.topRow.indexOf(selAction);
+                if(colIdx<0)return null;
+                const moved=selAction==="Move"?(me.movedUnits||[]).length:0;
+                const label=moved>0
+                  ?`✓ Terminer le déplacement (${moved}/${moveLimit})`
+                  :`⤵ Passer ${FR_TOP[selAction]||selAction} → ${FR_BOT[BOTTOM[colIdx]]||BOTTOM[colIdx]}`;
+                return <button onClick={()=>{setTransportPick(null);endHumanTurn(colIdx);}} className="act-btn"
+                  style={{marginTop:8,width:"100%",fontWeight:600,...(moved>0?{background:"#3a6a3a",color:"#fff",border:"none"}:{opacity:0.85})}}>{label}</button>;
+              })()}
               <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setTransportPick(null);setRouteDrop(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
             </div>
           )}
@@ -3371,7 +3562,7 @@ export default function App(){
                   const validTops=[];const validBottoms=[];
                   if(mat){
                     (me.cubesOnTop||[]).forEach((c,ci)=>{if(c>0)validTops.push(ci);});
-                    (mat.bottomSlots||[]).forEach((s,ci)=>{if((me.cubesOnBottom||[])[ci]<s)validBottoms.push(ci);});
+                    (mat.bottomSlots||[]).forEach((s,ci)=>{if((me.cubesOnBottom||[])[ci]<maxBottomCubes(mat,ci))validBottoms.push(ci);});
                   }
                   if(validTops.length===0||validBottoms.length===0) return <div style={{fontSize:13,color:"var(--text-muted)"}}>Plus de cubes disponibles</div>;
                   // Sélection directe SUR LES CARTES D'ACTION (au-dessus) : cube
@@ -3685,8 +3876,23 @@ export default function App(){
                   </div>
                 );})}
               </div>)}
+              {starDetail==="fobj"&&myFaction.fObj&&(()=>{
+                const met=myFaction.fObj.check(me);
+                return(<div>
+                  <div style={{fontSize:14,fontWeight:700,color:"var(--brass)",marginBottom:6,fontFamily:"var(--font-title)"}}>{myFaction.fObj.name}</div>
+                  <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:8}}>{myFaction.fObj.desc}</div>
+                  {me.fObjRevealed
+                    ?<div style={{color:"#8fbf6a",fontWeight:700,fontSize:14}}>✅ Révélé (⭐ obtenue)</div>
+                    :met&&isMyTurn&&!combat&&!encounter&&!rougeRiver
+                      ?<>
+                        <button onClick={revealFObj} style={{padding:"8px 14px",fontSize:14,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,cursor:"pointer"}}>Révéler ⭐</button>
+                        <div style={{fontSize:12,color:"var(--text-muted)",marginTop:6}}>Révéler est un choix — vous pouvez garder cette étoile cachée et conclure au bon moment.</div>
+                      </>
+                      :<div style={{fontSize:13,color:met?"var(--gold)":"var(--text-muted)"}}>{met?"Condition remplie — révélable à votre tour":"Condition non remplie"}</div>}
+                </div>);
+              })()}
               {/* Barre de progression générique pour les compteurs */}
-              {["upg","recr","cbt","wrk","pop","pow"].includes(starDetail)&&(()=>{
+              {["upg","recr","cbt1","cbt2","wrk","pop","pow"].includes(starDetail)&&(()=>{
                 const parts=s.prog.split("/");const cur=+parts[0],max=+parts[1]||1;
                 return<div style={{marginTop:4}}>
                   <div style={{height:10,borderRadius:5,background:"rgba(0,0,0,0.4)",overflow:"hidden",border:"1px solid var(--border)"}}>

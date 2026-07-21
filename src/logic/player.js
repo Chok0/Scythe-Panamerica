@@ -12,12 +12,10 @@ export const createPlayer = (factionId, matId, isBot) => {
     power: f.power, combatCards: f.cards,
     // Main de cartes de combat valuées (matérialisée depuis le compteur)
     cardHand: Array.from({ length: f.cards }, () => drawCardValue()),
-    // startBonus : compensation asymétrique des factions mal dotées (mesurée
-    // par simulation — voir factions.js et RAPPORT_SIMULATION.md) — POPULARITÉ
-    // uniquement : les PIÈCES de départ viennent du plateau joueur seul (règle
-    // Scythe), sauf startAbs (valeur absolue imprimée sur la fiche de faction).
-    pop: f.startAbs?.pop ?? Math.max(0, Math.min(pm.pop + (f.startBonus?.pop || 0), 18)),
-    coins: f.startAbs?.coins ?? pm.coins,
+    // Règle Scythe : popularité et pièces de départ viennent du plateau joueur
+    // SEUL — la fiche de faction ne porte que le militaire (puissance/cartes).
+    pop: pm.pop,
+    coins: pm.coins,
     stars: 0, hero: base ? base.id : (CURRENT_MAP.starts?.[factionId]?.workerHex ?? f.workerHex)[0],
     workers: (CURRENT_MAP.starts?.[factionId]?.workerHex ?? f.workerHex).map((hid, i) => ({ id: `${factionId}_w${i}`, hexId: hid })),
     mechs: [], resources: {}, lastCol: null, buildings: [], encounters: 0,
