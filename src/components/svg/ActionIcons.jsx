@@ -119,6 +119,35 @@ export const IconRecruit = ({ size = 16, color = "#fff" }) => (
   </svg>
 );
 
+// Combat : deux épées croisées (étoiles de combat — 1 par victoire)
+export const IconCombat = ({ size = 16, color = "#fff" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3.2 2.2 L12 11" />
+    <path d="M12.8 2.2 L4 11" />
+    <line x1="10.4" y1="11.4" x2="12.8" y2="9" />
+    <line x1="5.6" y1="11.4" x2="3.2" y2="9" />
+    <path d="M12.6 11.6 L13.8 12.8" />
+    <path d="M3.4 11.6 L2.2 12.8" />
+  </svg>
+);
+
+// Mission secrète : la cible
+export const IconTarget = ({ size = 16, color = "#fff" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round">
+    <circle cx="8" cy="8" r="6" />
+    <circle cx="8" cy="8" r="3.4" />
+    <circle cx="8" cy="8" r="1.1" fill={color} stroke="none" opacity="0.7" />
+  </svg>
+);
+
+// Objectif de faction : l'étendard
+export const IconBanner = ({ size = 16, color = "#fff" }) => (
+  <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4.5 1.5 V14.5" />
+    <path d="M4.5 2.5 H12.5 L10.5 5 L12.5 7.5 H4.5 Z" fill={color} fillOpacity="0.12" />
+  </svg>
+);
+
 // ═══ SVG Building Icons — même vocabulaire graphique (trait simple, silhouette
 // unique, pas de détail interne fin) pour rester lisible à 16-18px. ═══
 
@@ -183,6 +212,9 @@ export const GLYPH_ICONS = {
   "👷": IconWorker, "●": IconWorker, "♥": IconPop, "💰": IconCoin,
   "🃏": IconCard, "⚡": IconPower, "🌽": IconFood, "🛢": IconOil,
   "🪵": IconWood, "⚙": IconMetal,
+  // Pictos des objectifs d'étoiles — mêmes icônes SVG que le reste de l'UI
+  // (avant : ⚔/🎯/🏛 tombaient en emoji brut, seuls de leur espèce)
+  "⚔": IconCombat, "🎯": IconTarget, "🏛": IconBanner,
 };
 export const Glyph = ({ icon, size = 16, color = "#e8dcc8", style }) => {
   const Cmp = GLYPH_ICONS[icon];
@@ -246,6 +278,45 @@ export function ActionRow({ pay = [], gain = [], altGain, compact = false, size,
         {altGain.map((r, i) => <ActionSquare key={`a${i}`} type="gain" resource={r} size={sqSize} />)}
         {altSuffix}
       </>}
+    </div>
+  );
+}
+
+// ═══ ProduceTrack — la piste des 6 ouvriers du plateau joueur (règle Scythe).
+// Chaque ouvrier produit au village quitte sa case et RÉVÈLE le coût imprimé
+// dessous : ⚡ sous la 2e case, ♥ sous la 4e, 💰 sous la 6e. Le coût de
+// Produire = la somme des icônes révélées (logique : getProduceCost). Un
+// ouvrier perdu revient couvrir sa case — le coût se réduit d'autant. ═══
+const PRODUCE_TRACK_COSTS = { 1: "power", 3: "pop", 5: "coins" };
+export function ProduceTrack({ nWorkers = 2, size = 20 }) {
+  const freed = Math.max(0, Math.min(6, nWorkers - 2));
+  const WIcon = RESOURCE_ICONS.worker;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
+      {Array.from({ length: 6 }).map((_, k) => {
+        const costRes = PRODUCE_TRACK_COSTS[k];
+        if (k >= freed) {
+          // Ouvrier encore parqué : il couvre le coût imprimé sous sa case
+          return (
+            <div key={k} title={`Ouvrier ${k + 1}/6 à sortir (Produire sur un village)${costRes ? " — sa sortie révélera un coût" : ""}`} style={{
+              width: size, height: size, borderRadius: 3, flexShrink: 0,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: "var(--gain-bg)", border: "1.5px solid var(--gain-border)",
+            }}>
+              <WIcon size={Math.round(size * 0.65)} color="rgba(255,255,255,0.9)" />
+            </div>
+          );
+        }
+        if (costRes) {
+          // Case libérée : le coût imprimé dessous est désormais actif
+          return <ActionSquare key={k} type="cost" resource={costRes} size={size} />;
+        }
+        // Case libérée sans coût imprimé
+        return <div key={k} title="Case libérée" style={{
+          width: size, height: size, borderRadius: 3, flexShrink: 0,
+          border: "1.5px dashed var(--border-dark)", background: "transparent",
+        }} />;
+      })}
     </div>
   );
 }

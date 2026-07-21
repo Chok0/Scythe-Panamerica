@@ -19,7 +19,7 @@ import RulesPage from './RulesPage.jsx';
 import AmbientSound from './AmbientSound.jsx';
 import SetupScreen from './SetupScreen.jsx';
 import { countRes, spendRes, getWorkerHexes } from '../logic/resources.js';
-import { canPayProduce, payProduce, getProduceCost, produceCostLabel, PRODUCE_TIERS } from '../logic/production.js';
+import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
 import { getValidMoves, findPathWaypoints, marshToll } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
@@ -30,7 +30,7 @@ import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from 
 import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { getPlanBottomBonus, auraPowerCount } from '../logic/planEffects.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
-import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, RESOURCE_ICONS, BUILDING_ICONS, Glyph } from './svg/ActionIcons.jsx';
+import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, ProduceTrack, RESOURCE_ICONS, BUILDING_ICONS, Glyph } from './svg/ActionIcons.jsx';
 import { getMechAbilities } from '../data/mechAbilities.js';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 import { TERRAIN_TEXTURES, TERRAIN_TILE } from '../assets/terrains/index.js';
@@ -2185,7 +2185,9 @@ export default function App(){
     {key:"mech",icon:"⬡",name:"4 Mechas déployés",done:me.mechs.length>=4,prog:`${me.mechs.length}/4`,need:"Déployer 4 mechas (action Deploy, sur un hex avec un ouvrier)."},
     {key:"build",icon:"🏗",name:"4 Bâtiments",done:(me.buildings||[]).length>=4,prog:`${(me.buildings||[]).length}/4`,need:"Construire 4 bâtiments (action Build, sur un hex avec un ouvrier)."},
     {key:"recr",icon:"🤝",name:"4 Recrues",done:(me.recruits||0)>=4,prog:`${me.recruits||0}/4`,need:"Enrôler 4 recrues (action Enlist)."},
-    {key:"cbt",icon:"⚔",name:"2 Combats gagnés",done:(me.combatWins||0)>=2,prog:`${Math.min(me.combatWins||0,2)}/2`,need:"Gagner 2 combats (1 étoile par victoire, max 2)."},
+    // Règle Scythe : DEUX étoiles de combat distinctes, une par victoire
+    {key:"cbt1",icon:"⚔",name:"1er Combat gagné",done:(me.combatWins||0)>=1,prog:`${Math.min(me.combatWins||0,1)}/1`,need:"Gagner un combat (chaque victoire pose sa propre étoile)."},
+    {key:"cbt2",icon:"⚔",name:"2e Combat gagné",done:(me.combatWins||0)>=2,prog:`${Math.min(Math.max((me.combatWins||0)-1,0),1)}/1`,need:"Gagner un second combat (2e étoile de combat)."},
     {key:"obj",icon:"🎯",name:"Mission secrète",done:!!me.objectiveRevealed,prog:me.objectiveRevealed?"✓":"…",need:"Remplir la condition d'une de vos 2 missions secrètes puis la révéler."},
     {key:"fobj",icon:"🏛",name:"Objectif de faction",done:!!me.fObjRevealed,prog:me.fObjRevealed?"✓":"…",need:myFaction.fObj?`${myFaction.fObj.name} — ${myFaction.fObj.desc}`:"Accomplir l'objectif de votre faction."},
     {key:"wrk",icon:"👷",name:"8 Ouvriers",done:me.workers.length>=8,prog:`${me.workers.length}/8`,need:"Avoir 8 ouvriers sur le plateau (produits sur les villages)."},
@@ -2199,7 +2201,8 @@ export default function App(){
     {icon:"⬡",label:"Mech",done:p.mechs.length>=4,prog:`${p.mechs.length}/4`},
     {icon:"🏗",label:"Bât",done:(p.buildings||[]).length>=4,prog:`${(p.buildings||[]).length}/4`},
     {icon:"🤝",label:"Recr",done:(p.recruits||0)>=4,prog:`${p.recruits||0}/4`},
-    {icon:"⚔",label:"Cbt",done:(p.combatWins||0)>=2,prog:`${Math.min(p.combatWins||0,2)}/2`},
+    {icon:"⚔",label:"Cbt1",done:(p.combatWins||0)>=1,prog:`${Math.min(p.combatWins||0,1)}/1`},
+    {icon:"⚔",label:"Cbt2",done:(p.combatWins||0)>=2,prog:`${Math.min(Math.max((p.combatWins||0)-1,0),1)}/1`},
     {icon:"👷",label:"Ouv",done:p.workers.length>=8,prog:`${p.workers.length}/8`},
     {icon:"♥",label:"Pop",done:p.pop>=18,prog:`${p.pop}/18`},
     {icon:"⚡",label:"Pui",done:p.power>=16,prog:`${p.power}/16`},
@@ -3107,15 +3110,14 @@ export default function App(){
                 const cubesBot=(me.cubesOnBottom||[])[i]||0;
                 // Cases utilisables plafonnées : le coût ne descend jamais sous 1
                 const maxBot=maxBottomCubes(mat,i);
-                // Coût de Produce VISIBLE sur la carte d'action : croît avec le
-                // nombre d'ouvriers sortis (4+ → ⚡, 6+ → ♥, 8 → $)
-                const pc=getProduceCost(me.workers.length);
-                const producePay=[...Array(pc.pui).fill("power"),...Array(pc.pop).fill("pop"),...Array(pc.coins).fill("coins")];
+                // Le coût de Produce n'est plus une liste calculée : il se LIT sur
+                // la piste des 6 ouvriers rendue sous la rangée (ProduceTrack) —
+                // chaque case libérée révèle son coût imprimé (⚡/♥/💰)
                 const topActionRow={
                   Move:{pay:[],gain:["worker","worker"],altGain:["coins"],label:"Move"},
                   Bolster:{pay:["coins"],gain:["power","power"],altGain:["combatCards"],label:"Bolster"},
                   Trade:{pay:["coins"],gain:["metal","metal"],altGain:["pop"],label:"Trade"},
-                  Produce:{pay:producePay,gain:["nourriture","nourriture"],altGain:null,label:"Produce"},
+                  Produce:{pay:[],gain:["nourriture","nourriture"],altGain:null,label:"Produce"},
                 }[action]||{pay:[],gain:[],altGain:null,label:action};
                 const bottomData={
                   Upgrade:{prog:`${me.upgrades||0}/6`,max:(me.upgrades||0)>=6},
@@ -3169,7 +3171,8 @@ export default function App(){
                     {/* RANGÉE HAUT — gains de l'action (+ cases fantômes des bonus à débloquer)
                         avec, alignée à droite, la case Bâtiment domiciliée sur cette colonne */}
                     <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8}}>
-                      <div style={{flex:1,minWidth:0,display:"flex",alignItems:"center",gap:3,flexWrap:"wrap"}}>
+                      <div style={{flex:1,minWidth:0,display:"flex",flexDirection:"column",gap:4}}>
+                        <div style={{display:"flex",alignItems:"center",gap:3,flexWrap:"wrap"}}>
                         {(()=>{
                           // Chaque case d'amélioration correspond à une OPTION précise de
                           // l'action (Soutien : ⚡+1 et 🃏+1 ; Commerce : ♥+1 et 📦+1…) et
@@ -3190,6 +3193,11 @@ export default function App(){
                           return <ActionRow pay={topActionRow.pay} gain={topActionRow.gain} altGain={topActionRow.altGain} compact size={21}
                             gainSuffix={gainGhosts} altSuffix={altGhosts}/>;
                         })()}
+                        </div>
+                        {/* Piste des 6 ouvriers (règle Scythe) : chaque case libérée
+                            révèle le coût imprimé dessous — le coût de Produire se
+                            lit directement sur la piste */}
+                        {action==="Produce"&&<ProduceTrack nWorkers={me.workers.length} size={19}/>}
                       </div>
                       {colBuilding&&<div style={{width:168,flexShrink:0,display:"flex",alignSelf:"stretch"}}>
                         <BuildingSlot Icon={BIcon} name={colBuilding.name} effect={colBuilding.effect} revealed={!!builtEntry} extra={builtEntry?`#${builtEntry.hexId}`:null}/>
@@ -3304,18 +3312,9 @@ export default function App(){
                 {(()=>{
                   const nw=me.workers.length;const costStr=produceCostLabel(nw);const canPay=canPayProduce(me);
                   return(<div>
-                    {/* Jauge des paliers de coût — le palier courant est surligné */}
-                    <div style={{display:"flex",gap:4,marginBottom:8}}>
-                      {PRODUCE_TIERS.map(t=>{
-                        const active=nw>=t.min&&nw<=t.max;
-                        return <div key={t.label} style={{flex:1,textAlign:"center",padding:"5px 4px",borderRadius:5,fontSize:12,lineHeight:1.4,
-                          border:active?"1px solid var(--gold)":"1px solid var(--border)",
-                          background:active?"rgba(212,178,84,0.12)":"transparent",
-                          color:active?"var(--gold)":"var(--text-muted)"}}>
-                          <div style={{fontWeight:700}}>{t.label} 👷</div>
-                          <div>{t.cost}</div>
-                        </div>;
-                      })}
+                    {/* La piste des 6 ouvriers : chaque case libérée révèle son coût */}
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                      <ProduceTrack nWorkers={nw} size={26}/>
                     </div>
                     <div style={{fontSize:14,color:canPay?"var(--text-dim)":"#ff5555",marginBottom:6}}>Coût actuel : {costStr} ({nw} ouvrier{nw>1?"s":""})</div>
                     {canPay?<button onClick={doProduce} className="act-btn" style={{width:"100%"}}>⚒ Produire</button>:<div style={{color:"#8A3030"}}>Insuffisant</div>}
@@ -3705,7 +3704,7 @@ export default function App(){
                 );})}
               </div>)}
               {/* Barre de progression générique pour les compteurs */}
-              {["upg","recr","cbt","wrk","pop","pow"].includes(starDetail)&&(()=>{
+              {["upg","recr","cbt1","cbt2","wrk","pop","pow"].includes(starDetail)&&(()=>{
                 const parts=s.prog.split("/");const cur=+parts[0],max=+parts[1]||1;
                 return<div style={{marginTop:4}}>
                   <div style={{height:10,borderRadius:5,background:"rgba(0,0,0,0.4)",overflow:"hidden",border:"1px solid var(--border)"}}>
