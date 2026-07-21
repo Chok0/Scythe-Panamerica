@@ -377,6 +377,16 @@ export default function App(){
     else addLog(`❌ "${obj.name}" — condition non remplie`);
   },[players,addLog]);
 
+  // Objectif de faction : comme la mission secrète, le révéler est un CHOIX —
+  // garder une étoile « invisible » pour conclure par surprise est une
+  // stratégie légitime (le sandbagging du 4-étoiles)
+  const revealFObj=useCallback(()=>{
+    const p=players[0];const fc=FACTIONS[p?.faction];
+    if(!p||!fc?.fObj||p.fObjRevealed||!fc.fObj.check(p))return;
+    setPlayers(prev=>{const n=[...prev];n[0]={...n[0],stars:n[0].stars+1,fObjRevealed:true};return n;});
+    addLog(`🏛⭐ Objectif de faction "${fc.fObj.name}" révélé !`);
+  },[players,addLog]);
+
   useEffect(()=>{
     if(phase!=="playing"||!botRunning||players.length===0)return;
     const cp=currentP;
@@ -1084,11 +1094,8 @@ export default function App(){
       setPlayers(prev=>{const n=[...prev];n[0]={...n[0],stars:n[0].stars+1,starWorkers:true};return n;});
       addLog(`⭐👷 8 ouvriers !`);return;
     }
-    const fc=FACTIONS[p.faction];
-    if(fc?.fObj&&!p.fObjRevealed&&fc.fObj.check(p)){
-      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],stars:n[0].stars+1,fObjRevealed:true};return n;});
-      addLog(`🏛⭐ Objectif de faction "${fc.fObj.name}" accompli !`);return;
-    }
+    // (l'objectif de FACTION ne se valide plus automatiquement : comme la
+    // mission secrète, le révéler est un CHOIX du joueur — revealFObj)
   },[players,phase,addLog]);
 
   // Fix #8: Immediate game end when ANY player reaches 6 stars (Scythe rule)
@@ -3869,6 +3876,21 @@ export default function App(){
                   </div>
                 );})}
               </div>)}
+              {starDetail==="fobj"&&myFaction.fObj&&(()=>{
+                const met=myFaction.fObj.check(me);
+                return(<div>
+                  <div style={{fontSize:14,fontWeight:700,color:"var(--brass)",marginBottom:6,fontFamily:"var(--font-title)"}}>{myFaction.fObj.name}</div>
+                  <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:8}}>{myFaction.fObj.desc}</div>
+                  {me.fObjRevealed
+                    ?<div style={{color:"#8fbf6a",fontWeight:700,fontSize:14}}>✅ Révélé (⭐ obtenue)</div>
+                    :met&&isMyTurn&&!combat&&!encounter&&!rougeRiver
+                      ?<>
+                        <button onClick={revealFObj} style={{padding:"8px 14px",fontSize:14,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,cursor:"pointer"}}>Révéler ⭐</button>
+                        <div style={{fontSize:12,color:"var(--text-muted)",marginTop:6}}>Révéler est un choix — vous pouvez garder cette étoile cachée et conclure au bon moment.</div>
+                      </>
+                      :<div style={{fontSize:13,color:met?"var(--gold)":"var(--text-muted)"}}>{met?"Condition remplie — révélable à votre tour":"Condition non remplie"}</div>}
+                </div>);
+              })()}
               {/* Barre de progression générique pour les compteurs */}
               {["upg","recr","cbt1","cbt2","wrk","pop","pow"].includes(starDetail)&&(()=>{
                 const parts=s.prog.split("/");const cur=+parts[0],max=+parts[1]||1;
