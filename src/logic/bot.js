@@ -1,7 +1,7 @@
 import { FACTIONS } from '../data/factions.js';
 import { TERRAINS } from '../data/terrains.js';
 import { hMap, ADJ, HEXES, HOME_BASES, homeBaseHex } from '../data/hexes.js';
-import { MATS, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, getBottomCost, topUpgradeCount, maxBottomCubes } from '../data/mats.js';
+import { MATS, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, getBottomCost, topUpgradeCount, maxBottomCubes } from '../data/mats.js';
 import { countRes, spendRes, getWorkerHexes } from './resources.js';
 import { canPayProduce, payProduce } from './production.js';
 import { getValidMoves, findPathWaypoints, marshToll } from './movement.js';
@@ -177,7 +177,12 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
   if (validMoves.length === 0) return null;
 
   // Estimation de notre force de combat pour décider d'attaquer
-  const myStrength = p.power + (p.combatCards || 0) * 3;
+  // Force RÉALISTE en combat : la puissance est plafonnée à 7 par bataille et
+  // l'attaquant n'engage en pratique qu'UNE unité → 1-2 cartes max (bonus de
+  // faction compris). L'ancienne formule (power + cartes×3) surestimait des
+  // deux côtés : le Frente a attaqué 9 contre 11 une position tenue (perdu
+  // d'avance), pendant que l'estimation adverse gonflée le rendait timide.
+  const myStrength = Math.min(p.power, 7) + Math.min(p.combatCards || 0, 2) * 2;
   const wantCombatStar = (p.combatWins || 0) < 2;
   // Planification : les ouvriers convergent vers les ressources manquantes des bottoms
   const need = neededResources(p);
@@ -340,9 +345,13 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const action = p.topRow[col];
 
   // ── EXECUTE TOP ACTION ──
-  if (action === "Move" && p.coins <= 0) {
-    // Scythe rule: Move's alternative is "gain 1$" — prevents the economic
-    // deadlock (0 coins + 0 power = no Produce/Bolster/Trade possible)
+  // Move → « +1$ » SEULEMENT en vrai blocage économique (impossible de payer
+  // Produce) ou en tout début de partie. Avant, tout Move à 0$ devenait +1$ :
+  // la Confédération a passé une partie ENTIÈRE en boucle +1$/Trade sans
+  // jamais déplacer une unité (mesuré : 2 territoires, 0 étoile, 8 pts).
+  const cashDeadlock = p.coins <= 0 && !canPayProduce(p);
+  if (action === "Move" && p.coins <= 0 && (cashDeadlock || getPhase(p) === "early")) {
+    // Scythe rule: Move's alternative is "gain 1$"
     // (+1 si le cube d'amélioration de l'option 💰 a été retiré)
     const coinGain = 1 + topUpgradeCount(p, "Move", "coins");
     p.coins += coinGain;
@@ -375,7 +384,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       // le héros garde le 2e déplacement du tour
       const mi = p.mechs.findIndex(m => m.hexId === baseHexId);
       if (mi >= 0) {
-        let mv = getValidMoves(baseHexId, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
+        let mv = getValidMoves(baseHexId, p.faction, p.unlockedAbilities || [], p, rails, "mech", enemyHexes).filter(id => !forbidden.has(id));
         if (enemyHexes) mv = mv.filter(id => !enemyHexes.has(id));
         const mt = mv.length > 0 ? pickMoveTarget(mv, p, empire, enemyHexes, "worker", ctx, prof) : null;
         if (mt != null) {
@@ -393,7 +402,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       if (evacuated === 0) {
         p.workers = [...p.workers];
         for (const wi of baseIdx.slice(0, 2)) {
-          let wv = getValidMoves(p.workers[wi].hexId, p.faction, p.unlockedAbilities || [], p, rails);
+          let wv = getValidMoves(p.workers[wi].hexId, p.faction, p.unlockedAbilities || [], p, rails, "worker", enemyHexes);
           if (enemyHexes) wv = wv.filter(id => !enemyHexes.has(id));
           if (wv.length === 0) continue;
           const wt = pickMoveTarget(wv, p, empire, enemyHexes, "worker", ctx, prof);
@@ -408,7 +417,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     }
 
     // Move hero strategically (sauf si les 2 déplacements ont servi à évacuer)
-    const validHero = evacuated >= 2 ? [] : getValidMoves(p.hero, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
+    const validHero = evacuated >= 2 ? [] : getValidMoves(p.hero, p.faction, p.unlockedAbilities || [], p, rails, "hero", enemyHexes).filter(id => !forbidden.has(id));
     if (validHero.length > 0) {
       const fromHex = p.hero;
       const target = pickMoveTarget(validHero, p, empire, enemyHexes, "hero", ctx, prof);
@@ -438,7 +447,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     if (evacuated === 0 && p.mechs.length > 0) {
       const mi = Math.floor(Math.random() * p.mechs.length);
       const fromHexM = p.mechs[mi].hexId;
-      const mv = getValidMoves(fromHexM, p.faction, p.unlockedAbilities || [], p, rails).filter(id => !forbidden.has(id));
+      const mv = getValidMoves(fromHexM, p.faction, p.unlockedAbilities || [], p, rails, "mech", enemyHexes).filter(id => !forbidden.has(id));
       if (mv.length > 0) {
         const mt = pickMoveTarget(mv, p, empire, enemyHexes, "mech", ctx, prof);
         const worthIt = mt !== null && (
@@ -458,7 +467,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
           const isAttack = ctx && ctx.attackable && ctx.attackable.has(mt);
           const isLate = getPhase(p) === "late";
           const wAtOrigin = p.workers.filter(w => w.hexId === fromHexM).length;
-          const waypoints = isAttack ? [] : findPathWaypoints(fromHexM, mt, p.faction, p.unlockedAbilities || [], p, rails)
+          const waypoints = isAttack ? [] : findPathWaypoints(fromHexM, mt, p.faction, p.unlockedAbilities || [], p, rails, enemyHexes)
             .filter(hid => { const h = hMap[hid]; return h && h.t !== "lac" && h.t !== "marecage" && !(enemyHexes && enemyHexes.has(hid)); });
           const dropRun = getPhase(p) !== "early" && !isAttack && wAtOrigin >= 2 && waypoints.length > 0;
           const carryWorkers = !isAttack && (!isLate || dropRun);
@@ -493,7 +502,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       p.workers.forEach((w, i) => { (byHexW[w.hexId] = byHexW[w.hexId] || []).push(i); });
       const crowded = Object.values(byHexW).sort((a, b) => b.length - a.length)[0];
       const wi = crowded.length >= 2 ? crowded[0] : Math.floor(Math.random() * p.workers.length);
-      let wv = getValidMoves(p.workers[wi].hexId, p.faction, p.unlockedAbilities || [], p, rails);
+      let wv = getValidMoves(p.workers[wi].hexId, p.faction, p.unlockedAbilities || [], p, rails, "worker", enemyHexes);
       // Workers avoid enemies
       if (enemyHexes) wv = wv.filter(id => !enemyHexes.has(id));
       if (wv.length > 0) {
@@ -604,7 +613,12 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       const bc = costs[col];
       let targetRes = null;
 
-      // Check which bottom action we're saving for
+      // Acheter ce qui COMPLÈTE le bottom le plus proche d'être payable
+      // (départage : Enlist > Deploy > Build > Upgrade). Avant, l'ordre fixe
+      // 0→3 faisait acheter du pétrole (Upgrade) à l'infini — la Confédération
+      // « Bâtisseur » n'a jamais acheté le bois qui débloquait son Build.
+      let bestGap = Infinity, bestPrio = 99;
+      const tradePrio = { 3: 0, 1: 1, 2: 2, 0: 3 };
       for (let ci = 0; ci < 4; ci++) {
         if (ci === p.lastCol) continue;
         const bCosts = costs[ci];
@@ -613,9 +627,13 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
           : bAction === "Deploy" ? p.mechs.length >= 4
           : bAction === "Build" ? (p.buildings || []).length >= 4
           : (p.recruits || 0) >= 4;
-        if (!bMaxed && bCosts && countRes(p, bCosts.res) < bCosts.qty) {
-          targetRes = bCosts.res;
-          break;
+        // L'étoile Amélioration est un piège de tempo (cf. scoreColumn) :
+        // n'épargne pas pour Upgrade au-delà de 2, sauf sprint final
+        if (bAction === "Upgrade" && !((p.upgrades || 0) < 2 || p.stars >= 4)) continue;
+        if (bMaxed || !bCosts) continue;
+        const gap = bCosts.qty - countRes(p, bCosts.res);
+        if (gap > 0 && (gap < bestGap || (gap === bestGap && tradePrio[ci] < bestPrio))) {
+          bestGap = gap; bestPrio = tradePrio[ci]; targetRes = bCosts.res;
         }
       }
       if (!targetRes) {
@@ -745,15 +763,12 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         const col = freeCols[0];            // section prioritaire (bonus immédiat)
         const recruit = freeRecruits[0];    // recrue prioritaire (bonus permanent)
         p.enlistMap[col] = recruit;
-        // Bonus immédiat de la section (décorrélé de la recrue) : voir ENLIST_BONUSES
-        const imm = [
-          pp => { pp.coins += 2; },                          // Upgrade → 💰
-          pp => { pp.pop = Math.min(pp.pop + 2, 18); },      // Deploy → ❤
-          pp => { pp.combatCards += 2; },                    // Build → 🃏
-          pp => { pp.power = Math.min(pp.power + 2, 16); },  // Enlist → ⚡
-        ][col];
-        if (imm) imm(p);
-        logs.push(`🤖 ${f.name}: Enlist ${BOTTOM[col]} → recrue ${ENLIST_ONGOING[recruit].icon}`);
+        // Bonus immédiat de la section (décorrélé de la recrue) — source unique
+        // ENLIST_IMMEDIATE (mats.js) : la table dupliquée ici pouvait diverger,
+        // et le bonus appliqué en silence rendait les compteurs invérifiables
+        const imm = ENLIST_IMMEDIATE[col];
+        if (imm) imm.apply(p);
+        logs.push(`🤖 ${f.name}: Enlist ${BOTTOM[col]} → immédiat ${imm ? imm.icon + imm.label : "?"}, recrue ${ENLIST_ONGOING[recruit].icon} permanent`);
       }
       if (p.recruits >= 4 && !p.starRecruits) { p.stars++; p.starRecruits = true; logs.push(`⭐ ${f.name}: 4 recrues !`); }
     }

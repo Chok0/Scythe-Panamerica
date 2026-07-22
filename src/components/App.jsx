@@ -118,7 +118,9 @@ export default function App(){
   const[starDetail,setStarDetail]=useState(null); // étoile sélectionnée → panneau détail façon Steam
   const[showCards,setShowCards]=useState(false); // main de cartes de combat (clic sur le compteur 🃏)
   const[showLog,setShowLog]=useState(false);
-  const[logFilter,setLogFilter]=useState("all"); // "all"|"combat"|"move"|"resource"|"bot"|"warn"|"star"
+  const[logFilter,setLogFilter]=useState("all"); // "all"|"combat"|"move"|"resource"|"bot"|"warn"|"star"|"note"|"snap"
+  const[noteInput,setNoteInput]=useState(""); // 📝 annotation manuelle à insérer au journal
+  const[endOfTurn,setEndOfTurn]=useState(false); // étape « Fin du tour » (validation + révélation d'objectifs)
   const[showRules,setShowRules]=useState(false);
   const logRef=useRef(null);
   // Map zoom/pan state
@@ -285,6 +287,8 @@ export default function App(){
   const turnRef=useRef(0);
   const stepRef=useRef(0);
   const categorize=(msg)=>{
+    if(/^📝/.test(msg))return"note"; // annotation manuelle du joueur — avant tout
+    if(/\[Début/.test(msg))return"snap"; // snapshots de debug (joueur + bots)
     if(/⚔|Combat|combat|Combattre/.test(msg))return"combat";
     if(/🤖/.test(msg))return"bot";
     if(/⭐|étoile|star/i.test(msg))return"star";
@@ -452,6 +456,9 @@ export default function App(){
       // Reset commerceUsed for human player at start of new turn
       setPlayers(prev=>{const n=[...prev];n[0]={...n[0],commerceUsed:false,importUsed:false,planTopUsed:false};return n;});
       turnRef.current=turn+1;setCurrentP(0);setTurn(t=>t+1);setBotRunning(false);addLog(`── Tour ${turn+1} ──`);logSnap("Début",players[0]);
+      // Snapshots de debug des BOTS : leurs compteurs étaient invisibles au
+      // journal — impossible de vérifier leurs gains (demande de partie réelle)
+      players.slice(1).forEach(bp=>logSnap(`Début 🤖 ${FACTIONS[bp.faction]?.name||bp.faction}`,bp));
       return;
     }
     if(!players[cp].isBot){setBotRunning(false);return;}
@@ -472,9 +479,16 @@ export default function App(){
         botEnemyHexes.add(op.hero);
         op.mechs.forEach(m=>botEnemyHexes.add(m.hexId));
         op.workers.forEach(w=>botEnemyHexes.add(w.hexId));
-        const strength=op.power+(op.combatCards||0)*2;
-        attackable.set(op.hero,Math.max(attackable.get(op.hero)||0,strength));
-        op.mechs.forEach(m=>attackable.set(m.hexId,Math.max(attackable.get(m.hexId)||0,strength)));
+        // Force défensive RÉALISTE par hex : puissance plafonnée à 7 (règle) et
+        // cartes limitées aux unités de combat PRÉSENTES sur l'hex (+1 de marge
+        // pour les bonus de faction). L'ancienne formule power+cartes×2 comptait
+        // toute la main : estimations gonflées → décisions d'attaque absurdes.
+        const effStrength=(hid)=>{
+          const units=(op.hero===hid?1:0)+op.mechs.filter(m=>m.hexId===hid).length;
+          return Math.min(op.power,7)+Math.min(op.combatCards||0,units+1)*2;
+        };
+        attackable.set(op.hero,Math.max(attackable.get(op.hero)||0,effStrength(op.hero)));
+        op.mechs.forEach(m=>attackable.set(m.hexId,Math.max(attackable.get(m.hexId)||0,effStrength(m.hexId))));
         // Butin par hex : les tas de ressources attirent les raids (le
         // vainqueur d'un combat prend les ressources du hex)
         Object.entries(op.resources||{}).forEach(([hid,res])=>{
@@ -560,14 +574,15 @@ export default function App(){
           if(servB.captured){n[cp]=servB.player;logs.push(`⛓🤖 Servitude ! ${FACTIONS[n[cp].faction].name} capture un ouvrier (${n[cp].capturedWorkers}/2)`);}
         }
         // ── TRAP TRIGGER: bot hero/mech lands on enemy Frente trap ──
+        // Même pénalité durcie que côté joueur : -3⚡ ET -2♥
         if(n[oi].faction==="frente"){
           (n[oi].trapTokens||[]).forEach((trap,ti)=>{
             if(botHexes.has(trap.hexId)&&!trap.disarmed){
               const penalty=Math.min(n[cp].power||0,3);
-              n[cp]={...n[cp],power:Math.max(0,(n[cp].power||0)-penalty)};
+              n[cp]={...n[cp],power:Math.max(0,(n[cp].power||0)-penalty),pop:Math.max(0,(n[cp].pop||0)-2)};
               n[oi]={...n[oi],trapTokens:[...n[oi].trapTokens]};
               n[oi].trapTokens[ti]={...n[oi].trapTokens[ti],disarmed:true};
-              logs.push(`💥 Trap Frente sur #${trap.hexId} ! ${FACTIONS[n[cp].faction].name} -${penalty}⚡`);
+              logs.push(`💥 Trap Frente sur #${trap.hexId} ! ${FACTIONS[n[cp].faction].name} -${penalty}⚡ -2♥`);
             }
           });
         }
@@ -587,9 +602,15 @@ export default function App(){
         // Le bot engage secrètement puissance + cartes (déduits à la résolution).
         // FEINTE : très supérieur en visible, il mise parfois le minimum en
         // pariant que vous ne miserez rien (« perdu d'avance ») — à vous de voir…
-        const humanVis=Math.min(human.power,7)+human.combatCards*2;
+        // Estimation RÉALISTE du défenseur : cartes limitées aux unités de
+        // combat sur l'hex (+1 de marge), pas toute la main. Et jamais de
+        // pari en fin de partie (5⭐ visibles : perdre le combat peut donner
+        // la 6e étoile adverse — on joue le maximum, pas le bluff).
+        const humanUnitsAtClash=(human.hero===clashHex?1:0)+human.mechs.filter(m=>m.hexId===clashHex).length;
+        const humanVis=Math.min(human.power,7)+Math.min(human.combatCards,humanUnitsAtClash+1)*2;
         const botVis=Math.min(atk.power,7)+atkCB.powerBonus+Math.min(atk.combatCards,atkUnits+atkCB.cardBonus)*2;
-        const botFeints=botVis>=humanVis+8&&Math.random()<0.35;
+        const endgame=players.some(pl=>pl.stars>=5);
+        const botFeints=!endgame&&botVis>=humanVis+8&&Math.random()<0.35;
         const botSpend=botFeints?Math.min(1,atk.power):Math.min(Math.floor(atk.power*0.7)+1,7,atk.power);
         const botCards=botFeints?0:Math.min(atk.combatCards,atkUnits+atkCB.cardBonus);
         humanDefense={type:"pvp_defense",hexId:clashHex,enemyIdx:cp,phase:"choose",powerSpend:0,cardsSpend:0,botSpend,botCards,resumeCp:cp+1};
@@ -642,22 +663,39 @@ export default function App(){
   },[botRunning,currentP,players,phase,empire,turn,rails,encounterTokens,rrVisitors,addLog,addLogs]);
 
   // After top-row → show bottom-row option
-  const endHumanTurn=useCallback((col)=>{
+  const endHumanTurn=useCallback((col,movedOverride)=>{
+    // Log UNIQUE de fin de déplacement — avant, chaque point d'appel loguait
+    // (ou pas) « ✅ Mouvement terminé » : le même événement apparaissait au
+    // journal selon le bouton cliqué (incohérence constatée en partie réelle).
+    // movedOverride : compte frais quand l'appelant vient de setPlayers (état
+    // `me` encore périmé dans sa closure).
+    const moved=movedOverride??(me?.movedUnits||[]).length;
+    if((myMat?.topRow||[])[col]==="Move"&&moved>0)addLog(`✅ Mouvement terminé (${moved}/${moveLimit})`);
     setPlayers(prev=>{const n=[...prev];n[0]={...n[0],lastCol:col,movesLeft:undefined,movedUnits:[],packUpUsed:false};return n;});
     setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);setRouteDrop(null);
     // Show bottom-row option
     const bottomAction=BOTTOM[col];
     setPendingBottom({col,action:bottomAction});
     setBottomPick(null);
-  },[]);
+  },[me,myMat,moveLimit,addLog]);
 
   // Actually finish and pass to bots
   const actuallyEndTurn=useCallback(()=>{
-    setPendingBottom(null);setBottomPick(null);
+    setPendingBottom(null);setBottomPick(null);setEndOfTurn(false);
     // On ne peut pas annuler par-delà le tour des bots (tirages aléatoires) :
     // les piles sont vidées au passage à l'IA.
     setUndoStack([]);setRedoStack([]);
     setCurrentP(1);setBotRunning(true);
+  },[]);
+
+  // ── VALIDATION DE FIN DE TOUR (façon Scythe Digital Edition) : au lieu de
+  // passer directement la main aux bots, on ouvre une étape « Fin du tour » —
+  // c'est LÀ (et seulement là) que se révèlent les objectifs, et révéler
+  // termine le tour au passage. Le joueur garde aussi une dernière fenêtre
+  // pour Commerce/Import Impérial avant de valider.
+  const requestEndTurn=useCallback(()=>{
+    setPendingBottom(null);setBottomPick(null);
+    setEndOfTurn(true);
   },[]);
 
   // Wrapper: apply enlist ongoing bonuses then end turn
@@ -667,8 +705,8 @@ export default function App(){
       result.logs.forEach(l=>addLog(l));
       return result.players;
     });
-    actuallyEndTurn();
-  },[addLog,actuallyEndTurn]);
+    requestEndTurn();
+  },[addLog,requestEndTurn]);
 
   // ── BOTTOM-ROW: UPGRADE (2-step: pick top source → pick bottom dest) ──
   const doUpgrade=useCallback((fromCol,toCol)=>{
@@ -749,7 +787,7 @@ export default function App(){
     if(source&&source.source==="encounter"){
       // Resume movement check after encounter mech ability pick
       const moved=(me.movedUnits||[]).length;
-      if(moved>=moveLimit){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
+      if(moved>=moveLimit){setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
     }
   },[pendingAbility,me,addLog,finishBottom,endHumanTurn,myMat]);
 
@@ -995,7 +1033,7 @@ export default function App(){
     setSelAction(snap.selAction??null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(snap.preActionSnapshot??null);setTradePicks([]);
     setPendingBottom(null);setBottomPick(null);setCombat(null);setEncounter(null);setRougeRiver(null);
     setEncounterBuild(false);setEncounterEnlist(null);
-    setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);
+    setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);setEndOfTurn(false);
   },[cloneVal]);
   const pushHistory=useCallback(()=>{ setUndoStack(s=>[...s.slice(-40),snapshotGame()]); setRedoStack([]); },[snapshotGame]);
   const undo=useCallback(()=>{
@@ -1007,22 +1045,31 @@ export default function App(){
     addLog("↷ Coup rétabli");
   },[snapshotGame,restoreGame,addLog]);
 
+  // Hexes occupés par l'ennemi (joueurs + Empire) : destinations possibles
+  // (combat / déplacement d'ouvriers) mais jamais TRAVERSÉS — ni par les pas
+  // multiples (Vitesse), ni par le réseau de rails (bug du « saut par-dessus
+  // le héros Frente » constaté en partie réelle)
+  const enemyOccupiedHexes=useMemo(()=>{
+    const s=new Set();
+    for(let pi=1;pi<players.length;pi++){
+      const ep=players[pi];
+      s.add(ep.hero);
+      ep.mechs.forEach(m=>s.add(m.hexId));
+      ep.workers.forEach(w=>s.add(w.hexId));
+    }
+    Object.values(empire||{}).forEach(hid=>s.add(hid));
+    return s;
+  },[players,empire]);
+
   const validMoves=useMemo(()=>{
     if(!moveSource||!me)return new Set();
-    let moves=getValidMoves(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails,moveSource.unitType);
+    let moves=getValidMoves(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails,moveSource.unitType,enemyOccupiedHexes);
     // Workers cannot enter hexes with any enemy units
     if(moveSource.unitType==="worker"){
-      const enemyHexes=new Set();
-      for(let pi=1;pi<players.length;pi++){
-        const ep=players[pi];
-        enemyHexes.add(ep.hero);
-        ep.mechs.forEach(m=>enemyHexes.add(m.hexId));
-        ep.workers.forEach(w=>enemyHexes.add(w.hexId));
-      }
-      moves=moves.filter(id=>!enemyHexes.has(id));
+      moves=moves.filter(id=>!enemyOccupiedHexes.has(id));
     }
     return new Set(moves);
-  },[moveSource,me,players,rails]);
+  },[moveSource,me,rails,enemyOccupiedHexes,empire]);
 
   // Déplacement au clic : hex → unités du joueur encore déplaçables ce tour.
   // Cliquer un hex surligné sélectionne l'unité (picker si plusieurs).
@@ -1372,24 +1419,30 @@ export default function App(){
       addLog(`🚶 ${moveSource.unitType==="hero"?myFaction.hero:moveSource.unitId} → #${hexId}${transportLog}`);
       setMoveSource(null);
       
-      // ── CHECK TRAP TRIGGER: enemy trap on this hex? ──
+      // ── CHECK TRAP TRIGGER: pièges ennemis sur la DESTINATION et sur tout
+      // le TRAJET (terrain miné : le traverser le déclenche aussi — avant,
+      // un mech à 2 pas « sautait » les pièges, constatés inoffensifs en
+      // partie réelle). Pénalité durcie : -3⚡ ET -2♥ (la puissance seule ne
+      // pique plus personne en fin de partie).
       if(moveSource.unitType==="hero"||moveSource.unitType==="mech"){
+        const route=[...findPathWaypoints(fromHex,hexId,me.faction,me.unlockedAbilities||[],me,rails,enemyOccupiedHexes),hexId];
         for(let pi=1;pi<players.length;pi++){
           const ep=players[pi];
           if(ep.faction!=="frente")continue;
-          const trapIdx=(ep.trapTokens||[]).findIndex(t=>t.hexId===hexId&&!t.disarmed);
-          if(trapIdx>=0){
-            // Trigger trap: -3 power penalty, disarm trap
-            const penalty=Math.min(me.power,3);
-            setPlayers(prev=>{
-              const n=[...prev];
-              n[0]={...n[0],power:Math.max(0,n[0].power-penalty)};
-              n[pi]={...n[pi],trapTokens:[...n[pi].trapTokens]};
-              n[pi].trapTokens[trapIdx]={...n[pi].trapTokens[trapIdx],disarmed:true};
-              return n;
-            });
-            addLog(`💥 Trap Frente déclenché sur #${hexId} ! -${penalty}⚡`);
-          }
+          route.forEach(routeHex=>{
+            const trapIdx=(ep.trapTokens||[]).findIndex(t=>t.hexId===routeHex&&!t.disarmed);
+            if(trapIdx>=0){
+              const powPenalty=Math.min(me.power,3);
+              setPlayers(prev=>{
+                const n=[...prev];
+                n[0]={...n[0],power:Math.max(0,n[0].power-powPenalty),pop:Math.max(0,n[0].pop-2)};
+                n[pi]={...n[pi],trapTokens:[...n[pi].trapTokens]};
+                n[pi].trapTokens[trapIdx]={...n[pi].trapTokens[trapIdx],disarmed:true};
+                return n;
+              });
+              addLog(`💥 Trap Frente déclenché sur #${routeHex}${routeHex!==hexId?" (au passage)":""} ! -${powPenalty}⚡ -2♥`);
+            }
+          });
         }
       }
       
@@ -1434,8 +1487,11 @@ export default function App(){
       // matériel au passage et continuer (relais de mechas, expansion…)
       let dropOffer=null;
       if(moveSource.unitType==="mech"&&carryOnMove){
-        const mids=findPathWaypoints(fromHex,hexId,me.faction,me.unlockedAbilities||[],me,rails)
-          .filter(hid=>{const h=hMap[hid];return h&&h.t!=="lac"&&h.t!=="marecage";});
+        // Jamais de dépose sur un hex ennemi : un ouvrier posé face à une
+        // unité de combat serait renvoyé à sa base (règle Scythe) — le
+        // trajet lui-même évite désormais les hexes occupés (blockedHexes)
+        const mids=findPathWaypoints(fromHex,hexId,me.faction,me.unlockedAbilities||[],me,rails,enemyOccupiedHexes)
+          .filter(hid=>{const h=hMap[hid];return h&&h.t!=="lac"&&h.t!=="marecage"&&!enemyOccupiedHexes.has(hid);});
         const hasCargo=p.workers.some(w=>w.hexId===hexId)||Object.keys(p.resources[String(hexId)]||{}).length>0;
         if(mids.length>0&&hasCargo){
           dropOffer={mids,destHex:hexId,endAfter:p.movedUnits.length>=moveLimit};
@@ -1443,7 +1499,7 @@ export default function App(){
           addLog(`📦 Dépose en route possible (passage par ${mids.map(m=>`#${m}`).join(", ")})`);
         }
       }
-      if(p.movedUnits.length>=moveLimit){addLog(`✅ Mouvement terminé`);if(!dropOffer)endHumanTurn(myMat.topRow.indexOf("Move"));}
+      if(p.movedUnits.length>=moveLimit&&!dropOffer)endHumanTurn(myMat.topRow.indexOf("Move"),p.movedUnits.length);
       return;
     }
     // ── CIBLES D'ACTION BOTTOM : Deploy/Build en cliquant l'hex sur la carte ──
@@ -1473,7 +1529,7 @@ export default function App(){
     if(moveSource){setMoveSource(null);setTransportPick(null);return;}
     setUnitPicker(null);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -1801,8 +1857,7 @@ export default function App(){
     // Check if movement is done
     const newMovesLeft=(me.movesLeft||moveLimit)-1;
     if((me.movedUnits||[]).length+1>=moveLimit){
-      addLog(`✅ Mouvement terminé`);
-      // Need to trigger endHumanTurn after state updates
+      // Need to trigger endHumanTurn after state updates (il logue ✅ lui-même)
       setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);
     }
   },[combat,me,players,empire,myFaction,myMat,addLog,endHumanTurn]);
@@ -1872,8 +1927,8 @@ export default function App(){
   // si tous les déplacements sont faits, on enchaîne sur l'action bottom.
   const resumeAfterEncounter=useCallback(()=>{
     const moved=(me?.movedUnits||[]).length;
-    if(moved>=moveLimit){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
-  },[me,moveLimit,addLog,endHumanTurn,myMat]);
+    if(moved>=moveLimit){setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
+  },[me,moveLimit,endHumanTurn,myMat]);
 
   // ── ENCOUNTER RESOLUTION ──
   const resolveEncounter=useCallback((choiceIdx)=>{
@@ -1960,8 +2015,8 @@ export default function App(){
     addLog(`⚙ Plan choisi: ${card.name} (${card.type==="tesla"?"Tesla":"Ford"}) — ${card.desc}`);
     setRougeRiver(null);
     const moved=(me.movedUnits||[]).length;
-    if(moved>=moveLimit){addLog(`✅ Mouvement terminé`);setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
-  },[rougeRiver,me,addLog,endHumanTurn,myMat]);
+    if(moved>=moveLimit){setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
+  },[rougeRiver,me,endHumanTurn,myMat,addLog]);
 
   const doMove=(unitType,unitId,fromHex)=>{
     if(!me.movesLeft)setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:moveLimit,movedUnits:[]};return n;});
@@ -2093,8 +2148,16 @@ export default function App(){
       // compte pas comme territoire — il est hors plateau)
       const unitHexes=new Set([p.hero,...p.workers.map(w=>w.hexId),...p.mechs.map(m=>m.hexId)]);
       [...unitHexes].forEach(id=>{if(isBaseHex(id))unitHexes.delete(id);});
-      // Buildings count as territory if hex has no enemy
-      (p.buildings||[]).forEach(b=>unitHexes.add(b.hexId));
+      // Buildings count as territory if hex has no enemy (règle Scythe : une
+      // unité ennemie SUR l'hex en prend le contrôle malgré le bâtiment)
+      const enemyOccupied=new Set();
+      players.forEach(op=>{
+        if(op===p)return;
+        enemyOccupied.add(op.hero);
+        op.mechs.forEach(m=>enemyOccupied.add(m.hexId));
+        op.workers.forEach(w=>enemyOccupied.add(w.hexId));
+      });
+      (p.buildings||[]).forEach(b=>{if(!enemyOccupied.has(b.hexId))unitHexes.add(b.hexId);});
       // Trap tokens (Frente) count as territory
       (p.trapTokens||[]).forEach(t=>{if(!t.disarmed)unitHexes.add(t.hexId);});
       // Comptoir tokens (Acadiane) count as +1 territory each (not adj to HB)
@@ -2319,16 +2382,23 @@ export default function App(){
             Occupe l'espace libre ; clic → panneau détail façon Steam (progression
             + ce que l'objectif demande). Remplace le drop-down récap. */}
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
-          {starList.map(s=>(
-            <button key={s.key} onClick={()=>setStarDetail(d=>d===s.key?null:s.key)} title={`${s.name} — ${s.prog}`}
-              style={{position:"relative",width:36,height:36,borderRadius:7,border:starDetail===s.key?"1px solid var(--gold)":"1px solid var(--border)",
+          {starList.map(s=>{
+            // « ! » : un objectif secret / de faction est PRÊT à être révélé
+            // (condition remplie, pas encore révélé) — notification demandée
+            // en partie réelle, la condition passait inaperçue
+            const ready=(s.key==="obj"&&!me.objectiveRevealed&&(me.objectives||[]).some(o=>o.check(me)))
+              ||(s.key==="fobj"&&!me.fObjRevealed&&myFaction.fObj&&myFaction.fObj.check(me));
+            return(
+            <button key={s.key} onClick={()=>setStarDetail(d=>d===s.key?null:s.key)} title={`${s.name} — ${s.prog}${ready?" — prêt à révéler en fin de tour !":""}`}
+              style={{position:"relative",width:36,height:36,borderRadius:7,border:starDetail===s.key?"1px solid var(--gold)":ready?"1px solid var(--gold-dim)":"1px solid var(--border)",
                 background:s.done?"rgba(232,200,96,0.16)":starDetail===s.key?"rgba(212,178,84,0.12)":"rgba(255,255,255,0.02)",
                 display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",padding:0}}>
               <span style={{fontSize:21,opacity:s.done?0.4:0.75,display:"inline-flex"}}><Glyph icon={s.icon} size={20} color="#e8dcc8"/></span>
               {s.done&&<span style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,filter:"drop-shadow(0 0 3px rgba(232,200,96,0.7))"}}>⭐</span>}
               {!s.done&&s.prog&&s.prog!=="…"&&<span style={{position:"absolute",bottom:-2,right:0,fontSize:9,fontWeight:700,color:"var(--gold)",fontFamily:"var(--font-mono)",background:"var(--bg)",borderRadius:2,padding:"0 2px"}}>{s.prog.split("/")[0]}</span>}
+              {ready&&<span style={{position:"absolute",top:-5,right:-4,width:15,height:15,borderRadius:"50%",background:"var(--gold)",color:"var(--bg)",fontSize:11,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 0 6px rgba(232,200,96,0.9)",animation:"pulse 1.2s ease infinite"}}>!</span>}
             </button>
-          ))}
+          );})}
         </div>
         {/* Divider + total + boutons */}
         <div style={{width:1,height:28,background:"var(--border-light)",flexShrink:0,marginLeft:4}}/>
@@ -2707,7 +2777,7 @@ export default function App(){
           {clickRipple&&(()=>{
             const rh=hMap[clickRipple.hexId];
             if(!rh)return null;
-            return <circle key={clickRipple.key} cx={rh.rx} cy={rh.ry} r={5} fill="none" stroke="#c9a84c" strokeWidth={2} opacity={0.6}>
+            return <circle key={clickRipple.key} cx={rh.rx} cy={rh.ry} r={5} fill="none" stroke="#c9a84c" strokeWidth={2} opacity={0.6} style={{pointerEvents:"none"}}>
               <animate attributeName="r" from="5" to="45" dur="0.5s" fill="freeze"/>
               <animate attributeName="opacity" from="0.6" to="0" dur="0.5s" fill="freeze"/>
             </circle>;
@@ -2745,8 +2815,10 @@ export default function App(){
               <image href={FACTION_LOGOS[fid]} x={hb.rx-11} y={hb.ry-29} width={22} height={22}/>
             </g>);
           })}
-          {/* Watermark */}
-          <g opacity={0.04} style={{fontFamily:"var(--font-title)"}}>
+          {/* Watermark — pointerEvents none : le texte est rendu au-dessus des
+              hexes et son em-box couvrait le centre de la carte, avalant les
+              clics sur l'Usine #22 (« impossible d'entrer sur Rouge River ») */}
+          <g opacity={0.04} style={{fontFamily:"var(--font-title)",pointerEvents:"none"}}>
             <text x="510" y="505" textAnchor="middle" fontSize="80" fill="#c9a84c" letterSpacing="25">1920+</text>
           </g>
         </svg>
@@ -3182,11 +3254,37 @@ export default function App(){
 
           {/* Player mat — 4 vertical action cards, grouped: columns 0+1 (top pair) / columns 2+3 (bottom pair) with strong separator.
               Restent visibles pendant l'Améliorer (upgradePicking) : les cases de cubes y sont cliquées directement */}
-          {isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&(!pendingBottom||upgradePicking)&&(
+          {isMyTurn&&!combat&&!encounter&&!rougeRiver&&!selAction&&!endOfTurn&&(!pendingBottom||upgradePicking)&&(
             <div style={{display:"flex",flexDirection:"column",gap:0}}>
+              {/* ── AMÉLIORER : consignes AU-DESSUS des colonnes (constaté en
+                  partie réelle : sans ce bandeau, on croyait l'amélioration
+                  jamais démarrée — les instructions vivaient tout en bas) ── */}
+              {upgradePicking&&(()=>{
+                const from=bottomPick?.upgradeFrom;const to=bottomPick?.upgradeTo;
+                const ready=from!=null&&to!=null;
+                const mat=MATS.find(m=>m.id===me.matId);
+                return(
+                  <div style={{margin:"8px 8px 10px",padding:"10px 12px",borderRadius:8,background:"rgba(212,178,84,0.10)",border:"1px solid var(--gold)",boxShadow:"0 0 12px rgba(212,178,84,0.18)",animation:"slideUp 0.2s ease"}}>
+                    <div style={{fontFamily:"var(--font-title)",fontWeight:800,fontSize:15,color:"var(--gold)",marginBottom:4}}>⬆ Amélioration en cours — sur les cartes ci-dessous :</div>
+                    <div style={{fontSize:14,lineHeight:1.6}}>
+                      <span style={{color:from!=null?"#8fbf6a":"var(--text)",fontWeight:700}}>① retirez un cube de la rangée HAUT{from!=null?` ✓ ${FR_TOP[me.topRow[from]]||me.topRow[from]}`:""}</span>
+                      <span style={{color:"var(--text-muted)"}}> puis </span>
+                      <span style={{color:to!=null?"#8fbf6a":from!=null?"var(--gold)":"var(--text-dim)",fontWeight:700}}>② posez-le sur un coût de la rangée BAS{to!=null?` ✓ ${FR_BOT[BOTTOM[to]]||BOTTOM[to]} (+${mat?.bottomCosts?.[to]?.bonus||0}$)`:""}</span>
+                    </div>
+                    <div style={{display:"flex",gap:6,marginTop:8}}>
+                      <button disabled={!ready} onClick={()=>{doUpgrade(from,to);setBottomPick(null);}} className="act-btn" style={{flex:1,fontWeight:700,...(ready?{background:"#3a6a3a",color:"#fff",border:"none"}:{opacity:0.45,cursor:"not-allowed"})}}>✓ Valider l'amélioration</button>
+                      {(from!=null||to!=null)&&<button onClick={()=>setBottomPick(null)} className="act-btn" style={{fontSize:13,opacity:0.75}} title="Réinitialiser la sélection">↩</button>}
+                    </div>
+                    <div style={{fontSize:12,color:"var(--text-dim)",marginTop:6}}>Toutes les colonnes sont des cibles valides — y compris l'action que vous venez de jouer.</div>
+                  </div>
+                );
+              })()}
               {myMat.topRow.map((action,i)=>{
-                // Plan « Le Blueprint Perdu » : peut rejouer la même colonne deux tours de suite
-                const disabled=me.lastCol===i&&me.factoryCard?.topBonus!=="copy_top";
+                // Plan « Le Blueprint Perdu » : peut rejouer la même colonne deux tours de suite.
+                // Pendant l'Améliorer, AUCUNE carte n'est grisée : les cubes de toutes les
+                // colonnes (y compris celle jouée ce tour) sont des cibles valides — le
+                // grisage laissait croire qu'on ne pouvait pas y appliquer l'amélioration
+                const disabled=me.lastCol===i&&me.factoryCard?.topBonus!=="copy_top"&&!upgradePicking;
                 const bottomAction=BOTTOM[i];
                 const costs=getBottomCost(me);
                 const bc=costs[i];
@@ -3437,12 +3535,9 @@ export default function App(){
                     </div>;
                   })()}
                   {me.packUpUsed&&me.faction==="nations"&&<div style={{marginTop:6,fontSize:12,color:"var(--text-muted)"}}>📦 Pack Up utilisé ce tour</div>}
-                  {/* Filet de sécurité : visible aussi à la limite (2/2) — si un
-                      sous-flux (dépose en route…) n'a pas auto-terminé le tour,
-                      le joueur garde toujours une sortie */}
-                  {(me.movedUnits||[]).length>0&&(
-                    <button onClick={()=>{addLog("✅ Mouvement terminé");setRouteDrop(null);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginTop:8,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Terminer ({(me.movedUnits||[]).length}/{moveLimit})</button>
-                  )}
+                  {/* Le bouton unique « ✓ Terminer le déplacement » (bloc générique
+                      plus bas) sert de filet de sécurité — l'ancien doublon ici
+                      loguait ✅ quand l'autre non (journal incohérent) */}
                 </div>
               )}
               {selAction==="Bolster"&&(<div>
@@ -3640,7 +3735,41 @@ export default function App(){
                   </div>;
                 })():<div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>)}
                 {maxed&&<div style={{fontSize:14,color:"var(--success)"}}>{ba} au maximum</div>}
-                <button onClick={actuallyEndTurn} className="act-btn" style={{marginTop:8,width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)"}}>Passer →</button>
+                <button onClick={requestEndTurn} className="act-btn" style={{marginTop:8,width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)"}}>Passer →</button>
+              </div>
+            );
+          })()}
+
+          {/* ═══ FIN DU TOUR (façon Scythe Digital Edition) : étape de validation
+              avant de passer aux bots — c'est ICI que se révèlent les objectifs
+              (mission secrète / objectif de faction), et révéler termine le tour ═══ */}
+          {isMyTurn&&!combat&&!encounter&&!rougeRiver&&endOfTurn&&(()=>{
+            const revealables=(!me.objectiveRevealed?(me.objectives||[]).map((o,idx)=>({o,idx})).filter(({o})=>o.check(me)):[]);
+            const fObjReady=!me.fObjRevealed&&myFaction.fObj&&myFaction.fObj.check(me);
+            return(
+              <div style={{padding:"12px 16px",borderTop:"1px solid var(--gold-dim)",animation:"slideUp 0.25s ease",background:"rgba(212,178,84,0.05)"}}>
+                <div style={{fontFamily:"var(--font-title)",color:"var(--gold)",fontSize:17,fontWeight:800,marginBottom:6}}>🏁 Fin du tour {turn}</div>
+                {(revealables.length>0||fObjReady)&&<div style={{marginBottom:8}}>
+                  <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:6}}>Objectif accompli — le révéler pose l'étoile et termine le tour :</div>
+                  {revealables.map(({o,idx})=>(
+                    <button key={o.id||idx} onClick={()=>{revealObjective(idx);actuallyEndTurn();}} className="act-btn"
+                      style={{width:"100%",marginBottom:6,textAlign:"left",borderColor:"var(--gold)",background:"rgba(212,178,84,0.10)"}}>
+                      <div style={{fontWeight:700,color:"var(--gold)",fontSize:14}}>🎯 Révéler « {o.name} » ⭐</div>
+                      <div style={{fontSize:12,color:"var(--text-dim)"}}>{o.desc}</div>
+                    </button>
+                  ))}
+                  {fObjReady&&(
+                    <button onClick={()=>{revealFObj();actuallyEndTurn();}} className="act-btn"
+                      style={{width:"100%",marginBottom:6,textAlign:"left",borderColor:"var(--gold)",background:"rgba(212,178,84,0.10)"}}>
+                      <div style={{fontWeight:700,color:"var(--gold)",fontSize:14}}>🏛 Révéler « {myFaction.fObj.name} » ⭐</div>
+                      <div style={{fontSize:12,color:"var(--text-dim)"}}>{myFaction.fObj.desc} — révéler est un choix : garder l'étoile cachée peut conclure au meilleur moment.</div>
+                    </button>
+                  )}
+                </div>}
+                <button onClick={actuallyEndTurn} className="act-btn"
+                  style={{width:"100%",fontWeight:800,fontSize:15,background:"#3a6a3a",color:"#fff",border:"none",padding:"10px"}}>
+                  ✔ Terminer le tour
+                </button>
               </div>
             );
           })()}
@@ -3732,7 +3861,7 @@ export default function App(){
           {showLog&&<>
             {/* Filter bar + copy */}
             <div style={{display:"flex",gap:2,padding:"3px 6px",flexWrap:"wrap",alignItems:"center",borderBottom:"1px solid var(--border)"}}>
-              {[["all","Tout"],["combat","⚔"],["move","🚶"],["bot","🤖"],["resource","💰"],["deploy","⬡"],["encounter","📜"],["warn","⚠"],["star","⭐"]].map(([k,label])=>(
+              {[["all","Tout"],["combat","⚔"],["move","🚶"],["bot","🤖"],["resource","💰"],["deploy","⬡"],["encounter","📜"],["warn","⚠"],["star","⭐"],["note","📝"],["snap","🔍"]].map(([k,label])=>(
                 <button key={k} onClick={()=>setLogFilter(k)} style={{
                   padding:"2px 7px",fontSize:12,borderRadius:3,cursor:"pointer",
                   background:logFilter===k?"var(--rust)":"transparent",
@@ -3745,14 +3874,29 @@ export default function App(){
                 navigator.clipboard.writeText(txt);
               }} style={{marginLeft:"auto",padding:"1px 5px",fontSize:10,borderRadius:3,cursor:"pointer",background:"transparent",color:"var(--text-muted)",border:"1px solid var(--border)"}} title="Copier tout le log">📋</button>
             </div>
+            {/* ── Note manuelle : annoter la partie EN JEU (📝, horodatée au tour
+                courant, exportée avec le journal — demande de partie réelle) ── */}
+            <div style={{display:"flex",gap:4,padding:"4px 6px",borderBottom:"1px solid var(--border)",alignItems:"center"}}>
+              <input value={noteInput} onChange={e=>setNoteInput(e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter"&&noteInput.trim()){addLog(`📝 ${noteInput.trim()}`);setNoteInput("");}}}
+                placeholder="📝 Noter une observation (Entrée pour ajouter)…"
+                style={{flex:1,minWidth:0,padding:"5px 8px",fontSize:13,borderRadius:4,background:"rgba(0,0,0,0.3)",
+                  border:"1px solid var(--border)",color:"var(--text)",outline:"none"}}/>
+              <button onClick={()=>{if(noteInput.trim()){addLog(`📝 ${noteInput.trim()}`);setNoteInput("");}}}
+                disabled={!noteInput.trim()}
+                style={{padding:"5px 10px",fontSize:13,borderRadius:4,cursor:noteInput.trim()?"pointer":"default",
+                  background:noteInput.trim()?"var(--gold)":"rgba(255,255,255,0.04)",color:noteInput.trim()?"var(--bg)":"var(--text-ghost)",
+                  border:"none",fontWeight:700}}>+</button>
+            </div>
             <div ref={logRef} style={{maxHeight:200,overflow:"auto",padding:"6px 8px",fontSize:13,lineHeight:1.55}}>
               {(()=>{
-                const CAT_COLORS={combat:"#e04838",bot:"#a89878",star:"#d4b254",warn:"#e08850",encounter:"#b08060",rr:"#c87040",move:"#5a9aca",deploy:"#7aaa55",build:"#7aaa55",enlist:"#5a7a6a",upgrade:"#c4a060",resource:"#d4b254",ability:"#e08850",turn:"var(--rust)",info:"var(--text-dim)"};
+                const CAT_COLORS={combat:"#e04838",bot:"#a89878",star:"#d4b254",warn:"#e08850",encounter:"#b08060",rr:"#c87040",move:"#5a9aca",deploy:"#7aaa55",build:"#7aaa55",enlist:"#5a7a6a",upgrade:"#c4a060",resource:"#d4b254",ability:"#e08850",turn:"var(--rust)",info:"var(--text-dim)",note:"#e8dcc8",snap:"#8a9ab0"};
                 const filtered=logFilter==="all"?log:log.filter(e=>e.cat===logFilter);
                 return filtered.slice(-60).map((e,i)=>(
-                  <div key={i} className="log-line" style={{display:"flex",gap:6,alignItems:"baseline"}}>
+                  <div key={i} className="log-line" style={{display:"flex",gap:6,alignItems:"baseline",
+                    ...(e.cat==="note"?{background:"rgba(212,178,84,0.07)",borderLeft:"2px solid var(--gold-dim)",paddingLeft:4,borderRadius:2}:{})}}>
                     <span style={{fontSize:10,color:"var(--text-muted)",fontFamily:"var(--font-mono)",flexShrink:0,minWidth:36,textAlign:"right"}}>T{e.turn}.{e.step}</span>
-                    <span style={{color:CAT_COLORS[e.cat]||"var(--text-dim)",fontWeight:e.cat==="turn"||e.cat==="star"?700:400}}>{e.msg}</span>
+                    <span style={{color:CAT_COLORS[e.cat]||"var(--text-dim)",fontWeight:e.cat==="turn"||e.cat==="star"?700:e.cat==="note"?600:400,fontStyle:e.cat==="note"?"italic":"normal"}}>{e.msg}</span>
                   </div>
                 ));
               })()}
@@ -3835,6 +3979,14 @@ export default function App(){
                 {structureBonus&&<div style={{marginTop:8,padding:"8px 10px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px solid var(--gold-dim)",fontSize:14,color:"var(--gold)"}}>
                   🏦 Bonus de pose : <b>{structureBonus.icon} {structureBonus.name}</b> — +{structureBonus.coins}$ {structureBonus.desc} (tuiles marquées $ sur la carte).
                 </div>}
+                {/* Règle de scoring liée au PLACEMENT des bâtiments — toujours
+                    lisible ici (demande de jeu réel : introuvable en partie) */}
+                <div style={{marginTop:8,padding:"8px 10px",borderRadius:6,background:"rgba(0,0,0,0.25)",border:"1px solid var(--border)",fontSize:14,color:"var(--text-dim)",lineHeight:1.55}}>
+                  <div style={{fontWeight:700,color:"var(--brass)",marginBottom:4,fontFamily:"var(--font-title)"}}>🗺 Scoring du placement</div>
+                  Chaque bâtiment <b>contrôle son hex</b> jusqu'à la fin de partie, même sans unité dessus (sauf si un ennemi occupe l'hex) : il compte comme <b>territoire</b> au score final — ×{[2,3,4][me.pop<=6?0:me.pop<=12?1:2]}$ à votre palier de popularité actuel (×2$ / ×3$ / ×4$ selon le palier).
+                  Placez-les sur des hexes que vos unités ne tiendront pas : production excentrée, carrefours, abords de l'Usine.
+                  {!structureBonus&&<div style={{marginTop:4,color:"var(--text-muted)"}}>🏦 Pas de tuile « bonus de pose » dans la partie de base (réservée au mode campagne).</div>}
+                </div>
               </div>)}
               {starDetail==="mech"&&(<div>
                 <div style={{fontSize:14,fontWeight:700,color:"var(--brass)",marginBottom:8,fontFamily:"var(--font-title)"}}>Mechas & capacités</div>
@@ -3870,8 +4022,11 @@ export default function App(){
                   <div key={obj.id||idx} style={{padding:"8px 10px",borderRadius:6,marginBottom:6,background:isRev?"rgba(122,170,85,0.12)":"rgba(0,0,0,0.25)",border:`1px solid ${isRev?"rgba(122,170,85,0.4)":met?"var(--gold-dim)":"var(--border)"}`,opacity:me.objectiveRevealed&&!isRev?0.45:1}}>
                     <div style={{fontSize:15,fontWeight:700,color:isRev?"#8fbf6a":met?"var(--gold)":"var(--text)"}}>{isRev?"✅":"🎯"} {obj.name}</div>
                     <div style={{fontSize:14,color:"var(--text-dim)",marginTop:2}}>{obj.desc}</div>
+                    {/* Règle Scythe DE : la révélation se fait à l'étape FIN DU TOUR */}
                     {!me.objectiveRevealed&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&(canRev
-                      ?<button onClick={()=>{revealObjective(idx);}} style={{marginTop:6,padding:"8px 14px",fontSize:14,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,cursor:"pointer"}}>Révéler ⭐</button>
+                      ?(endOfTurn
+                        ?<button onClick={()=>{revealObjective(idx);actuallyEndTurn();setStarDetail(null);}} style={{marginTop:6,padding:"8px 14px",fontSize:14,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,cursor:"pointer"}}>Révéler ⭐ (termine le tour)</button>
+                        :<div style={{marginTop:4,fontSize:13,color:"var(--gold)",fontWeight:600}}>✔ Condition remplie — révélable à la fin du tour</div>)
                       :<div style={{marginTop:4,fontSize:13,color:"var(--text-muted)"}}>{met?"":"Condition non remplie"}</div>)}
                   </div>
                 );})}
@@ -3883,12 +4038,12 @@ export default function App(){
                   <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:8}}>{myFaction.fObj.desc}</div>
                   {me.fObjRevealed
                     ?<div style={{color:"#8fbf6a",fontWeight:700,fontSize:14}}>✅ Révélé (⭐ obtenue)</div>
-                    :met&&isMyTurn&&!combat&&!encounter&&!rougeRiver
+                    :met&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&endOfTurn
                       ?<>
-                        <button onClick={revealFObj} style={{padding:"8px 14px",fontSize:14,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,cursor:"pointer"}}>Révéler ⭐</button>
+                        <button onClick={()=>{revealFObj();actuallyEndTurn();setStarDetail(null);}} style={{padding:"8px 14px",fontSize:14,background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:4,fontWeight:700,cursor:"pointer"}}>Révéler ⭐ (termine le tour)</button>
                         <div style={{fontSize:12,color:"var(--text-muted)",marginTop:6}}>Révéler est un choix — vous pouvez garder cette étoile cachée et conclure au bon moment.</div>
                       </>
-                      :<div style={{fontSize:13,color:met?"var(--gold)":"var(--text-muted)"}}>{met?"Condition remplie — révélable à votre tour":"Condition non remplie"}</div>}
+                      :<div style={{fontSize:13,color:met?"var(--gold)":"var(--text-muted)"}}>{met?"✔ Condition remplie — révélable à la fin du tour":"Condition non remplie"}</div>}
                 </div>);
               })()}
               {/* Barre de progression générique pour les compteurs */}
