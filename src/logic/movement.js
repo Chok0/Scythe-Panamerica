@@ -2,8 +2,11 @@ import { FACTIONS } from '../data/factions.js';
 import { HEXES, hMap, ADJ, hasR } from '../data/hexes.js';
 import { FACTORY_RR_HEX } from '../data/plans.js';
 
-// BFS: find all hexes connected to fromId via rail network
-export const getRailNetwork = (fromId, rails) => {
+// BFS: find all hexes connected to fromId via rail network.
+// blockedHexes (hexes occupés par l'ennemi) : un nœud bloqué reste une
+// DESTINATION possible (y entrer = combat/déplacement d'ouvriers) mais la
+// ligne ne se prolonge pas au travers — pas de saut par-dessus une unité.
+export const getRailNetwork = (fromId, rails, blockedHexes) => {
   if (!rails || rails.length === 0) return null;
   const onRail = rails.some(([a, b]) => a === fromId || b === fromId);
   if (!onRail) return null;
@@ -15,7 +18,7 @@ export const getRailNetwork = (fromId, rails) => {
       const next = a === cur ? b : b === cur ? a : null;
       if (next !== null && !visited.has(next)) {
         visited.add(next);
-        queue.push(next);
+        if (!(blockedHexes && blockedHexes.has(next))) queue.push(next);
       }
     });
   }
@@ -76,10 +79,19 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails, 
 //   - Trimotor (move_3)      : 3 pas pour toutes les unités + ignore les rivières
 //   - Golem (remote_move)    : 2 pas pour les MECHAS
 //   - Éclair (mech_sprint)   : 4 pas pour les MECHAS
-// Rail rules:
-//   - If starting on rail network: free teleport to any connected rail hex, then normal move
-//   - If a step lands on rail, the next step can start from any connected rail hex
-export const getValidMoves = (fromId, factionId, abilities, player, rails, unitType) => {
+// Rail rules — il faut être À BORD pour rouler :
+//   - Si l'unité COMMENCE son déplacement sur le réseau : téléportation gratuite
+//     vers tout hex relié, puis déplacement normal.
+//   - Entrer sur un hex à rail en cours de déplacement ne donne PAS accès au
+//     réseau dans le même déplacement (on monte à bord un tour, on roule au
+//     suivant) — avant, un pas sur le rail ouvrait tout le réseau au pas
+//     suivant, bug constaté en partie réelle.
+// blockedHexes : hexes occupés par des unités ennemies (toutes) — on peut y
+// ENTRER (destination : combat / déplacement d'ouvriers) mais jamais les
+// TRAVERSER ni continuer après (règle Scythe : entrer chez l'ennemi termine
+// le déplacement de l'unité). Constaté en partie réelle : saut par-dessus le
+// héros Frente via le réseau de rails, avec dépose d'ouvrier au passage.
+export const getValidMoves = (fromId, factionId, abilities, player, rails, unitType, blockedHexes) => {
   const hasSpeed = abilities && abilities.includes(0);
   const plan = player?.factoryCard?.topBonus;
   let steps = hasSpeed ? 2 : 1;
@@ -92,18 +104,18 @@ export const getValidMoves = (fromId, factionId, abilities, player, rails, unitT
   let frontier = [fromId];
   for (let s = 0; s < steps; s++) {
     const next = [];
-    // Arrêt forcé sur marécage : l'hex est atteignable mais ne ré-alimente pas
-    // la frontière — impossible de le traverser sans s'y arrêter.
+    // Arrêt forcé sur marécage ou hex ennemi : l'hex est atteignable mais ne
+    // ré-alimente pas la frontière — impossible de le traverser sans s'y arrêter.
     const reach = (id) => {
       if (id !== fromId && !all.has(id)) {
         all.add(id);
-        if (hMap[id]?.t !== "marecage") next.push(id);
+        if (hMap[id]?.t !== "marecage" && !(blockedHexes && blockedHexes.has(id))) next.push(id);
       }
     };
     frontier.forEach(fid => {
-      // Rail hexes themselves are valid destinations (free teleport)
-      const railNet = getRailNetwork(fid, rails);
-      const origins = railNet ? [...railNet] : [fid];
+      // Réseau de rails : uniquement depuis l'hex de DÉPART du déplacement
+      const railNet = s === 0 ? getRailNetwork(fid, rails, blockedHexes) : null;
+      const origins = railNet ? [...railNet].filter(id => id === fid || !(blockedHexes && blockedHexes.has(id))) : [fid];
       if (railNet) railNet.forEach(reach);
       // 1 normal step from each origin (rail = free teleport, then 1 step)
       origins.forEach(oid => {
@@ -143,18 +155,21 @@ export const marshToll = (p, toId, unitType, carriedWorkers = 0) => {
 // c'est là qu'un mech peut DÉPOSER un ouvrier ou du matériel en cours de route
 // (stratégie classique : relais de mechas, dépôt avant bataille, expansion).
 // BFS sur le même graphe que getValidMoves : pas normaux + bonds de rail.
-export const findPathWaypoints = (fromId, toId, factionId, abilities, player, rails) => {
+// blockedHexes : hexes ennemis — jamais traversés (destination possible).
+export const findPathWaypoints = (fromId, toId, factionId, abilities, player, rails, blockedHexes) => {
   if (fromId === toId) return [];
   const prev = new Map([[fromId, null]]);
   const queue = [fromId];
   let found = false;
   while (queue.length > 0 && !found) {
     const cur = queue.shift();
-    // Un marécage ne peut pas être traversé (arrêt forcé) : on n'étend pas le
-    // chemin depuis un marécage, sauf s'il est l'hex de départ.
-    if (cur !== fromId && hMap[cur]?.t === "marecage") continue;
+    // Un marécage ou un hex ennemi ne peut pas être traversé (arrêt forcé) :
+    // on n'étend pas le chemin depuis là, sauf s'il est l'hex de départ.
+    if (cur !== fromId && (hMap[cur]?.t === "marecage" || (blockedHexes && blockedHexes.has(cur)))) continue;
     const nexts = new Set(getValidMoves1Step(cur, factionId, abilities, player, rails));
-    const rn = getRailNetwork(cur, rails);
+    // Même règle que getValidMoves : le réseau de rails ne s'emprunte que
+    // depuis l'hex de DÉPART (à bord dès le début), pas en cours de route
+    const rn = cur === fromId ? getRailNetwork(cur, rails, blockedHexes) : null;
     if (rn) rn.forEach(rid => nexts.add(rid));
     for (const nx of nexts) {
       if (prev.has(nx)) continue;

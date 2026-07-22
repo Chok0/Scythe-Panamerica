@@ -31,6 +31,10 @@ export const RULES = [
           "Compléter un Objectif secret",
           "Compléter l'Objectif de Faction"
         ]
+      },
+      {
+        title: "Fin de tour & révélation d'objectifs",
+        content: "Chaque tour se conclut par une étape de validation (« Terminer le tour »). C'est à ce moment — et seulement là — que se révèlent la Mission secrète et l'Objectif de faction dont la condition est remplie : révéler pose l'étoile et termine le tour au passage. Un « ! » sur la barre des triomphes signale qu'un objectif est prêt."
       }
     ]
   },
@@ -61,7 +65,7 @@ export const RULES = [
       },
       {
         title: "Réseau de Rails",
-        content: "Un réseau ferroviaire partagé entre tous les joueurs. La carte démarre sans aucun rail : construire une Gare pose 3 segments de rails, chaque segment devant partir de la Gare ou d'un rail existant (réseau connexe), jamais sur un lac ou un marécage. Les rails permettent le déplacement instantané entre hex connectés."
+        content: "Un réseau ferroviaire partagé entre tous les joueurs. La carte démarre sans aucun rail : construire une Gare pose 3 segments de rails, chaque segment devant partir de la Gare ou d'un rail existant (réseau connexe), jamais sur un lac ou un marécage. Une unité qui COMMENCE son déplacement sur le réseau se téléporte gratuitement vers n'importe quel hex relié (puis peut encore faire son pas normal). Entrer sur un rail en cours de déplacement ne donne pas accès au réseau ce tour-ci : on monte à bord un tour, on roule au suivant."
       },
       {
         title: "Rouge River & Plans",
@@ -151,7 +155,7 @@ export const RULES = [
       },
       {
         title: "Rails",
-        content: "Les rails (réseau partagé) permettent le déplacement instantané entre les hex reliés. Construire une Gare pose 3 segments de rails, connectés à la Gare ou au réseau existant, jamais sur lac/marécage."
+        content: "Les rails (réseau partagé) permettent le déplacement instantané entre les hex reliés, à condition de COMMENCER son déplacement sur le réseau (entrer sur un rail en cours de route ne donne l'accès qu'au tour suivant). Construire une Gare pose 3 segments de rails, connectés à la Gare ou au réseau existant, jamais sur lac/marécage."
       }
     ]
   },
