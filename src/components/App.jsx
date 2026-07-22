@@ -11,14 +11,14 @@ import { BALANCE } from '../data/balance.js';
 import { EMPIRE_START, drawEmpireCombat } from '../data/empire.js';
 import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } from '../data/plans.js';
-import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes } from '../data/mats.js';
+import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes, FR_TOP as FR_TOP_MAP, FR_BOT as FR_BOT_MAP, frTop, frBot } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
 import { structureBonusDetail } from '../data/structureBonus.js';
 import { reconcileHand, topCardsSum, spendTopCards, spendPickedCards, handSummary } from '../logic/cards.js';
 import RulesPage from './RulesPage.jsx';
 import AmbientSound from './AmbientSound.jsx';
 import SetupScreen from './SetupScreen.jsx';
-import { countRes, spendRes, getWorkerHexes } from '../logic/resources.js';
+import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
 import { getValidMoves, findPathWaypoints, marshToll } from '../logic/movement.js';
@@ -550,6 +550,10 @@ export default function App(){
       let n=[...players];n[cp]=p;
       // ── SCYTHE RULE: bot hero/mech displaces other players' workers ──
       const botHexes=new Set([p.hero,...p.mechs.map(m=>m.hexId)]);
+      // Trajet complet des unités de combat du bot (hexes traversés + arrivée) :
+      // sert au déclenchement des pièges Frente SUR TOUT LE CHEMIN, comme pour
+      // le joueur (avant, seule la destination — botHexes — comptait)
+      const botTrodden=new Set([...(result.trodden||[]),...botHexes]);
       for(let oi=0;oi<n.length;oi++){
         if(oi===cp)continue;
         // Rule: workers retreat only when ALONE on the hex — if their hero/mechs
@@ -573,16 +577,18 @@ export default function App(){
           const servB=servitudeOnDisplace(n[cp],displaced[0].hexId);
           if(servB.captured){n[cp]=servB.player;logs.push(`⛓🤖 Servitude ! ${FACTIONS[n[cp].faction].name} capture un ouvrier (${n[cp].capturedWorkers}/2)`);}
         }
-        // ── TRAP TRIGGER: bot hero/mech lands on enemy Frente trap ──
-        // Même pénalité durcie que côté joueur : -3⚡ ET -2♥
+        // ── TRAP TRIGGER: le héros/mech d'un bot traverse un piège Frente ──
+        // Sur TOUT le trajet (botTrodden), plus seulement à l'arrivée. Même
+        // pénalité durcie que côté joueur : -3⚡ ET -2♥
         if(n[oi].faction==="frente"){
           (n[oi].trapTokens||[]).forEach((trap,ti)=>{
-            if(botHexes.has(trap.hexId)&&!trap.disarmed){
+            if(botTrodden.has(trap.hexId)&&!trap.disarmed){
               const penalty=Math.min(n[cp].power||0,3);
               n[cp]={...n[cp],power:Math.max(0,(n[cp].power||0)-penalty),pop:Math.max(0,(n[cp].pop||0)-2)};
               n[oi]={...n[oi],trapTokens:[...n[oi].trapTokens]};
               n[oi].trapTokens[ti]={...n[oi].trapTokens[ti],disarmed:true};
-              logs.push(`💥 Trap Frente sur #${trap.hexId} ! ${FACTIONS[n[cp].faction].name} -${penalty}⚡ -2♥`);
+              const passage=!botHexes.has(trap.hexId)?" (au passage)":"";
+              logs.push(`💥 Trap Frente sur #${trap.hexId}${passage} ! ${FACTIONS[n[cp].faction].name} -${penalty}⚡ -2♥`);
             }
           });
         }
@@ -716,7 +722,7 @@ export default function App(){
     // Apply plan bottom bonus (cost reduction)
     const planBonus=getPlanBottomBonus(me,"Upgrade");
     const effectiveQty=Math.max(0,cost.qty-planBonus.costReduction);
-    if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${cost.res} requis`);return;}
+    if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${resFR(cost.res)} requis`);return;}
     const mat=MATS.find(m=>m.id===me.matId);
     if(!mat)return;
     if((me.cubesOnTop||[])[fromCol]<=0){addLog(`⚠ Pas de cube sur cette action top`);return;}
@@ -736,8 +742,8 @@ export default function App(){
     });
     const topName=me.topRow[fromCol];const bottomName=BOTTOM[toCol];
     planBonus.logs.forEach(l=>addLog(l));
-    addLog(`⬆ Upgrade ${(me.upgrades||0)+1}/6: ${topName}↑ → ${bottomName}↓ (-${effectiveQty} ${cost.res}, +${(mat.bottomCosts[toCol].bonus||0)+planBonus.bonusCoins}$)`);
-    if((me.upgrades||0)+1>=6)addLog(`⭐ 6 Upgrades complétés !`);
+    addLog(`⬆ Améliorer ${(me.upgrades||0)+1}/6: ${frTop(topName)}↑ → ${frBot(bottomName)}↓ (-${effectiveQty} ${resFR(cost.res)}, +${(mat.bottomCosts[toCol].bonus||0)+planBonus.bonusCoins}$)`);
+    if((me.upgrades||0)+1>=6)addLog(`⭐ 6 Améliorations complétées !`);
     finishBottom(0);
   },[me,addLog,finishBottom]);
 
@@ -757,7 +763,7 @@ export default function App(){
     const planBonus=getPlanBottomBonus(me,"Deploy");
     const qty=Math.max(0,depCost.qty-planBonus.costReduction);
     const res=overrideRes||baseRes;
-    if(countRes(me,res)<qty){addLog(`⚠ ${qty} ${res} requis`);return;}
+    if(countRes(me,res)<qty){addLog(`⚠ ${qty} ${resFR(res)} requis`);return;}
     setPlayers(prev=>{
       const n=[...prev];let p=spendRes(n[0],res,qty);
       p.mechs=[...p.mechs,{id:`${p.faction}_m${p.mechs.length}`,hexId:targetHex}];
@@ -769,7 +775,7 @@ export default function App(){
       n[0]=p;return n;
     });
     planBonus.logs.forEach(l=>addLog(l));
-    addLog(`⬡ Mecha déployé sur #${targetHex} (-${qty} ${res})`);
+    addLog(`⬡ Mecha déployé sur #${targetHex} (-${qty} ${resFR(res)})`);
     if(me.mechs.length+1>=4)addLog(`⭐ 4 Mechas déployés !`);
     // Show ability picker — finishBottom will be called after player picks
     setPendingAbility({source:"deploy",col:1});
@@ -802,7 +808,7 @@ export default function App(){
     const cost=costs[2]; // Build is bottom col 2
     const planBonus=getPlanBottomBonus(me,"Build");
     const effectiveQty=Math.max(0,cost.qty-planBonus.costReduction);
-    if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${cost.res} requis`);return;}
+    if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${resFR(cost.res)} requis`);return;}
     const bt=BUILDING_TYPES.find(b=>b.type===buildingType);
     setPlayers(prev=>{
       const n=[...prev];let p=spendRes(n[0],cost.res,effectiveQty);
@@ -814,7 +820,7 @@ export default function App(){
       n[0]=p;return n;
     });
     planBonus.logs.forEach(l=>addLog(l));
-    addLog(`🏗 ${bt.name} construit sur #${targetHex} (-${effectiveQty} ${cost.res})`);
+    addLog(`🏗 ${bt.name} construit sur #${targetHex} (-${effectiveQty} ${resFR(cost.res)})`);
     if((me.buildings||[]).length+1>=4)addLog(`⭐ 4 Bâtiments construits !`);
     if(buildingType==="gare"){
       setRailPlacement({remaining:3,fromHex:null,gareHex:targetHex});
@@ -860,7 +866,7 @@ export default function App(){
     const cost=costs[3]; // Enlist is bottom col 3
     const planBonus=getPlanBottomBonus(me,"Enlist");
     const effectiveQty=Math.max(0,cost.qty-planBonus.costReduction);
-    if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${cost.res} requis`);return;}
+    if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${resFR(cost.res)} requis`);return;}
     const bonus=ENLIST_BONUSES[colIdx];
     const recruit=ENLIST_ONGOING[recruitIdx];
     setPlayers(prev=>{
@@ -876,7 +882,7 @@ export default function App(){
       n[0]=p;return n;
     });
     planBonus.logs.forEach(l=>addLog(l));
-    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${BOTTOM[colIdx]} (-${effectiveQty} ${cost.res}) — immédiat ${bonus.label}`);
+    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${frBot(BOTTOM[colIdx])} (-${effectiveQty} ${resFR(cost.res)}) — immédiat ${bonus.label}`);
     addLog(`   Permanent ${recruit.icon} ${recruit.label} quand vous/voisins faites ${BOTTOM[colIdx]}`);
     if((me.recruits||0)+1>=4)addLog(`⭐ 4 Recrues enrôlées !`);
     finishBottom(3);
@@ -885,7 +891,7 @@ export default function App(){
   // ── FACTION ABILITY: COMMERCE IMPÉRIAL (Dominion, 1×/tour) ──
   const doCommerceImperial=useCallback((resType,reward)=>{
     if(!me||me.faction!=="dominion"||me.commerceUsed)return;
-    if(countRes(me,resType)<1){addLog(`⚠ Pas de ${resType}`);return;}
+    if(countRes(me,resType)<1){addLog(`⚠ Pas de ${resFR(resType)}`);return;}
     setPlayers(prev=>{
       const n=[...prev];let p=spendRes(n[0],resType,1);
       p.commerceUsed=true;
@@ -893,7 +899,7 @@ export default function App(){
       else{p.combatCards++;}
       n[0]=p;return n;
     });
-    addLog(`🏛 Commerce Impérial : -1 ${resType} → ${reward==="coins"?"+1💰":"+1🃏"}`);
+    addLog(`🏛 Commerce Impérial : -1 ${resFR(resType)} → ${reward==="coins"?"+1💰":"+1🃏"}`);
   },[me,addLog]);
 
   // Import Impérial (Dominion) : le commerce dans l'autre sens — 2$ → 1
@@ -910,7 +916,7 @@ export default function App(){
       p.coins-=2;p.importUsed=true;
       n[0]=p;return n;
     });
-    addLog(`🏛 Import Impérial : -2💰 → +1 ${resType}`);
+    addLog(`🏛 Import Impérial : -2💰 → +1 ${resFR(resType)}`);
   },[me,addLog]);
 
   // ── PLAN « Five Dollar Day » (pop_worker) : action libre 1×/tour, -2$ → +2 Pop +1 ouvrier ──
@@ -1324,7 +1330,7 @@ export default function App(){
         // Hero carries resources (not workers) — sauf si l'emport est désactivé
         const tr=transportUnits(p, fromHex, hexId, "hero", {carryRes:carryOnMove});
         p=tr.player;
-        if(tr.carried.resTypes.length>0) transportLog=` 📦${tr.carried.resTypes.join(",")}`;
+        if(tr.carried.resTypes.length>0) transportLog=` 📦${resListFR(tr.carried.resTypes)}`;
       }
       else if(moveSource.unitType==="mech"){
         p.mechs=p.mechs.map(m=>m.id===moveSource.unitId?{...m,hexId}:m);
@@ -1338,7 +1344,7 @@ export default function App(){
         p=tr.player;
         marshCarried=tr.carried.workers;
         if(tr.carried.workers>0) transportLog+=` 👷×${tr.carried.workers}`;
-        if(tr.carried.resTypes.length>0) transportLog+=` 📦${tr.carried.resTypes.join(",")}`;
+        if(tr.carried.resTypes.length>0) transportLog+=` 📦${resListFR(tr.carried.resTypes)}`;
       }
       else if(moveSource.unitType==="worker"){
         p.workers=p.workers.map(w=>w.id===moveSource.unitId?{...w,hexId}:w);
@@ -1346,7 +1352,7 @@ export default function App(){
         if(carryOnMove){
           const tr=transportUnits(p, fromHex, hexId, "worker");
           p=tr.player;
-          if(tr.carried.resTypes.length>0) transportLog=` 📦${tr.carried.resTypes.join(",")}`;
+          if(tr.carried.resTypes.length>0) transportLog=` 📦${resListFR(tr.carried.resTypes)}`;
         }
       }
       
@@ -1374,7 +1380,7 @@ export default function App(){
           const hid=String(hexId);
           if(!p.resources[hid])p.resources[hid]={};
           p.resources[hid][destT.res]=(p.resources[hid][destT.res]||0)+1;
-          addLog(`⚙ ${me.factoryCard.name}: +1 ${destT.res} miné sur #${hexId}`);
+          addLog(`⚙ ${me.factoryCard.name}: +1 ${resFR(destT.res)} miné sur #${hexId}`);
         }
       }
 
@@ -1495,8 +1501,10 @@ export default function App(){
         const hasCargo=p.workers.some(w=>w.hexId===hexId)||Object.keys(p.resources[String(hexId)]||{}).length>0;
         if(mids.length>0&&hasCargo){
           dropOffer={mids,destHex:hexId,endAfter:p.movedUnits.length>=moveLimit};
+          // La modale (routeDrop) porte l'affordance ; on ne LOGUE que la dépose
+          // réelle (« 📦 Ouvrier déposé … au passage ») — l'annonce du simple
+          // « possible » était du bruit au journal quand rien n'était déposé.
           setRouteDrop(dropOffer);
-          addLog(`📦 Dépose en route possible (passage par ${mids.map(m=>`#${m}`).join(", ")})`);
         }
       }
       if(p.movedUnits.length>=moveLimit&&!dropOffer)endHumanTurn(myMat.topRow.indexOf("Move"),p.movedUnits.length);
@@ -1661,7 +1669,7 @@ export default function App(){
             else if(combat.moveData.unitType==="mech")p.mechs=p.mechs.map(m=>m.id===combat.moveData.unitId?{...m,hexId:combat.hexId}:m);
             const tr=transportUnits(p, combat.moveData.fromHex, combat.hexId, combat.moveData.unitType);
             p=tr.player;
-            if(tr.carried.workers>0||tr.carried.resTypes.length>0) addLog(`🚚 Transport:${tr.carried.workers>0?` 👷×${tr.carried.workers}`:""}${tr.carried.resTypes.length>0?` 📦${tr.carried.resTypes.join(",")}`:""}`);
+            if(tr.carried.workers>0||tr.carried.resTypes.length>0) addLog(`🚚 Transport:${tr.carried.workers>0?` 👷×${tr.carried.workers}`:""}${tr.carried.resTypes.length>0?` 📦${resListFR(tr.carried.resTypes)}`:""}`);
           }
           // Empire attacked → player stays in place, no transport needed
           p.empireKills=(p.empireKills||0)+1;
@@ -2073,7 +2081,7 @@ export default function App(){
         const hasModelM=p.factoryCard?.topBonus==="produce_x2";
         if(hasModelM)wCount*=2;
         if(hex.t==="village"){if(p.workers.length<8){for(let i=0;i<wCount&&p.workers.length<8;i++)p.workers.push({id:`${p.faction}_w${p.workers.length}`,hexId:hid});addLog(`👷 +ouv. #${hid}${hasMoulin?" (Moulin +1)":""}${hasModelM?" (Model M ×2)":""}`);}}
-        else if(t.res&&t.res!=="ouvriers"){if(!p.resources[hidStr])p.resources[hidStr]={};p.resources[hidStr][t.res]=(p.resources[hidStr][t.res]||0)+wCount;addLog(`🏭 +${wCount} ${t.res} #${hid}${hasMoulin?" (Moulin +1)":""}${hasModelM?" (Model M ×2)":""}`);}
+        else if(t.res&&t.res!=="ouvriers"){if(!p.resources[hidStr])p.resources[hidStr]={};p.resources[hidStr][t.res]=(p.resources[hidStr][t.res]||0)+wCount;addLog(`🏭 +${wCount} ${resFR(t.res)} #${hid}${hasMoulin?" (Moulin +1)":""}${hasModelM?" (Model M ×2)":""}`);}
       });n[0]=p;return n;});
     if(costLabel!=="Gratuit")addLog(`💳 ${costLabel}`);
     setProducePicks([]);
@@ -2304,8 +2312,9 @@ export default function App(){
     ];
   };
   // Vocabulaire couplé façon Scythe (en-tête de chaque cellule d'action)
-  const FR_TOP={Move:"Déplacer",Bolster:"Soutien",Trade:"Commerce",Produce:"Produire"};
-  const FR_BOT={Upgrade:"Améliorer",Deploy:"Déployer",Build:"Construire",Enlist:"Enrôler"};
+  // Source unique importée de mats.js (mêmes libellés pour l'UI et les logs)
+  const FR_TOP=FR_TOP_MAP;
+  const FR_BOT=FR_BOT_MAP;
 
   // Étoiles à obtenir (pour le joueur) : icône + nom + progression + exigence.
   // Utilisé par la rangée de la barre du haut ET le panneau détail façon Steam.

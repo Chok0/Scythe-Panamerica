@@ -1,8 +1,8 @@
 import { FACTIONS } from '../data/factions.js';
 import { TERRAINS } from '../data/terrains.js';
 import { hMap, ADJ, HEXES, HOME_BASES, homeBaseHex } from '../data/hexes.js';
-import { MATS, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, getBottomCost, topUpgradeCount, maxBottomCubes } from '../data/mats.js';
-import { countRes, spendRes, getWorkerHexes } from './resources.js';
+import { MATS, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, getBottomCost, topUpgradeCount, maxBottomCubes, frBot } from '../data/mats.js';
+import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from './resources.js';
 import { canPayProduce, payProduce } from './production.js';
 import { getValidMoves, findPathWaypoints, marshToll } from './movement.js';
 import { transportUnits } from './transport.js';
@@ -327,6 +327,17 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const p = { ...player, workers: [...player.workers], mechs: [...player.mechs], resources: { ...player.resources } };
   const logs = [];
 
+  // ── Trajet des unités de COMBAT (héros + mechs) : hexes traversés ET
+  // destination, pour déclencher les pièges Frente sur tout le chemin (comme
+  // pour le joueur) et pas seulement à l'arrivée. Calculé AVANT de muter la
+  // position (les capacités de position lisent les positions courantes).
+  const trodden = new Set();
+  const recordCombatRoute = (from, to) => {
+    if (from == null || to == null || from === to) return;
+    findPathWaypoints(from, to, p.faction, p.unlockedAbilities || [], p, rails, enemyHexes).forEach(h => trodden.add(h));
+    trodden.add(to);
+  };
+
   // ── Profil stratégique + bruit décisionnel (niveau de difficulté) ──
   const prof = BOT_PROFILES[p.botProfile] || BOT_PROFILES.equilibre;
   const noise = p.botNoise || 0;
@@ -355,7 +366,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     // (+1 si le cube d'amélioration de l'option 💰 a été retiré)
     const coinGain = 1 + topUpgradeCount(p, "Move", "coins");
     p.coins += coinGain;
-    logs.push(`🤖 ${f.name}: +${coinGain}$ (Move)`);
+    logs.push(`🤖 ${f.name}: +${coinGain}$ (Déplacer)`);
   } else if (action === "Move") {
     // Nations Pack Up (strategic building repositioning)
     if (p.faction === "nations" && (p.unlockedAbilities || []).includes(3) && (p.buildings || []).length > 0 && Math.random() < 0.3) {
@@ -388,6 +399,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         if (enemyHexes) mv = mv.filter(id => !enemyHexes.has(id));
         const mt = mv.length > 0 ? pickMoveTarget(mv, p, empire, enemyHexes, "worker", ctx, prof) : null;
         if (mt != null) {
+          recordCombatRoute(baseHexId, mt);
           p.mechs = [...p.mechs];
           p.mechs[mi] = { ...p.mechs[mi], hexId: mt };
           const tr = transportUnits(p, baseHexId, mt, "mech", { carryWorkers: true });
@@ -421,10 +433,11 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     if (validHero.length > 0) {
       const fromHex = p.hero;
       const target = pickMoveTarget(validHero, p, empire, enemyHexes, "hero", ctx, prof);
+      recordCombatRoute(fromHex, target);
       p.hero = target;
       const tr = transportUnits(p, fromHex, target, "hero");
       Object.assign(p, { resources: tr.player.resources });
-      const tl = tr.carried.resTypes.length > 0 ? ` 📦${tr.carried.resTypes.join(",")}` : "";
+      const tl = tr.carried.resTypes.length > 0 ? ` 📦${resListFR(tr.carried.resTypes)}` : "";
       logs.push(`🤖 ${f.name}: ${f.hero} → #${target}${tl}`);
       const heroToll = marshToll(p, target, "hero");
       if (heroToll) logs.push(`🤖${heroToll}`);
@@ -457,6 +470,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
           || (enemyHexes && enemyHexes.has(mt))
           || getPhase(p) === "late");
         if (worthIt) {
+          recordCombatRoute(fromHexM, mt);
           p.mechs = [...p.mechs];
           p.mechs[mi] = { ...p.mechs[mi], hexId: mt };
           // Expansion : vers un combat, le mech n'embarque jamais d'ouvriers.
@@ -487,7 +501,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
           }
           let tl = "";
           if (tr.carried.workers > 0) tl += ` 👷×${tr.carried.workers}`;
-          if (tr.carried.resTypes.length > 0) tl += ` 📦${tr.carried.resTypes.join(",")}`;
+          if (tr.carried.resTypes.length > 0) tl += ` 📦${resListFR(tr.carried.resTypes)}`;
           logs.push(`🤖 ${f.name}: Mech → #${mt}${tl}`);
           const mechToll = marshToll(p, mt, "mech", tr.carried.workers);
           if (mechToll) logs.push(`🤖${mechToll}`);
@@ -517,7 +531,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         if (lastOnHex) {
           const tr = transportUnits(p, fromW, wt, "worker");
           Object.assign(p, { resources: tr.player.resources });
-          if (tr.carried.resTypes.length > 0) logs.push(`🤖 ${f.name}: Ouv. → #${wt} 📦${tr.carried.resTypes.join(",")}`);
+          if (tr.carried.resTypes.length > 0) logs.push(`🤖 ${f.name}: Ouv. → #${wt} 📦${resListFR(tr.carried.resTypes)}`);
           else logs.push(`🤖 ${f.name}: Ouv. → #${wt}`);
         } else {
           logs.push(`🤖 ${f.name}: Ouv. → #${wt}`);
@@ -598,7 +612,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         }
         else if (t.res && t.res !== "ouvriers") { if (!p.resources[hidStr]) p.resources[hidStr] = {}; p.resources[hidStr][t.res] = (p.resources[hidStr][t.res] || 0) + wc; }
       });
-      logs.push(`🤖 ${f.name}: Produce`);
+      logs.push(`🤖 ${f.name}: Produire`);
     }
   } else if (action === "Trade") {
     if (p.coins >= 1 && ((prof.chasePopStar && p.pop >= 13 && !p.starPop) || (p.pop < prof.popTarget && (p.stars >= 1 || p.workers.length >= 5)))) {
@@ -646,7 +660,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       // 2 ressources de base, +1 si le cube de l'option 📦 a été retiré
       const resGain = 2 + topUpgradeCount(p, "Trade", "metal");
       p.resources[wHex][targetRes] = (p.resources[wHex][targetRes] || 0) + resGain; p.coins--;
-      logs.push(`🤖 ${f.name}: +${resGain} ${targetRes}`);
+      logs.push(`🤖 ${f.name}: +${resGain} ${resFR(targetRes)}`);
     } else {
       // No coins: take pop instead if possible (shouldn't happen often)
       logs.push(`🤖 ${f.name}: (pas d'$)`);
@@ -683,7 +697,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         p.coins += (mat.bottomCosts[toC].bonus || 0);
         p.upgrades = (p.upgrades || 0) + 1;
         bottomDone = true;
-        logs.push(`🤖 ${f.name}: Upgrade ${p.upgrades}/6`);
+        logs.push(`🤖 ${f.name}: Améliorer ${p.upgrades}/6`);
         if (p.upgrades >= 6 && !p.starUpgrades) { p.stars++; p.starUpgrades = true; logs.push(`⭐ ${f.name}: 6 upgrades !`); }
       }
     } else if (bottomAction === "Deploy" && p.mechs.length < 4) {
@@ -705,7 +719,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         p.mechs.push({ id: `${p.faction}_m${p.mechs.length}`, hexId: th });
         p.unlockedAbilities = [...(p.unlockedAbilities || []), abilityIdx];
         bottomDone = true;
-        logs.push(`🤖 ${f.name}: Deploy #${th} → 🔓 ${abilityNames[abilityIdx]}`);
+        logs.push(`🤖 ${f.name}: Déployer #${th} → 🔓 ${abilityNames[abilityIdx]}`);
         if (p.mechs.length >= 4 && !p.starMechs) { p.stars++; p.starMechs = true; logs.push(`⭐ ${f.name}: 4 mechas !`); }
       }
     } else if (bottomAction === "Build" && (p.buildings || []).length < 4) {
@@ -716,7 +730,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         const building = pickBuilding(p, avail, prof);
         p.buildings = [...(p.buildings || []), { type: building.type, hexId: wh[0] }];
         bottomDone = true;
-        logs.push(`🤖 ${f.name}: Build ${building.name} #${wh[0]}`);
+        logs.push(`🤖 ${f.name}: Construire ${building.name} #${wh[0]}`);
         if (p.buildings.length >= 4 && !p.starBuildings) { p.stars++; p.starBuildings = true; logs.push(`⭐ ${f.name}: 4 bâtiments !`); }
         // Gare: place rails — 3 segments SANS doublon : le filtre doit voir
         // aussi les rails posés dans CETTE action (_pendingRails), sinon le
@@ -768,7 +782,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         // et le bonus appliqué en silence rendait les compteurs invérifiables
         const imm = ENLIST_IMMEDIATE[col];
         if (imm) imm.apply(p);
-        logs.push(`🤖 ${f.name}: Enlist ${BOTTOM[col]} → immédiat ${imm ? imm.icon + imm.label : "?"}, recrue ${ENLIST_ONGOING[recruit].icon} permanent`);
+        logs.push(`🤖 ${f.name}: Enrôler ${frBot(BOTTOM[col])} → immédiat ${imm ? imm.icon + imm.label : "?"}, recrue ${ENLIST_ONGOING[recruit].icon} permanent`);
       }
       if (p.recruits >= 4 && !p.starRecruits) { p.stars++; p.starRecruits = true; logs.push(`⭐ ${f.name}: 4 recrues !`); }
     }
@@ -832,5 +846,5 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     }
   }
 
-  return { player: p, logs, bottomCol: bottomDone ? col : -1 };
+  return { player: p, logs, bottomCol: bottomDone ? col : -1, trodden: [...trodden] };
 };
