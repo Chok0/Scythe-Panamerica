@@ -633,12 +633,13 @@ export default function App(){
         setEncounterTokens(prev=>{const s=new Set(prev);s.delete(encHex);return s;});
       }
       // ── ROUGE RIVER BOT : héros sur l'Usine (1re visite) → plan auto ──
-      // Même règle que le joueur : le tirage rétrécit avec les visiteurs
-      // précédents, Tesla accessible avec les fragments requis
+      // Même règle que le joueur : autant de plans offerts qu'il reste de
+      // joueurs n'ayant pas encore visité (nJoueurs - visiteurs), Tesla
+      // accessible avec les fragments requis
       if(n[cp].hero===FACTORY_RR_HEX&&!n[cp].visitedRR){
         const hasFrag=(n[cp].fragments||0)>=TESLA_FRAGMENTS_REQUIRED;
         const pool=hasFrag?[...PLANS_FORD,...PLANS_TESLA]:[...PLANS_FORD];
-        const seeCount=Math.max(1,Math.min(pool.length,pool.length-rrVisitors));
+        const seeCount=Math.max(1,Math.min(pool.length,n.length-rrVisitors));
         const visible=shuffleArray(pool).slice(0,seeCount);
         const card=visible.find(c=>c.type==="tesla")||visible[Math.floor(Math.random()*visible.length)];
         n[cp]={...n[cp],visitedRR:true,factoryCard:card};
@@ -1482,7 +1483,11 @@ export default function App(){
           const hasFragments=(me.fragments||0)>=TESLA_FRAGMENTS_REQUIRED;
           const available=hasFragments?[...PLANS_FORD,...PLANS_TESLA]:[...PLANS_FORD];
           const shuffled=shuffleArray(available);
-          const seeCount=Math.max(1,Math.min(shuffled.length,shuffled.length-rrVisitors));
+          // Règle Scythe : l'Usine offre autant de plans qu'il y a de JOUEURS,
+          // et chaque visiteur en retire un (course à l'Usine — le dernier n'a
+          // plus de choix). Avant, le nombre offert = taille du deck (5 ou 10),
+          // sans rapport avec le nombre de joueurs.
+          const seeCount=Math.max(1,Math.min(shuffled.length,players.length-rrVisitors));
           const visible=shuffled.slice(0,seeCount);
           setRougeRiver({cards:visible,hasFragments});
           setRrVisitors(prev=>prev+1);
