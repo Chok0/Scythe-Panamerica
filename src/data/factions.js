@@ -69,7 +69,7 @@ export const FACTIONS = {
   bayou: {
     name: "Bayou", color: "#7B2D8B", hero: "Cap. Zeke", companion: "Croc",
     power: 2, cards: 3, workerHex: [35, 28], riverwalk: ["desert", "village"], rwName: "Mangrove",
-    ability: "Chimère", abilityDesc: "Capture un mecha de l'Empire détruit (1×/partie) · déploie avec du bois",
+    ability: "Chimère & Bois flotté", abilityDesc: "Chimère : capture un mecha ennemi vaincu (Empire OU joueur, 1×/partie, devient votre 5e mecha) · Bois flotté : déploie ses mechas avec du bois au lieu du métal",
     deployAltRes: "bois", deployAltName: "Bois flotté",
     fObj: {
       name: "Le Prédateur", desc: "1 mecha capturé + 2 Empire détruits",
