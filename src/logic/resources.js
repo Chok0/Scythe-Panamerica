@@ -1,3 +1,10 @@
+// Libellés FR des ressources pour les logs (les CLÉS restent metal/bois/
+// nourriture/petrole ; c'est l'affichage qui s'uniformise — avant, « +2 metal »
+// côtoyait « +3 nourriture »). Terminologie alignée sur les règles (rules.js).
+export const RES_FR = { metal: "métal", bois: "bois", nourriture: "nourriture", petrole: "pétrole", ouvriers: "ouvriers" };
+export const resFR = (r) => RES_FR[r] || r;
+export const resListFR = (arr) => (arr || []).map(resFR).join(", ");
+
 // Resource helpers — count & spend across all controlled hexes
 export const countRes = (player, resType) => {
   let total = 0;

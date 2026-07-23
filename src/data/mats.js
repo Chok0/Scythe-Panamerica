@@ -25,6 +25,14 @@ export const MATS = [
 
 export const BOTTOM = ["Upgrade", "Deploy", "Build", "Enlist"];
 
+// Libellés FR des actions (source unique pour l'UI ET les logs — avant, les
+// noms d'action apparaissaient en anglais dans le journal alors que l'UI les
+// traduisait déjà). `frTop`/`frBot` acceptent le nom EN et rendent le FR.
+export const FR_TOP = { Move: "Déplacer", Bolster: "Soutien", Trade: "Commerce", Produce: "Produire" };
+export const FR_BOT = { Upgrade: "Améliorer", Deploy: "Déployer", Build: "Construire", Enlist: "Enrôler" };
+export const frTop = (a) => FR_TOP[a] || a;
+export const frBot = (a) => FR_BOT[a] || a;
+
 // ── Améliorations de la rangée HAUT (modèle Scythe original) ──
 // Chaque case d'amélioration d'une colonne correspond à une OPTION précise de
 // l'action, débloquée quand son cube est retiré via Améliorer :
