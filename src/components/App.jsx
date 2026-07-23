@@ -340,8 +340,11 @@ export default function App(){
     setStructureBonus(null);
     const usedFactions=[selFaction];const usedMats=[selMat];
     const ps=[createPlayer(selFaction,selMat,false)];
-    const availF=FACTION_IDS.filter(f=>!usedFactions.includes(f));
-    const availM=MATS.map(m=>m.id).filter(id=>!usedMats.includes(id));
+    // Factions ET plateaux des bots TIRÉS AU HASARD (avant : l'ordre fixe de
+    // FACTION_IDS donnait toujours les mêmes voisins — Confédération + Frente
+    // dès que le joueur n'était pas l'un des deux). Mélange à chaque partie.
+    const availF=shuffleArray(FACTION_IDS.filter(f=>!usedFactions.includes(f)));
+    const availM=shuffleArray(MATS.map(m=>m.id).filter(id=>!usedMats.includes(id)));
     for(let i=0;i<numBots&&i<availF.length;i++){
       const bot=createPlayer(availF[i],availM[i%availM.length],true);
       // Profil stratégique (bâtisseur/blitz/thésauriseur/équilibré) + bruit
