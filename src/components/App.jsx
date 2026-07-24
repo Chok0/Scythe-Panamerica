@@ -1095,7 +1095,12 @@ export default function App(){
   // d'action restent affichées et leurs cases de cubes deviennent cliquables
   // (source en rangée haut, destination en rangée bas + bouton Valider)
   const upgradePicking=!!me&&pendingBottom?.action==="Upgrade"&&(me.upgrades||0)<6
-    &&(()=>{const c=getBottomCost(me)[BOTTOM.indexOf("Upgrade")];return !!c&&countRes(me,c.res)>=c.qty;})();
+    &&(()=>{const c=getBottomCost(me)[BOTTOM.indexOf("Upgrade")];if(!c)return false;
+      // Réduction du plan d'usine (ex. Trimotor -1) appliquée avant le test de
+      // solvabilité, comme dans doUpgrade — sinon les cubes restaient incliquables
+      // alors que l'amélioration était payable
+      const eff=Math.max(0,c.qty-getPlanBottomBonus(me,"Upgrade").costReduction);
+      return countRes(me,c.res)>=eff;})();
 
   // Cibles cliquables sur la carte pour les actions bottom Deploy/Build
   // (en plus des boutons du panneau : cliquer l'hex surligné place directement)
@@ -3638,7 +3643,12 @@ export default function App(){
           {/* Bottom-row action */}
           {isMyTurn&&!combat&&!encounter&&!rougeRiver&&pendingBottom&&(()=>{
             const ba=pendingBottom.action;const colIdx=BOTTOM.indexOf(ba);
-            const costs=getBottomCost(me);const bc=costs[colIdx];
+            // Réduction du plan d'usine appliquée AVANT l'affichage et le test de
+            // solvabilité (comme doUpgrade/doDeploy/doBuild/doEnlist et le bot) —
+            // sinon le panneau affichait « Pas assez » sur une action payable
+            const costs=getBottomCost(me);const rawBc=costs[colIdx];
+            const planRed=rawBc?getPlanBottomBonus(me,ba).costReduction:0;
+            const bc=rawBc?{...rawBc,qty:Math.max(0,rawBc.qty-planRed)}:rawBc;
             const hasRes=bc?countRes(me,bc.res)>=bc.qty:false;const resCount=bc?countRes(me,bc.res):0;
             const workerHexes=getWorkerHexes(me);
             const maxed=ba==="Upgrade"?(me.upgrades||0)>=6:ba==="Deploy"?me.mechs.length>=4:ba==="Build"?(me.buildings||[]).length>=4:ba==="Enlist"?(me.recruits||0)>=4:false;
@@ -3658,7 +3668,7 @@ export default function App(){
               <div style={{padding:"12px 16px",borderTop:"1px solid var(--border)",animation:"slideUp 0.25s ease"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
                   <span style={{fontFamily:"var(--font-title)",color:"var(--brass)",fontSize:16,fontWeight:700}}>▼ {ba}</span>
-                  {bc&&<span style={{fontSize:13,color:hasRes&&!maxed?"var(--text-dim)":"#8A3030"}}>{maxed?"Maximum":` ${bc.qty} ${bc.res} (${resCount} dispo)`}</span>}
+                  {bc&&<span style={{fontSize:13,color:hasRes&&!maxed?"var(--text-dim)":"#8A3030"}}>{maxed?"Maximum":` ${bc.qty} ${bc.res}${planRed>0?` (plan −${planRed})`:""} (${resCount} dispo)`}</span>}
                 </div>
                 {/* UPGRADE — 2-step: pick top source then bottom dest */}
                 {ba==="Upgrade"&&!maxed&&(()=>{
