@@ -16,7 +16,7 @@ import { OBJECTIVES } from '../data/objectives.js';
 import { structureBonusDetail } from '../data/structureBonus.js';
 import { reconcileHand, topCardsSum, spendTopCards, spendPickedCards, handSummary } from '../logic/cards.js';
 import RulesPage from './RulesPage.jsx';
-import AmbientSound from './AmbientSound.jsx';
+import Soundtrack from './Soundtrack.jsx';
 import SetupScreen from './SetupScreen.jsx';
 import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
@@ -4114,7 +4114,7 @@ export default function App(){
         </div>
       )}
 
-      <AmbientSound />
+      <Soundtrack />
     </div>
   );
 }
