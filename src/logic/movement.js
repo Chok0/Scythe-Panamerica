@@ -74,14 +74,16 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails, 
   });
 };
 
-// Full movement: rail (free) + N steps.
+// Full movement: rail (1 pas) + N steps.
 // Steps = 1, +1 avec Speed (slot 0), et bonus des plans Ford/Tesla :
 //   - Trimotor (move_3)      : 3 pas pour toutes les unités + ignore les rivières
 //   - Golem (remote_move)    : 2 pas pour les MECHAS
 //   - Éclair (mech_sprint)   : 4 pas pour les MECHAS
 // Rail rules — il faut être À BORD pour rouler :
-//   - Si l'unité COMMENCE son déplacement sur le réseau : téléportation gratuite
-//     vers tout hex relié, puis déplacement normal.
+//   - Si l'unité COMMENCE son déplacement sur le réseau : rouler COÛTE 1 PAS
+//     (« 1 move pour se placer n'importe où sur le réseau, 1 move de plus pour
+//     en sortir ») — le téléport gratuit d'avant laissait un mech filer de
+//     #11 à #30 dans le même tour, incohérence constatée en partie réelle.
 //   - Entrer sur un hex à rail en cours de déplacement ne donne PAS accès au
 //     réseau dans le même déplacement (on monte à bord un tour, on roule au
 //     suivant) — avant, un pas sur le rail ouvrait tout le réseau au pas
@@ -113,14 +115,14 @@ export const getValidMoves = (fromId, factionId, abilities, player, rails, unitT
       }
     };
     frontier.forEach(fid => {
-      // Réseau de rails : uniquement depuis l'hex de DÉPART du déplacement
-      const railNet = s === 0 ? getRailNetwork(fid, rails, blockedHexes) : null;
-      const origins = railNet ? [...railNet].filter(id => id === fid || !(blockedHexes && blockedHexes.has(id))) : [fid];
-      if (railNet) railNet.forEach(reach);
-      // 1 normal step from each origin (rail = free teleport, then 1 step)
-      origins.forEach(oid => {
-        getValidMoves1Step(oid, factionId, abilities, player, rails, ignoreRivers).forEach(reach);
-      });
+      // Réseau de rails : uniquement depuis l'hex de DÉPART du déplacement,
+      // et rouler consomme le pas courant — les nœuds atteints entrent dans
+      // la frontière du pas suivant (plus de « téléport + pas » gratuits)
+      if (s === 0) {
+        const railNet = getRailNetwork(fid, rails, blockedHexes);
+        if (railNet) railNet.forEach(reach);
+      }
+      getValidMoves1Step(fid, factionId, abilities, player, rails, ignoreRivers).forEach(reach);
     });
     frontier = next;
   }

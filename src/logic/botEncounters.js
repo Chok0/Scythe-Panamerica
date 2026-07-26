@@ -4,7 +4,7 @@
 // la rencontre se résout après les combats du tour.
 import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTIONS } from '../data/factions.js';
-import { BUILDING_TYPES, ENLIST_IMMEDIATE } from '../data/mats.js';
+import { BUILDING_TYPES, ENLIST_IMMEDIATE, MATS, maxBottomCubes } from '../data/mats.js';
 
 /**
  * Résout une rencontre pour un bot dont le héros est sur un jeton.
@@ -31,6 +31,24 @@ export const resolveBotEncounter = (player) => {
   // Un mecha gagné en rencontre débloque la prochaine ability (comme un Deploy)
   if (p.mechs.length > mechsBefore) {
     p.unlockedAbilities = [...p.unlockedAbilities, Math.min(mechsBefore, 3)];
+  }
+  // Amélioration gagnée en rencontre : VRAI déplacement de cube (haut→bas au
+  // hasard parmi les emplacements valides), pas un simple compteur
+  if (choice.grantsUpgrade && (p.upgrades || 0) < 6) {
+    const mat = MATS.find(m => m.id === p.matId);
+    const validTop = []; const validBottom = [];
+    if (mat) {
+      (p.cubesOnTop || []).forEach((c, i) => { if (c > 0) validTop.push(i); });
+      (mat.bottomSlots || []).forEach((s, i) => { if ((p.cubesOnBottom || [])[i] < maxBottomCubes(mat, i)) validBottom.push(i); });
+    }
+    if (validTop.length && validBottom.length) {
+      const fromC = validTop[Math.floor(Math.random() * validTop.length)];
+      const toC = validBottom[Math.floor(Math.random() * validBottom.length)];
+      p.cubesOnTop = [...(p.cubesOnTop || [])]; p.cubesOnTop[fromC]--;
+      p.cubesOnBottom = [...(p.cubesOnBottom || [])]; p.cubesOnBottom[toC]++;
+      p.upgrades = (p.upgrades || 0) + 1;
+      if (p.upgrades >= 6 && !p.starUpgrades) { p.stars++; p.starUpgrades = true; }
+    }
   }
   // Bâtiment gratuit (option structurante) — posé sur le hex du héros. On évite
   // la Gare (elle impliquerait la pose de rails, hors flux rencontre).

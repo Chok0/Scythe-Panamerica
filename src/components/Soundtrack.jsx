@@ -21,7 +21,11 @@ export default function Soundtrack() {
   const queueRef = useRef(shuffled(ALL_TRACKS));
   const posRef = useRef(0);
   const failStreakRef = useRef(0);
-  const [muted, setMuted] = useState(true); // Start muted, user opts in
+  // Musique active par défaut ; seul le choix explicite du joueur (🔇) est
+  // retenu d'une session à l'autre.
+  const [muted, setMuted] = useState(() => {
+    try { return localStorage.getItem('pa-music-muted') === '1'; } catch { return false; }
+  });
   const [volume, setVolume] = useState(0.25);
   const [trackName, setTrackName] = useState(queueRef.current[0].name);
 
@@ -57,15 +61,23 @@ export default function Soundtrack() {
   }, [advance]);
 
   useEffect(() => {
+    try { localStorage.setItem('pa-music-muted', muted ? '1' : '0'); } catch { /* stockage indisponible */ }
+  }, [muted]);
+
+  useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    if (muted) {
-      audio.pause();
-    } else if (!audio.src) {
-      playAt(posRef.current);
-    } else {
-      audio.play().catch(() => {});
-    }
+    if (muted) { audio.pause(); return; }
+    const tryPlay = () => {
+      if (!audio.src) playAt(posRef.current);
+      else audio.play().catch(() => {});
+    };
+    // Les navigateurs bloquent l'autoplay sans geste utilisateur : on tente
+    // tout de suite, et on réessaie au premier clic tant que rien ne joue.
+    tryPlay();
+    const onGesture = () => { if (audio.paused) tryPlay(); };
+    window.addEventListener('pointerdown', onGesture);
+    return () => window.removeEventListener('pointerdown', onGesture);
   }, [muted, playAt]);
 
   useEffect(() => {

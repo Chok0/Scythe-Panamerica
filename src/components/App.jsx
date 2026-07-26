@@ -13,7 +13,7 @@ import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } from '../data/plans.js';
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes, FR_TOP as FR_TOP_MAP, FR_BOT as FR_BOT_MAP, frTop, frBot } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
-import { structureBonusDetail } from '../data/structureBonus.js';
+import { structureBonusDetail, pickStructureBonus } from '../data/structureBonus.js';
 import { reconcileHand, topCardsSum, spendTopCards, spendPickedCards, handSummary } from '../logic/cards.js';
 import RulesPage from './RulesPage.jsx';
 import Soundtrack from './Soundtrack.jsx';
@@ -93,6 +93,7 @@ export default function App(){
   const[encounter,setEncounter]=useState(null); // {card, hexId}
   const[encounterBuild,setEncounterBuild]=useState(false); // rencontre → choisir le type de bâtiment (posé sur le hex du héros)
   const[encounterEnlist,setEncounterEnlist]=useState(null); // rencontre → enrôler : {col:null} puis {col}
+  const[encounterUpgrade,setEncounterUpgrade]=useState(null); // rencontre → amélioration : {from:null} puis {from} (cube haut→bas)
   const[rougeRiver,setRougeRiver]=useState(null); // {cards:[]}
   const[encounterTokens,setEncounterTokens]=useState(new Set(CURRENT_MAP.encounterHexes));
   const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
@@ -335,9 +336,11 @@ export default function App(){
     // La carte de base démarre sans rails — seules les Gares en posent
     setRails([]);
     setRrVisitors(0);
-    // 🏦 Tuiles bonus $ retirées du jeu de base — l'idée est réservée à la
-    // mission « Ruée vers l'or » du mode campagne (voir docs/campagne.md)
-    setStructureBonus(null);
+    // 🏦 Tuile bonus de pose tirée aussi en partie de base (demande de partie
+    // réelle) — la mission « Ruée vers l'or » de la campagne garde sa variante
+    const sb=pickStructureBonus();
+    setStructureBonus(sb);
+    addLog(`🏦 Bonus de pose : ${sb.icon} ${sb.name} — +${sb.coins}$ ${sb.desc}`);
     const usedFactions=[selFaction];const usedMats=[selMat];
     const ps=[createPlayer(selFaction,selMat,false)];
     // Factions ET plateaux des bots TIRÉS AU HASARD (avant : l'ordre fixe de
@@ -1047,7 +1050,7 @@ export default function App(){
     // contexte d'action capturé (selAction/preActionSnapshot) du snapshot
     setSelAction(snap.selAction??null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(snap.preActionSnapshot??null);setTradePicks([]);
     setPendingBottom(null);setBottomPick(null);setCombat(null);setEncounter(null);setRougeRiver(null);
-    setEncounterBuild(false);setEncounterEnlist(null);
+    setEncounterBuild(false);setEncounterEnlist(null);setEncounterUpgrade(null);
     setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);setEndOfTurn(false);
   },[cloneVal]);
   const pushHistory=useCallback(()=>{ setUndoStack(s=>[...s.slice(-40),snapshotGame()]); setRedoStack([]); },[snapshotGame]);
@@ -1989,6 +1992,7 @@ export default function App(){
     }
     if(choice.grantsBuilding){ setEncounterBuild(true); return; }
     if(choice.grantsRecruit){ setEncounterEnlist({col:null}); return; }
+    if(choice.grantsUpgrade&&(me.upgrades||0)<6){ setEncounterUpgrade({from:null}); return; }
     // Resume movement check
     resumeAfterEncounter();
   },[encounter,me,addLog,resumeAfterEncounter]);
@@ -2034,6 +2038,30 @@ export default function App(){
     addLog(`   Permanent ${recruit.icon} ${recruit.label} quand vous/voisins faites ${BOTTOM[colIdx]}`);
     if((me.recruits||0)+1>=4)addLog(`⭐ 4 Recrues enrôlées !`);
     setEncounterEnlist(null);
+    resumeAfterEncounter();
+  },[me,addLog,resumeAfterEncounter]);
+
+  // ── RÉCOMPENSE RENCONTRE : amélioration gratuite (vrai cube haut→bas) ──
+  // Avant : simple compteur incrémenté, sans choix ni effet — « pas appliqué,
+  // juste comptabilisé », constaté en partie réelle.
+  const doEncounterUpgrade=useCallback((fromCol,toCol)=>{
+    if(!me||(me.upgrades||0)>=6)return;
+    const mat=MATS.find(m=>m.id===me.matId);
+    if(!mat)return;
+    if((me.cubesOnTop||[])[fromCol]<=0){addLog(`⚠ Pas de cube sur cette action top`);return;}
+    if((me.cubesOnBottom||[])[toCol]>=maxBottomCubes(mat,toCol)){addLog(`⚠ Plus de place sur cette action bottom`);return;}
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0]};
+      p.cubesOnTop=[...(p.cubesOnTop||[])];p.cubesOnTop[fromCol]--;
+      p.cubesOnBottom=[...(p.cubesOnBottom||[])];p.cubesOnBottom[toCol]++;
+      p.upgrades=(p.upgrades||0)+1;
+      const earned=p.upgrades>=6&&!p.starUpgrades;
+      if(earned){p.stars++;p.starUpgrades=true;}
+      n[0]=p;return n;
+    });
+    addLog(`⬆ Améliorer ${(me.upgrades||0)+1}/6 (rencontre): ${frTop(me.topRow[fromCol])}↑ → ${frBot(BOTTOM[toCol])}↓`);
+    if((me.upgrades||0)+1>=6)addLog(`⭐ 6 Améliorations complétées !`);
+    setEncounterUpgrade(null);
     resumeAfterEncounter();
   },[me,addLog,resumeAfterEncounter]);
 
@@ -2236,7 +2264,7 @@ export default function App(){
           rang:i+1,faction:s.faction,nom:s.name,bot:s.isBot,total:s.total,
           etoiles:s.stars,pop:s.pop,palier_pop:["0-6","7-12","13-18"][s.popTier],
           territoires:s.territories,bonus_usine:s.factoryBonus,comptoirs:s.flagBonus,
-          ressources:s.totalRes,paires:s.resPairs,argent:s.coins,
+          ressources:s.totalRes,paires:s.resPairs,argent:s.coins,bonus_pose:s.sbCoins,
           detail:{etoiles:s.starScore,territoires:s.terScore,ressources:s.resScore},
         })),
         journal:log.map(e=>({tour:e.turn,etape:e.step,cat:e.cat,ts:e.ts,msg:e.msg})),
@@ -2938,7 +2966,10 @@ export default function App(){
                         <button key={ci} title={on?"Retirer cette carte":"Engager cette carte"} onClick={()=>setCombat(prev=>{
                           const cur=prev.cardsPicked||[];
                           if(cur.includes(ci))return{...prev,cardsPicked:cur.filter(x=>x!==ci),cardsSpend:cur.length-1};
-                          if(cur.length>=maxCards)return prev;
+                          // Limite atteinte : la nouvelle carte REMPLACE la dernière engagée
+                          // (sinon le clic ne faisait rien — impossible de repasser sur une
+                          // carte plus faible sans désélectionner d'abord, constaté en partie)
+                          if(cur.length>=maxCards){const rest=cur.slice(0,cur.length-1);return{...prev,cardsPicked:[...rest,ci],cardsSpend:rest.length+1};}
                           return{...prev,cardsPicked:[...cur,ci],cardsSpend:cur.length+1};
                         })} style={{width:26,height:34,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,fontFamily:"var(--font-mono)",cursor:"pointer",padding:0,
                           background:on?"linear-gradient(180deg,#8b2020,#bb3838)":"var(--bg3)",color:on?"#fff":"var(--text-dim)",
@@ -3161,6 +3192,50 @@ export default function App(){
                   )}
                 </div>
               )}
+
+              {/* RENCONTRE → AMÉLIORATION GRATUITE (cube haut → bas) */}
+              {encounterUpgrade&&(()=>{
+                const mat=MATS.find(m=>m.id===me.matId);
+                return(
+                <div style={{padding:"20px",background:"linear-gradient(180deg,#16120e,var(--bg2))",borderRadius:10,border:"1px solid var(--gold-dim)",animation:"slideUp 0.35s ease"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+                    <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(212,178,84,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:25,border:"2px solid var(--gold)",flexShrink:0}}>⬆</div>
+                    <div>
+                      <div style={{fontFamily:"var(--font-title)",color:"var(--gold)",fontSize:18,fontWeight:700}}>Amélioration gratuite</div>
+                      <div style={{fontSize:13,color:"var(--text-dim)"}}>Amélioration {(me.upgrades||0)+1}/6 — déplacez un vrai cube</div>
+                    </div>
+                  </div>
+                  {encounterUpgrade.from==null?(
+                    <div>
+                      <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:6}}>① Cube à retirer (action du haut renforcée) :</div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
+                        {(me.topRow||[]).map((tName,ci)=>{
+                          const cubes=(me.cubesOnTop||[])[ci]||0;
+                          return <button key={ci} onClick={()=>setEncounterUpgrade({from:ci})} className="act-btn" disabled={cubes<=0} style={{textAlign:"center",opacity:cubes<=0?0.3:1,cursor:cubes<=0?"not-allowed":"pointer"}}>
+                            <div style={{fontWeight:700,fontSize:14}}>{frTop(tName)}</div>
+                            <div style={{fontSize:13,color:"var(--gold)",marginTop:2}}>{cubes} cube{cubes>1?"s":""} restant{cubes>1?"s":""}</div>
+                          </button>;
+                        })}
+                      </div>
+                    </div>
+                  ):(
+                    <div>
+                      <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:6}}>Cube retiré de <b style={{color:"var(--brass)"}}>{frTop((me.topRow||[])[encounterUpgrade.from])}</b> — ② action du bas à réduire (coût -1) :</div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
+                        {BOTTOM.map((bName,ci)=>{
+                          const full=(me.cubesOnBottom||[])[ci]>=maxBottomCubes(mat,ci);
+                          return <button key={ci} onClick={()=>doEncounterUpgrade(encounterUpgrade.from,ci)} className="act-btn" disabled={full} style={{textAlign:"center",opacity:full?0.3:1,cursor:full?"not-allowed":"pointer",borderColor:full?"var(--border)":"var(--gold-dim)"}}>
+                            <div style={{fontWeight:700,fontSize:14}}>{frBot(bName)}</div>
+                            <div style={{fontSize:13,color:"var(--gold)",marginTop:2}}>{full?"déjà au minimum":`coût ${Math.max(1,(mat?.bottomCosts||[])[ci]?.base-((me.cubesOnBottom||[])[ci]||0))} → ${Math.max(1,(mat?.bottomCosts||[])[ci]?.base-((me.cubesOnBottom||[])[ci]||0)-1)}`}</div>
+                          </button>;
+                        })}
+                      </div>
+                      <button onClick={()=>setEncounterUpgrade({from:null})} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre cube</button>
+                    </div>
+                  )}
+                </div>
+                );
+              })()}
 
               {/* ROUGE RIVER */}
               {rougeRiver&&(
@@ -4032,7 +4107,7 @@ export default function App(){
                   <div style={{fontWeight:700,color:"var(--brass)",marginBottom:4,fontFamily:"var(--font-title)"}}>🗺 Scoring du placement</div>
                   Chaque bâtiment <b>contrôle son hex</b> jusqu'à la fin de partie, même sans unité dessus (sauf si un ennemi occupe l'hex) : il compte comme <b>territoire</b> au score final — ×{[2,3,4][me.pop<=6?0:me.pop<=12?1:2]}$ à votre palier de popularité actuel (×2$ / ×3$ / ×4$ selon le palier).
                   Placez-les sur des hexes que vos unités ne tiendront pas : production excentrée, carrefours, abords de l'Usine.
-                  {!structureBonus&&<div style={{marginTop:4,color:"var(--text-muted)"}}>🏦 Pas de tuile « bonus de pose » dans la partie de base (réservée au mode campagne).</div>}
+                  {!structureBonus&&<div style={{marginTop:4,color:"var(--text-muted)"}}>🏦 Aucune tuile « bonus de pose » tirée pour cette partie.</div>}
                 </div>
               </div>)}
               {starDetail==="mech"&&(<div>
