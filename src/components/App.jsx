@@ -340,8 +340,11 @@ export default function App(){
     setStructureBonus(null);
     const usedFactions=[selFaction];const usedMats=[selMat];
     const ps=[createPlayer(selFaction,selMat,false)];
-    const availF=FACTION_IDS.filter(f=>!usedFactions.includes(f));
-    const availM=MATS.map(m=>m.id).filter(id=>!usedMats.includes(id));
+    // Factions ET plateaux des bots TIRÉS AU HASARD (avant : l'ordre fixe de
+    // FACTION_IDS donnait toujours les mêmes voisins — Confédération + Frente
+    // dès que le joueur n'était pas l'un des deux). Mélange à chaque partie.
+    const availF=shuffleArray(FACTION_IDS.filter(f=>!usedFactions.includes(f)));
+    const availM=shuffleArray(MATS.map(m=>m.id).filter(id=>!usedMats.includes(id)));
     for(let i=0;i<numBots&&i<availF.length;i++){
       const bot=createPlayer(availF[i],availM[i%availM.length],true);
       // Profil stratégique (bâtisseur/blitz/thésauriseur/équilibré) + bruit
@@ -630,12 +633,13 @@ export default function App(){
         setEncounterTokens(prev=>{const s=new Set(prev);s.delete(encHex);return s;});
       }
       // ── ROUGE RIVER BOT : héros sur l'Usine (1re visite) → plan auto ──
-      // Même règle que le joueur : le tirage rétrécit avec les visiteurs
-      // précédents, Tesla accessible avec les fragments requis
+      // Même règle que le joueur : autant de plans offerts qu'il reste de
+      // joueurs n'ayant pas encore visité (nJoueurs - visiteurs), Tesla
+      // accessible avec les fragments requis
       if(n[cp].hero===FACTORY_RR_HEX&&!n[cp].visitedRR){
         const hasFrag=(n[cp].fragments||0)>=TESLA_FRAGMENTS_REQUIRED;
         const pool=hasFrag?[...PLANS_FORD,...PLANS_TESLA]:[...PLANS_FORD];
-        const seeCount=Math.max(1,Math.min(pool.length,pool.length-rrVisitors));
+        const seeCount=Math.max(1,Math.min(pool.length,n.length-rrVisitors));
         const visible=shuffleArray(pool).slice(0,seeCount);
         const card=visible.find(c=>c.type==="tesla")||visible[Math.floor(Math.random()*visible.length)];
         n[cp]={...n[cp],visitedRR:true,factoryCard:card};
@@ -764,18 +768,21 @@ export default function App(){
     const qty=Math.max(0,depCost.qty-planBonus.costReduction);
     const res=overrideRes||baseRes;
     if(countRes(me,res)<qty){addLog(`⚠ ${qty} ${resFR(res)} requis`);return;}
+    // Bonus $ imprimé de la colonne Deploy (règle Scythe : chaque action du
+    // bas rapporte ses pièces) — avant, seul Upgrade créditait quoi que ce soit
+    const colBonus=depCost.bonus||0;
     setPlayers(prev=>{
       const n=[...prev];let p=spendRes(n[0],res,qty);
       p.mechs=[...p.mechs,{id:`${p.faction}_m${p.mechs.length}`,hexId:targetHex}];
       // Do NOT unlock ability yet — player chooses
-      p.coins+=planBonus.bonusCoins;
+      p.coins+=planBonus.bonusCoins+colBonus;
       p.power=Math.min(p.power+planBonus.bonusPower,16);
       const earned=p.mechs.length>=4&&!p.starMechs;
       if(earned){p.stars++;p.starMechs=true;}
       n[0]=p;return n;
     });
     planBonus.logs.forEach(l=>addLog(l));
-    addLog(`⬡ Mecha déployé sur #${targetHex} (-${qty} ${resFR(res)})`);
+    addLog(`⬡ Mecha déployé sur #${targetHex} (-${qty} ${resFR(res)}${colBonus>0?`, +${colBonus}$`:""})`);
     if(me.mechs.length+1>=4)addLog(`⭐ 4 Mechas déployés !`);
     // Show ability picker — finishBottom will be called after player picks
     setPendingAbility({source:"deploy",col:1});
@@ -810,17 +817,18 @@ export default function App(){
     const effectiveQty=Math.max(0,cost.qty-planBonus.costReduction);
     if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${resFR(cost.res)} requis`);return;}
     const bt=BUILDING_TYPES.find(b=>b.type===buildingType);
+    const colBonus=cost.bonus||0; // bonus $ imprimé de la colonne Build
     setPlayers(prev=>{
       const n=[...prev];let p=spendRes(n[0],cost.res,effectiveQty);
       p.buildings=[...(p.buildings||[]),{type:buildingType,hexId:targetHex}];
-      p.coins+=planBonus.bonusCoins;
+      p.coins+=planBonus.bonusCoins+colBonus;
       p.power=Math.min(p.power+planBonus.bonusPower,16);
       const earned=p.buildings.length>=4&&!p.starBuildings;
       if(earned){p.stars++;p.starBuildings=true;}
       n[0]=p;return n;
     });
     planBonus.logs.forEach(l=>addLog(l));
-    addLog(`🏗 ${bt.name} construit sur #${targetHex} (-${effectiveQty} ${resFR(cost.res)})`);
+    addLog(`🏗 ${bt.name} construit sur #${targetHex} (-${effectiveQty} ${resFR(cost.res)}${colBonus>0?`, +${colBonus}$`:""})`);
     if((me.buildings||[]).length+1>=4)addLog(`⭐ 4 Bâtiments construits !`);
     if(buildingType==="gare"){
       setRailPlacement({remaining:3,fromHex:null,gareHex:targetHex});
@@ -869,20 +877,21 @@ export default function App(){
     if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${resFR(cost.res)} requis`);return;}
     const bonus=ENLIST_BONUSES[colIdx];
     const recruit=ENLIST_ONGOING[recruitIdx];
+    const colBonus=cost.bonus||0; // bonus $ imprimé de la colonne Enlist
     setPlayers(prev=>{
       const n=[...prev];let p=spendRes(n[0],cost.res,effectiveQty);
       p.recruits=(p.recruits||0)+1;
       p.enlistMap=[...(p.enlistMap||[null,null,null,null])];
       p.enlistMap[colIdx]=recruitIdx; // stocke la recrue choisie (pas un booléen)
       bonus.apply(p);
-      p.coins+=planBonus.bonusCoins;
+      p.coins+=planBonus.bonusCoins+colBonus;
       p.power=Math.min(p.power+planBonus.bonusPower,16);
       const earned=p.recruits>=4&&!p.starRecruits;
       if(earned){p.stars++;p.starRecruits=true;}
       n[0]=p;return n;
     });
     planBonus.logs.forEach(l=>addLog(l));
-    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${frBot(BOTTOM[colIdx])} (-${effectiveQty} ${resFR(cost.res)}) — immédiat ${bonus.label}`);
+    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${frBot(BOTTOM[colIdx])} (-${effectiveQty} ${resFR(cost.res)}${colBonus>0?`, +${colBonus}$`:""}) — immédiat ${bonus.label}`);
     addLog(`   Permanent ${recruit.icon} ${recruit.label} quand vous/voisins faites ${BOTTOM[colIdx]}`);
     if((me.recruits||0)+1>=4)addLog(`⭐ 4 Recrues enrôlées !`);
     finishBottom(3);
@@ -1176,9 +1185,14 @@ export default function App(){
   // il ne compte pas dans la limite de 2 (3 avec amélioration)
   const produceEligible=useMemo(()=>{
     if(selAction!=="Produce"||!me)return new Set();
-    const s=new Set(me.workers.map(w=>w.hexId));
+    // Un hex ne produit que si son terrain porte une ressource (métal/bois/
+    // nourriture/pétrole ou ouvriers via village). L'Usine, les lacs et les
+    // marécages (res:null) ne produisent rien : les inclure gaspillait une des
+    // 2-3 sélections (constaté en partie réelle — ouvrier sur l'Usine).
+    const produces=(hid)=>!!TERRAINS[hMap[hid]?.t]?.res;
+    const s=new Set(me.workers.map(w=>w.hexId).filter(produces));
     const moulin=(me.buildings||[]).find(b=>b.type==="moulin");
-    if(moulin)s.add(moulin.hexId);
+    if(moulin&&produces(moulin.hexId))s.add(moulin.hexId);
     return s;
   },[selAction,me]);
   // Pré-sélection à l'entrée dans l'action : si le choix est trivial (tous les
@@ -1186,11 +1200,14 @@ export default function App(){
   useEffect(()=>{
     if(selAction!=="Produce"||!me){setProducePicks([]);return;}
     const maxN=2+topUpgradeCount(me,"Produce","nourriture");
-    const workerHexes=[...new Set(me.workers.map(w=>w.hexId))];
+    // Seuls les hex PRODUCTIFS (terrain à ressource) sont pré-cochés — pas
+    // l'Usine/lac/marécage où un ouvrier ne produit rien
+    const produces=(hid)=>!!TERRAINS[hMap[hid]?.t]?.res;
+    const workerHexes=[...new Set(me.workers.map(w=>w.hexId).filter(produces))];
     const moulinHex=(me.buildings||[]).find(b=>b.type==="moulin")?.hexId;
     if(workerHexes.length<=maxN){
       const all=[...workerHexes];
-      if(moulinHex!=null&&!all.includes(moulinHex))all.push(moulinHex);
+      if(moulinHex!=null&&produces(moulinHex)&&!all.includes(moulinHex))all.push(moulinHex);
       setProducePicks(all);
     }else setProducePicks([]);
     // volontairement déclenché sur selAction seul : la sélection appartient au
@@ -1484,7 +1501,11 @@ export default function App(){
           const hasFragments=(me.fragments||0)>=TESLA_FRAGMENTS_REQUIRED;
           const available=hasFragments?[...PLANS_FORD,...PLANS_TESLA]:[...PLANS_FORD];
           const shuffled=shuffleArray(available);
-          const seeCount=Math.max(1,Math.min(shuffled.length,shuffled.length-rrVisitors));
+          // Règle Scythe : l'Usine offre autant de plans qu'il y a de JOUEURS,
+          // et chaque visiteur en retire un (course à l'Usine — le dernier n'a
+          // plus de choix). Avant, le nombre offert = taille du deck (5 ou 10),
+          // sans rapport avec le nombre de joueurs.
+          const seeCount=Math.max(1,Math.min(shuffled.length,players.length-rrVisitors));
           const visible=shuffled.slice(0,seeCount);
           setRougeRiver({cards:visible,hasFragments});
           setRrVisitors(prev=>prev+1);
@@ -2674,7 +2695,14 @@ export default function App(){
             // Territorial control contour (§2.3 refonte visuelle) : la première unité
             // présente sur l'hex porte la couleur de contrôle — un hex n'est jamais
             // occupé par deux factions à la fois hors résolution de combat.
-            const controlColor=!isBaseHex(hex.id)?(allHexContents[hex.id]?.[0]?.color||null):null;
+            // Contrôle du hex : une UNITÉ (héros/mech/ouvrier) prime sur un
+            // bâtiment. Un bâtiment ne donne la couleur que si aucune unité
+            // n'est présente — cohérent avec le scoring (un ennemi campé sur
+            // mon bâtiment me prend le territoire). Avant, le 1er contenu
+            // (mes bâtiments, joueur 0, ajoutés en premier) gagnait à tort.
+            const hexContents=allHexContents[hex.id]||[];
+            const controlEntry=hexContents.find(u=>u.type!=="building")||hexContents[0];
+            const controlColor=!isBaseHex(hex.id)?(controlEntry?.color||null):null;
             return(<g key={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
               <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc} controlColor={controlColor} wireframe={mapChoice!=="random"}/>
               {/* Bonus de construction : pastille $ sur les tuiles qualifiées */}

@@ -787,6 +787,14 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       if (p.recruits >= 4 && !p.starRecruits) { p.stars++; p.starRecruits = true; logs.push(`⭐ ${f.name}: 4 recrues !`); }
     }
   }
+  // Bonus $ imprimé de la colonne (Deploy/Build/Enlist) — comme le joueur.
+  // Upgrade a déjà crédité le bonus de sa colonne destination ci-dessus. Sans
+  // ça, les bots ne gagnaient JAMAIS de pièces par leurs actions du bas :
+  // Confédération observée à 0$ toute la partie (économie étranglée).
+  if (bottomDone && col !== 0 && bc && (bc.bonus || 0) > 0) {
+    p.coins += bc.bonus;
+    logs.push(`🤖💰 ${f.name}: +${bc.bonus}$ (${frBot(bottomAction)})`);
+  }
   // Gains du plan d'usine une fois l'action bottom réellement effectuée
   if (bottomDone && (planB.bonusCoins > 0 || planB.bonusPower > 0)) {
     p.coins += planB.bonusCoins;

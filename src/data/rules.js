@@ -297,7 +297,7 @@ export const RULES = [
     sections: [
       {
         title: "L'Usine Centrale",
-        content: "L'hex central (Rouge River, id 22) est l'ancienne usine de l'Empire. Quand votre héros y arrive, vous pouvez choisir un Plan parmi 2 catégories :"
+        content: "L'hex central (Rouge River, id 22) est l'ancienne usine de l'Empire. La première fois que votre héros y arrive, vous choisissez un Plan parmi ceux offerts. L'Usine propose autant de plans qu'il y a de JOUEURS, et chaque visiteur en retire un : le premier arrivé a l'embarras du choix, le dernier n'a plus qu'une carte imposée — c'est une course à l'Usine. Deux catégories de plans :"
       },
       {
         title: "Plans Ford",

@@ -204,7 +204,7 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
                 {/* Ordre des actions du haut — info secondaire, style atténué (comme le lore) */}
                 <div style={{fontSize:12,color:"var(--text-dim)",fontStyle:"italic"}}>{pm.topRow.join(" · ")}</div>
                 {/* Coûts des actions du bas — mono, atténué */}
-                <div style={{fontSize:12,color:"var(--text-dim)",fontFamily:"'IBM Plex Mono',monospace",display:"flex",flexWrap:"wrap",gap:"2px 8px"}} title="Coûts des actions bottom : Upgrade / Deploy / Build / Enlist (+bonus $ par cube posé)">
+                <div style={{fontSize:12,color:"var(--text-dim)",fontFamily:"'IBM Plex Mono',monospace",display:"flex",flexWrap:"wrap",gap:"2px 8px"}} title="Coûts des actions bottom : Améliorer / Déployer / Construire / Enrôler (+bonus $ gagné à chaque exécution de l'action)">
                   {pm.bottomCosts.map((bc,i)=><span key={i} style={{whiteSpace:"nowrap"}}><Glyph icon={BOTTOM_EMOJI[i]} size={12} color="#b8a878"/>{bc.base}<Glyph icon={RES_EMOJI[bc.res]} size={12} color="#b8a878"/>{bc.bonus>0?<span style={{color:"#8fc26a"}}>+{bc.bonus}$</span>:""}</span>)}
                 </div>
               </button>
