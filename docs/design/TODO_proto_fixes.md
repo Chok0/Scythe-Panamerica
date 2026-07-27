@@ -61,6 +61,27 @@ Plus aucun chantier en attente. Les deux derniers ont été livrés :
 - Icônes Scythe officielles (PNG) à la place des emoji.
 - Visualisation du tour du bot : surligner le hex qu'il choisit / tracer son déplacement (le scoreboard pulse déjà le bot actif).
 
+### 🔬 Bot « stratégie Tesla » (à développer)
+Aujourd'hui tous les bots foncent à la Rouge River dès que possible
+(`pickMoveTarget`, aimant RR) et prennent une carte Ford — les prototypes
+Tesla (2 fragments consommés à la prise) restent de fait réservés au joueur
+humain. À développer, idéalement comme trait de profil (`botProfiles.js`,
+ex. `teslaHunter: true` sur thésauriseur/équilibré, ou tirage aléatoire par
+partie) :
+- RETARDER la visite de l'Usine tant que `fragments < TESLA_FRAGMENTS_REQUIRED`
+  ET qu'il reste un prototype dans `teslaOffer` : inverser l'aimant RR de
+  `pickMoveTarget` (malus au lieu de bonus) pour ce profil.
+- PRIORISER les sources de fragments : jetons rencontre (les 3 cartes 🔬 à
+  2$) et, si l'Empire est présent, la récompense fragment des combats PvE
+  (aujourd'hui les bots d'App.jsx ne prennent JAMAIS le fragment — ajouter le
+  choix fragment quand la quête est active) ; `resolveBotEncounter` doit
+  pondérer l'option 🔬 en conséquence.
+- ABANDONNER la quête proprement : si les prototypes sont épuisés (offre
+  Tesla vide) ou si la partie s'accélère (un adversaire à 4-5 étoiles),
+  redevenir un visiteur Ford classique avant que l'offre soit pillée.
+- Équilibrage à mesurer en simulation : winrate du profil chasseur vs
+  visiteurs précoces, taux de prototypes effectivement pris par les bots.
+
 ## 🔧 Historique des fixes
 
 ### ✅ Toutes les faction abilities — IMPLÉMENTÉES (6/6)

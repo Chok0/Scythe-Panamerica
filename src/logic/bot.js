@@ -319,9 +319,13 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
     // Le bâtisseur fait la course aux jetons (gains de pop des rencontres)
     if (purpose === "hero" && ctx && ctx.encounterHexes && ctx.encounterHexes.has(hexId)) s += prof.encounterPull;
 
-    // Rouge River : plan d'usine (gros avantage permanent) + l'hex vaut
+    // Rouge River : carte d'usine (gros avantage permanent) + l'hex vaut
     // 3 territoires au score → destination majeure du héros tant qu'il n'a
-    // pas visité — forte prise sur l'hex, convergence progressive sinon
+    // pas visité — forte prise sur l'hex, convergence progressive sinon.
+    // TODO (stratégie Tesla) : un profil « chasseur de prototypes » devrait
+    // INVERSER cet aimant tant que fragments < TESLA_FRAGMENTS_REQUIRED et
+    // qu'un prototype reste en vitrine (retarder la visite, chasser les
+    // rencontres 🔬 / combats Empire) — voir docs/design/TODO_proto_fixes.md.
     if (purpose === "hero" && !p.visitedRR && !p.factoryCard) {
       if (hexId === 22) s += 14;
       else {

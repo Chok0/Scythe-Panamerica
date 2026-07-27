@@ -432,7 +432,7 @@ export default function App(){
     // réelle) — la mission « Ruée vers l'or » de la campagne garde sa variante
     const sb=pickStructureBonus();
     setStructureBonus(sb);
-    addLog(`🏦 Bonus de pose : ${sb.icon} ${sb.name} — +${sb.coins}$ ${sb.desc}`);
+    addLog(`🏦 Bonus de pose : ${sb.icon} ${sb.name} — ${sb.scale} ${sb.desc}`);
     const usedFactions=[selFaction];const usedMats=[selMat];
     const ps=[createPlayer(selFaction,selMat,false)];
     // Factions ET plateaux des bots TIRÉS AU HASARD (avant : l'ordre fixe de
@@ -2582,7 +2582,7 @@ export default function App(){
               </div>
               <div style={{fontSize:13,color:"var(--text-dim)",marginTop:4}}>
                 Pop: {s.pop} (palier {["0-6","7-12","13-18"][s.popTier]}) — {s.totalRes} ressources
-                {structureBonus&&s.sbCoins>0&&<span style={{color:"var(--gold)",marginLeft:8}}>🏦 {structureBonus.icon} {structureBonus.name}: +{s.sbCoins}$ ({s.sbCount} bât.)</span>}
+                {structureBonus&&s.sbCoins>0&&<span style={{color:"var(--gold)",marginLeft:8}}>🏦 {structureBonus.icon} {structureBonus.name}: +{s.sbCoins}$ ({s.sbCount} {structureBonus.unit})</span>}
                 {s.flagCoins>0&&<span style={{color:"var(--gold)",marginLeft:8}}>⚑ Comptoirs: +{s.flagCoins}$</span>}
               </div>
             </div>
@@ -3692,15 +3692,18 @@ export default function App(){
           );})}
         </div>
 
-        {/* ── Bonus de construction actif ── */}
-        {structureBonus&&(
-          <div title={`En fin de partie : +${structureBonus.coins}$ ${structureBonus.desc} (tuiles marquées $ sur la carte)`}
+        {/* ── Bonus de construction actif (barème progressif 2/4/6/9$) ── */}
+        {structureBonus&&(()=>{
+          const d=structureBonusDetail(me,structureBonus);
+          return(
+          <div title={`En fin de partie : ${structureBonus.scale} — ${structureBonus.desc} (tuiles marquées $ sur la carte)`}
             style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:13,color:"var(--gold)",display:"flex",alignItems:"center",gap:6,background:"rgba(212,178,84,0.05)"}}>
             <span>🏦</span>
             <span style={{fontWeight:700,fontFamily:"var(--font-title)"}}>{structureBonus.icon} {structureBonus.name}</span>
-            <span style={{color:"var(--text-dim)",marginLeft:"auto"}}>+{structureBonus.coins}$/bât.</span>
+            <span style={{color:"var(--text-dim)",marginLeft:"auto"}}>{d.count} {structureBonus.unit} → +{d.coins}$</span>
           </div>
-        )}
+          );
+        })()}
 
         {/* ── Carte d'usine active (Rouge River) : 5e action du plateau ── */}
         {me.factoryCard&&(
@@ -4568,7 +4571,7 @@ export default function App(){
                   </div>
                 );})}
                 {structureBonus&&<div style={{marginTop:8,padding:"8px 10px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px solid var(--gold-dim)",fontSize:14,color:"var(--gold)"}}>
-                  🏦 Bonus de pose : <b>{structureBonus.icon} {structureBonus.name}</b> — +{structureBonus.coins}$ {structureBonus.desc} (tuiles marquées $ sur la carte).
+                  🏦 Bonus de pose : <b>{structureBonus.icon} {structureBonus.name}</b> — {structureBonus.scale} {structureBonus.desc} (tuiles marquées $ sur la carte).
                 </div>}
                 {/* Règle de scoring liée au PLACEMENT des bâtiments — toujours
                     lisible ici (demande de jeu réel : introuvable en partie) */}
