@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { STRUCTURE_BONUSES, structureBonusDetail } from '../../data/structureBonus.js';
-import { HEXES, hMap, ADJ } from '../../data/hexes.js';
+import { HEXES, hMap, ADJ, homeBaseHex } from '../../data/hexes.js';
 
 const tile = (id) => STRUCTURE_BONUSES.find(b => b.id === id);
-const mkP = (hexIds) => ({ buildings: hexIds.map((hexId, i) => ({ type: `b${i}`, hexId })) });
+const mkP = (hexIds, faction = "confederation") =>
+  ({ faction, buildings: hexIds.map((hexId, i) => ({ type: `b${i}`, hexId })) });
 
 describe('tuiles bonus de pose — barème progressif 2/4/6/9$', () => {
-  it('le pool contient les 5 tuiles du jeu original + Usine + Terroirs Variés', () => {
+  it('le pool : 5 tuiles du jeu original + Usine + Villages + Terroirs + Avant-Postes + Terres Lointaines', () => {
     const ids = STRUCTURE_BONUSES.map(b => b.id);
-    ["lacs", "cultures", "monts_forets", "ligne", "rencontres", "usine", "terroirs"].forEach(id =>
-      expect(ids, `tuile ${id} manquante`).toContain(id));
-    // les anciennes tuiles plates non pertinentes ont été retirées
-    expect(ids).not.toContain("village");
+    ["lacs", "cultures", "monts_forets", "ligne", "rencontres", "usine", "villages", "terroirs", "avant_postes", "terres_lointaines"]
+      .forEach(id => expect(ids, `tuile ${id} manquante`).toContain(id));
+    // la tuile plate non pertinente a été retirée (rivières partout = gratuit)
     expect(ids).not.toContain("riviere");
   });
 
@@ -77,6 +77,41 @@ describe('tuiles bonus de pose — barème progressif 2/4/6/9$', () => {
     // 2 bâtiments sur le MÊME terrain → 1 seul type → 2$
     const dup = types.find(ty => byType[ty].length >= 2);
     expect(structureBonusDetail(mkP(byType[dup].slice(0, 2)), t).coins).toBe(2);
+  });
+
+  it('Avant-Postes : 10$ pour un bâtiment adjacent à une base ADVERSE, +2$ par autre bâtiment', () => {
+    const t = tile("avant_postes");
+    const players = [{ faction: "confederation" }, { faction: "frente" }];
+    const frenteBase = homeBaseHex("frente");
+    expect(frenteBase).toBeTruthy();
+    const spot = (ADJ[frenteBase.id] || []).find(a => hMap[a] && !hMap[a].base && hMap[a].t !== "lac");
+    expect(spot).toBeTruthy();
+    // 1 avant-poste seul → 10$
+    expect(structureBonusDetail(mkP([spot]), t, players)).toEqual({ count: 1, coins: 10 });
+    // + 2 autres bâtiments ailleurs → 10 + 2×2 = 14$
+    const elsewhere = HEXES.filter(h => !h.base && h.t !== "lac" && h.id !== spot && !(ADJ[frenteBase.id] || []).includes(h.id)).slice(0, 2).map(h => h.id);
+    expect(structureBonusDetail(mkP([spot, ...elsewhere]), t, players).coins).toBe(14);
+    // aucun bâtiment adjacent à une base adverse → 0$ (peu importe le nombre)
+    expect(structureBonusDetail(mkP(elsewhere), t, players).coins).toBe(0);
+    // la base de SA PROPRE faction ne compte pas
+    const myBase = homeBaseHex("confederation");
+    const mySpot = (ADJ[myBase.id] || []).find(a => hMap[a] && !hMap[a].base && hMap[a].t !== "lac");
+    expect(structureBonusDetail(mkP([mySpot]), t, players).coins).toBe(0);
+  });
+
+  it('Terres Lointaines : 1$ par hex de distance du bâtiment le plus éloigné de SA base', () => {
+    const t = tile("terres_lointaines");
+    const myBase = homeBaseHex("confederation");
+    const nextDoor = (ADJ[myBase.id] || []).find(a => hMap[a] && !hMap[a].base && hMap[a].t !== "lac");
+    // bâtiment collé à la base → distance 1 → 1$
+    expect(structureBonusDetail(mkP([nextDoor]), t)).toEqual({ count: 1, coins: 1 });
+    // un 2e bâtiment plus loin : seul le PLUS ÉLOIGNÉ compte
+    const far = HEXES.find(h => !h.base && h.t !== "lac" && h.t !== "factory"
+      && Math.hypot(h.rx - hMap[myBase.id].rx, h.ry - hMap[myBase.id].ry) > 500);
+    expect(far).toBeTruthy();
+    const dFar = structureBonusDetail(mkP([far.id]), t).count;
+    expect(dFar).toBeGreaterThan(1);
+    expect(structureBonusDetail(mkP([nextDoor, far.id]), t)).toEqual({ count: dFar, coins: dFar });
   });
 
   it('toutes les tuiles exposent count/score/check/unit/scale (contrat UI)', () => {

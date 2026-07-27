@@ -2497,8 +2497,9 @@ export default function App(){
       const starScore=p.stars*starMult;
       const terScore=(territories+factoryBonus+flagBonus)*terMult;
       const resScore=resPairs*resMult;
-      // Bonus de construction : X$ par bâtiment sur les tuiles qualifiées
-      const sbDetail=structureBonusDetail(p,structureBonus);
+      // Bonus de construction : barème 2/4/6/9$ (ou tuile spéciale) selon la
+      // tuile tirée — `players` sert aux tuiles relatives aux adversaires
+      const sbDetail=structureBonusDetail(p,structureBonus,players);
       // Comptoirs Acadiane : postes de commerce — +2$ chacun au scoring
       // (v0.12 : levier structurel mesuré, sa trésorerie était la pire du jeu)
       const flagCoins=(p.flagTokens||[]).length*2;
@@ -2978,7 +2979,7 @@ export default function App(){
             const isSel=selHex===hex.id;const isHov=hovHex===hex.id;
             const isFactory=hex.t==="factory";
             const isSrc=(!moveSource&&movableUnits.has(hex.id))||actionTargets.hexes.has(hex.id)||produceEligible.has(hex.id);
-            const isBonusTile=structureBonus&&hex.t!=="lac"&&hex.t!=="marecage"&&hex.t!=="factory"&&structureBonus.check(hex.id);
+            const isBonusTile=structureBonus&&hex.t!=="lac"&&hex.t!=="marecage"&&hex.t!=="factory"&&structureBonus.check(hex.id,players[0],players);
             // Territorial control contour (§2.3 refonte visuelle) : la première unité
             // présente sur l'hex porte la couleur de contrôle — un hex n'est jamais
             // occupé par deux factions à la fois hors résolution de combat.
@@ -3694,7 +3695,7 @@ export default function App(){
 
         {/* ── Bonus de construction actif (barème progressif 2/4/6/9$) ── */}
         {structureBonus&&(()=>{
-          const d=structureBonusDetail(me,structureBonus);
+          const d=structureBonusDetail(me,structureBonus,players);
           return(
           <div title={`En fin de partie : ${structureBonus.scale} — ${structureBonus.desc} (tuiles marquées $ sur la carte)`}
             style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:13,color:"var(--gold)",display:"flex",alignItems:"center",gap:6,background:"rgba(212,178,84,0.05)"}}>

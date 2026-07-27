@@ -3,27 +3,21 @@
 // PLACEMENT des bâtiments. Barème PROGRESSIF du jeu original (2/4/6/9$) :
 //   - échelle « bâtiments » (max 4 bâtiments) : 1→2$ · 2→4$ · 3→6$ · 4→9$
 //   - échelle « éléments » (lacs, rencontres) : 1→2$ · 2-3→4$ · 4-5→6$ · 6-7→9$
+// Deux tuiles spéciales sortent du barème (verdicts de playtest) :
+//   - Avant-Postes : exploit binaire (10$ + 2$/autre bâtiment)
+//   - Terres Lointaines : 1$ par hex de distance du bâtiment le plus éloigné
 // Les check()/count() lisent les bindings vivants de hexes.js → compatibles
 // avec les cartes procédurales rechargées par loadMap().
 //
-// Tuiles retirées de l'ancien pool (barème plat, peu de tension de pose) :
-//   - « Cœur des Villages » (+2$/bât. sur village) : les bâtiments se posent
-//     naturellement sur les hex d'ouvriers — souvent des villages → gratuit.
+// Tuile retirée de l'ancien pool :
 //   - « Rives des Rivières » (+2$/bât. au bord d'une rivière) : la carte est
 //     sillonnée de rivières → quasi toujours validé, zéro décision.
-//
-// PROPOSITIONS ALTERNATIVES (non actives — à piocher pour varier le pool) :
-//   - « Avant-postes »   : bâtiments adjacents à une base ADVERSE (échelle
-//     bâtiments) — récompense la pose agressive en territoire contesté.
-//   - « Réseau ferré »   : bâtiments sur un hex relié au réseau de rails en
-//     fin de partie (échelle bâtiments) — synergie Gare, objectif dynamique.
-//   - « Terres lointaines » : bâtiments à 3+ hex de sa propre base (échelle
-//     bâtiments) — pousse l'expansion au lieu du camp retranché.
-//   - « Marais exploités » : marécages adjacents aux bâtiments (échelle
-//     éléments) — valorise les zones à péage que tout le monde évite.
-//   - « Quartier général » : plus grand GROUPE de bâtiments connexes (échelle
-//     bâtiments) — le pendant « compact » de la Ligne de Production.
-import { ADJ, hMap, CURRENT_MAP } from './hexes.js';
+// Propositions écartées (verdicts de playtest) :
+//   - « Réseau ferré » : trop aléatoire — les bots déploient peu leurs rails.
+//   - « Marais exploités » : trop peu de marécages sur la carte.
+//   - « Quartier général » (groupe connexe) : calqué sur la pose naturelle
+//     des joueurs — la tuile serait validée sans respecter aucune contrainte.
+import { ADJ, hMap, CURRENT_MAP, homeBaseHex } from './hexes.js';
 
 // 1→2$ · 2→4$ · 3→6$ · 4→9$ (compte des bâtiments qualifiés)
 const tierBuildings = (n) => n >= 4 ? 9 : n === 3 ? 6 : n === 2 ? 4 : n === 1 ? 2 : 0;
@@ -81,9 +75,46 @@ const isLake = (h) => hMap[h]?.t === "lac";
 const isEncounter = (h) => CURRENT_MAP.encounterHexes.includes(h);
 const nearFactory = (hid) => (ADJ[hid] || []).some(a => hMap[a]?.t === "factory");
 
-// Chaque tuile : count(player) → valeur comptée, score(count) → pièces,
-// check(hid) → surlignage $ sur la carte (tuiles à critère statique),
-// unit → libellé du compteur, scale → rappel du barème pour l'UI.
+// Base ADVERSE : base d'une faction EN JEU différente de la mienne (players
+// fourni) — repli sur « toute base d'une autre faction » sinon (surlignage).
+const nearEnemyBase = (hid, p, players) => {
+  const enemies = players ? new Set(players.map(pl => pl.faction).filter(fc => fc !== p?.faction)) : null;
+  return (ADJ[hid] || []).some(a => {
+    const h = hMap[a];
+    if (!h?.base) return false;
+    if (enemies) return enemies.has(h.faction);
+    return !p || h.faction !== p.faction;
+  });
+};
+
+// Distance de marche (BFS) d'un hex vers la base du joueur : lacs et bases
+// adverses infranchissables — « le chemin le plus direct pour rentrer ».
+const distToBase = (fromHid, p) => {
+  const base = homeBaseHex(p.faction);
+  if (!base || fromHid === base.id) return 0;
+  const seen = new Set([fromHid]);
+  let frontier = [fromHid], d = 0;
+  while (frontier.length > 0) {
+    d++;
+    const next = [];
+    for (const cur of frontier) {
+      for (const a of (ADJ[cur] || [])) {
+        if (seen.has(a)) continue;
+        seen.add(a);
+        if (a === base.id) return d;
+        const h = hMap[a];
+        if (!h || h.t === "lac" || h.base) continue; // pas de traversée
+        next.push(a);
+      }
+    }
+    frontier = next;
+  }
+  return 0; // base injoignable (ne devrait pas arriver)
+};
+
+// Chaque tuile : count(player, players) → valeur comptée,
+// score(count, player) → pièces, check(hid, player?, players?) → surlignage $
+// sur la carte, unit → libellé du compteur, scale → rappel du barème (UI).
 export const STRUCTURE_BONUSES = [
   // ── Les 5 tuiles du jeu original, adaptées à la carte Panamerica ──
   { id: "lacs", icon: "🌊", name: "Bord des Lacs",
@@ -111,28 +142,55 @@ export const STRUCTURE_BONUSES = [
     unit: "lieu(x)", scale: "1→2$ · 2-3→4$ · 4-5→6$ · 6-7→9$",
     count: (p) => featuresNear(p, isEncounter, true), score: tierFeatures,
     check: (hid) => isEncounter(hid) || (ADJ[hid] || []).some(isEncounter) },
-  // ── Spéciale Panamerica (conservée de l'ancien pool, barème aligné) :
-  //    le centre est disputé — la garder crée une vraie course de placement ──
+  // ── Gardée sur verdict de playtest : les villages sont boudés une fois les
+  //    ouvriers produits — la tuile ramène du monde dessus et pousse au
+  //    passage l'étoile des 8 ouvriers (souvent délaissée, coûteuse en pop) ──
+  { id: "villages", icon: "🏘", name: "Cœur des Villages",
+    desc: "par bâtiment posé sur un village",
+    unit: "bât.", scale: "1→2$ · 2→4$ · 3→6$ · 4→9$",
+    count: (p) => onTerrains(p, ["village"]), score: tierBuildings,
+    check: (hid) => hMap[hid]?.t === "village" },
+  // ── Spéciale Panamerica : le centre disputé garde sa course de placement ──
   { id: "usine", icon: "⚙", name: "Ombre de l'Usine",
     desc: "par bâtiment adjacent à la Rouge River",
     unit: "bât.", scale: "1→2$ · 2→4$ · 3→6$ · 4→9$",
     count: (p) => bHexes(p).filter(nearFactory).length, score: tierBuildings,
     check: nearFactory },
-  // ── Alternative (exemple retenu) : diversifier ses terrains de pose ──
+  // ── Alternative retenue : diversifier ses terrains de pose ──
   { id: "terroirs", icon: "🗺", name: "Terroirs Variés",
     desc: "selon le nombre de TYPES de terrains différents portant vos bâtiments",
     unit: "terrain(s)", scale: "1→2$ · 2→4$ · 3→6$ · 4→9$",
     count: (p) => new Set(bHexes(p).map(h => hMap[h]?.t).filter(Boolean)).size,
     score: tierBuildings,
     check: () => false }, // tout terrain peut compter : pas de surlignage statique
+  // ── Exploit d'invasion (hors barème) : réussir UNE fois suffit — 10$ pour
+  //    au moins un bâtiment adjacent à une base ADVERSE, puis +2$ par autre
+  //    bâtiment construit (où qu'il soit). Max 16$ : gros gain, gros risque ──
+  { id: "avant_postes", icon: "🚩", name: "Avant-Postes",
+    desc: "10$ si au moins un bâtiment est adjacent à une base adverse, +2$ par autre bâtiment construit",
+    unit: "avant-poste(s)", scale: "1 → 10$ (+2$/autre bât.)",
+    count: (p, players) => bHexes(p).filter(h => nearEnemyBase(h, p, players)).length,
+    score: (n, p) => n >= 1 ? 10 + 2 * Math.max(0, (p?.buildings || []).length - 1) : 0,
+    check: (hid, p, players) => nearEnemyBase(hid, p, players) },
+  // ── Expansion (hors barème) : 1$ par hex de distance — on ne compte QUE le
+  //    bâtiment le plus éloigné (sommer les 4 exploserait le plafond des 9$ ;
+  //    variante « somme de tous les bâtiments » possible en une ligne) ──
+  { id: "terres_lointaines", icon: "🧭", name: "Terres Lointaines",
+    desc: "1$ par hex du chemin le plus direct entre votre base et votre bâtiment le plus éloigné",
+    unit: "hex (le + loin)", scale: "1$ / hex de distance",
+    count: (p) => Math.max(0, ...bHexes(p).map(h => distToBase(h, p))),
+    score: (n) => n,
+    check: (hid, p) => !!p && distToBase(hid, p) >= 4 }, // surligne les terres à 4+ hex de VOTRE base
 ];
 
 export const pickStructureBonus = () =>
   STRUCTURE_BONUSES[Math.floor(Math.random() * STRUCTURE_BONUSES.length)];
 
-/** Détail du bonus pour un joueur : valeur comptée + pièces au barème 2/4/6/9. */
-export const structureBonusDetail = (player, bonus) => {
+/** Détail du bonus pour un joueur : valeur comptée + pièces.
+ *  `players` (optionnel) : liste des joueurs en partie — sert aux tuiles
+ *  relatives aux adversaires (Avant-Postes). */
+export const structureBonusDetail = (player, bonus, players) => {
   if (!bonus) return { count: 0, coins: 0 };
-  const count = bonus.count(player);
-  return { count, coins: bonus.score(count) };
+  const count = bonus.count(player, players);
+  return { count, coins: bonus.score(count, player) };
 };
