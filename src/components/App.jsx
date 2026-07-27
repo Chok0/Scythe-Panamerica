@@ -13,7 +13,7 @@ import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } from '../data/plans.js';
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes, FR_TOP as FR_TOP_MAP, FR_BOT as FR_BOT_MAP, frTop, frBot } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
-import { structureBonusDetail } from '../data/structureBonus.js';
+import { structureBonusDetail, pickStructureBonus, STRUCTURE_BONUSES } from '../data/structureBonus.js';
 import { reconcileHand, topCardsSum, spendTopCards, spendPickedCards, handSummary } from '../logic/cards.js';
 import RulesPage from './RulesPage.jsx';
 import Soundtrack from './Soundtrack.jsx';
@@ -24,11 +24,12 @@ import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
 import { getValidMoves, findPathWaypoints, marshToll } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer } from '../logic/player.js';
-import { botTurn } from '../logic/bot.js';
+import { botTurn, estimateScore } from '../logic/bot.js';
 import { BOT_PROFILES, assignBotProfile, BOT_NOISE, MAP_META_THREAT, playerStanding } from '../logic/botProfiles.js';
 import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../logic/pvpBots.js';
 import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { getPlanBottomBonus, auraPowerCount } from '../logic/planEffects.js';
+import { playSfx, sfxForLog } from '../logic/sfx.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
 import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, ProduceTrack, RESOURCE_ICONS, BUILDING_ICONS, Glyph } from './svg/ActionIcons.jsx';
 import { getMechAbilities } from '../data/mechAbilities.js';
@@ -90,11 +91,23 @@ export default function App(){
   const[bottomPick,setBottomPick]=useState(null); // for Build: choosing building type / Deploy: choosing hex
   const[pendingAbility,setPendingAbility]=useState(null); // {source:"deploy"|"encounter", hexId} — waiting for player to pick mech ability
   const[combat,setCombat]=useState(null); // {type:"pvp"|"pve", hexId, enemyIdx?, empireId?, empireCard?, phase:"choose"|"reward", powerSpend:0, cardsSpend:0}
+  // Révélation du combat : les deux engagements face à face (demande de partie
+  // réelle — la résolution en une ligne de log passait inaperçue)
+  const[combatReveal,setCombatReveal]=useState(null); // {title,left:{name,color,total,detail},right:{...},winner:"left"|"right",verdict}
   const[encounter,setEncounter]=useState(null); // {card, hexId}
   const[encounterBuild,setEncounterBuild]=useState(false); // rencontre → choisir le type de bâtiment (posé sur le hex du héros)
   const[encounterEnlist,setEncounterEnlist]=useState(null); // rencontre → enrôler : {col:null} puis {col}
+  const[encounterUpgrade,setEncounterUpgrade]=useState(null); // rencontre → amélioration : {from:null} puis {from} (cube haut→bas)
   const[rougeRiver,setRougeRiver]=useState(null); // {cards:[]}
   const[encounterTokens,setEncounterTokens]=useState(new Set(CURRENT_MAP.encounterHexes));
+  // Deck de rencontres SANS remise (partagé joueur/bots) : mélangé au départ,
+  // re-mélangé à épuisement — avant, tirage avec remise (mêmes cartes répétées
+  // dans la même partie, constaté en partie réelle)
+  const encounterDeckRef=useRef([]);
+  const drawEncounterCard=useCallback(()=>{
+    if(encounterDeckRef.current.length===0)encounterDeckRef.current=shuffleArray(ENCOUNTERS);
+    return encounterDeckRef.current.shift();
+  },[]);
   const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
   const[moveSource,setMoveSource]=useState(null);
   // Transport partiel (mech) : choix des ouvriers/ressources à emporter avant le déplacement
@@ -305,7 +318,11 @@ export default function App(){
     if(/── Tour/.test(msg))return"turn";
     return"info";
   };
-  const mkEntry=(msg)=>{stepRef.current++;return{msg,turn:turnRef.current,step:stepRef.current,ts:Date.now(),cat:categorize(msg)};};
+  const mkEntry=(msg)=>{
+    stepRef.current++;
+    const s=sfxForLog(msg);if(s)playSfx(s);
+    return{msg,turn:turnRef.current,step:stepRef.current,ts:Date.now(),cat:categorize(msg)};
+  };
   const addLog=useCallback((msg)=>setLog(prev=>[...prev,mkEntry(msg)]),[]);
   const addLogs=useCallback((msgs)=>setLog(prev=>[...prev,...msgs.map(mkEntry)]),[]);
   // State snapshot for debug — shows key stats of a player
@@ -316,8 +333,63 @@ export default function App(){
     addLog(snap);
   },[addLog]);
 
+  // ── SAUVEGARDE / REPRISE (localStorage, une partie à la fois) ──
+  // Autosave au début de chaque tour humain. Les objets porteurs de fonctions
+  // (objectifs, tuile bonus, cartes rencontre du deck) sont stockés par ID et
+  // réhydratés à la reprise ; la carte (y compris procédurale) est embarquée
+  // telle quelle (pure data) et rechargée via loadMap.
+  const serializeGame=useCallback(()=>JSON.stringify({
+    v:1,date:Date.now(),turn,difficulty,empireEnabled,
+    map:CURRENT_MAP,empire,rails,encounterTokens:[...encounterTokens],rrVisitors,
+    structureBonus:structureBonus?structureBonus.id:null,
+    encounterDeck:encounterDeckRef.current.map(c=>c.id),
+    log:log.slice(-500),step:stepRef.current,
+    players:players.map(p=>({...p,objective:p.objective?p.objective.id:null,objectives:(p.objectives||[]).map(o=>o.id)})),
+  }),[turn,difficulty,empireEnabled,empire,rails,encounterTokens,rrVisitors,structureBonus,log,players]);
+
+  useEffect(()=>{
+    if(phase!=="playing"||currentP!==0||players.length===0||combat||encounter||botRunning)return;
+    try{localStorage.setItem('pa-save',serializeGame());}catch{/* stockage indisponible */}
+  },[phase,currentP,turn]); // une sauvegarde par tour humain, plateau au repos
+
+  useEffect(()=>{if(phase==="ended"){try{localStorage.removeItem('pa-save');}catch{/* rien */}}},[phase]);
+
+  const resumeSaved=useCallback(()=>{
+    let data=null;
+    try{data=JSON.parse(localStorage.getItem('pa-save')||"null");}catch{data=null;}
+    if(!data||!Array.isArray(data.players)||data.players.length===0)return;
+    loadMap(data.map);
+    setEncounterTokens(new Set(data.encounterTokens||[]));
+    encounterDeckRef.current=(data.encounterDeck||[]).map(id=>ENCOUNTERS.find(e=>e.id===id)).filter(Boolean);
+    setEmpire(data.empire||{});
+    setRails((data.rails||[]).map(r=>[...r]));
+    setRrVisitors(data.rrVisitors||0);
+    setStructureBonus(data.structureBonus!=null?(STRUCTURE_BONUSES.find(b=>b.id===data.structureBonus)||null):null);
+    setDifficulty(data.difficulty||"normal");
+    setEmpireEnabled(!!data.empireEnabled);
+    setPlayers(data.players.map(p=>({...p,
+      objective:p.objective!=null?(OBJECTIVES.find(o=>o.id===p.objective)||null):null,
+      objectives:(p.objectives||[]).map(id=>OBJECTIVES.find(o=>o.id===id)).filter(Boolean)})));
+    setLog((data.log||[]).map(e=>({...e})));
+    stepRef.current=data.step||(data.log||[]).length;
+    turnRef.current=data.turn||1;
+    setTurn(data.turn||1);setCurrentP(0);setPhase("playing");
+    addLog(`💾 Partie reprise (tour ${data.turn||1})`);
+  },[addLog]);
+
+  // Aperçu de la sauvegarde pour l'écran de setup (bouton « Reprendre »)
+  const savedGame=useMemo(()=>{
+    if(phase!=="setup")return null;
+    try{
+      const d=JSON.parse(localStorage.getItem('pa-save')||"null");
+      return d&&Array.isArray(d.players)&&d.players.length>0
+        ?{turn:d.turn,faction:d.players[0].faction,date:d.date}:null;
+    }catch{return null;}
+  },[phase]);
+
   const startGame=useCallback(()=>{
     if(!selFaction||!selMat)return;
+    try{localStorage.removeItem('pa-save');}catch{/* rien */}
     // Carte : v3 (défaut), configuration initiale (v2), ou procédurale
     if(mapChoice==="random"){
       const gen=generateAcceptedMap(Math.random);
@@ -330,14 +402,17 @@ export default function App(){
       loadMap(DEFAULT_MAP);
     }
     setEncounterTokens(new Set(CURRENT_MAP.encounterHexes));
+    encounterDeckRef.current=shuffleArray(ENCOUNTERS);
     setEmpire(empireEnabled?Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])):{});
     if(empireEnabled)addLog(`🤖 Bots de l'Empire activés (mécanique campagne)`);
     // La carte de base démarre sans rails — seules les Gares en posent
     setRails([]);
     setRrVisitors(0);
-    // 🏦 Tuiles bonus $ retirées du jeu de base — l'idée est réservée à la
-    // mission « Ruée vers l'or » du mode campagne (voir docs/campagne.md)
-    setStructureBonus(null);
+    // 🏦 Tuile bonus de pose tirée aussi en partie de base (demande de partie
+    // réelle) — la mission « Ruée vers l'or » de la campagne garde sa variante
+    const sb=pickStructureBonus();
+    setStructureBonus(sb);
+    addLog(`🏦 Bonus de pose : ${sb.icon} ${sb.name} — +${sb.coins}$ ${sb.desc}`);
     const usedFactions=[selFaction];const usedMats=[selMat];
     const ps=[createPlayer(selFaction,selMat,false)];
     // Factions ET plateaux des bots TIRÉS AU HASARD (avant : l'ordre fixe de
@@ -472,6 +547,8 @@ export default function App(){
       // (l'IA n'attaque que sur avantage réel)
       const attackable=new Map();
       const hexLoot=new Map();
+      // Ouvriers adverses par hex : coût en pop d'une victoire (1/ouvrier chassé)
+      const hexWorkers=new Map();
       // Méta-stratégie : menace par hex = a priori de la faction sur cette
       // carte + bonus si son propriétaire mène la partie (harceler le leader)
       const hexThreat=new Map();
@@ -492,6 +569,7 @@ export default function App(){
         };
         attackable.set(op.hero,Math.max(attackable.get(op.hero)||0,effStrength(op.hero)));
         op.mechs.forEach(m=>attackable.set(m.hexId,Math.max(attackable.get(m.hexId)||0,effStrength(m.hexId))));
+        op.workers.forEach(w=>hexWorkers.set(w.hexId,(hexWorkers.get(w.hexId)||0)+1));
         // Butin par hex : les tas de ressources attirent les raids (le
         // vainqueur d'un combat prend les ressources du hex)
         Object.entries(op.resources||{}).forEach(([hid,res])=>{
@@ -504,7 +582,11 @@ export default function App(){
             .forEach(hid=>hexThreat.set(hid,Math.max(hexThreat.get(hid)||0,threat)));
         }
       });
-      const botCtx={attackable,hexLoot,hexThreat,forbidden:new Set(),encounterHexes:encounterTokens};
+      const botCtx={attackable,hexLoot,hexThreat,hexWorkers,forbidden:new Set(),encounterHexes:encounterTokens,
+        // Fin imminente : un autre joueur (humain compris) est à 5+ étoiles
+        endgame:players.some((op,oi)=>oi!==cp&&(op.stars||0)>=5),
+        // Meilleur score adverse estimé — gestion de la 6e étoile (finir ou retarder)
+        bestOppScore:Math.max(...players.filter((_,oi)=>oi!==cp).map(op=>estimateScore(op)))};
       let result=botTurn(players[cp],empire,botEnemyHexes,rails,botCtx);
       let p=result.player;const logs=[...result.logs];
       // ── BOT COMBAT: check if bot moved onto Empire mecha ──
@@ -628,7 +710,8 @@ export default function App(){
       // ── RENCONTRE BOT : héros sur un jeton, après les combats (règle p.24) ──
       if(encounterTokens.has(n[cp].hero)){
         const encHex=n[cp].hero;
-        const er=resolveBotEncounter(n[cp]);
+        if(encounterDeckRef.current.length===0)encounterDeckRef.current=shuffleArray(ENCOUNTERS);
+        const er=resolveBotEncounter(n[cp],encounterDeckRef.current);
         n[cp]=er.player;logs.push(er.log);
         setEncounterTokens(prev=>{const s=new Set(prev);s.delete(encHex);return s;});
       }
@@ -1047,7 +1130,7 @@ export default function App(){
     // contexte d'action capturé (selAction/preActionSnapshot) du snapshot
     setSelAction(snap.selAction??null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(snap.preActionSnapshot??null);setTradePicks([]);
     setPendingBottom(null);setBottomPick(null);setCombat(null);setEncounter(null);setRougeRiver(null);
-    setEncounterBuild(false);setEncounterEnlist(null);
+    setEncounterBuild(false);setEncounterEnlist(null);setEncounterUpgrade(null);
     setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);setEndOfTurn(false);
   },[cloneVal]);
   const pushHistory=useCallback(()=>{ setUndoStack(s=>[...s.slice(-40),snapshotGame()]); setRedoStack([]); },[snapshotGame]);
@@ -1489,8 +1572,7 @@ export default function App(){
         
         // Encounter token?
         if(encounterTokens.has(hexId)){
-          const shuffled=shuffleArray(ENCOUNTERS);
-          const card=shuffled[0];
+          const card=drawEncounterCard();
           setEncounterTokens(prev=>{const s=new Set(prev);s.delete(hexId);return s;});
           setEncounter({card,hexId});
           addLog(`📜 Rencontre: "${card.name}"`);
@@ -1589,6 +1671,13 @@ export default function App(){
       const attackerTotal=combat.botSpend+atkCB.powerBonus+(combat.botCards*2);
       const win=playerTotal>attackerTotal; // l'attaquant remporte les égalités
       addLog(`⚔ ${af.name}: ${attackerTotal} (${combat.botSpend}⚡+${combat.botCards}🃏) vs vous: ${playerTotal} (${combat.powerSpend}⚡+${combat.cardsSpend}🃏)`);
+      setCombatReveal({
+        title:`Défense de #${combat.hexId}`,
+        left:{name:af.name,color:af.color,total:attackerTotal,detail:`${combat.botSpend}⚡${atkCB.powerBonus>0?` +${atkCB.powerBonus}⚡`:""} + ${combat.botCards}🃏`},
+        right:{name:myFaction.name,color:myFaction.color,total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
+        winner:win?"right":"left",
+        verdict:win?`Vous repoussez ${af.name} ! ⭐`:`${af.name} prend le territoire...`,
+      });
       const myHb=HOME_BASES[me.faction];
       const myHbHex=baseHexAt(myHb);
       const atkHb=HOME_BASES[attacker.faction];
@@ -1684,6 +1773,13 @@ export default function App(){
         n[0]=p;return n;
       });
 
+      setCombatReveal({
+        title:combat.empireCard.name,
+        left:{name:myFaction.name,color:myFaction.color,total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
+        right:{name:combat.empireCard.name,color:"#2A5A8A",total:empireTotal,detail:`Force Empire ${empireTotal}`},
+        winner:win?"left":"right",
+        verdict:win?"Mecha de l'Empire détruit !":"L'Empire vous repousse...",
+      });
       if(win){
         addLog(`✅ Victoire ! ${combat.empireCard.name} détruit (${playerTotal} vs ${empireTotal} — dépensé: ${combat.powerSpend}⚡ ${combat.cardsSpend}🃏)`);
         setPlayers(prev=>{
@@ -1779,6 +1875,13 @@ export default function App(){
       let bonusLog="";
       if(enemyCBonus.name&&(enemyCBonus.powerBonus>0||enemyCBonus.cardBonus>0)) bonusLog=` [${enemyCBonus.name}]`;
       addLog(`⚔ ${myFaction.name}: ${playerTotal} (${combat.powerSpend}${playerCBonus.powerBonus>0?`+${playerCBonus.powerBonus}`:""}⚡+${combat.cardsSpend}🃏) vs ${ef.name}: ${enemyTotal} (${botPower}⚡+${botCards}🃏)${bonusLog}`);
+      setCombatReveal({
+        title:`Assaut sur #${combat.hexId}`,
+        left:{name:myFaction.name,color:myFaction.color,total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
+        right:{name:ef.name,color:ef.color,total:enemyTotal,detail:botFold?"ne mise rien (fold)":`${botPower}⚡${enemyCBonus.powerBonus>0?` +${enemyCBonus.powerBonus}⚡`:""} + ${botCards}🃏`},
+        winner:win?"left":"right",
+        verdict:win?`${ef.name} bat en retraite !`:"Vos forces battent en retraite...",
+      });
       
       const hb=HOME_BASES[me.faction];
       const hbHex=baseHexAt(hb);
@@ -1989,6 +2092,7 @@ export default function App(){
     }
     if(choice.grantsBuilding){ setEncounterBuild(true); return; }
     if(choice.grantsRecruit){ setEncounterEnlist({col:null}); return; }
+    if(choice.grantsUpgrade&&(me.upgrades||0)<6){ setEncounterUpgrade({from:null}); return; }
     // Resume movement check
     resumeAfterEncounter();
   },[encounter,me,addLog,resumeAfterEncounter]);
@@ -2034,6 +2138,30 @@ export default function App(){
     addLog(`   Permanent ${recruit.icon} ${recruit.label} quand vous/voisins faites ${BOTTOM[colIdx]}`);
     if((me.recruits||0)+1>=4)addLog(`⭐ 4 Recrues enrôlées !`);
     setEncounterEnlist(null);
+    resumeAfterEncounter();
+  },[me,addLog,resumeAfterEncounter]);
+
+  // ── RÉCOMPENSE RENCONTRE : amélioration gratuite (vrai cube haut→bas) ──
+  // Avant : simple compteur incrémenté, sans choix ni effet — « pas appliqué,
+  // juste comptabilisé », constaté en partie réelle.
+  const doEncounterUpgrade=useCallback((fromCol,toCol)=>{
+    if(!me||(me.upgrades||0)>=6)return;
+    const mat=MATS.find(m=>m.id===me.matId);
+    if(!mat)return;
+    if((me.cubesOnTop||[])[fromCol]<=0){addLog(`⚠ Pas de cube sur cette action top`);return;}
+    if((me.cubesOnBottom||[])[toCol]>=maxBottomCubes(mat,toCol)){addLog(`⚠ Plus de place sur cette action bottom`);return;}
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0]};
+      p.cubesOnTop=[...(p.cubesOnTop||[])];p.cubesOnTop[fromCol]--;
+      p.cubesOnBottom=[...(p.cubesOnBottom||[])];p.cubesOnBottom[toCol]++;
+      p.upgrades=(p.upgrades||0)+1;
+      const earned=p.upgrades>=6&&!p.starUpgrades;
+      if(earned){p.stars++;p.starUpgrades=true;}
+      n[0]=p;return n;
+    });
+    addLog(`⬆ Améliorer ${(me.upgrades||0)+1}/6 (rencontre): ${frTop(me.topRow[fromCol])}↑ → ${frBot(BOTTOM[toCol])}↓`);
+    if((me.upgrades||0)+1>=6)addLog(`⭐ 6 Améliorations complétées !`);
+    setEncounterUpgrade(null);
     resumeAfterEncounter();
   },[me,addLog,resumeAfterEncounter]);
 
@@ -2164,7 +2292,7 @@ export default function App(){
 
   // ══════════ SETUP SCREEN ══════════
   if(phase==="setup"){
-    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} mapChoice={mapChoice} setMapChoice={setMapChoice} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
+    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} mapChoice={mapChoice} setMapChoice={setMapChoice} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={startGame} onShowRules={()=>setShowRules(true)} savedGame={savedGame} onResume={resumeSaved} />;
   }
 
   // (pick_objective phase removed — player keeps both objectives per Scythe rules)
@@ -2216,11 +2344,14 @@ export default function App(){
       const resScore=resPairs*resMult;
       // Bonus de construction : X$ par bâtiment sur les tuiles qualifiées
       const sbDetail=structureBonusDetail(p,structureBonus);
-      const total=starScore+terScore+resScore+p.coins+sbDetail.coins;
+      // Comptoirs Acadiane : postes de commerce — +2$ chacun au scoring
+      // (v0.12 : levier structurel mesuré, sa trésorerie était la pire du jeu)
+      const flagCoins=(p.flagTokens||[]).length*2;
+      const total=starScore+terScore+resScore+p.coins+sbDetail.coins+flagCoins;
       return{faction:p.faction,name:f.name,color:f.color,hero:f.hero,isBot:p.isBot,
         stars:p.stars,pop:p.pop,popTier,territories,factoryBonus,flagBonus,totalRes,resPairs,coins:p.coins,
         starScore,terScore,resScore,total,starMult,terMult,resMult,
-        sbCount:sbDetail.count,sbCoins:sbDetail.coins};
+        sbCount:sbDetail.count,sbCoins:sbDetail.coins,flagCoins};
     }).sort((a,b)=>b.total-a.total);
 
     // Export du journal de partie (JSON) — données pour l'entraînement de l'IA
@@ -2236,7 +2367,7 @@ export default function App(){
           rang:i+1,faction:s.faction,nom:s.name,bot:s.isBot,total:s.total,
           etoiles:s.stars,pop:s.pop,palier_pop:["0-6","7-12","13-18"][s.popTier],
           territoires:s.territories,bonus_usine:s.factoryBonus,comptoirs:s.flagBonus,
-          ressources:s.totalRes,paires:s.resPairs,argent:s.coins,
+          ressources:s.totalRes,paires:s.resPairs,argent:s.coins,bonus_pose:s.sbCoins,
           detail:{etoiles:s.starScore,territoires:s.terScore,ressources:s.resScore},
         })),
         journal:log.map(e=>({tour:e.turn,etape:e.step,cat:e.cat,ts:e.ts,msg:e.msg})),
@@ -2297,6 +2428,7 @@ export default function App(){
               <div style={{fontSize:13,color:"var(--text-dim)",marginTop:4}}>
                 Pop: {s.pop} (palier {["0-6","7-12","13-18"][s.popTier]}) — {s.totalRes} ressources
                 {structureBonus&&s.sbCoins>0&&<span style={{color:"var(--gold)",marginLeft:8}}>🏦 {structureBonus.icon} {structureBonus.name}: +{s.sbCoins}$ ({s.sbCount} bât.)</span>}
+                {s.flagCoins>0&&<span style={{color:"var(--gold)",marginLeft:8}}>⚑ Comptoirs: +{s.flagCoins}$</span>}
               </div>
             </div>
           ))}
@@ -2938,7 +3070,10 @@ export default function App(){
                         <button key={ci} title={on?"Retirer cette carte":"Engager cette carte"} onClick={()=>setCombat(prev=>{
                           const cur=prev.cardsPicked||[];
                           if(cur.includes(ci))return{...prev,cardsPicked:cur.filter(x=>x!==ci),cardsSpend:cur.length-1};
-                          if(cur.length>=maxCards)return prev;
+                          // Limite atteinte : la nouvelle carte REMPLACE la dernière engagée
+                          // (sinon le clic ne faisait rien — impossible de repasser sur une
+                          // carte plus faible sans désélectionner d'abord, constaté en partie)
+                          if(cur.length>=maxCards){const rest=cur.slice(0,cur.length-1);return{...prev,cardsPicked:[...rest,ci],cardsSpend:rest.length+1};}
                           return{...prev,cardsPicked:[...cur,ci],cardsSpend:cur.length+1};
                         })} style={{width:26,height:34,borderRadius:4,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:800,fontFamily:"var(--font-mono)",cursor:"pointer",padding:0,
                           background:on?"linear-gradient(180deg,#8b2020,#bb3838)":"var(--bg3)",color:on?"#fff":"var(--text-dim)",
@@ -3161,6 +3296,50 @@ export default function App(){
                   )}
                 </div>
               )}
+
+              {/* RENCONTRE → AMÉLIORATION GRATUITE (cube haut → bas) */}
+              {encounterUpgrade&&(()=>{
+                const mat=MATS.find(m=>m.id===me.matId);
+                return(
+                <div style={{padding:"20px",background:"linear-gradient(180deg,#16120e,var(--bg2))",borderRadius:10,border:"1px solid var(--gold-dim)",animation:"slideUp 0.35s ease"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+                    <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(212,178,84,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:25,border:"2px solid var(--gold)",flexShrink:0}}>⬆</div>
+                    <div>
+                      <div style={{fontFamily:"var(--font-title)",color:"var(--gold)",fontSize:18,fontWeight:700}}>Amélioration gratuite</div>
+                      <div style={{fontSize:13,color:"var(--text-dim)"}}>Amélioration {(me.upgrades||0)+1}/6 — déplacez un vrai cube</div>
+                    </div>
+                  </div>
+                  {encounterUpgrade.from==null?(
+                    <div>
+                      <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:6}}>① Cube à retirer (action du haut renforcée) :</div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
+                        {(me.topRow||[]).map((tName,ci)=>{
+                          const cubes=(me.cubesOnTop||[])[ci]||0;
+                          return <button key={ci} onClick={()=>setEncounterUpgrade({from:ci})} className="act-btn" disabled={cubes<=0} style={{textAlign:"center",opacity:cubes<=0?0.3:1,cursor:cubes<=0?"not-allowed":"pointer"}}>
+                            <div style={{fontWeight:700,fontSize:14}}>{frTop(tName)}</div>
+                            <div style={{fontSize:13,color:"var(--gold)",marginTop:2}}>{cubes} cube{cubes>1?"s":""} restant{cubes>1?"s":""}</div>
+                          </button>;
+                        })}
+                      </div>
+                    </div>
+                  ):(
+                    <div>
+                      <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:6}}>Cube retiré de <b style={{color:"var(--brass)"}}>{frTop((me.topRow||[])[encounterUpgrade.from])}</b> — ② action du bas à réduire (coût -1) :</div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
+                        {BOTTOM.map((bName,ci)=>{
+                          const full=(me.cubesOnBottom||[])[ci]>=maxBottomCubes(mat,ci);
+                          return <button key={ci} onClick={()=>doEncounterUpgrade(encounterUpgrade.from,ci)} className="act-btn" disabled={full} style={{textAlign:"center",opacity:full?0.3:1,cursor:full?"not-allowed":"pointer",borderColor:full?"var(--border)":"var(--gold-dim)"}}>
+                            <div style={{fontWeight:700,fontSize:14}}>{frBot(bName)}</div>
+                            <div style={{fontSize:13,color:"var(--gold)",marginTop:2}}>{full?"déjà au minimum":`coût ${Math.max(1,(mat?.bottomCosts||[])[ci]?.base-((me.cubesOnBottom||[])[ci]||0))} → ${Math.max(1,(mat?.bottomCosts||[])[ci]?.base-((me.cubesOnBottom||[])[ci]||0)-1)}`}</div>
+                          </button>;
+                        })}
+                      </div>
+                      <button onClick={()=>setEncounterUpgrade({from:null})} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre cube</button>
+                    </div>
+                  )}
+                </div>
+                );
+              })()}
 
               {/* ROUGE RIVER */}
               {rougeRiver&&(
@@ -3726,18 +3905,19 @@ export default function App(){
                   </div>;
                 })()}
                 {ba==="Deploy"&&!maxed&&(()=>{
+                  // Ressource alternative de déploiement — générique par faction :
+                  // Nations/Bayou → bois, Acadiane → pétrole (Vapeur des Lacs)
                   const deployAlt=FACTIONS[me.faction]?.deployAltRes;
-                  const metalCount=countRes(me,"metal");const boisCount=countRes(me,"bois");
+                  const metalCount=countRes(me,"metal");const altCount=deployAlt?countRes(me,deployAlt):0;
                   const qty=bc.qty;
-                  const hasMetal=metalCount>=qty;const hasBois=boisCount>=qty;
+                  const hasMetal=metalCount>=qty;const hasAlt=altCount>=qty;
                   if(!deployAlt) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn"><Glyph icon="⬡" size={14}/> #{hid}</button>)}</div>:<div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
-                  // Nations: Esprit Sauvage — choose metal or bois
-                  if(!hasMetal&&!hasBois) return <div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de métal ni de bois</div>;
+                  if(!hasMetal&&!hasAlt) return <div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de métal ni de {resFR(deployAlt)}</div>;
                   if(!bottomPick||!bottomPick.deployRes) return <div>
                     <div style={{fontSize:12,color:"var(--brass)",marginBottom:6}}>🌿 {FACTIONS[me.faction].deployAltName||FACTIONS[me.faction].ability} — déployer avec :</div>
                     <div style={{display:"flex",gap:6}}>
                       {hasMetal&&<button onClick={()=>setBottomPick({deployRes:"metal"})} className="act-btn" style={{flex:1}}>⚙ Métal ({metalCount})</button>}
-                      {hasBois&&<button onClick={()=>setBottomPick({deployRes:"bois"})} className="act-btn" style={{flex:1,borderColor:"#5a8a3a"}}>🪵 Bois ({boisCount})</button>}
+                      {hasAlt&&<button onClick={()=>setBottomPick({deployRes:deployAlt})} className="act-btn" style={{flex:1,borderColor:"#5a8a3a"}}>{deployAlt==="bois"?"🪵":deployAlt==="petrole"?"🛢":"📦"} {resFR(deployAlt)} ({altCount})</button>}
                     </div>
                   </div>;
                   return <div>
@@ -4032,7 +4212,7 @@ export default function App(){
                   <div style={{fontWeight:700,color:"var(--brass)",marginBottom:4,fontFamily:"var(--font-title)"}}>🗺 Scoring du placement</div>
                   Chaque bâtiment <b>contrôle son hex</b> jusqu'à la fin de partie, même sans unité dessus (sauf si un ennemi occupe l'hex) : il compte comme <b>territoire</b> au score final — ×{[2,3,4][me.pop<=6?0:me.pop<=12?1:2]}$ à votre palier de popularité actuel (×2$ / ×3$ / ×4$ selon le palier).
                   Placez-les sur des hexes que vos unités ne tiendront pas : production excentrée, carrefours, abords de l'Usine.
-                  {!structureBonus&&<div style={{marginTop:4,color:"var(--text-muted)"}}>🏦 Pas de tuile « bonus de pose » dans la partie de base (réservée au mode campagne).</div>}
+                  {!structureBonus&&<div style={{marginTop:4,color:"var(--text-muted)"}}>🏦 Aucune tuile « bonus de pose » tirée pour cette partie.</div>}
                 </div>
               </div>)}
               {starDetail==="mech"&&(<div>
@@ -4139,6 +4319,34 @@ export default function App(){
               fontFamily:"var(--font-title)",whiteSpace:"nowrap",
             }}>{f.icon}</div>
           ))}
+        </div>
+      )}
+
+      {/* ── RÉVÉLATION DE COMBAT : les deux engagements face à face ── */}
+      {combatReveal&&(
+        <div onClick={()=>setCombatReveal(null)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(6,4,2,0.84)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
+          <div style={{fontFamily:"var(--font-title)",fontSize:15,letterSpacing:5,textTransform:"uppercase",color:"var(--text-dim)",marginBottom:24}}>{combatReveal.title}</div>
+          <div style={{display:"flex",alignItems:"center",gap:30}}>
+            {["left","right"].map(side=>{
+              const s=combatReveal[side];const isWin=combatReveal.winner===side;
+              return(
+                <React.Fragment key={side}>
+                  {side==="right"&&<div style={{fontSize:34,animation:"verdictPop 0.5s ease 0.4s both"}}>⚔</div>}
+                  <div style={{animation:`${side==="left"?"clashLeft":"clashRight"} 0.45s ease both`,textAlign:"center",padding:"24px 32px",minWidth:200,borderRadius:12,
+                    background:"linear-gradient(180deg,rgba(24,19,11,0.97),rgba(12,9,5,0.97))",
+                    border:`2px solid ${isWin?"var(--gold)":"rgba(120,100,70,0.5)"}`,
+                    boxShadow:isWin?"0 0 34px rgba(201,168,76,0.28)":"none"}}>
+                    <div style={{fontFamily:"var(--font-title)",fontSize:16,fontWeight:700,color:s.color,marginBottom:10}}>{s.name}</div>
+                    <div style={{fontSize:46,fontWeight:900,fontFamily:"var(--font-title)",color:isWin?"var(--gold)":"var(--text)",lineHeight:1}}>{s.total}</div>
+                    <div style={{fontSize:13,color:"var(--text-dim)",marginTop:10,fontFamily:"var(--font-mono)",whiteSpace:"nowrap"}}>{s.detail}</div>
+                    {isWin&&<div style={{fontSize:12,letterSpacing:3,textTransform:"uppercase",color:"var(--gold)",marginTop:10,animation:"verdictPop 0.5s ease 0.9s both"}}>Vainqueur</div>}
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
+          <div style={{marginTop:28,fontSize:19,fontWeight:700,fontFamily:"var(--font-title)",color:"var(--gold)",animation:"verdictPop 0.5s ease 0.9s both"}}>{combatReveal.verdict}</div>
+          <div style={{marginTop:16,fontSize:12,color:"var(--text-muted)",letterSpacing:2,animation:"fadeIn 0.4s ease 1.4s both"}}>cliquez pour continuer</div>
         </div>
       )}
 

@@ -9,18 +9,26 @@ export const MATS = [
   { id: 1, name: "Fordisme", pop: 2, coins: 4, topRow: ["Move", "Bolster", "Produce", "Trade"],
     topCubes: [1, 2, 1, 2], bottomSlots: [1, 2, 1, 2],
     bottomCosts: [{ res: "petrole", base: 3, bonus: 0 }, { res: "metal", base: 3, bonus: 1 }, { res: "bois", base: 2, bonus: 2 }, { res: "nourriture", base: 3, bonus: 2 }] },
+  // Atelier : Déployer 4 métal sans bonus était le pire Deploy du jeu (16 métal
+  // pour l'étoile mechas) — mesuré 15 % de winrate. Ramené à 3+1$ (v0.12).
   { id: 2, name: "Atelier", pop: 2, coins: 5, topRow: ["Trade", "Produce", "Bolster", "Move"],
     topCubes: [2, 1, 2, 1], bottomSlots: [1, 2, 2, 1],
-    bottomCosts: [{ res: "petrole", base: 2, bonus: 1 }, { res: "metal", base: 4, bonus: 0 }, { res: "bois", base: 3, bonus: 3 }, { res: "nourriture", base: 2, bonus: 1 }] },
+    bottomCosts: [{ res: "petrole", base: 2, bonus: 1 }, { res: "metal", base: 3, bonus: 1 }, { res: "bois", base: 3, bonus: 3 }, { res: "nourriture", base: 2, bonus: 1 }] },
   { id: 3, name: "Pionnier", pop: 2, coins: 6, topRow: ["Move", "Trade", "Produce", "Bolster"],
     topCubes: [2, 1, 1, 2], bottomSlots: [2, 1, 1, 2],
     bottomCosts: [{ res: "petrole", base: 3, bonus: 2 }, { res: "metal", base: 2, bonus: 1 }, { res: "bois", base: 4, bonus: 0 }, { res: "nourriture", base: 3, bonus: 3 }] },
+  // Forge : Améliorer à 4 pétrole gâchait l'appariement Commerce↔Améliorer
+  // (les autres plateaux financent leur bas de colonne via Commerce) et le
+  // Déployer 2 métal ne rapportait rien — mesuré 10 % de winrate. Améliorer
+  // 4→3 et Déployer +1$ (v0.12) : identité « fabrique de mechas » assumée.
   { id: 4, name: "Forge", pop: 3, coins: 6, topRow: ["Trade", "Bolster", "Move", "Produce"],
     topCubes: [1, 2, 2, 1], bottomSlots: [2, 1, 2, 1],
-    bottomCosts: [{ res: "petrole", base: 4, bonus: 3 }, { res: "metal", base: 2, bonus: 0 }, { res: "bois", base: 3, bonus: 1 }, { res: "nourriture", base: 3, bonus: 2 }] },
-  { id: 5, name: "Terroir", pop: 4, coins: 7, topRow: ["Move", "Trade", "Bolster", "Produce"],
+    bottomCosts: [{ res: "petrole", base: 3, bonus: 3 }, { res: "metal", base: 2, bonus: 1 }, { res: "bois", base: 3, bonus: 1 }, { res: "nourriture", base: 2, bonus: 2 }] },
+  // Terroir : dominait à 43 % constant (meilleur départ + meilleurs
+  // appariements) — v0.12 : 7$→6$ et pop 4→3 de départ, Déployer +2$→+1$
+  { id: 5, name: "Terroir", pop: 3, coins: 6, topRow: ["Move", "Trade", "Bolster", "Produce"],
     topCubes: [2, 1, 2, 1], bottomSlots: [1, 2, 2, 1],
-    bottomCosts: [{ res: "petrole", base: 2, bonus: 0 }, { res: "metal", base: 3, bonus: 2 }, { res: "bois", base: 4, bonus: 2 }, { res: "nourriture", base: 2, bonus: 1 }] },
+    bottomCosts: [{ res: "petrole", base: 2, bonus: 0 }, { res: "metal", base: 3, bonus: 1 }, { res: "bois", base: 4, bonus: 2 }, { res: "nourriture", base: 2, bonus: 1 }] },
 ];
 
 export const BOTTOM = ["Upgrade", "Deploy", "Build", "Enlist"];

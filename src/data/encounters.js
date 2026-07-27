@@ -34,7 +34,11 @@ const addMech = (p) => {
 };
 const gainPop = (p, n) => { p.pop = Math.min(p.pop + n, 18); };
 const gainPow = (p, n) => { p.power = Math.min(p.power + n, 16); };
-const gainUpg = (p) => { p.upgrades = Math.min((p.upgrades || 0) + 1, 6); };
+// L'amélioration gagnée en rencontre est un VRAI déplacement de cube (haut→bas),
+// choisi après coup (picker côté joueur, aléatoire côté bot — voir grantsUpgrade
+// dans App.jsx/botEncounters.js) ; l'effet ne fait que payer le coût. Avant,
+// seul le compteur montait : rien d'appliqué, constaté en partie réelle.
+const canGainUpg = (p) => (p.upgrades || 0) < 6;
 // Le bâtiment/la recrue gagnés en rencontre sont placés/résolus après le choix
 // (picker côté joueur, auto côté bot) ; l'effet ne fait que payer le coût.
 // Bâtiment : posé sur le hex du héros → il faut un type non-Gare encore libre
@@ -54,7 +58,7 @@ export const ENCOUNTERS = [
     choices: [
       { label: "Aider à traverser", icon: "♥", desc: "+1 pop, +2 bois", effect: p => { gainPop(p, 1); addRes(p, "bois", 2); } },
       { label: "Reconstruire le pont", icon: "💰", desc: "-2$, +4 bois", available: p => p.coins >= 2, effect: p => { p.coins -= 2; addRes(p, "bois", 4); } },
-      { label: "Réquisitionner les poutres", icon: "⬆", desc: "-2 pop, +1 amélioration", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); gainUpg(p); } },
+      { label: "Réquisitionner les poutres", icon: "⬆", desc: "-2 pop, +1 amélioration", grantsUpgrade: true, available: p => p.pop >= 2 && canGainUpg(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
     ] },
   { id: 3, name: "La Mine Abandonnée", desc: "Une mine oubliée, pleine de ressources... ou de dangers.",
     choices: [
@@ -78,7 +82,7 @@ export const ENCOUNTERS = [
     choices: [
       { label: "Inventorier le dépôt", icon: "♥", desc: "+1 pop, +2 métal", effect: p => { gainPop(p, 1); addRes(p, "metal", 2); } },
       { label: "Acheter la cargaison", icon: "🔬", desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
-      { label: "Rafler la technologie", icon: "⬆", desc: "-2 pop, +1 amélioration", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); gainUpg(p); } },
+      { label: "Rafler la technologie", icon: "⬆", desc: "-2 pop, +1 amélioration", grantsUpgrade: true, available: p => p.pop >= 2 && canGainUpg(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
     ] },
   { id: 7, name: "La Fête du Village", desc: "Musique, danse, et moonshine. Le peuple fait la fête.",
     choices: [
@@ -90,7 +94,7 @@ export const ENCOUNTERS = [
     choices: [
       { label: "L'écouter raconter", icon: "♥", desc: "+1 pop, +1 carte combat", effect: p => { gainPop(p, 1); p.combatCards += 1; } },
       { label: "L'embaucher", icon: "⬡", desc: "-3$, +1 mecha", grantsMech: true, available: p => p.coins >= 3 && p.mechs.length < 4, effect: p => { p.coins -= 3; addMech(p); } },
-      { label: "Le forcer à bricoler", icon: "⬆", desc: "-2 pop, +1 amélioration", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); gainUpg(p); } },
+      { label: "Le forcer à bricoler", icon: "⬆", desc: "-2 pop, +1 amélioration", grantsUpgrade: true, available: p => p.pop >= 2 && canGainUpg(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
     ] },
   { id: 9, name: "Le Champ de Pétrole", desc: "Du pétrole jaillit du sol. Sacré pour les uns, fortune pour les autres.",
     choices: [
@@ -119,7 +123,7 @@ export const ENCOUNTERS = [
   { id: 13, name: "Le Barrage", desc: "Un barrage hydroélectrique, intact mais sans opérateur.",
     choices: [
       { label: "Rétablir le courant", icon: "♥", desc: "+1 pop, +2 puissance", effect: p => { gainPop(p, 1); gainPow(p, 2); } },
-      { label: "Moderniser la turbine", icon: "💰", desc: "-2$, +1 amélioration", available: p => p.coins >= 2, effect: p => { p.coins -= 2; gainUpg(p); } },
+      { label: "Moderniser la turbine", icon: "💰", desc: "-2$, +1 amélioration", grantsUpgrade: true, available: p => p.coins >= 2 && canGainUpg(p), effect: p => { p.coins -= 2; } },
       { label: "Réquisitionner l'énergie", icon: "⚡", desc: "-2 pop, +4 puissance, +1 ouvrier", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); gainPow(p, 4); addWorkers(p, 1); } },
     ] },
   { id: 14, name: "Les Enfants du Mecha", desc: "Des orphelins vivent dans la carcasse d'un mecha géant.",

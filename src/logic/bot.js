@@ -19,6 +19,21 @@ import { getPlanBottomBonus } from './planEffects.js';
 // Evaluate game phase: early (0-2 stars), mid (3-4), late (5+)
 const getPhase = (p) => p.stars >= 5 ? "late" : p.stars >= 3 ? "mid" : "early";
 
+// Estimation du score final (approximation de la table de scoring) : étoiles,
+// territoires (unités + bâtiments, Usine = 3), paires de ressources, pièces —
+// multipliés par le palier de popularité. Sert au « end-game trigger
+// management » du corpus : finir si en tête, engranger sinon.
+export const estimateScore = (p) => {
+  const tier = p.pop >= 13 ? 2 : p.pop >= 7 ? 1 : 0;
+  const sm = [3, 4, 5][tier], tm = [2, 3, 4][tier], rm = [1, 2, 3][tier];
+  const hexes = new Set([p.hero, ...p.workers.map(w => w.hexId), ...p.mechs.map(m => m.hexId),
+    ...(p.buildings || []).map(b => b.hexId)].filter(h => hMap[h] && !hMap[h].base));
+  let res = 0;
+  Object.values(p.resources || {}).forEach(r => Object.values(r).forEach(n => { res += n; }));
+  return (p.stars || 0) * sm + (hexes.size + (hexes.has(22) ? 2 : 0) + (p.flagTokens || []).length) * tm
+    + Math.floor(res / 2) * rm + (p.coins || 0) + (p.flagTokens || []).length * 2;
+};
+
 // Bottom action maxed out? (no more stars/progress from it)
 const isBottomMaxed = (p, bottomAction) =>
   bottomAction === "Upgrade" ? (p.upgrades || 0) >= 6
@@ -42,10 +57,14 @@ const neededResources = (p) => {
 };
 
 // Score a column choice based on strategic value
-const scoreColumn = (p, col, empire, enemyHexes, rails, prof) => {
+const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
   const action = p.topRow[col];
   const f = FACTIONS[p.faction];
   const phase = getPhase(p);
+  // Fin imminente : un ADVERSAIRE est à 5+ étoiles — le scoring final approche
+  // même si nous ne sommes qu'à 2 étoiles (corpus : « spread out when the end
+  // is imminent »). Sans ce flag, le bot ne pivotait que sur SES étoiles.
+  const endNear = phase === "late" || !!(ctx && ctx.endgame);
   const costs = getBottomCost(p);
   const bc = costs[col];
   const bottomAction = BOTTOM[col];
@@ -76,13 +95,20 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof) => {
     }
     else if (bottomAction === "Build") score += 8;
     else if (bottomAction === "Upgrade") { if (upgradeWorthIt) score += 5; else score -= 20; }
-    // Blitz : priorité absolue aux bottoms à une action de leur étoile
-    if (prof.starRush) {
-      const oneAway = bottomAction === "Upgrade" ? (p.upgrades || 0) === 5
-        : bottomAction === "Deploy" ? p.mechs.length === 3
-        : bottomAction === "Build" ? (p.buildings || []).length === 3
-        : (p.recruits || 0) === 3;
-      if (oneAway) score += prof.starRush;
+    const oneAway = bottomAction === "Upgrade" ? (p.upgrades || 0) === 5
+      : bottomAction === "Deploy" ? p.mechs.length === 3
+      : bottomAction === "Build" ? (p.buildings || []).length === 3
+      : (p.recruits || 0) === 3;
+    // « End-game trigger management » (corpus avancé) : cette action donnerait
+    // la 6e ÉTOILE → finir seulement si on est en tête au score estimé ;
+    // sinon retarder le déclenchement et engranger territoires/pop d'abord
+    // (« delaying your final star to prevent an opponent victory »).
+    if (oneAway && (p.stars || 0) === 5 && ctx && ctx.bestOppScore != null) {
+      if (estimateScore(p) >= ctx.bestOppScore) score += 30;
+      else score -= 18;
+    } else if (prof.starRush && oneAway) {
+      // Blitz : priorité absolue aux bottoms à une action de leur étoile
+      score += prof.starRush;
     }
   } else if (bottomMaxed) {
     // Colonne au bottom épuisé : le top seul doit vraiment valoir le coup
@@ -135,7 +161,10 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof) => {
         }
       }
       // Also good for getting pop in late game
-      if (phase === "late") score += 3;
+      if (endNear) score += 3;
+      // Fin imminente sous un palier de pop : chaque point de pop peut changer
+      // les multiplicateurs du score final (×2/×3 territoires et paires)
+      if (ctx && ctx.endgame && (p.pop === 6 || p.pop === 12)) score += 6;
       // Maintenir le palier de pop du profil — sous le palier 7, tout le score
       // final est amputé (multiplicateurs ×3/×2/×1) et Produce à 5+ ouvriers
       // coûte 1 pop (à 0 pop l'économie se bloque)
@@ -160,11 +189,12 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof) => {
     p.workers.forEach(w => { stacks[w.hexId] = (stacks[w.hexId] || 0) + 1; });
     if (Object.values(stacks).some(n => n >= 3)) score += 5;
     // Move is critical in late game for territory
-    if (phase === "late") score += 8;
+    if (endNear) score += 8;
     // Early game: spread workers
     if (phase === "early" && p.workers.length >= 3) score += 3;
-    // Move toward encounters
-    if (!p.encDone) score += 2;
+    // Move toward encounters — la PREMIÈRE rencontre pèse le plus (corpus :
+    // gains majeurs quand on n'a encore rien) ; `encDone` n'était jamais posé
+    if ((p.encounters || 0) === 0) score += 3;
   }
 
   return score;
@@ -176,13 +206,15 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof) => {
 const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) => {
   if (validMoves.length === 0) return null;
 
-  // Estimation de notre force de combat pour décider d'attaquer
-  // Force RÉALISTE en combat : la puissance est plafonnée à 7 par bataille et
-  // l'attaquant n'engage en pratique qu'UNE unité → 1-2 cartes max (bonus de
-  // faction compris). L'ancienne formule (power + cartes×3) surestimait des
-  // deux côtés : le Frente a attaqué 9 contre 11 une position tenue (perdu
-  // d'avance), pendant que l'estimation adverse gonflée le rendait timide.
-  const myStrength = Math.min(p.power, 7) + Math.min(p.combatCards || 0, 2) * 2;
+  // Estimation de notre force pour décider d'attaquer : ce qu'on ENGAGERA
+  // vraiment, pas notre stock. L'engagement d'attaque est floor(power×0.7)+1
+  // (plafond 7) + 1-2 cartes — même formule que la résolution (App.jsx /
+  // pvpBots). L'ancienne estimation min(power,7) comptait tout le stock :
+  // décision d'attaque « à parité » → engagement inférieur → défaite offerte
+  // (corpus : « attack when you can put together enough power to GUARANTEE a
+  // win » ; mesuré en partie réelle : Nations a perdu 8 v 10 puis 8 v 12,
+  // offrant les 2 étoiles de combat du défenseur humain)
+  const myStrength = Math.min(Math.floor(p.power * 0.7) + 1, 7, p.power) + Math.min(p.combatCards || 0, 2) * 2;
   const wantCombatStar = (p.combatWins || 0) < 2;
   // Planification : les ouvriers convergent vers les ressources manquantes des bottoms
   const need = neededResources(p);
@@ -230,9 +262,17 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
         // Couvrir ses arrières : à court de puissance, une attaque expose à la
         // contre-attaque (on ne pourra pas défendre le terrain gagné)
         const overextended = p.power <= 4 && !prof.earlyAttack;
+        // Arbre de décision du corpus : « Can I afford popularity loss? » —
+        // la victoire chasse les ouvriers du hex (-1 pop chacun) ; sous le
+        // palier visé par le profil, l'attaque perd de sa valeur
+        const popLoss = ctx && ctx.hexWorkers ? (ctx.hexWorkers.get(hexId) || 0) : 0;
+        const popAfford = p.pop - popLoss >= Math.min(7, prof.popTarget) ? 0 : 8;
+        // « Factory control often determines game outcome » : l'Usine vaut
+        // 3 territoires au score — prime de combat pour la prendre/reprendre
+        const factoryPrize = hexId === 22 ? 6 : 0;
         // Un gros magot (≥4) justifie le combat même sans étoile à la clé
-        if (!overextended && myStrength >= defStrength + prof.aggroMargin && (wantCombatStar || prof.earlyAttack || loot >= 4) && (prof.earlyAttack || getPhase(p) !== "early" || nearHome))
-          s += (wantCombatStar ? prof.attackReward : Math.floor(prof.attackReward / 2)) + Math.min(4, myStrength - defStrength) + loot + threat + (nearHome ? 6 : 0);
+        if (!overextended && myStrength >= defStrength + prof.aggroMargin && (wantCombatStar || prof.earlyAttack || loot >= 4 || factoryPrize) && (prof.earlyAttack || getPhase(p) !== "early" || nearHome))
+          s += (wantCombatStar ? prof.attackReward : Math.floor(prof.attackReward / 2)) + Math.min(4, myStrength - defStrength) + loot + threat + (nearHome ? 6 : 0) + factoryPrize - popLoss - popAfford;
         else s -= 12;
       } else if (enemyHexes && enemyHexes.has(hexId)) {
         // Hex avec seulement des ouvriers ennemis : déplacement possible mais coûte de la pop
@@ -270,8 +310,10 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
         }
       }
     }
-    // L'Usine reste un territoire triple : y camper garde de la valeur
+    // L'Usine reste un territoire triple : y camper garde de la valeur —
+    // davantage encore quand la fin approche (3 territoires au scoring)
     if (hexId === 22 && p.visitedRR) s += 3;
+    if (hexId === 22 && ctx && ctx.endgame && (purpose === "hero" || purpose === "mech")) s += 5;
 
     // Aimant à magot : se rapprocher du gros tas vaut des points (raid en 2-3 tours)
     if (hoardHex !== null && hexId !== hoardHex) {
@@ -305,11 +347,13 @@ const pickBuilding = (p, availBuildings, prof) => {
   return availBuildings[0];
 };
 
-// Choose which top cube to remove for upgrade (prefer less useful actions)
+// Choose which top cube to remove for upgrade. Retirer un cube AMÉLIORE
+// l'option correspondante — le corpus est formel : « upgrading Produce early
+// pays dividends across the entire game, Trade might only matter in specific
+// situations ». L'ancien ordre améliorait Commerce d'abord (contresens).
 const pickUpgradeSource = (p, validTops) => {
-  // Prefer removing cubes from Trade/Bolster (less critical) over Move/Produce
-  const actionPriority = { Trade: 0, Bolster: 1, Produce: 2, Move: 3 };
-  return validTops.sort((a, b) => (actionPriority[p.topRow[a]] || 2) - (actionPriority[p.topRow[b]] || 2))[0];
+  const actionPriority = { Produce: 0, Move: 1, Bolster: 2, Trade: 3 };
+  return validTops.sort((a, b) => (actionPriority[p.topRow[a]] ?? 2) - (actionPriority[p.topRow[b]] ?? 2))[0];
 };
 
 // Choose which bottom slot for upgrade destination (prefer highest value)
@@ -348,7 +392,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const cols = [0, 1, 2, 3].filter(c => canRepeat || c !== p.lastCol);
   let bestCol = cols[0], bestScore = -999;
   for (const col of cols) {
-    const s = scoreColumn(p, col, empire, enemyHexes, rails, prof)
+    const s = scoreColumn(p, col, empire, enemyHexes, rails, prof, ctx)
       + (noise ? (Math.random() * 2 - 1) * noise : 0);
     if (s > bestScore) { bestScore = s; bestCol = col; }
   }
@@ -468,7 +512,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
           || (ctx && ctx.hexLoot && (ctx.hexLoot.get(mt) || 0) >= 3)
           || (ctx && ctx.hexThreat && (ctx.hexThreat.get(mt) || 0) >= 3)
           || (enemyHexes && enemyHexes.has(mt))
-          || getPhase(p) === "late");
+          || getPhase(p) === "late" || (ctx && ctx.endgame));
         if (worthIt) {
           recordCombatRoute(fromHexM, mt);
           p.mechs = [...p.mechs];
@@ -479,7 +523,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
           // de passage — expansion maximale de territoire) ; sinon il les
           // laisse tenir le terrain et continue seul.
           const isAttack = ctx && ctx.attackable && ctx.attackable.has(mt);
-          const isLate = getPhase(p) === "late";
+          const isLate = getPhase(p) === "late" || !!(ctx && ctx.endgame);
           const wAtOrigin = p.workers.filter(w => w.hexId === fromHexM).length;
           const waypoints = isAttack ? [] : findPathWaypoints(fromHexM, mt, p.faction, p.unlockedAbilities || [], p, rails, enemyHexes)
             .filter(hid => { const h = hMap[hid]; return h && h.t !== "lac" && h.t !== "marecage" && !(enemyHexes && enemyHexes.has(hid)); });
@@ -655,7 +699,12 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         targetRes = types[Math.floor(Math.random() * types.length)];
       }
 
-      const wHex = p.workers.length > 0 ? String(p.workers[0].hexId) : String(p.hero);
+      // Protection des ressources (corpus : « defensive networks ») : les
+      // achats vont sur un hex GARDÉ par un mech ou le héros quand il y en a
+      // un — avant, tout partait sur workers[0], un aimant à raids
+      const guardSet = new Set([p.hero, ...p.mechs.map(m => m.hexId)]);
+      const guarded = p.workers.find(w => guardSet.has(w.hexId));
+      const wHex = guarded ? String(guarded.hexId) : p.workers.length > 0 ? String(p.workers[0].hexId) : String(p.hero);
       if (!p.resources[wHex]) p.resources[wHex] = {};
       // 2 ressources de base, +1 si le cube de l'option 📦 a été retiré
       const resGain = 2 + topUpgradeCount(p, "Trade", "metal");

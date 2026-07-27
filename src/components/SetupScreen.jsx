@@ -31,7 +31,7 @@ const frameStyle = (selected) => ({
   boxShadow: bevel(selected),
 });
 
-export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, mapChoice, setMapChoice, difficulty, setDifficulty, empireEnabled, setEmpireEnabled, startGame, onShowRules }) {
+export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, mapChoice, setMapChoice, difficulty, setDifficulty, empireEnabled, setEmpireEnabled, startGame, onShowRules, savedGame, onResume }) {
   const [hoverFaction, setHoverFaction] = useState(null);
   const previewId = hoverFaction || selFaction;
   const preview = previewId ? FACTIONS[previewId] : null;
@@ -58,6 +58,16 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
           background:"transparent",color:"var(--gold-dim)",border:"1px solid var(--border)",
           borderRadius:4,fontWeight:700,fontFamily:"'Bitter',serif",boxShadow:bevel(false),
         }}>Regles du Jeu</button>
+
+        {/* Partie sauvegardée (autosave à chaque tour) : reprise en un clic */}
+        {savedGame&&(
+          <button onClick={onResume} className="fade-in" style={{
+            marginBottom:32,padding:"12px 40px",fontSize:13,letterSpacing:3,textTransform:"uppercase",
+            background:"linear-gradient(135deg,#3a5a3a,#254025)",color:"#cfe8bf",
+            border:"1px solid #5a8a5a",borderRadius:6,fontWeight:700,fontFamily:"'Bitter',serif",
+            boxShadow:"0 4px 24px rgba(90,154,90,0.25)",
+          }}>💾 Reprendre la partie — tour {savedGame.turn}{FACTIONS[savedGame.faction]?` · ${FACTIONS[savedGame.faction].name}`:""}</button>
+        )}
 
         <div style={{color:"var(--gold-dim)",fontSize:13,fontWeight:600,marginBottom:10,letterSpacing:3,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Adversaires</div>
         <div style={{display:"flex",gap:8,marginBottom:32}}>

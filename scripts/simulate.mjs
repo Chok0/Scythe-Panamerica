@@ -17,9 +17,10 @@
  * chaque tour, exceptions capturées avec seed reproductible).
  */
 import { writeFileSync } from 'node:fs';
-import { botTurn } from '../src/logic/bot.js';
+import { botTurn, estimateScore } from '../src/logic/bot.js';
 import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../src/logic/pvpBots.js';
 import { resolveBotEncounter } from '../src/logic/botEncounters.js';
+import { ENCOUNTERS } from '../src/data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } from '../src/data/plans.js';
 import { CURRENT_MAP, loadMap, DEFAULT_MAP, LEGACY_MAP } from '../src/data/hexes.js';
 import { generateAcceptedMap, validateMap } from '../src/data/mapGen.js';
@@ -129,7 +130,9 @@ const scorePlayer = (p) => {
   const starScore = p.stars * starMult;
   const terScore = (territories + factoryBonus + flagBonus) * terMult;
   const resScore = resPairs * resMult;
-  return { total: starScore + terScore + resScore + p.coins, starScore, terScore, resScore, coins: p.coins, territories, totalRes, popTier, flagBonus, flagBonusPts: flagBonus * terMult };
+  // Comptoirs Acadiane : +2$ chacun au scoring (postes de commerce, v0.12)
+  const flagCoins = (p.flagTokens || []).length * 2;
+  return { total: starScore + terScore + resScore + p.coins + flagCoins, starScore, terScore, resScore, coins: p.coins, territories, totalRes, popTier, flagBonus, flagBonusPts: flagBonus * terMult + flagCoins };
 };
 
 // Types d'étoiles pour l'analyse
@@ -195,6 +198,8 @@ const playGame = (gameIdx, log) => {
   // Aligné sur le jeu de base : plus de rails initiaux (EMPIRE_RAILS = campagne)
   let rails = [];
   let encounterTokens = new Set(CURRENT_MAP.encounterHexes);
+  // Deck de rencontres sans remise, partagé entre les bots (comme en jeu)
+  const encounterDeck = shuffleArray(ENCOUNTERS);
   let rrVisitors = 0;
   const issues = [];
   const combatStats = { pveAttacks: 0, pveWins: 0, defenses: 0, defWins: 0, pvp: 0, encounters: 0 };
@@ -219,6 +224,7 @@ const playGame = (gameIdx, log) => {
       // ressources attirent les raids — contre naturel des thésauriseurs)
       const attackable = new Map();
       const hexLoot = new Map();
+      const hexWorkers = new Map();
       // Méta-stratégie : menace par hex = a priori de la faction sur CETTE
       // carte + bonus si son propriétaire est le leader actuel de la partie
       const hexThreat = new Map();
@@ -226,9 +232,15 @@ const playGame = (gameIdx, log) => {
       const leaderIdx = standings.indexOf(Math.max(...standings));
       players.forEach((op, oi) => {
         if (oi === cp) return;
-        const strength = op.power + (op.combatCards || 0) * 2;
-        attackable.set(op.hero, Math.max(attackable.get(op.hero) || 0, strength));
-        op.mechs.forEach(m => attackable.set(m.hexId, Math.max(attackable.get(m.hexId) || 0, strength)));
+        // Force défensive RÉALISTE par hex — même formule qu'App.jsx : puissance
+        // plafonnée à 7 (règle) et cartes limitées aux unités du hex (+1 marge)
+        const effStrength = (hid) => {
+          const units = (op.hero === hid ? 1 : 0) + op.mechs.filter(m => m.hexId === hid).length;
+          return Math.min(op.power, 7) + Math.min(op.combatCards || 0, units + 1) * 2;
+        };
+        attackable.set(op.hero, Math.max(attackable.get(op.hero) || 0, effStrength(op.hero)));
+        op.mechs.forEach(m => attackable.set(m.hexId, Math.max(attackable.get(m.hexId) || 0, effStrength(m.hexId))));
+        op.workers.forEach(w => hexWorkers.set(w.hexId, (hexWorkers.get(w.hexId) || 0) + 1));
         Object.entries(op.resources || {}).forEach(([hid, res]) => {
           const total = Object.values(res).reduce((a, b) => a + b, 0);
           if (total > 0) hexLoot.set(parseInt(hid), (hexLoot.get(parseInt(hid)) || 0) + total);
@@ -239,7 +251,9 @@ const playGame = (gameIdx, log) => {
             .forEach(hid => hexThreat.set(hid, Math.max(hexThreat.get(hid) || 0, threat)));
         }
       });
-      const result = botTurn(players[cp], empire, enemyHexes, rails, { attackable, hexLoot, hexThreat, forbidden: new Set(), encounterHexes: encounterTokens });
+      const result = botTurn(players[cp], empire, enemyHexes, rails, { attackable, hexLoot, hexThreat, hexWorkers, forbidden: new Set(), encounterHexes: encounterTokens,
+        endgame: players.some((op, oi) => oi !== cp && (op.stars || 0) >= 5),
+        bestOppScore: Math.max(...players.filter((_, oi) => oi !== cp).map(op => estimateScore(op))) });
       let p = result.player;
       if (log) result.logs.forEach(l => log(`  ${l}`));
 
@@ -328,7 +342,8 @@ const playGame = (gameIdx, log) => {
       if (encounterTokens.has(players[cp].hero)) {
         combatStats.encounters++;
         encounterTokens.delete(players[cp].hero);
-        const er = resolveBotEncounter(players[cp]);
+        if (encounterDeck.length === 0) encounterDeck.push(...shuffleArray(ENCOUNTERS));
+        const er = resolveBotEncounter(players[cp], encounterDeck);
         players[cp] = er.player;
         if (log) log(`  ${er.log}`);
       }
