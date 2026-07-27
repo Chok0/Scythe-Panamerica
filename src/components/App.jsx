@@ -24,7 +24,7 @@ import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
 import { getValidMoves, findPathWaypoints, marshToll } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer } from '../logic/player.js';
-import { botTurn } from '../logic/bot.js';
+import { botTurn, estimateScore } from '../logic/bot.js';
 import { BOT_PROFILES, assignBotProfile, BOT_NOISE, MAP_META_THREAT, playerStanding } from '../logic/botProfiles.js';
 import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../logic/pvpBots.js';
 import { resolveBotEncounter } from '../logic/botEncounters.js';
@@ -547,6 +547,8 @@ export default function App(){
       // (l'IA n'attaque que sur avantage réel)
       const attackable=new Map();
       const hexLoot=new Map();
+      // Ouvriers adverses par hex : coût en pop d'une victoire (1/ouvrier chassé)
+      const hexWorkers=new Map();
       // Méta-stratégie : menace par hex = a priori de la faction sur cette
       // carte + bonus si son propriétaire mène la partie (harceler le leader)
       const hexThreat=new Map();
@@ -567,6 +569,7 @@ export default function App(){
         };
         attackable.set(op.hero,Math.max(attackable.get(op.hero)||0,effStrength(op.hero)));
         op.mechs.forEach(m=>attackable.set(m.hexId,Math.max(attackable.get(m.hexId)||0,effStrength(m.hexId))));
+        op.workers.forEach(w=>hexWorkers.set(w.hexId,(hexWorkers.get(w.hexId)||0)+1));
         // Butin par hex : les tas de ressources attirent les raids (le
         // vainqueur d'un combat prend les ressources du hex)
         Object.entries(op.resources||{}).forEach(([hid,res])=>{
@@ -579,9 +582,11 @@ export default function App(){
             .forEach(hid=>hexThreat.set(hid,Math.max(hexThreat.get(hid)||0,threat)));
         }
       });
-      const botCtx={attackable,hexLoot,hexThreat,forbidden:new Set(),encounterHexes:encounterTokens,
+      const botCtx={attackable,hexLoot,hexThreat,hexWorkers,forbidden:new Set(),encounterHexes:encounterTokens,
         // Fin imminente : un autre joueur (humain compris) est à 5+ étoiles
-        endgame:players.some((op,oi)=>oi!==cp&&(op.stars||0)>=5)};
+        endgame:players.some((op,oi)=>oi!==cp&&(op.stars||0)>=5),
+        // Meilleur score adverse estimé — gestion de la 6e étoile (finir ou retarder)
+        bestOppScore:Math.max(...players.filter((_,oi)=>oi!==cp).map(op=>estimateScore(op)))};
       let result=botTurn(players[cp],empire,botEnemyHexes,rails,botCtx);
       let p=result.player;const logs=[...result.logs];
       // ── BOT COMBAT: check if bot moved onto Empire mecha ──
@@ -2339,11 +2344,14 @@ export default function App(){
       const resScore=resPairs*resMult;
       // Bonus de construction : X$ par bâtiment sur les tuiles qualifiées
       const sbDetail=structureBonusDetail(p,structureBonus);
-      const total=starScore+terScore+resScore+p.coins+sbDetail.coins;
+      // Comptoirs Acadiane : postes de commerce — +2$ chacun au scoring
+      // (v0.12 : levier structurel mesuré, sa trésorerie était la pire du jeu)
+      const flagCoins=(p.flagTokens||[]).length*2;
+      const total=starScore+terScore+resScore+p.coins+sbDetail.coins+flagCoins;
       return{faction:p.faction,name:f.name,color:f.color,hero:f.hero,isBot:p.isBot,
         stars:p.stars,pop:p.pop,popTier,territories,factoryBonus,flagBonus,totalRes,resPairs,coins:p.coins,
         starScore,terScore,resScore,total,starMult,terMult,resMult,
-        sbCount:sbDetail.count,sbCoins:sbDetail.coins};
+        sbCount:sbDetail.count,sbCoins:sbDetail.coins,flagCoins};
     }).sort((a,b)=>b.total-a.total);
 
     // Export du journal de partie (JSON) — données pour l'entraînement de l'IA
@@ -2420,6 +2428,7 @@ export default function App(){
               <div style={{fontSize:13,color:"var(--text-dim)",marginTop:4}}>
                 Pop: {s.pop} (palier {["0-6","7-12","13-18"][s.popTier]}) — {s.totalRes} ressources
                 {structureBonus&&s.sbCoins>0&&<span style={{color:"var(--gold)",marginLeft:8}}>🏦 {structureBonus.icon} {structureBonus.name}: +{s.sbCoins}$ ({s.sbCount} bât.)</span>}
+                {s.flagCoins>0&&<span style={{color:"var(--gold)",marginLeft:8}}>⚑ Comptoirs: +{s.flagCoins}$</span>}
               </div>
             </div>
           ))}
@@ -3896,18 +3905,19 @@ export default function App(){
                   </div>;
                 })()}
                 {ba==="Deploy"&&!maxed&&(()=>{
+                  // Ressource alternative de déploiement — générique par faction :
+                  // Nations/Bayou → bois, Acadiane → pétrole (Vapeur des Lacs)
                   const deployAlt=FACTIONS[me.faction]?.deployAltRes;
-                  const metalCount=countRes(me,"metal");const boisCount=countRes(me,"bois");
+                  const metalCount=countRes(me,"metal");const altCount=deployAlt?countRes(me,deployAlt):0;
                   const qty=bc.qty;
-                  const hasMetal=metalCount>=qty;const hasBois=boisCount>=qty;
+                  const hasMetal=metalCount>=qty;const hasAlt=altCount>=qty;
                   if(!deployAlt) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn"><Glyph icon="⬡" size={14}/> #{hid}</button>)}</div>:<div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
-                  // Nations: Esprit Sauvage — choose metal or bois
-                  if(!hasMetal&&!hasBois) return <div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de métal ni de bois</div>;
+                  if(!hasMetal&&!hasAlt) return <div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de métal ni de {resFR(deployAlt)}</div>;
                   if(!bottomPick||!bottomPick.deployRes) return <div>
                     <div style={{fontSize:12,color:"var(--brass)",marginBottom:6}}>🌿 {FACTIONS[me.faction].deployAltName||FACTIONS[me.faction].ability} — déployer avec :</div>
                     <div style={{display:"flex",gap:6}}>
                       {hasMetal&&<button onClick={()=>setBottomPick({deployRes:"metal"})} className="act-btn" style={{flex:1}}>⚙ Métal ({metalCount})</button>}
-                      {hasBois&&<button onClick={()=>setBottomPick({deployRes:"bois"})} className="act-btn" style={{flex:1,borderColor:"#5a8a3a"}}>🪵 Bois ({boisCount})</button>}
+                      {hasAlt&&<button onClick={()=>setBottomPick({deployRes:deployAlt})} className="act-btn" style={{flex:1,borderColor:"#5a8a3a"}}>{deployAlt==="bois"?"🪵":deployAlt==="petrole"?"🛢":"📦"} {resFR(deployAlt)} ({altCount})</button>}
                     </div>
                   </div>;
                   return <div>

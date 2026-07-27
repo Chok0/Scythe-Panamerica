@@ -55,7 +55,13 @@ export const FACTIONS = {
     // Départ militaire aligné sur la Pologne de Scythe (2 Pui / 3 cartes) :
     // à 1/1 elle était le sac de frappe du plateau
     power: 2, cards: 3, workerHex: [2, 6], riverwalk: ["foret", "village"], rwName: "Portage",
-    ability: "Comptoir", abilityDesc: "Le héros pose un comptoir sur chaque hex atteint (max 4, +1 territoire chacun)",
+    // Vapeur des Lacs (v0.12) : réponse au verrou structurel mesuré en
+    // simulation — pas de métal natif sur la péninsule {2,6,9} → mechas
+    // 1,6/4 et ~18 % de winrate. Sa toundra (#2) produit du pétrole dès le
+    // tour 1 : les machines lacustres se déploient à la vapeur.
+    ability: "Comptoir & Vapeur des Lacs",
+    abilityDesc: "Comptoir : le héros pose un comptoir sur chaque hex atteint (max 4, +1 territoire et +2$ chacun au scoring) · Vapeur des Lacs : déploie ses mechas avec du pétrole au lieu du métal",
+    deployAltRes: "petrole", deployAltName: "Vapeur des Lacs",
         fObj: {
       name: "Réseau Invisible", desc: "4 Comptoirs non adjacents entre eux + héros sur un Lac",
       // Nerf mesuré par simulation (65,6% → 58,1% de winrate) : le réseau doit être étalé
