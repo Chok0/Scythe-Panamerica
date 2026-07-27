@@ -5,17 +5,28 @@
 import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTIONS } from '../data/factions.js';
 import { BUILDING_TYPES, ENLIST_IMMEDIATE, MATS, maxBottomCubes } from '../data/mats.js';
+import { BOT_PROFILES } from './botProfiles.js';
 
 /**
  * Résout une rencontre pour un bot dont le héros est sur un jeton.
- * Choix aléatoire parmi les 3 options (les coûts sont gérés par les effets).
+ * Choix aléatoire parmi les options payables — mais la popularité est
+ * protégée : le corpus déconseille de dépenser de la pop en rencontre
+ * (« don't spend popularity in encounters »), une option -2/-3 pop n'est
+ * retenue que si elle laisse le bot au-dessus du palier visé par son profil.
  * @returns {{player, log}}
  */
-export const resolveBotEncounter = (player) => {
-  const card = ENCOUNTERS[Math.floor(Math.random() * ENCOUNTERS.length)];
+export const resolveBotEncounter = (player, deck) => {
+  const card = deck && deck.length > 0
+    ? deck.shift()
+    : ENCOUNTERS[Math.floor(Math.random() * ENCOUNTERS.length)];
   // Coût obligatoire (règle p.24) : seules les options payables sont éligibles
   const eligible = card.choices.filter(c => !c.available || c.available(player));
-  const pool = eligible.length > 0 ? eligible : card.choices.filter(c => !c.available);
+  const popFloor = Math.min(7, (BOT_PROFILES[player.botProfile] || BOT_PROFILES.equilibre).popTarget);
+  const popCostOf = (c) => { const m = (c.desc || "").match(/-(\d+) pop/); return m ? parseInt(m[1]) : 0; };
+  const popSafe = eligible.filter(c => (player.pop || 0) - popCostOf(c) >= popFloor);
+  const pool = popSafe.length > 0 ? popSafe
+    : eligible.length > 0 ? eligible
+    : card.choices.filter(c => !c.available);
   const choice = pool[Math.floor(Math.random() * pool.length)] || card.choices[0];
   const p = {
     ...player,

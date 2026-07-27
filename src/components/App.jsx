@@ -13,7 +13,7 @@ import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } from '../data/plans.js';
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes, FR_TOP as FR_TOP_MAP, FR_BOT as FR_BOT_MAP, frTop, frBot } from '../data/mats.js';
 import { OBJECTIVES } from '../data/objectives.js';
-import { structureBonusDetail, pickStructureBonus } from '../data/structureBonus.js';
+import { structureBonusDetail, pickStructureBonus, STRUCTURE_BONUSES } from '../data/structureBonus.js';
 import { reconcileHand, topCardsSum, spendTopCards, spendPickedCards, handSummary } from '../logic/cards.js';
 import RulesPage from './RulesPage.jsx';
 import Soundtrack from './Soundtrack.jsx';
@@ -96,6 +96,14 @@ export default function App(){
   const[encounterUpgrade,setEncounterUpgrade]=useState(null); // rencontre → amélioration : {from:null} puis {from} (cube haut→bas)
   const[rougeRiver,setRougeRiver]=useState(null); // {cards:[]}
   const[encounterTokens,setEncounterTokens]=useState(new Set(CURRENT_MAP.encounterHexes));
+  // Deck de rencontres SANS remise (partagé joueur/bots) : mélangé au départ,
+  // re-mélangé à épuisement — avant, tirage avec remise (mêmes cartes répétées
+  // dans la même partie, constaté en partie réelle)
+  const encounterDeckRef=useRef([]);
+  const drawEncounterCard=useCallback(()=>{
+    if(encounterDeckRef.current.length===0)encounterDeckRef.current=shuffleArray(ENCOUNTERS);
+    return encounterDeckRef.current.shift();
+  },[]);
   const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
   const[moveSource,setMoveSource]=useState(null);
   // Transport partiel (mech) : choix des ouvriers/ressources à emporter avant le déplacement
@@ -317,8 +325,63 @@ export default function App(){
     addLog(snap);
   },[addLog]);
 
+  // ── SAUVEGARDE / REPRISE (localStorage, une partie à la fois) ──
+  // Autosave au début de chaque tour humain. Les objets porteurs de fonctions
+  // (objectifs, tuile bonus, cartes rencontre du deck) sont stockés par ID et
+  // réhydratés à la reprise ; la carte (y compris procédurale) est embarquée
+  // telle quelle (pure data) et rechargée via loadMap.
+  const serializeGame=useCallback(()=>JSON.stringify({
+    v:1,date:Date.now(),turn,difficulty,empireEnabled,
+    map:CURRENT_MAP,empire,rails,encounterTokens:[...encounterTokens],rrVisitors,
+    structureBonus:structureBonus?structureBonus.id:null,
+    encounterDeck:encounterDeckRef.current.map(c=>c.id),
+    log:log.slice(-500),step:stepRef.current,
+    players:players.map(p=>({...p,objective:p.objective?p.objective.id:null,objectives:(p.objectives||[]).map(o=>o.id)})),
+  }),[turn,difficulty,empireEnabled,empire,rails,encounterTokens,rrVisitors,structureBonus,log,players]);
+
+  useEffect(()=>{
+    if(phase!=="playing"||currentP!==0||players.length===0||combat||encounter||botRunning)return;
+    try{localStorage.setItem('pa-save',serializeGame());}catch{/* stockage indisponible */}
+  },[phase,currentP,turn]); // une sauvegarde par tour humain, plateau au repos
+
+  useEffect(()=>{if(phase==="ended"){try{localStorage.removeItem('pa-save');}catch{/* rien */}}},[phase]);
+
+  const resumeSaved=useCallback(()=>{
+    let data=null;
+    try{data=JSON.parse(localStorage.getItem('pa-save')||"null");}catch{data=null;}
+    if(!data||!Array.isArray(data.players)||data.players.length===0)return;
+    loadMap(data.map);
+    setEncounterTokens(new Set(data.encounterTokens||[]));
+    encounterDeckRef.current=(data.encounterDeck||[]).map(id=>ENCOUNTERS.find(e=>e.id===id)).filter(Boolean);
+    setEmpire(data.empire||{});
+    setRails((data.rails||[]).map(r=>[...r]));
+    setRrVisitors(data.rrVisitors||0);
+    setStructureBonus(data.structureBonus!=null?(STRUCTURE_BONUSES.find(b=>b.id===data.structureBonus)||null):null);
+    setDifficulty(data.difficulty||"normal");
+    setEmpireEnabled(!!data.empireEnabled);
+    setPlayers(data.players.map(p=>({...p,
+      objective:p.objective!=null?(OBJECTIVES.find(o=>o.id===p.objective)||null):null,
+      objectives:(p.objectives||[]).map(id=>OBJECTIVES.find(o=>o.id===id)).filter(Boolean)})));
+    setLog((data.log||[]).map(e=>({...e})));
+    stepRef.current=data.step||(data.log||[]).length;
+    turnRef.current=data.turn||1;
+    setTurn(data.turn||1);setCurrentP(0);setPhase("playing");
+    addLog(`💾 Partie reprise (tour ${data.turn||1})`);
+  },[addLog]);
+
+  // Aperçu de la sauvegarde pour l'écran de setup (bouton « Reprendre »)
+  const savedGame=useMemo(()=>{
+    if(phase!=="setup")return null;
+    try{
+      const d=JSON.parse(localStorage.getItem('pa-save')||"null");
+      return d&&Array.isArray(d.players)&&d.players.length>0
+        ?{turn:d.turn,faction:d.players[0].faction,date:d.date}:null;
+    }catch{return null;}
+  },[phase]);
+
   const startGame=useCallback(()=>{
     if(!selFaction||!selMat)return;
+    try{localStorage.removeItem('pa-save');}catch{/* rien */}
     // Carte : v3 (défaut), configuration initiale (v2), ou procédurale
     if(mapChoice==="random"){
       const gen=generateAcceptedMap(Math.random);
@@ -331,6 +394,7 @@ export default function App(){
       loadMap(DEFAULT_MAP);
     }
     setEncounterTokens(new Set(CURRENT_MAP.encounterHexes));
+    encounterDeckRef.current=shuffleArray(ENCOUNTERS);
     setEmpire(empireEnabled?Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])):{});
     if(empireEnabled)addLog(`🤖 Bots de l'Empire activés (mécanique campagne)`);
     // La carte de base démarre sans rails — seules les Gares en posent
@@ -507,7 +571,9 @@ export default function App(){
             .forEach(hid=>hexThreat.set(hid,Math.max(hexThreat.get(hid)||0,threat)));
         }
       });
-      const botCtx={attackable,hexLoot,hexThreat,forbidden:new Set(),encounterHexes:encounterTokens};
+      const botCtx={attackable,hexLoot,hexThreat,forbidden:new Set(),encounterHexes:encounterTokens,
+        // Fin imminente : un autre joueur (humain compris) est à 5+ étoiles
+        endgame:players.some((op,oi)=>oi!==cp&&(op.stars||0)>=5)};
       let result=botTurn(players[cp],empire,botEnemyHexes,rails,botCtx);
       let p=result.player;const logs=[...result.logs];
       // ── BOT COMBAT: check if bot moved onto Empire mecha ──
@@ -631,7 +697,8 @@ export default function App(){
       // ── RENCONTRE BOT : héros sur un jeton, après les combats (règle p.24) ──
       if(encounterTokens.has(n[cp].hero)){
         const encHex=n[cp].hero;
-        const er=resolveBotEncounter(n[cp]);
+        if(encounterDeckRef.current.length===0)encounterDeckRef.current=shuffleArray(ENCOUNTERS);
+        const er=resolveBotEncounter(n[cp],encounterDeckRef.current);
         n[cp]=er.player;logs.push(er.log);
         setEncounterTokens(prev=>{const s=new Set(prev);s.delete(encHex);return s;});
       }
@@ -1492,8 +1559,7 @@ export default function App(){
         
         // Encounter token?
         if(encounterTokens.has(hexId)){
-          const shuffled=shuffleArray(ENCOUNTERS);
-          const card=shuffled[0];
+          const card=drawEncounterCard();
           setEncounterTokens(prev=>{const s=new Set(prev);s.delete(hexId);return s;});
           setEncounter({card,hexId});
           addLog(`📜 Rencontre: "${card.name}"`);
@@ -2192,7 +2258,7 @@ export default function App(){
 
   // ══════════ SETUP SCREEN ══════════
   if(phase==="setup"){
-    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} mapChoice={mapChoice} setMapChoice={setMapChoice} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={startGame} onShowRules={()=>setShowRules(true)} />;
+    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} mapChoice={mapChoice} setMapChoice={setMapChoice} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={startGame} onShowRules={()=>setShowRules(true)} savedGame={savedGame} onResume={resumeSaved} />;
   }
 
   // (pick_objective phase removed — player keeps both objectives per Scythe rules)

@@ -42,10 +42,14 @@ const neededResources = (p) => {
 };
 
 // Score a column choice based on strategic value
-const scoreColumn = (p, col, empire, enemyHexes, rails, prof) => {
+const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
   const action = p.topRow[col];
   const f = FACTIONS[p.faction];
   const phase = getPhase(p);
+  // Fin imminente : un ADVERSAIRE est à 5+ étoiles — le scoring final approche
+  // même si nous ne sommes qu'à 2 étoiles (corpus : « spread out when the end
+  // is imminent »). Sans ce flag, le bot ne pivotait que sur SES étoiles.
+  const endNear = phase === "late" || !!(ctx && ctx.endgame);
   const costs = getBottomCost(p);
   const bc = costs[col];
   const bottomAction = BOTTOM[col];
@@ -135,7 +139,10 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof) => {
         }
       }
       // Also good for getting pop in late game
-      if (phase === "late") score += 3;
+      if (endNear) score += 3;
+      // Fin imminente sous un palier de pop : chaque point de pop peut changer
+      // les multiplicateurs du score final (×2/×3 territoires et paires)
+      if (ctx && ctx.endgame && (p.pop === 6 || p.pop === 12)) score += 6;
       // Maintenir le palier de pop du profil — sous le palier 7, tout le score
       // final est amputé (multiplicateurs ×3/×2/×1) et Produce à 5+ ouvriers
       // coûte 1 pop (à 0 pop l'économie se bloque)
@@ -160,11 +167,12 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof) => {
     p.workers.forEach(w => { stacks[w.hexId] = (stacks[w.hexId] || 0) + 1; });
     if (Object.values(stacks).some(n => n >= 3)) score += 5;
     // Move is critical in late game for territory
-    if (phase === "late") score += 8;
+    if (endNear) score += 8;
     // Early game: spread workers
     if (phase === "early" && p.workers.length >= 3) score += 3;
-    // Move toward encounters
-    if (!p.encDone) score += 2;
+    // Move toward encounters — la PREMIÈRE rencontre pèse le plus (corpus :
+    // gains majeurs quand on n'a encore rien) ; `encDone` n'était jamais posé
+    if ((p.encounters || 0) === 0) score += 3;
   }
 
   return score;
@@ -176,13 +184,15 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof) => {
 const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) => {
   if (validMoves.length === 0) return null;
 
-  // Estimation de notre force de combat pour décider d'attaquer
-  // Force RÉALISTE en combat : la puissance est plafonnée à 7 par bataille et
-  // l'attaquant n'engage en pratique qu'UNE unité → 1-2 cartes max (bonus de
-  // faction compris). L'ancienne formule (power + cartes×3) surestimait des
-  // deux côtés : le Frente a attaqué 9 contre 11 une position tenue (perdu
-  // d'avance), pendant que l'estimation adverse gonflée le rendait timide.
-  const myStrength = Math.min(p.power, 7) + Math.min(p.combatCards || 0, 2) * 2;
+  // Estimation de notre force pour décider d'attaquer : ce qu'on ENGAGERA
+  // vraiment, pas notre stock. L'engagement d'attaque est floor(power×0.7)+1
+  // (plafond 7) + 1-2 cartes — même formule que la résolution (App.jsx /
+  // pvpBots). L'ancienne estimation min(power,7) comptait tout le stock :
+  // décision d'attaque « à parité » → engagement inférieur → défaite offerte
+  // (corpus : « attack when you can put together enough power to GUARANTEE a
+  // win » ; mesuré en partie réelle : Nations a perdu 8 v 10 puis 8 v 12,
+  // offrant les 2 étoiles de combat du défenseur humain)
+  const myStrength = Math.min(Math.floor(p.power * 0.7) + 1, 7, p.power) + Math.min(p.combatCards || 0, 2) * 2;
   const wantCombatStar = (p.combatWins || 0) < 2;
   // Planification : les ouvriers convergent vers les ressources manquantes des bottoms
   const need = neededResources(p);
@@ -348,7 +358,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const cols = [0, 1, 2, 3].filter(c => canRepeat || c !== p.lastCol);
   let bestCol = cols[0], bestScore = -999;
   for (const col of cols) {
-    const s = scoreColumn(p, col, empire, enemyHexes, rails, prof)
+    const s = scoreColumn(p, col, empire, enemyHexes, rails, prof, ctx)
       + (noise ? (Math.random() * 2 - 1) * noise : 0);
     if (s > bestScore) { bestScore = s; bestCol = col; }
   }
@@ -468,7 +478,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
           || (ctx && ctx.hexLoot && (ctx.hexLoot.get(mt) || 0) >= 3)
           || (ctx && ctx.hexThreat && (ctx.hexThreat.get(mt) || 0) >= 3)
           || (enemyHexes && enemyHexes.has(mt))
-          || getPhase(p) === "late");
+          || getPhase(p) === "late" || (ctx && ctx.endgame));
         if (worthIt) {
           recordCombatRoute(fromHexM, mt);
           p.mechs = [...p.mechs];
@@ -479,7 +489,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
           // de passage — expansion maximale de territoire) ; sinon il les
           // laisse tenir le terrain et continue seul.
           const isAttack = ctx && ctx.attackable && ctx.attackable.has(mt);
-          const isLate = getPhase(p) === "late";
+          const isLate = getPhase(p) === "late" || !!(ctx && ctx.endgame);
           const wAtOrigin = p.workers.filter(w => w.hexId === fromHexM).length;
           const waypoints = isAttack ? [] : findPathWaypoints(fromHexM, mt, p.faction, p.unlockedAbilities || [], p, rails, enemyHexes)
             .filter(hid => { const h = hMap[hid]; return h && h.t !== "lac" && h.t !== "marecage" && !(enemyHexes && enemyHexes.has(hid)); });

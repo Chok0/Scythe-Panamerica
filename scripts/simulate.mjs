@@ -20,6 +20,7 @@ import { writeFileSync } from 'node:fs';
 import { botTurn } from '../src/logic/bot.js';
 import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../src/logic/pvpBots.js';
 import { resolveBotEncounter } from '../src/logic/botEncounters.js';
+import { ENCOUNTERS } from '../src/data/encounters.js';
 import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } from '../src/data/plans.js';
 import { CURRENT_MAP, loadMap, DEFAULT_MAP, LEGACY_MAP } from '../src/data/hexes.js';
 import { generateAcceptedMap, validateMap } from '../src/data/mapGen.js';
@@ -195,6 +196,8 @@ const playGame = (gameIdx, log) => {
   // Aligné sur le jeu de base : plus de rails initiaux (EMPIRE_RAILS = campagne)
   let rails = [];
   let encounterTokens = new Set(CURRENT_MAP.encounterHexes);
+  // Deck de rencontres sans remise, partagé entre les bots (comme en jeu)
+  const encounterDeck = shuffleArray(ENCOUNTERS);
   let rrVisitors = 0;
   const issues = [];
   const combatStats = { pveAttacks: 0, pveWins: 0, defenses: 0, defWins: 0, pvp: 0, encounters: 0 };
@@ -226,9 +229,14 @@ const playGame = (gameIdx, log) => {
       const leaderIdx = standings.indexOf(Math.max(...standings));
       players.forEach((op, oi) => {
         if (oi === cp) return;
-        const strength = op.power + (op.combatCards || 0) * 2;
-        attackable.set(op.hero, Math.max(attackable.get(op.hero) || 0, strength));
-        op.mechs.forEach(m => attackable.set(m.hexId, Math.max(attackable.get(m.hexId) || 0, strength)));
+        // Force défensive RÉALISTE par hex — même formule qu'App.jsx : puissance
+        // plafonnée à 7 (règle) et cartes limitées aux unités du hex (+1 marge)
+        const effStrength = (hid) => {
+          const units = (op.hero === hid ? 1 : 0) + op.mechs.filter(m => m.hexId === hid).length;
+          return Math.min(op.power, 7) + Math.min(op.combatCards || 0, units + 1) * 2;
+        };
+        attackable.set(op.hero, Math.max(attackable.get(op.hero) || 0, effStrength(op.hero)));
+        op.mechs.forEach(m => attackable.set(m.hexId, Math.max(attackable.get(m.hexId) || 0, effStrength(m.hexId))));
         Object.entries(op.resources || {}).forEach(([hid, res]) => {
           const total = Object.values(res).reduce((a, b) => a + b, 0);
           if (total > 0) hexLoot.set(parseInt(hid), (hexLoot.get(parseInt(hid)) || 0) + total);
@@ -239,7 +247,8 @@ const playGame = (gameIdx, log) => {
             .forEach(hid => hexThreat.set(hid, Math.max(hexThreat.get(hid) || 0, threat)));
         }
       });
-      const result = botTurn(players[cp], empire, enemyHexes, rails, { attackable, hexLoot, hexThreat, forbidden: new Set(), encounterHexes: encounterTokens });
+      const result = botTurn(players[cp], empire, enemyHexes, rails, { attackable, hexLoot, hexThreat, forbidden: new Set(), encounterHexes: encounterTokens,
+        endgame: players.some((op, oi) => oi !== cp && (op.stars || 0) >= 5) });
       let p = result.player;
       if (log) result.logs.forEach(l => log(`  ${l}`));
 
@@ -328,7 +337,8 @@ const playGame = (gameIdx, log) => {
       if (encounterTokens.has(players[cp].hero)) {
         combatStats.encounters++;
         encounterTokens.delete(players[cp].hero);
-        const er = resolveBotEncounter(players[cp]);
+        if (encounterDeck.length === 0) encounterDeck.push(...shuffleArray(ENCOUNTERS));
+        const er = resolveBotEncounter(players[cp], encounterDeck);
         players[cp] = er.player;
         if (log) log(`  ${er.log}`);
       }
