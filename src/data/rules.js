@@ -71,10 +71,10 @@ export const RULES = [
         title: "Rouge River & Cartes d'Usine",
         content: "L'Usine centrale (Rouge River) expose au départ (nb joueurs + 1) cartes du deck Ford. Chaque visiteur en choisit UNE : elle devient une 5e action sur son plateau (haut : 1 coût → 1 gain · bas : déplacer 1 unité de 2 hex).",
         list: [
-          "Deck Ford — 12 cartes d'action, l'offre tirée au hasard est visible de tous",
-          "Prototypes Tesla — 2 cartes plus puissantes, visibles de tous mais réservées : les prendre CONSOMME 2 Fragments Tesla",
-          "Vitrine — cliquer l'Usine (hex central) affiche à tout moment l'offre restante et les prototypes",
-          "Fragments Tesla — obtenus via rencontres ou récompenses de combat PvE"
+          "Deck Ford — 12 cartes d'action ; l'offre (joueurs + 1) est FACE CACHÉE et ne se découvre qu'en arrivant à l'Usine",
+          "Prototypes Tesla — 2 cartes plus puissantes, EN VITRINE (visibles de tous) ; les prendre CONSOMME 2 Fragments Tesla",
+          "Vitrine — cliquer l'Usine (hex central) montre les prototypes Tesla et le nombre de cartes Ford restantes",
+          "Fragments Tesla — rencontres (🔬) ou combats contre l'Empire (si présent). Une seule carte par joueur : prendre une Ford ferme définitivement l'accès Tesla"
         ]
       },
       {
@@ -298,7 +298,7 @@ export const RULES = [
     sections: [
       {
         title: "L'Usine Centrale",
-        content: "L'hex central (Rouge River, id 22) est l'ancienne usine de l'Empire. Au début de la partie, (nb joueurs + 1) cartes du deck Ford sont tirées au hasard et posées sur l'Usine. La première fois que votre héros y arrive, vous choisissez UNE carte parmi celles qui restent — course à l'Usine : le premier arrivé a l'embarras du choix, le dernier prend ce qui reste."
+        content: "L'hex central (Rouge River, id 22) est l'ancienne usine de l'Empire. Au début de la partie, (nb joueurs + 1) cartes du deck Ford sont tirées au hasard et posées FACE CACHÉE sur l'Usine — on ne les découvre qu'en y arrivant. La première fois que votre héros y arrive, vous choisissez UNE carte parmi celles qui restent — course à l'Usine : le premier arrivé a l'embarras du choix, le dernier prend ce qui reste."
       },
       {
         title: "La carte d'usine = une 5e action",
@@ -312,7 +312,7 @@ export const RULES = [
       },
       {
         title: "Prototypes Tesla",
-        content: "2 cartes du deck Tesla (5 cartes plus puissantes, même structure) sont exposées à côté de l'offre Ford — VISIBLES DE TOUS dans la vitrine de l'Usine (cliquer l'hex central), pour donner envie de chasser les fragments. Les choisir exige 2 Fragments Tesla, CONSOMMÉS à la prise : c'est une vraie quête — sécuriser 2 récompenses de rencontre/combat PvE tout en retardant sa propre visite de l'Usine, pendant que les autres pillent l'offre Ford."
+        content: "2 cartes du deck Tesla (5 cartes plus puissantes, même structure) sont EN VITRINE : contrairement à l'offre Ford face cachée, elles sont VISIBLES DE TOUS dès le début (cliquer l'Usine) — c'est la carotte de la quête des fragments. Les prendre exige 2 Fragments Tesla, CONSOMMÉS à la prise (rencontres 🔬, combats contre l'Empire s'il est présent). Et comme chaque joueur ne choisit qu'UNE carte à sa première visite, prendre une carte Ford ferme définitivement l'accès aux prototypes : la quête Tesla, c'est réunir 2 fragments en évitant l'Usine tout ce temps."
       },
       {
         title: "Le deck original",

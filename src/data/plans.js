@@ -7,9 +7,11 @@
 // deux — en commençant par le haut.
 //
 // L'OFFRE (course à l'Usine, règle Scythe) : au départ de la partie,
-// (nb joueurs + 1) cartes du deck Ford sont tirées au hasard et posées sur
-// l'Usine. Chaque visiteur en choisit UNE parmi les restantes : le premier
-// arrivé a l'embarras du choix, le dernier se contente de ce qui reste.
+// (nb joueurs + 1) cartes du deck Ford sont tirées au hasard et posées FACE
+// CACHÉE sur l'Usine — on ne les découvre qu'en y arrivant. Chaque visiteur
+// en choisit UNE parmi les restantes : le premier arrivé a l'embarras du
+// choix, le dernier se contente de ce qui reste. UNE carte par joueur :
+// prendre une Ford ferme définitivement l'accès aux prototypes Tesla.
 
 export const FACTORY_RR_HEX = 22;
 
@@ -19,6 +21,8 @@ export const FACTORY_COL = 4;
 // Fragments Tesla requis pour PRENDRE un prototype Tesla à la Rouge River —
 // ils sont CONSOMMÉS à la prise. C'est une vraie quête : 2 récompenses de
 // rencontre/combat PvE à sécuriser en retardant sa propre visite de l'Usine.
+// (Pas d'étoile pour l'accomplir dans le jeu de base — piste retenue : un
+// scénario dédié du mode campagne pourra la récompenser.)
 export const TESLA_FRAGMENTS_REQUIRED = 2;
 
 // Prototypes Tesla exposés en plus de l'offre Ford. VISIBLES DE TOUS (la

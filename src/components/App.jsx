@@ -463,7 +463,7 @@ export default function App(){
     setFactoryOffer(offer);
     setTeslaOffer(drawFactoryOffer(PLANS_TESLA,TESLA_OFFER_SIZE));
     setFactoryFlow(null);
-    addLog(`⚙ Usine Rouge River : ${offer.length} plans Ford exposés (joueurs + 1) — course à l'Usine !`);
+    addLog(`⚙ Usine Rouge River : ${offer.length} plans Ford face cachée (joueurs + 1) — seuls les prototypes Tesla sont en vitrine (clic sur l'Usine)`);
     setPlayers(ps);setPhase("playing");setCurrentP(0);setTurn(1);turnRef.current=1;
     addLog(`⚔ ${ps.length} joueurs`);
     ps.forEach(p=>{
@@ -1737,8 +1737,11 @@ export default function App(){
             setPlayers(prev=>{const n=[...prev];n[0]={...n[0],visitedRR:true};return n;});
             addLog(`⚙ Rouge River : plus aucune carte d'usine disponible`);
           }else{
-            setRougeRiver({cards:visible,hasFragments});
-            addLog(`⚙ Rouge River ! ${hasFragments?"Plans Ford + prototypes Tesla accessibles !":"Plans Ford uniquement."} (${visible.length} carte${visible.length>1?"s":""})`);
+            // L'offre Ford (face cachée) se DÉCOUVRE ici ; les prototypes Tesla
+            // restent affichés verrouillés si les fragments manquent — on voit
+            // ce à quoi on renonce en prenant une carte Ford (choix définitif)
+            setRougeRiver({cards:visible,hasFragments,lockedTesla:hasFragments?[]:[...teslaOffer]});
+            addLog(`⚙ Rouge River ! Offre découverte : ${factoryOffer.length} plan${factoryOffer.length>1?"s":""} Ford${hasFragments?" + prototypes Tesla accessibles !":teslaOffer.length>0?` (Tesla verrouillé — ${TESLA_FRAGMENTS_REQUIRED}🔬 requis)`:""}`);
             return; // Pause — player picks a card
           }
         }
@@ -3493,47 +3496,39 @@ export default function App(){
                 );
               })()}
 
-              {/* ═══ VITRINE DE L'USINE (clic sur l'hex #22) — consultation publique :
-                  l'offre Ford restante ET les prototypes Tesla sont visibles de TOUS,
-                  même sans fragment — c'est la carotte de la quête des fragments ═══ */}
+              {/* ═══ VITRINE DE L'USINE (clic sur l'hex #22) — seuls les PROTOTYPES
+                  TESLA sont exposés (carotte de la quête des fragments) ; l'offre
+                  Ford reste FACE CACHÉE et ne se découvre qu'en arrivant à l'Usine ═══ */}
               {factoryPreview&&!rougeRiver&&(()=>{
                 const myFrags=me.fragments||0;
-                const cardBody=(card)=>(
-                  <>
-                    <div style={{fontFamily:"var(--font-title)",fontSize:15,fontWeight:700,color:card.deck==="tesla"?"#c090e0":"#a0b8cc",marginBottom:5,paddingRight:30}}>{card.name}</div>
-                    <div style={{fontSize:13,color:"var(--text)",lineHeight:1.5}}>
-                      <span style={{color:"var(--gold-dim)",fontWeight:700}}>HAUT</span> {factoryCostLabel(card)} → {factoryGainLabel(card)}
-                    </div>
-                    <div style={{fontSize:12,color:"var(--text-dim)",lineHeight:1.5,marginTop:3}}>
-                      <span style={{color:"var(--gold-dim)",fontWeight:700}}>BAS</span> {FACTORY_BOTTOM_DESC}
-                    </div>
-                  </>
-                );
                 return(
                   <div style={{padding:"20px",background:"linear-gradient(180deg,#1a0a08,var(--bg2))",borderRadius:10,border:"1px solid var(--danger)",animation:"slideUp 0.35s ease"}}>
                     <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
                       <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(139,32,32,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:25,border:"2px solid #8b2020",flexShrink:0}}>🏭</div>
                       <div style={{flex:1}}>
                         <div style={{fontFamily:"var(--font-title)",color:"#cc4433",fontSize:18,fontWeight:700}}>Rouge River — vitrine de l'Usine</div>
-                        <div style={{fontSize:12,color:"var(--text-dim)"}}>L'offre est publique : le premier héros arrivé choisit, chaque visiteur retire une carte.</div>
+                        <div style={{fontSize:12,color:"var(--text-dim)"}}>Une seule carte d'usine par joueur, choisie à la première visite du héros.</div>
                       </div>
                       <button onClick={()=>setFactoryPreview(false)} className="act-btn" style={{fontSize:14,padding:"6px 12px",minHeight:34}}>✕</button>
                     </div>
-                    {/* Offre Ford restante */}
-                    <div style={{fontSize:13,fontWeight:700,color:"#7a9ab0",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Plans Ford — {factoryOffer.length} carte{factoryOffer.length>1?"s":""} restante{factoryOffer.length>1?"s":""}</div>
+                    {/* Offre Ford — FACE CACHÉE : seul le nombre de cartes restantes est public */}
+                    <div style={{fontSize:13,fontWeight:700,color:"#7a9ab0",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Plans Ford — {factoryOffer.length} carte{factoryOffer.length>1?"s":""} face cachée</div>
                     {factoryOffer.length===0
-                      ?<div style={{fontSize:13,color:"var(--text-muted)",fontStyle:"italic",marginBottom:10}}>Offre épuisée — tout a été raflé.</div>
-                      :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:8,maxHeight:190,overflowY:"auto",marginBottom:12}}>
+                      ?<div style={{fontSize:13,color:"var(--text-muted)",fontStyle:"italic",marginBottom:12}}>Offre épuisée — tout a été raflé.</div>
+                      :<div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
                         {factoryOffer.map(card=>(
-                          <div key={card.id} className="rr-card ford" style={{cursor:"default"}}>
-                            <div style={{position:"absolute",top:4,right:6,fontSize:12,color:"#7a9ab0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Ford</div>
-                            {cardBody(card)}
-                          </div>
+                          <div key={card.id} title="Face cachée — se découvre en arrivant à l'Usine"
+                            style={{width:46,height:64,borderRadius:6,border:"1px solid #3A6A9A",flexShrink:0,
+                            background:"repeating-linear-gradient(135deg,#16222e,#16222e 5px,#1c2c3c 5px,#1c2c3c 10px)",
+                            display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,color:"#3f608a"}}>⚙</div>
                         ))}
+                        <div style={{fontSize:12,color:"var(--text-dim)",lineHeight:1.5,marginLeft:4}}>
+                          L'offre se découvre <b>en arrivant à l'Usine</b> — chaque visiteur retire une carte : le premier arrivé a le plus grand choix.
+                        </div>
                       </div>}
-                    {/* Prototypes Tesla — visibles de tous, verrouillés sans fragments */}
+                    {/* Prototypes Tesla — les SEULES cartes exposées, visibles de tous */}
                     <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
-                      <span style={{fontSize:13,fontWeight:700,color:"#b080e0",letterSpacing:1,textTransform:"uppercase"}}>Prototypes Tesla</span>
+                      <span style={{fontSize:13,fontWeight:700,color:"#b080e0",letterSpacing:1,textTransform:"uppercase"}}>Prototypes Tesla — en vitrine</span>
                       <span style={{fontSize:12,padding:"2px 8px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:myFrags>=TESLA_FRAGMENTS_REQUIRED?"#c0f0c0":"#a080d0"}}>
                         🔬 {myFrags}/{TESLA_FRAGMENTS_REQUIRED} fragment{TESLA_FRAGMENTS_REQUIRED>1?"s":""} — consommés à la prise
                       </span>
@@ -3542,14 +3537,20 @@ export default function App(){
                       ?<div style={{fontSize:13,color:"var(--text-muted)",fontStyle:"italic"}}>Plus aucun prototype — déjà emportés.</div>
                       :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:8}}>
                         {teslaOffer.map(card=>(
-                          <div key={card.id} className="rr-card tesla" style={{cursor:"default",opacity:myFrags>=TESLA_FRAGMENTS_REQUIRED?1:0.75}}>
+                          <div key={card.id} className="rr-card tesla" style={{cursor:"default",opacity:myFrags>=TESLA_FRAGMENTS_REQUIRED?1:0.8}}>
                             <div style={{position:"absolute",top:4,right:6,fontSize:12,color:"#b080e0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>{myFrags>=TESLA_FRAGMENTS_REQUIRED?"Tesla":"🔒 Tesla"}</div>
-                            {cardBody(card)}
+                            <div style={{fontFamily:"var(--font-title)",fontSize:15,fontWeight:700,color:"#c090e0",marginBottom:5,paddingRight:30}}>{card.name}</div>
+                            <div style={{fontSize:13,color:"var(--text)",lineHeight:1.5}}>
+                              <span style={{color:"var(--gold-dim)",fontWeight:700}}>HAUT</span> {factoryCostLabel(card)} → {factoryGainLabel(card)}
+                            </div>
+                            <div style={{fontSize:12,color:"var(--text-dim)",lineHeight:1.5,marginTop:3}}>
+                              <span style={{color:"var(--gold-dim)",fontWeight:700}}>BAS</span> {FACTORY_BOTTOM_DESC}
+                            </div>
                           </div>
                         ))}
                       </div>}
                     <div style={{fontSize:12,color:"var(--text-dim)",marginTop:10,lineHeight:1.5}}>
-                      Les fragments s'obtiennent via certaines <b>rencontres</b> (🔬) et les <b>récompenses de combat</b> contre l'Empire. La carte se choisit à la <b>première visite du héros</b> — visiter tôt sécurise le choix Ford, attendre d'avoir {TESLA_FRAGMENTS_REQUIRED} fragments ouvre les prototypes.
+                      Les fragments s'obtiennent dans les <b>rencontres</b> (🔬) et en <b>combattant l'Empire</b> (s'il est présent). ⚠ Prendre une carte <b>Ford ferme définitivement</b> l'accès aux prototypes : la quête Tesla, c'est réunir {TESLA_FRAGMENTS_REQUIRED} fragments en évitant l'Usine tout ce temps.
                     </div>
                     <button onClick={()=>setFactoryPreview(false)} className="act-btn" style={{marginTop:12,width:"100%",fontWeight:600}}>Fermer</button>
                   </div>
@@ -3562,9 +3563,9 @@ export default function App(){
                   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
                     <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(139,32,32,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:25,border:"2px solid #8b2020",flexShrink:0}}>⚙</div>
                     <div>
-                      <div style={{fontFamily:"var(--font-title)",color:"#cc4433",fontSize:18,fontWeight:700}}>Rouge River</div>
+                      <div style={{fontFamily:"var(--font-title)",color:"#cc4433",fontSize:18,fontWeight:700}}>Rouge River — l'offre se découvre</div>
                       <div style={{fontSize:12,color:"var(--text-dim)"}}>
-                        {rougeRiver.hasFragments?<span>Plans Ford <span style={{color:"#9060c0",fontWeight:700}}>+ prototypes Tesla</span></span>:"Plans Ford"} — Choisissez 1 carte : elle devient une <b>5e action</b> sur votre plateau
+                        {rougeRiver.hasFragments?<span>Plans Ford <span style={{color:"#9060c0",fontWeight:700}}>+ prototypes Tesla</span> (vos {TESLA_FRAGMENTS_REQUIRED}🔬 seront consommés)</span>:"Plans Ford"} — Choisissez 1 carte : elle devient une <b>5e action</b> sur votre plateau
                       </div>
                     </div>
                   </div>
@@ -3583,6 +3584,28 @@ export default function App(){
                       </button>
                     ))}
                   </div>
+                  {/* Prototypes Tesla VERROUILLÉS (fragments insuffisants) : affichés
+                      pour que le renoncement soit un choix éclairé — prendre une
+                      carte Ford ferme définitivement l'accès (visite unique) */}
+                  {(rougeRiver.lockedTesla||[]).length>0&&(
+                    <div style={{marginTop:10}}>
+                      <div style={{fontSize:12,color:"#a080d0",fontWeight:700,marginBottom:6}}>🔒 Prototypes Tesla — verrouillés ({me.fragments||0}/{TESLA_FRAGMENTS_REQUIRED}🔬) : prendre une carte Ford y renonce définitivement</div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:8}}>
+                        {rougeRiver.lockedTesla.map(card=>(
+                          <div key={card.id} className="rr-card tesla" style={{cursor:"not-allowed",opacity:0.55}}>
+                            <div style={{position:"absolute",top:4,right:6,fontSize:12,color:"#b080e0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>🔒 Tesla</div>
+                            <div style={{fontFamily:"var(--font-title)",fontSize:15,fontWeight:700,color:"#c090e0",marginBottom:5,paddingRight:30}}>{card.name}</div>
+                            <div style={{fontSize:13,color:"var(--text)",lineHeight:1.5}}>
+                              <span style={{color:"var(--gold-dim)",fontWeight:700}}>HAUT</span> {factoryCostLabel(card)} → {factoryGainLabel(card)}
+                            </div>
+                            <div style={{fontSize:12,color:"var(--text-dim)",lineHeight:1.5,marginTop:3}}>
+                              <span style={{color:"var(--gold-dim)",fontWeight:700}}>BAS</span> {FACTORY_BOTTOM_DESC}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
