@@ -29,6 +29,7 @@ import { BOT_PROFILES, assignBotProfile, BOT_NOISE, MAP_META_THREAT, playerStand
 import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../logic/pvpBots.js';
 import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { getPlanBottomBonus, auraPowerCount } from '../logic/planEffects.js';
+import { playSfx, sfxForLog } from '../logic/sfx.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
 import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, ProduceTrack, RESOURCE_ICONS, BUILDING_ICONS, Glyph } from './svg/ActionIcons.jsx';
 import { getMechAbilities } from '../data/mechAbilities.js';
@@ -90,6 +91,9 @@ export default function App(){
   const[bottomPick,setBottomPick]=useState(null); // for Build: choosing building type / Deploy: choosing hex
   const[pendingAbility,setPendingAbility]=useState(null); // {source:"deploy"|"encounter", hexId} — waiting for player to pick mech ability
   const[combat,setCombat]=useState(null); // {type:"pvp"|"pve", hexId, enemyIdx?, empireId?, empireCard?, phase:"choose"|"reward", powerSpend:0, cardsSpend:0}
+  // Révélation du combat : les deux engagements face à face (demande de partie
+  // réelle — la résolution en une ligne de log passait inaperçue)
+  const[combatReveal,setCombatReveal]=useState(null); // {title,left:{name,color,total,detail},right:{...},winner:"left"|"right",verdict}
   const[encounter,setEncounter]=useState(null); // {card, hexId}
   const[encounterBuild,setEncounterBuild]=useState(false); // rencontre → choisir le type de bâtiment (posé sur le hex du héros)
   const[encounterEnlist,setEncounterEnlist]=useState(null); // rencontre → enrôler : {col:null} puis {col}
@@ -314,7 +318,11 @@ export default function App(){
     if(/── Tour/.test(msg))return"turn";
     return"info";
   };
-  const mkEntry=(msg)=>{stepRef.current++;return{msg,turn:turnRef.current,step:stepRef.current,ts:Date.now(),cat:categorize(msg)};};
+  const mkEntry=(msg)=>{
+    stepRef.current++;
+    const s=sfxForLog(msg);if(s)playSfx(s);
+    return{msg,turn:turnRef.current,step:stepRef.current,ts:Date.now(),cat:categorize(msg)};
+  };
   const addLog=useCallback((msg)=>setLog(prev=>[...prev,mkEntry(msg)]),[]);
   const addLogs=useCallback((msgs)=>setLog(prev=>[...prev,...msgs.map(mkEntry)]),[]);
   // State snapshot for debug — shows key stats of a player
@@ -1658,6 +1666,13 @@ export default function App(){
       const attackerTotal=combat.botSpend+atkCB.powerBonus+(combat.botCards*2);
       const win=playerTotal>attackerTotal; // l'attaquant remporte les égalités
       addLog(`⚔ ${af.name}: ${attackerTotal} (${combat.botSpend}⚡+${combat.botCards}🃏) vs vous: ${playerTotal} (${combat.powerSpend}⚡+${combat.cardsSpend}🃏)`);
+      setCombatReveal({
+        title:`Défense de #${combat.hexId}`,
+        left:{name:af.name,color:af.color,total:attackerTotal,detail:`${combat.botSpend}⚡${atkCB.powerBonus>0?` +${atkCB.powerBonus}⚡`:""} + ${combat.botCards}🃏`},
+        right:{name:myFaction.name,color:myFaction.color,total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
+        winner:win?"right":"left",
+        verdict:win?`Vous repoussez ${af.name} ! ⭐`:`${af.name} prend le territoire...`,
+      });
       const myHb=HOME_BASES[me.faction];
       const myHbHex=baseHexAt(myHb);
       const atkHb=HOME_BASES[attacker.faction];
@@ -1753,6 +1768,13 @@ export default function App(){
         n[0]=p;return n;
       });
 
+      setCombatReveal({
+        title:combat.empireCard.name,
+        left:{name:myFaction.name,color:myFaction.color,total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
+        right:{name:combat.empireCard.name,color:"#2A5A8A",total:empireTotal,detail:`Force Empire ${empireTotal}`},
+        winner:win?"left":"right",
+        verdict:win?"Mecha de l'Empire détruit !":"L'Empire vous repousse...",
+      });
       if(win){
         addLog(`✅ Victoire ! ${combat.empireCard.name} détruit (${playerTotal} vs ${empireTotal} — dépensé: ${combat.powerSpend}⚡ ${combat.cardsSpend}🃏)`);
         setPlayers(prev=>{
@@ -1848,6 +1870,13 @@ export default function App(){
       let bonusLog="";
       if(enemyCBonus.name&&(enemyCBonus.powerBonus>0||enemyCBonus.cardBonus>0)) bonusLog=` [${enemyCBonus.name}]`;
       addLog(`⚔ ${myFaction.name}: ${playerTotal} (${combat.powerSpend}${playerCBonus.powerBonus>0?`+${playerCBonus.powerBonus}`:""}⚡+${combat.cardsSpend}🃏) vs ${ef.name}: ${enemyTotal} (${botPower}⚡+${botCards}🃏)${bonusLog}`);
+      setCombatReveal({
+        title:`Assaut sur #${combat.hexId}`,
+        left:{name:myFaction.name,color:myFaction.color,total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
+        right:{name:ef.name,color:ef.color,total:enemyTotal,detail:botFold?"ne mise rien (fold)":`${botPower}⚡${enemyCBonus.powerBonus>0?` +${enemyCBonus.powerBonus}⚡`:""} + ${botCards}🃏`},
+        winner:win?"left":"right",
+        verdict:win?`${ef.name} bat en retraite !`:"Vos forces battent en retraite...",
+      });
       
       const hb=HOME_BASES[me.faction];
       const hbHex=baseHexAt(hb);
@@ -4280,6 +4309,34 @@ export default function App(){
               fontFamily:"var(--font-title)",whiteSpace:"nowrap",
             }}>{f.icon}</div>
           ))}
+        </div>
+      )}
+
+      {/* ── RÉVÉLATION DE COMBAT : les deux engagements face à face ── */}
+      {combatReveal&&(
+        <div onClick={()=>setCombatReveal(null)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(6,4,2,0.84)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
+          <div style={{fontFamily:"var(--font-title)",fontSize:15,letterSpacing:5,textTransform:"uppercase",color:"var(--text-dim)",marginBottom:24}}>{combatReveal.title}</div>
+          <div style={{display:"flex",alignItems:"center",gap:30}}>
+            {["left","right"].map(side=>{
+              const s=combatReveal[side];const isWin=combatReveal.winner===side;
+              return(
+                <React.Fragment key={side}>
+                  {side==="right"&&<div style={{fontSize:34,animation:"verdictPop 0.5s ease 0.4s both"}}>⚔</div>}
+                  <div style={{animation:`${side==="left"?"clashLeft":"clashRight"} 0.45s ease both`,textAlign:"center",padding:"24px 32px",minWidth:200,borderRadius:12,
+                    background:"linear-gradient(180deg,rgba(24,19,11,0.97),rgba(12,9,5,0.97))",
+                    border:`2px solid ${isWin?"var(--gold)":"rgba(120,100,70,0.5)"}`,
+                    boxShadow:isWin?"0 0 34px rgba(201,168,76,0.28)":"none"}}>
+                    <div style={{fontFamily:"var(--font-title)",fontSize:16,fontWeight:700,color:s.color,marginBottom:10}}>{s.name}</div>
+                    <div style={{fontSize:46,fontWeight:900,fontFamily:"var(--font-title)",color:isWin?"var(--gold)":"var(--text)",lineHeight:1}}>{s.total}</div>
+                    <div style={{fontSize:13,color:"var(--text-dim)",marginTop:10,fontFamily:"var(--font-mono)",whiteSpace:"nowrap"}}>{s.detail}</div>
+                    {isWin&&<div style={{fontSize:12,letterSpacing:3,textTransform:"uppercase",color:"var(--gold)",marginTop:10,animation:"verdictPop 0.5s ease 0.9s both"}}>Vainqueur</div>}
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
+          <div style={{marginTop:28,fontSize:19,fontWeight:700,fontFamily:"var(--font-title)",color:"var(--gold)",animation:"verdictPop 0.5s ease 0.9s both"}}>{combatReveal.verdict}</div>
+          <div style={{marginTop:16,fontSize:12,color:"var(--text-muted)",letterSpacing:2,animation:"fadeIn 0.4s ease 1.4s both"}}>cliquez pour continuer</div>
         </div>
       )}
 

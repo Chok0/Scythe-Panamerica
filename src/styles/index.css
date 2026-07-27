@@ -55,6 +55,9 @@ h1, h2, h3 {
 @keyframes empireGlow { 0%, 100% { filter: drop-shadow(0 0 3px #1A3A6A); } 50% { filter: drop-shadow(0 0 6px #2A5A8A); } }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes clashLeft { from { opacity: 0; transform: translateX(-70px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes clashRight { from { opacity: 0; transform: translateX(70px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes verdictPop { 0% { opacity: 0; transform: scale(0.5); } 60% { opacity: 1; transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
 @keyframes combatFlash { 0%, 100% { background: rgba(138,48,48,0.06); } 50% { background: rgba(138,48,48,0.02); } }
 @keyframes starBurst { 0% { transform: scale(1); } 25% { transform: scale(1.2); filter: brightness(1.5) drop-shadow(0 0 8px #C9A84C); } 100% { transform: scale(1); filter: brightness(1); } }
 @keyframes slideDown { from { opacity: 0; max-height: 0; } to { opacity: 1; max-height: 500px; } }

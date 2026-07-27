@@ -1,0 +1,27 @@
+# CI : le build du HTML autonome doit passer, et le simulateur bot-vs-bot
+# doit boucler 60 parties sans crash ni violation d'invariant — c'est le
+# filet de sécurité du moteur (logic/ + data/) à chaque PR.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-sim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Simulation de non-régression (60 parties)
+        run: |
+          out=$(node scripts/simulate.mjs --games 60 --seed 1)
+          echo "$out" | head -15
+          echo "$out" | grep -q "Crashs: 0" || { echo "::error::Crashs détectés par le simulateur"; exit 1; }
+          echo "$out" | grep -q "Violations d'invariants: 0" || { echo "::error::Invariants de jeu violés"; exit 1; }
