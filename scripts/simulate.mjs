@@ -21,7 +21,7 @@ import { botTurn, estimateScore } from '../src/logic/bot.js';
 import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../src/logic/pvpBots.js';
 import { resolveBotEncounter } from '../src/logic/botEncounters.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
-import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } from '../src/data/plans.js';
+import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED, TESLA_OFFER_SIZE } from '../src/data/plans.js';
 import { CURRENT_MAP, loadMap, DEFAULT_MAP, LEGACY_MAP } from '../src/data/hexes.js';
 import { generateAcceptedMap, validateMap } from '../src/data/mapGen.js';
 import { createPlayer } from '../src/logic/player.js';
@@ -200,7 +200,10 @@ const playGame = (gameIdx, log) => {
   let encounterTokens = new Set(CURRENT_MAP.encounterHexes);
   // Deck de rencontres sans remise, partagé entre les bots (comme en jeu)
   const encounterDeck = shuffleArray(ENCOUNTERS);
-  let rrVisitors = 0;
+  // Offre de l'Usine (règle Scythe) : nb joueurs + 1 cartes Ford tirées au
+  // départ, chaque visiteur en retire une ; prototypes Tesla à côté (fragment)
+  let factoryOffer = shuffleArray(PLANS_FORD).slice(0, players.length + 1);
+  let teslaOffer = shuffleArray(PLANS_TESLA).slice(0, TESLA_OFFER_SIZE);
   const issues = [];
   const combatStats = { pveAttacks: 0, pveWins: 0, defenses: 0, defWins: 0, pvp: 0, encounters: 0 };
   let round = 0, endedBy = 'cap';
@@ -348,16 +351,21 @@ const playGame = (gameIdx, log) => {
         if (log) log(`  ${er.log}`);
       }
 
-      // ── Rouge River bot : héros sur l'Usine (1re visite) → plan auto (miroir App.jsx) ──
+      // ── Rouge River bot : héros sur l'Usine (1re visite) → carte d'usine
+      // choisie dans l'OFFRE restante (course à l'Usine, miroir App.jsx) ──
       if (players[cp].hero === FACTORY_RR_HEX && !players[cp].visitedRR) {
         const hasFrag = (players[cp].fragments || 0) >= TESLA_FRAGMENTS_REQUIRED;
-        const pool = hasFrag ? [...PLANS_FORD, ...PLANS_TESLA] : [...PLANS_FORD];
-        const seeCount = Math.max(1, Math.min(pool.length, pool.length - rrVisitors));
-        const visible = pool.sort(() => Math.random() - 0.5).slice(0, seeCount);
-        const card = visible.find(c => c.type === "tesla") || visible[Math.floor(Math.random() * visible.length)];
-        players[cp] = { ...players[cp], visitedRR: true, factoryCard: card };
-        rrVisitors++;
-        if (log) log(`  ⚙ ${players[cp].faction} visite la Rouge River → ${card.name}`);
+        const pool = [...factoryOffer, ...(hasFrag ? teslaOffer : [])];
+        if (pool.length > 0) {
+          const card = pool.find(c => c.deck === "tesla") || pool[Math.floor(Math.random() * pool.length)];
+          players[cp] = { ...players[cp], visitedRR: true, factoryCard: card };
+          if (card.deck === "tesla") teslaOffer = teslaOffer.filter(c => c.id !== card.id);
+          else factoryOffer = factoryOffer.filter(c => c.id !== card.id);
+          if (log) log(`  ⚙ ${players[cp].faction} visite la Rouge River → ${card.name}${card.deck === "tesla" ? " (Tesla)" : ""}`);
+        } else {
+          players[cp] = { ...players[cp], visitedRR: true };
+          if (log) log(`  ⚙ ${players[cp].faction} arrive à la Rouge River — offre épuisée`);
+        }
       }
 
       // ── Enlist ongoing (soi + voisins) ──

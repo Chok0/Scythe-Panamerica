@@ -133,8 +133,6 @@ export const applyEnlistOngoing = (playersArr, actorIdx, bottomCol, FACTIONS) =>
   const leftIdx = (actorIdx - 1 + count) % count;
   const rightIdx = (actorIdx + 1) % count;
   const recipients = new Set([actorIdx, leftIdx, rightIdx]);
-  // Plan « Le Blueprint Perdu » : l'ongoing du détenteur est déclenché par TOUS les joueurs
-  n.forEach((p, pi) => { if (p.factoryCard?.bottomBonus === "enlist_extended") recipients.add(pi); });
   [...recipients].forEach(pi => {
     const p = n[pi];
     // recrue posée sur cette colonne (indice 0-3), décorrélée de la colonne

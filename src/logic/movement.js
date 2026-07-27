@@ -26,8 +26,7 @@ export const getRailNetwork = (fromId, rails, blockedHexes) => {
 };
 
 // 1-step movement from a single hex (no rail — rail handled in getValidMoves)
-// ignoreRivers : plan Trimotor (F2) — les rivières ne bloquent plus
-export const getValidMoves1Step = (fromId, factionId, abilities, player, rails, ignoreRivers = false) => {
+export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) => {
   const f = FACTIONS[factionId], adj = ADJ[fromId] || [];
   const from = hMap[fromId];
   const hasRiverwalk = abilities && abilities.includes(1);
@@ -62,7 +61,6 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails, 
     // Marécage : franchissable par tous (règle du péage — voir marshToll) ;
     // l'arrêt forcé est géré dans getValidMoves/findPathWaypoints.
     if (adj.includes(toId) && hasR(fromId, toId)) {
-      if (ignoreRivers) return true;
       // L'Usine Rouge River a ses ponts : toujours accessible malgré les
       // rivières (aucune faction n'a « factory » dans son riverwalk, sinon
       // l'approche par l'hex 26 était un cul-de-sac)
@@ -75,10 +73,8 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails, 
 };
 
 // Full movement: rail (1 pas) + N steps.
-// Steps = 1, +1 avec Speed (slot 0), et bonus des plans Ford/Tesla :
-//   - Trimotor (move_3)      : 3 pas pour toutes les unités + ignore les rivières
-//   - Golem (remote_move)    : 2 pas pour les MECHAS
-//   - Éclair (mech_sprint)   : 4 pas pour les MECHAS
+// Steps = 1, +1 avec Speed (slot 0), + bonusSteps (déplacement du BAS d'une
+// carte d'usine : 2 hex de base au lieu d'1 → bonusSteps=1).
 // Rail rules — il faut être À BORD pour rouler :
 //   - Si l'unité COMMENCE son déplacement sur le réseau : rouler COÛTE 1 PAS
 //     (« 1 move pour se placer n'importe où sur le réseau, 1 move de plus pour
@@ -93,14 +89,9 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails, 
 // TRAVERSER ni continuer après (règle Scythe : entrer chez l'ennemi termine
 // le déplacement de l'unité). Constaté en partie réelle : saut par-dessus le
 // héros Frente via le réseau de rails, avec dépose d'ouvrier au passage.
-export const getValidMoves = (fromId, factionId, abilities, player, rails, unitType, blockedHexes) => {
+export const getValidMoves = (fromId, factionId, abilities, player, rails, unitType, blockedHexes, bonusSteps = 0) => {
   const hasSpeed = abilities && abilities.includes(0);
-  const plan = player?.factoryCard?.topBonus;
-  let steps = hasSpeed ? 2 : 1;
-  let ignoreRivers = false;
-  if (plan === "move_3") { steps = Math.max(steps, 3); ignoreRivers = true; }
-  if (plan === "remote_move" && unitType === "mech") steps = Math.max(steps, 2);
-  if (plan === "mech_sprint" && unitType === "mech") steps = Math.max(steps, 4);
+  const steps = (hasSpeed ? 2 : 1) + bonusSteps;
 
   const all = new Set();
   let frontier = [fromId];
@@ -122,7 +113,7 @@ export const getValidMoves = (fromId, factionId, abilities, player, rails, unitT
         const railNet = getRailNetwork(fid, rails, blockedHexes);
         if (railNet) railNet.forEach(reach);
       }
-      getValidMoves1Step(fid, factionId, abilities, player, rails, ignoreRivers).forEach(reach);
+      getValidMoves1Step(fid, factionId, abilities, player, rails).forEach(reach);
     });
     frontier = next;
   }

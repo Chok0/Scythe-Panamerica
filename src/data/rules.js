@@ -68,11 +68,11 @@ export const RULES = [
         content: "Un réseau ferroviaire partagé entre tous les joueurs. La carte démarre sans aucun rail : construire une Gare pose 3 segments de rails, chaque segment devant partir de la Gare ou d'un rail existant (réseau connexe), jamais sur un lac ou un marécage. Une unité qui COMMENCE son déplacement sur le réseau peut rouler vers n'importe quel hex relié : le trajet en train coûte 1 PAS de déplacement (avec Vitesse, il reste donc 1 pas pour sortir du réseau). Entrer sur un rail en cours de déplacement ne donne pas accès au réseau ce tour-ci : on monte à bord un tour, on roule au suivant."
       },
       {
-        title: "Rouge River & Plans",
-        content: "L'Usine centrale (Rouge River) propose 2 types de plans au lieu d'un :",
+        title: "Rouge River & Cartes d'Usine",
+        content: "L'Usine centrale (Rouge River) expose au départ (nb joueurs + 1) cartes du deck Ford. Chaque visiteur en choisit UNE : elle devient une 5e action sur son plateau (haut : 1 coût → 1 gain · bas : déplacer 1 unité de 2 hex).",
         list: [
-          "Plans Ford — 5 plans utilitaires, toujours accessibles",
-          "Plans Tesla — 5 plans puissants, accessibles avec 1 Fragment Tesla",
+          "Deck Ford — 12 cartes d'action, l'offre tirée au hasard est visible de tous",
+          "Prototypes Tesla — 2 cartes plus puissantes, accessibles avec 1 Fragment Tesla",
           "Fragments Tesla — obtenus via rencontres ou récompenses de combat PvE"
         ]
       },
@@ -297,29 +297,25 @@ export const RULES = [
     sections: [
       {
         title: "L'Usine Centrale",
-        content: "L'hex central (Rouge River, id 22) est l'ancienne usine de l'Empire. La première fois que votre héros y arrive, vous choisissez un Plan parmi ceux offerts. L'Usine propose autant de plans qu'il y a de JOUEURS, et chaque visiteur en retire un : le premier arrivé a l'embarras du choix, le dernier n'a plus qu'une carte imposée — c'est une course à l'Usine. Deux catégories de plans :"
+        content: "L'hex central (Rouge River, id 22) est l'ancienne usine de l'Empire. Au début de la partie, (nb joueurs + 1) cartes du deck Ford sont tirées au hasard et posées sur l'Usine. La première fois que votre héros y arrive, vous choisissez UNE carte parmi celles qui restent — course à l'Usine : le premier arrivé a l'embarras du choix, le dernier prend ce qui reste."
       },
       {
-        title: "Plans Ford",
-        content: "5 plans utilitaires inspirés de la production de masse :",
+        title: "La carte d'usine = une 5e action",
+        content: "Votre carte d'usine s'ajoute à votre plateau comme une colonne d'action supplémentaire, jouable au lieu des 4 autres (et comme elles, pas deux tours de suite) :",
         list: [
-          "Model M — Produce ×2 par ouvrier / Deploy à prix réduit",
-          "Trimotor — Move 3 hex (ignore rivières) / Upgrade à prix réduit",
-          "River Rouge Special — Téléport ressources / Build à prix réduit",
-          "Iron Horse — Move → Mine gratuit / Enlist à prix réduit",
-          "Five Dollar Day — Pop + ouvrier / Upgrade profitable"
+          "HAUT — payer 1 coût (pièces, puissance, popularité ou carte de combat) → recevoir 1 gain (pièces, pop, puissance, amélioration/recrue/bâtiment/mecha gratuits, production…)",
+          "BAS — déplacer 1 unité de 2 hex (+1 si la capacité Vitesse est débloquée)",
+          "Comme les autres colonnes : haut seul (si payable), bas seul, ou les deux — en commençant par le haut",
+          "Les gains « si ouvrier » (bâtiment, mecha, ressources, production) se posent sur un hex portant un de vos ouvriers"
         ]
       },
       {
-        title: "Plans Tesla",
-        content: "5 plans puissants inspirés de la technologie Tesla :",
-        list: [
-          "Golem — Move mecha à distance / Deploy + Puissance",
-          "L'Onde Tesla — Aura de puissance / Build sans ouvrier",
-          "Éclair — Move mecha 4 hex / Bolster gratuit",
-          "Le Blueprint Perdu — Copie action du haut / Enlist étendu",
-          "Réseau Neuronal — Move tous mechas / Deploy adjacence"
-        ]
+        title: "Prototypes Tesla",
+        content: "2 cartes du deck Tesla (5 cartes plus puissantes, même structure) sont exposées à côté de l'offre Ford. Elles ne sont visibles et choisissables qu'avec au moins 1 Fragment Tesla (rencontres, récompenses de combat PvE)."
+      },
+      {
+        title: "Le deck original",
+        content: "Les 12 cartes d'usine du jeu original existent dans les données (deck « original ») mais restent de côté pour l'instant — elles seront débloquées comme récompense dans le mode campagne."
       }
     ]
   },

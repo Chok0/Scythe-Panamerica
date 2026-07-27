@@ -29,6 +29,8 @@ export const createPlayer = (factionId, matId, isBot) => {
     capturedWorkers: 0, capturedMech: 0, empireKills: 0, trapTokens: [], flagTokens: [], imperialCoins: 0,
     upgrades: 0, recruits: 0, combatWins: 0,
     starUpgrades: false, starMechs: false, starBuildings: false, starRecruits: false,
+    // Rouge River : fragments Tesla, visite unique, carte d'usine (5e colonne
+    // d'action — voir data/plans.js et logic/factory.js)
     fragments: 0, visitedRR: false, factoryCard: null,
   };
 };

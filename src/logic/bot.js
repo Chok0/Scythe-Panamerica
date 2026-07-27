@@ -9,7 +9,8 @@ import { transportUnits } from './transport.js';
 import { BOT_PROFILES } from './botProfiles.js';
 import { BALANCE } from '../data/balance.js';
 import { getMechAbilities } from '../data/mechAbilities.js';
-import { getPlanBottomBonus } from './planEffects.js';
+import { FACTORY_COL, factoryCostLabel, factoryEffectLabel } from '../data/plans.js';
+import { canPayFactoryCost, payFactoryCost, factoryEffectPossible, factoryResourceHex } from './factory.js';
 
 // ══════════════════════════════════════════════════════
 // Strategic Bot AI — based on Scythe competitive strategy
@@ -56,8 +57,29 @@ const neededResources = (p) => {
   return need;
 };
 
+// ── Colonne 4 : carte d'usine (HAUT 1 coût → 1 gain, BAS move 2 hex) ──
+const scoreFactoryColumn = (p, prof, ctx) => {
+  const card = p.factoryCard;
+  if (!card) return -999;
+  let score = 0;
+  if (canPayFactoryCost(p, card)) {
+    score += 14;
+    // Gains « physiques » (mech/bâtiment/recrue/amélioration) = progrès
+    // d'étoile GRATUIT → priorité forte tant que la piste n'est pas maxée
+    const flat = card.gain.flatMap(g => g.type === "choice" ? g.options : [g]);
+    if (flat.some(g => ["mech", "building", "enlist", "upgrade"].includes(g.type) && factoryEffectPossible(p, g))) score += 10;
+    if (flat.some(g => g.type === "produce2" && factoryEffectPossible(p, g))) score += 6;
+    if (flat.some(g => g.type === "resources" && factoryEffectPossible(p, g))) score += 4;
+  } else {
+    score += 3; // bas seul : repositionnement 2 hex, utile mais pas prioritaire
+  }
+  if (getPhase(p) === "late" || (ctx && ctx.endgame)) score += 4; // 2 hex = territoires
+  return score;
+};
+
 // Score a column choice based on strategic value
 const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
+  if (col === FACTORY_COL) return scoreFactoryColumn(p, prof, ctx);
   const action = p.topRow[col];
   const f = FACTIONS[p.faction];
   const phase = getPhase(p);
@@ -347,6 +369,158 @@ const pickBuilding = (p, availBuildings, prof) => {
   return availBuildings[0];
 };
 
+// Gare : pose 3 segments de rail chaînés depuis l'hex de la Gare — partagé
+// entre le Build classique et le bâtiment gratuit d'une carte d'usine.
+// Empile dans p._pendingRails (appliqué au réseau par l'appelant App/sim).
+const placeBotRails = (p, gareHex, rails, logs, fName) => {
+  p._pendingRails = p._pendingRails || [];
+  const taken = (a, b) => [...rails, ...p._pendingRails]
+    .some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+  const candidatesFrom = (from) => (ADJ[from] || []).filter(id => {
+    const h = hMap[id]; if (!h) return false;
+    if (h.base) return false;                       // pas de rail vers une base
+    if (h.t === "lac" || h.t === "marecage") return false; // R6: pas de rail sur l'eau
+    return !taken(from, id);
+  });
+  const endpoints = [gareHex];
+  for (let ri = 0; ri < 3; ri++) {
+    // Chaînage : repart du dernier point qui a encore une arête libre
+    let from = null, opts = [];
+    for (let ei = endpoints.length - 1; ei >= 0; ei--) {
+      opts = candidatesFrom(endpoints[ei]);
+      if (opts.length > 0) { from = endpoints[ei]; break; }
+    }
+    if (from === null) break;
+    const to = opts[Math.floor(Math.random() * opts.length)];
+    p._pendingRails.push([from, to]);
+    logs.push(`🤖🛤 ${fName}: Rail #${from}↔#${to}`);
+    if (!endpoints.includes(to)) endpoints.push(to);
+  }
+};
+
+// ── Résolution AUTOMATIQUE des gains du HAUT d'une carte d'usine (bots) ──
+// Miroir des pickers du joueur : mêmes règles, choix par heuristique.
+const applyFactoryGainsBot = (p, gains, rails, logs, f, prof) => {
+  for (let eff of gains) {
+    if (eff.type === "choice") {
+      // Préférer le progrès d'étoile le moins avancé encore possible
+      const opts = eff.options.filter(o => factoryEffectPossible(p, o));
+      if (opts.length === 0) { logs.push(`🤖⚙ ${f.name}: choix impossible — passé`); continue; }
+      const prio = { mech: 4 - p.mechs.length, building: 4 - (p.buildings || []).length,
+        enlist: 4 - (p.recruits || 0), upgrade: (p.upgrades || 0) < 2 ? 3 : 6 - (p.upgrades || 0) };
+      eff = opts.sort((a, b) => (prio[b.type] ?? 0) - (prio[a.type] ?? 0))[0];
+    }
+    if (!factoryEffectPossible(p, eff)) { logs.push(`🤖⚙ ${f.name}: ${factoryEffectLabel(eff)} impossible — passé`); continue; }
+    switch (eff.type) {
+      case "coins": p.coins += eff.qty; logs.push(`🤖⚙ ${f.name}: +${eff.qty}$ (usine)`); break;
+      case "power":
+        p.power = Math.min(p.power + eff.qty, 16); logs.push(`🤖⚙ ${f.name}: +${eff.qty}⚡ (usine)`);
+        if (p.power >= 16 && !p.starPower) { p.stars++; p.starPower = true; logs.push(`⭐ ${f.name}: Puissance max !`); }
+        break;
+      case "pop":
+        p.pop = Math.min(p.pop + eff.qty, 18); logs.push(`🤖⚙ ${f.name}: +${eff.qty}♥ (usine)`);
+        if (p.pop >= 18 && !p.starPop) { p.stars++; p.starPop = true; logs.push(`⭐ ${f.name}: Popularité max !`); }
+        break;
+      case "cards": p.combatCards = (p.combatCards || 0) + eff.qty; logs.push(`🤖⚙ ${f.name}: +${eff.qty}🃏 (usine)`); break;
+      case "upgrade": {
+        const mat = MATS.find(m => m.id === p.matId);
+        const validTop = []; const validBottom = [];
+        (p.cubesOnTop || []).forEach((c, i) => { if (c > 0) validTop.push(i); });
+        (mat?.bottomSlots || []).forEach((s, i) => { if ((p.cubesOnBottom || [])[i] < maxBottomCubes(mat, i)) validBottom.push(i); });
+        if (validTop.length === 0 || validBottom.length === 0) break;
+        const fromC = pickUpgradeSource(p, validTop);
+        const toC = pickUpgradeDest(p, validBottom, mat);
+        p.cubesOnTop = [...(p.cubesOnTop || [])]; p.cubesOnTop[fromC]--;
+        p.cubesOnBottom = [...(p.cubesOnBottom || [])]; p.cubesOnBottom[toC]++;
+        p.upgrades = (p.upgrades || 0) + 1;
+        logs.push(`🤖⚙ ${f.name}: Améliorer ${p.upgrades}/6 (usine, gratuit)`);
+        if (p.upgrades >= 6 && !p.starUpgrades) { p.stars++; p.starUpgrades = true; logs.push(`⭐ ${f.name}: 6 upgrades !`); }
+        break;
+      }
+      case "enlist": {
+        const priority = prof.enlistPriority || [0, 1, 2, 3];
+        p.enlistMap = [...(p.enlistMap || [null, null, null, null])];
+        const freeCols = priority.filter(ci => p.enlistMap[ci] == null);
+        const freeRecruits = priority.filter(ri => !p.enlistMap.includes(ri));
+        if (freeCols.length === 0 || freeRecruits.length === 0) break;
+        p.enlistMap[freeCols[0]] = freeRecruits[0];
+        p.recruits = (p.recruits || 0) + 1;
+        const imm = ENLIST_IMMEDIATE[freeCols[0]];
+        if (imm) imm.apply(p);
+        logs.push(`🤖⚙ ${f.name}: Enrôler ${frBot(BOTTOM[freeCols[0]])} (usine, gratuit) → immédiat ${imm ? imm.icon + imm.label : "?"}`);
+        if (p.recruits >= 4 && !p.starRecruits) { p.stars++; p.starRecruits = true; logs.push(`⭐ ${f.name}: 4 recrues !`); }
+        break;
+      }
+      case "building": {
+        const wh = getWorkerHexes(p).filter(h => hMap[h] && !hMap[h].base && !(p.buildings || []).some(b => b.hexId === h));
+        const avail = BUILDING_TYPES.filter(bt => !(p.buildings || []).some(b => b.type === bt.type));
+        if (wh.length === 0 || avail.length === 0) break;
+        const building = pickBuilding(p, avail, prof);
+        p.buildings = [...(p.buildings || []), { type: building.type, hexId: wh[0] }];
+        logs.push(`🤖⚙ ${f.name}: ${building.name} #${wh[0]} (usine, gratuit)`);
+        if (p.buildings.length >= 4 && !p.starBuildings) { p.stars++; p.starBuildings = true; logs.push(`⭐ ${f.name}: 4 bâtiments !`); }
+        if (building.type === "gare") placeBotRails(p, wh[0], rails, logs, f.name);
+        break;
+      }
+      case "mech": {
+        const wh = getWorkerHexes(p).filter(h => hMap[h] && !hMap[h].base);
+        if (wh.length === 0 || p.mechs.length >= 4) break;
+        const abilityIdx = p.mechs.length;
+        const abilityNames = getMechAbilities(p.faction).map(a => a.name);
+        p.mechs = [...p.mechs, { id: `${p.faction}_m${p.mechs.length}`, hexId: wh[0] }];
+        p.unlockedAbilities = [...(p.unlockedAbilities || []), abilityIdx];
+        logs.push(`🤖⚙ ${f.name}: Mecha #${wh[0]} (usine, gratuit) → 🔓 ${abilityNames[abilityIdx]}`);
+        if (p.mechs.length >= 4 && !p.starMechs) { p.stars++; p.starMechs = true; logs.push(`⭐ ${f.name}: 4 mechas !`); }
+        break;
+      }
+      case "produce2": {
+        const byHex = {}; p.workers.forEach(w => { const k = String(w.hexId); (byHex[k] = byHex[k] || []).push(w); });
+        const need = neededResources(p);
+        const hexScore = (hid) => {
+          const res = TERRAINS[hMap[parseInt(hid)]?.t]?.res;
+          return (res && need[res] ? 10 : res === "ouvriers" ? 6 : res ? 3 : 0) + byHex[hid].length;
+        };
+        const hexIds = Object.keys(byHex)
+          .filter(h => TERRAINS[hMap[parseInt(h)]?.t]?.res)
+          .sort((a, b) => hexScore(b) - hexScore(a)).slice(0, 2);
+        hexIds.forEach(hidStr => {
+          const hid = parseInt(hidStr); const hex = hMap[hid]; const t = TERRAINS[hex?.t]; let wc = byHex[hidStr].length;
+          if (!t) return;
+          if ((p.buildings || []).some(b => b.type === "moulin" && b.hexId === hid)) wc++;
+          if (hex.t === "village" && p.workers.length < 8) {
+            const toAdd = Math.min(wc, 8 - p.workers.length);
+            for (let i = 0; i < toAdd; i++) p.workers.push({ id: `${p.faction}_w${p.workers.length}`, hexId: hid });
+            if (toAdd > 0) logs.push(`🤖⚙ ${f.name}: +${toAdd} ouv. #${hid} (usine)`);
+            if (p.workers.length >= 8 && !p.starWorkers) { p.stars++; p.starWorkers = true; logs.push(`⭐ ${f.name}: 8 ouvriers !`); }
+          } else if (t.res && t.res !== "ouvriers") {
+            if (!p.resources[hidStr]) p.resources[hidStr] = {};
+            p.resources[hidStr] = { ...p.resources[hidStr] };
+            p.resources[hidStr][t.res] = (p.resources[hidStr][t.res] || 0) + wc;
+            logs.push(`🤖⚙ ${f.name}: +${wc} ${resFR(t.res)} #${hid} (usine)`);
+          }
+        });
+        break;
+      }
+      case "resources": {
+        const hex = factoryResourceHex(p);
+        if (hex == null) break;
+        const need = neededResources(p);
+        const key = String(hex);
+        p.resources = { ...p.resources, [key]: { ...(p.resources[key] || {}) } };
+        const picks = [];
+        for (let i = 0; i < eff.qty; i++) {
+          const pick = Object.keys(need).find(r => need[r] > 0) || "metal";
+          if (need[pick]) need[pick]--;
+          p.resources[key][pick] = (p.resources[key][pick] || 0) + 1;
+          picks.push(resFR(pick));
+        }
+        logs.push(`🤖⚙ ${f.name}: +${picks.join(", +")} #${hex} (usine)`);
+        break;
+      }
+    }
+  }
+};
+
 // Choose which top cube to remove for upgrade. Retirer un cube AMÉLIORE
 // l'option correspondante — le corpus est formel : « upgrading Produce early
 // pays dividends across the entire game, Trade might only matter in specific
@@ -389,7 +563,8 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   // ── STRATEGIC COLUMN SELECTION ──
   // Dominion « Relentless » (test Rusviet) : peut rejouer la même colonne
   const canRepeat = p.faction === "dominion" && BALANCE.dominionRelentless;
-  const cols = [0, 1, 2, 3].filter(c => canRepeat || c !== p.lastCol);
+  // La carte d'usine (Rouge River) ajoute une 5e colonne jouable (FACTORY_COL)
+  const cols = [0, 1, 2, 3, ...(p.factoryCard ? [FACTORY_COL] : [])].filter(c => canRepeat || c !== p.lastCol);
   let bestCol = cols[0], bestScore = -999;
   for (const col of cols) {
     const s = scoreColumn(p, col, empire, enemyHexes, rails, prof, ctx)
@@ -397,7 +572,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     if (s > bestScore) { bestScore = s; bestCol = col; }
   }
   const col = bestCol;
-  const action = p.topRow[col];
+  const action = col === FACTORY_COL ? "Factory" : p.topRow[col];
 
   // ── EXECUTE TOP ACTION ──
   // Move → « +1$ » SEULEMENT en vrai blocage économique (impossible de payer
@@ -714,17 +889,55 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       // No coins: take pop instead if possible (shouldn't happen often)
       logs.push(`🤖 ${f.name}: (pas d'$)`);
     }
+  } else if (action === "Factory") {
+    // ── HAUT de la carte d'usine : payer 1 coût → résoudre les gains ──
+    const card = p.factoryCard;
+    if (card && canPayFactoryCost(p, card)) {
+      payFactoryCost(p, card);
+      logs.push(`🤖⚙ ${f.name}: ${card.name} — paie ${factoryCostLabel(card)}`);
+      applyFactoryGainsBot(p, card.gain, rails, logs, f, prof);
+    } else {
+      logs.push(`🤖⚙ ${f.name}: ${card ? card.name : "usine"} (coût impayable — bas seulement)`);
+    }
   }
   p.lastCol = col;
 
   // ── BOTTOM ACTION ──
+  // Colonne d'usine : le BAS est un déplacement (1 unité, 2 hex, +1 Vitesse),
+  // pas une action de plateau — résolu ici puis retour direct (pas d'enlist
+  // ongoing : seules les 4 actions bottom du plateau le déclenchent)
+  if (col === FACTORY_COL) {
+    const candidates = [{ type: "hero", from: p.hero }, ...p.mechs.map((m, i) => ({ type: "mech", from: m.hexId, idx: i }))];
+    let moved = false;
+    for (const cand of candidates) {
+      let mv = getValidMoves(cand.from, p.faction, p.unlockedAbilities || [], p, rails, cand.type, enemyHexes, 1).filter(id => !forbidden.has(id));
+      if (mv.length === 0) continue;
+      const target = pickMoveTarget(mv, p, empire, enemyHexes, cand.type, ctx, prof);
+      if (target == null || target === cand.from) continue;
+      recordCombatRoute(cand.from, target);
+      if (cand.type === "hero") {
+        p.hero = target;
+        const tr = transportUnits(p, cand.from, target, "hero");
+        Object.assign(p, { resources: tr.player.resources });
+        logs.push(`🤖⚙ ${f.name}: ${f.hero} → #${target} (bas d'usine, 2 hex)`);
+      } else {
+        p.mechs = [...p.mechs];
+        p.mechs[cand.idx] = { ...p.mechs[cand.idx], hexId: target };
+        const tr = transportUnits(p, cand.from, target, "mech", { carryWorkers: true });
+        Object.assign(p, { workers: tr.player.workers, resources: tr.player.resources });
+        logs.push(`🤖⚙ ${f.name}: Mech → #${target} (bas d'usine, 2 hex)`);
+      }
+      const toll = marshToll(p, target, cand.type);
+      if (toll) logs.push(`🤖${toll}`);
+      moved = true;
+      break;
+    }
+    if (!moved) logs.push(`🤖⚙ ${f.name}: pas de déplacement d'usine possible`);
+  }
+  // (col d'usine : BOTTOM[4] est undefined → tout le bloc ci-dessous est inerte)
   const bottomAction = BOTTOM[col];
   const botCosts = getBottomCost(p);
   const bc = botCosts[col];
-  // Bonus du plan d'usine (Rouge River) : réduction de coût appliquée AVANT
-  // le test de solvabilité ; pièces/puissance créditées après l'action
-  const planB = getPlanBottomBonus(p, bottomAction);
-  if (bc && planB.costReduction > 0) bc.qty = Math.max(0, bc.qty - planB.costReduction);
   const altResB = FACTIONS[p.faction]?.deployAltRes;
   const canAffordBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && altResB && countRes(p, altResB) >= bc.qty));
   let bottomDone = false;
@@ -781,34 +994,9 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         bottomDone = true;
         logs.push(`🤖 ${f.name}: Construire ${building.name} #${wh[0]}`);
         if (p.buildings.length >= 4 && !p.starBuildings) { p.stars++; p.starBuildings = true; logs.push(`⭐ ${f.name}: 4 bâtiments !`); }
-        // Gare: place rails — 3 segments SANS doublon : le filtre doit voir
-        // aussi les rails posés dans CETTE action (_pendingRails), sinon le
-        // bot ping-ponge sur la première arête (rail #36↔#32 posé 3 fois)
-        if (building.type === "gare") {
-          p._pendingRails = p._pendingRails || [];
-          const taken = (a, b) => [...rails, ...p._pendingRails]
-            .some(([x, y]) => (x === a && y === b) || (x === b && y === a));
-          const candidatesFrom = (from) => (ADJ[from] || []).filter(id => {
-            const h = hMap[id]; if (!h) return false;
-            if (h.base) return false;                       // pas de rail vers une base
-            if (h.t === "lac" || h.t === "marecage") return false; // R6: pas de rail sur l'eau
-            return !taken(from, id);
-          });
-          const endpoints = [wh[0]];
-          for (let ri = 0; ri < 3; ri++) {
-            // Chaînage : repart du dernier point qui a encore une arête libre
-            let from = null, opts = [];
-            for (let ei = endpoints.length - 1; ei >= 0; ei--) {
-              opts = candidatesFrom(endpoints[ei]);
-              if (opts.length > 0) { from = endpoints[ei]; break; }
-            }
-            if (from === null) break;
-            const to = opts[Math.floor(Math.random() * opts.length)];
-            p._pendingRails.push([from, to]);
-            logs.push(`🤖🛤 ${f.name}: Rail #${from}↔#${to}`);
-            if (!endpoints.includes(to)) endpoints.push(to);
-          }
-        }
+        // Gare: place rails — 3 segments SANS doublon (helper partagé avec le
+        // bâtiment gratuit des cartes d'usine)
+        if (building.type === "gare") placeBotRails(p, wh[0], rails, logs, f.name);
       }
     } else if (bottomAction === "Enlist" && (p.recruits || 0) < 4) {
       const sp = spendRes(p, bc.res, bc.qty); Object.assign(p, { resources: sp.resources });
@@ -843,12 +1031,6 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   if (bottomDone && col !== 0 && bc && (bc.bonus || 0) > 0) {
     p.coins += bc.bonus;
     logs.push(`🤖💰 ${f.name}: +${bc.bonus}$ (${frBot(bottomAction)})`);
-  }
-  // Gains du plan d'usine une fois l'action bottom réellement effectuée
-  if (bottomDone && (planB.bonusCoins > 0 || planB.bonusPower > 0)) {
-    p.coins += planB.bonusCoins;
-    p.power = Math.min(p.power + planB.bonusPower, 16);
-    logs.push(`🤖⚙ ${f.name}: ${p.factoryCard.name} → ${planB.bonusCoins > 0 ? `+${planB.bonusCoins}$ ` : ""}${planB.bonusPower > 0 ? `+${planB.bonusPower}⚡` : ""}`.trim());
   }
 
   // ── AUTOMATIC STARS ──
