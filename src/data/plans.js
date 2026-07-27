@@ -16,10 +16,14 @@ export const FACTORY_RR_HEX = 22;
 // Indice de la colonne d'action apportée par la carte d'usine (0-3 = plateau)
 export const FACTORY_COL = 4;
 
-// Fragments Tesla requis pour accéder aux prototypes Tesla à la Rouge River
-export const TESLA_FRAGMENTS_REQUIRED = 1;
+// Fragments Tesla requis pour PRENDRE un prototype Tesla à la Rouge River —
+// ils sont CONSOMMÉS à la prise. C'est une vraie quête : 2 récompenses de
+// rencontre/combat PvE à sécuriser en retardant sa propre visite de l'Usine.
+export const TESLA_FRAGMENTS_REQUIRED = 2;
 
-// Prototypes Tesla exposés en plus de l'offre Ford (fragment requis pour les voir)
+// Prototypes Tesla exposés en plus de l'offre Ford. VISIBLES DE TOUS (la
+// vitrine de l'Usine se consulte en cliquant l'hex #22) pour motiver la
+// quête des fragments — mais choisissables uniquement avec les fragments.
 export const TESLA_OFFER_SIZE = 2;
 
 // ── Modèle de carte ──

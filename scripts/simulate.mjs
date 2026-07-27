@@ -33,6 +33,7 @@ import { EMPIRE_START, EMPIRE_RAILS, drawEmpireCombat } from '../src/data/empire
 import { getCombatBonus } from '../src/data/combat.js';
 import { OBJECTIVES } from '../src/data/objectives.js';
 import { shuffleArray } from '../src/logic/hexMath.js';
+import { claimFactoryCard } from '../src/logic/factory.js';
 import { BOT_PROFILES, assignBotProfile, BOT_NOISE, MAP_META_THREAT, playerStanding } from '../src/logic/botProfiles.js';
 
 // ── CLI ──
@@ -358,10 +359,12 @@ const playGame = (gameIdx, log) => {
         const pool = [...factoryOffer, ...(hasFrag ? teslaOffer : [])];
         if (pool.length > 0) {
           const card = pool.find(c => c.deck === "tesla") || pool[Math.floor(Math.random() * pool.length)];
-          players[cp] = { ...players[cp], visitedRR: true, factoryCard: card };
+          const bp = { ...players[cp] };
+          claimFactoryCard(bp, card); // consomme les fragments si prototype Tesla
+          players[cp] = bp;
           if (card.deck === "tesla") teslaOffer = teslaOffer.filter(c => c.id !== card.id);
           else factoryOffer = factoryOffer.filter(c => c.id !== card.id);
-          if (log) log(`  ⚙ ${players[cp].faction} visite la Rouge River → ${card.name}${card.deck === "tesla" ? " (Tesla)" : ""}`);
+          if (log) log(`  ⚙ ${players[cp].faction} visite la Rouge River → ${card.name}${card.deck === "tesla" ? ` (Tesla, -${TESLA_FRAGMENTS_REQUIRED}🔬)` : ""}`);
         } else {
           players[cp] = { ...players[cp], visitedRR: true };
           if (log) log(`  ⚙ ${players[cp].faction} arrive à la Rouge River — offre épuisée`);

@@ -72,7 +72,8 @@ export const RULES = [
         content: "L'Usine centrale (Rouge River) expose au départ (nb joueurs + 1) cartes du deck Ford. Chaque visiteur en choisit UNE : elle devient une 5e action sur son plateau (haut : 1 coût → 1 gain · bas : déplacer 1 unité de 2 hex).",
         list: [
           "Deck Ford — 12 cartes d'action, l'offre tirée au hasard est visible de tous",
-          "Prototypes Tesla — 2 cartes plus puissantes, accessibles avec 1 Fragment Tesla",
+          "Prototypes Tesla — 2 cartes plus puissantes, visibles de tous mais réservées : les prendre CONSOMME 2 Fragments Tesla",
+          "Vitrine — cliquer l'Usine (hex central) affiche à tout moment l'offre restante et les prototypes",
           "Fragments Tesla — obtenus via rencontres ou récompenses de combat PvE"
         ]
       },
@@ -311,7 +312,7 @@ export const RULES = [
       },
       {
         title: "Prototypes Tesla",
-        content: "2 cartes du deck Tesla (5 cartes plus puissantes, même structure) sont exposées à côté de l'offre Ford. Elles ne sont visibles et choisissables qu'avec au moins 1 Fragment Tesla (rencontres, récompenses de combat PvE)."
+        content: "2 cartes du deck Tesla (5 cartes plus puissantes, même structure) sont exposées à côté de l'offre Ford — VISIBLES DE TOUS dans la vitrine de l'Usine (cliquer l'hex central), pour donner envie de chasser les fragments. Les choisir exige 2 Fragments Tesla, CONSOMMÉS à la prise : c'est une vraie quête — sécuriser 2 récompenses de rencontre/combat PvE tout en retardant sa propre visite de l'Usine, pendant que les autres pillent l'offre Ford."
       },
       {
         title: "Le deck original",

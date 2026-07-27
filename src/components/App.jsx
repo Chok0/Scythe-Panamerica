@@ -28,7 +28,7 @@ import { botTurn, estimateScore } from '../logic/bot.js';
 import { BOT_PROFILES, assignBotProfile, BOT_NOISE, MAP_META_THREAT, playerStanding } from '../logic/botProfiles.js';
 import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../logic/pvpBots.js';
 import { resolveBotEncounter } from '../logic/botEncounters.js';
-import { drawFactoryOffer, canPayFactoryCost, payFactoryCost, factoryEffectPossible, factoryWorkerHexes, factoryProduceHexes, factoryResourceHex } from '../logic/factory.js';
+import { drawFactoryOffer, claimFactoryCard, canPayFactoryCost, payFactoryCost, factoryEffectPossible, factoryWorkerHexes, factoryProduceHexes, factoryResourceHex } from '../logic/factory.js';
 import { playSfx, sfxForLog } from '../logic/sfx.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
 import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, ProduceTrack, RESOURCE_ICONS, BUILDING_ICONS, Glyph } from './svg/ActionIcons.jsx';
@@ -115,6 +115,9 @@ export default function App(){
   const[teslaOffer,setTeslaOffer]=useState([]);
   // Action TOP de la carte d'usine en cours de résolution : {queue:[effets restants],pick}
   const[factoryFlow,setFactoryFlow]=useState(null);
+  // Vitrine de l'Usine (clic sur l'hex #22) : offre Ford + prototypes Tesla
+  // VISIBLES DE TOUS — motive la quête des fragments avant même d'y aller
+  const[factoryPreview,setFactoryPreview]=useState(false);
   const[moveSource,setMoveSource]=useState(null);
   // Transport partiel (mech) : choix des ouvriers/ressources à emporter avant le déplacement
   const[transportPick,setTransportPick]=useState(null);
@@ -749,10 +752,12 @@ export default function App(){
         const pool=[...factoryOffer,...(hasFrag?teslaOffer:[])];
         if(pool.length>0){
           const card=pool.find(c=>c.deck==="tesla")||pool[Math.floor(Math.random()*pool.length)];
-          n[cp]={...n[cp],visitedRR:true,factoryCard:card};
+          const bp={...n[cp]};
+          claimFactoryCard(bp,card); // consomme les fragments si prototype Tesla
+          n[cp]=bp;
           if(card.deck==="tesla")setTeslaOffer(prev=>prev.filter(c=>c.id!==card.id));
           else setFactoryOffer(prev=>prev.filter(c=>c.id!==card.id));
-          logs.push(`⚙ ${FACTIONS[n[cp].faction].name} visite la Rouge River → « ${card.name} »${card.deck==="tesla"?" (Tesla)":""} [${factoryCostLabel(card)} → ${factoryGainLabel(card)}]`);
+          logs.push(`⚙ ${FACTIONS[n[cp].faction].name} visite la Rouge River → « ${card.name} »${card.deck==="tesla"?` (Tesla, -${TESLA_FRAGMENTS_REQUIRED}🔬)`:""} [${factoryCostLabel(card)} → ${factoryGainLabel(card)}]`);
         }else{
           n[cp]={...n[cp],visitedRR:true};
           logs.push(`⚙ ${FACTIONS[n[cp].faction].name} arrive à la Rouge River — plus aucune carte d'usine disponible`);
@@ -1290,7 +1295,7 @@ export default function App(){
     // contexte d'action capturé (selAction/preActionSnapshot) du snapshot
     setSelAction(snap.selAction??null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(snap.preActionSnapshot??null);setTradePicks([]);
     setPendingBottom(null);setBottomPick(null);setCombat(null);setEncounter(null);setRougeRiver(null);
-    setEncounterBuild(false);setEncounterEnlist(null);setEncounterUpgrade(null);setFactoryFlow(null);
+    setEncounterBuild(false);setEncounterEnlist(null);setEncounterUpgrade(null);setFactoryFlow(null);setFactoryPreview(false);
     setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);setEndOfTurn(false);
   },[cloneVal]);
   const pushHistory=useCallback(()=>{ setUndoStack(s=>[...s.slice(-40),snapshotGame()]); setRedoStack([]); },[snapshotGame]);
@@ -1787,8 +1792,12 @@ export default function App(){
     }
     if(moveSource){setMoveSource(null);setTransportPick(null);return;}
     setUnitPicker(null);
+    // ── VITRINE DE L'USINE : cliquer la Rouge River (hors action en cours)
+    // ouvre la modale publique — offre Ford + prototypes Tesla visibles de
+    // tous, pour motiver la quête des fragments avant d'y aller ──
+    if(hexId===FACTORY_RR_HEX&&!selAction&&!pendingBottom&&!rougeRiver)setFactoryPreview(true);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,carryOnMove,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,carryOnMove,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes,rougeRiver]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -2316,12 +2325,12 @@ export default function App(){
     if(!rougeRiver)return;
     setPlayers(prev=>{
       const n=[...prev];const p={...n[0]};
-      p.visitedRR=true;
-      p.factoryCard=card;
+      claimFactoryCard(p,card); // consomme les fragments si prototype Tesla
       n[0]=p;return n;
     });
     if(card.deck==="tesla")setTeslaOffer(prev=>prev.filter(c=>c.id!==card.id));
     else setFactoryOffer(prev=>prev.filter(c=>c.id!==card.id));
+    if(card.deck==="tesla")addLog(`🔬 ${TESLA_FRAGMENTS_REQUIRED} Fragments Tesla consommés`);
     addLog(`⚙ Carte d'usine choisie: ${card.name}${card.deck==="tesla"?" (Tesla)":""} — HAUT ${factoryCostLabel(card)} → ${factoryGainLabel(card)} · BAS ${FACTORY_BOTTOM_DESC}`);
     setRougeRiver(null);
     const moved=(me.movedUnits||[]).length;
@@ -3165,7 +3174,7 @@ export default function App(){
         )}
 
         {/* ═══ MODAL OVERLAYS (combat/encounter/RR/dépose en route/pouvoir optionnel) ═══ */}
-        {(combat||encounter||encounterBuild||encounterEnlist||encounterUpgrade||rougeRiver||routeDrop||abilityOffer)&&(
+        {(combat||encounter||encounterBuild||encounterEnlist||encounterUpgrade||rougeRiver||factoryPreview||routeDrop||abilityOffer)&&(
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
             <div style={{maxWidth:460,width:"92%",maxHeight:"80vh",overflow:"auto",borderRadius:12,border:"1px solid var(--border-light)",boxShadow:"0 10px 50px rgba(0,0,0,0.8)"}}>
 
@@ -3481,6 +3490,69 @@ export default function App(){
                     </div>
                   )}
                 </div>
+                );
+              })()}
+
+              {/* ═══ VITRINE DE L'USINE (clic sur l'hex #22) — consultation publique :
+                  l'offre Ford restante ET les prototypes Tesla sont visibles de TOUS,
+                  même sans fragment — c'est la carotte de la quête des fragments ═══ */}
+              {factoryPreview&&!rougeRiver&&(()=>{
+                const myFrags=me.fragments||0;
+                const cardBody=(card)=>(
+                  <>
+                    <div style={{fontFamily:"var(--font-title)",fontSize:15,fontWeight:700,color:card.deck==="tesla"?"#c090e0":"#a0b8cc",marginBottom:5,paddingRight:30}}>{card.name}</div>
+                    <div style={{fontSize:13,color:"var(--text)",lineHeight:1.5}}>
+                      <span style={{color:"var(--gold-dim)",fontWeight:700}}>HAUT</span> {factoryCostLabel(card)} → {factoryGainLabel(card)}
+                    </div>
+                    <div style={{fontSize:12,color:"var(--text-dim)",lineHeight:1.5,marginTop:3}}>
+                      <span style={{color:"var(--gold-dim)",fontWeight:700}}>BAS</span> {FACTORY_BOTTOM_DESC}
+                    </div>
+                  </>
+                );
+                return(
+                  <div style={{padding:"20px",background:"linear-gradient(180deg,#1a0a08,var(--bg2))",borderRadius:10,border:"1px solid var(--danger)",animation:"slideUp 0.35s ease"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+                      <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(139,32,32,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:25,border:"2px solid #8b2020",flexShrink:0}}>🏭</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontFamily:"var(--font-title)",color:"#cc4433",fontSize:18,fontWeight:700}}>Rouge River — vitrine de l'Usine</div>
+                        <div style={{fontSize:12,color:"var(--text-dim)"}}>L'offre est publique : le premier héros arrivé choisit, chaque visiteur retire une carte.</div>
+                      </div>
+                      <button onClick={()=>setFactoryPreview(false)} className="act-btn" style={{fontSize:14,padding:"6px 12px",minHeight:34}}>✕</button>
+                    </div>
+                    {/* Offre Ford restante */}
+                    <div style={{fontSize:13,fontWeight:700,color:"#7a9ab0",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Plans Ford — {factoryOffer.length} carte{factoryOffer.length>1?"s":""} restante{factoryOffer.length>1?"s":""}</div>
+                    {factoryOffer.length===0
+                      ?<div style={{fontSize:13,color:"var(--text-muted)",fontStyle:"italic",marginBottom:10}}>Offre épuisée — tout a été raflé.</div>
+                      :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:8,maxHeight:190,overflowY:"auto",marginBottom:12}}>
+                        {factoryOffer.map(card=>(
+                          <div key={card.id} className="rr-card ford" style={{cursor:"default"}}>
+                            <div style={{position:"absolute",top:4,right:6,fontSize:12,color:"#7a9ab0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Ford</div>
+                            {cardBody(card)}
+                          </div>
+                        ))}
+                      </div>}
+                    {/* Prototypes Tesla — visibles de tous, verrouillés sans fragments */}
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                      <span style={{fontSize:13,fontWeight:700,color:"#b080e0",letterSpacing:1,textTransform:"uppercase"}}>Prototypes Tesla</span>
+                      <span style={{fontSize:12,padding:"2px 8px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:myFrags>=TESLA_FRAGMENTS_REQUIRED?"#c0f0c0":"#a080d0"}}>
+                        🔬 {myFrags}/{TESLA_FRAGMENTS_REQUIRED} fragment{TESLA_FRAGMENTS_REQUIRED>1?"s":""} — consommés à la prise
+                      </span>
+                    </div>
+                    {teslaOffer.length===0
+                      ?<div style={{fontSize:13,color:"var(--text-muted)",fontStyle:"italic"}}>Plus aucun prototype — déjà emportés.</div>
+                      :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:8}}>
+                        {teslaOffer.map(card=>(
+                          <div key={card.id} className="rr-card tesla" style={{cursor:"default",opacity:myFrags>=TESLA_FRAGMENTS_REQUIRED?1:0.75}}>
+                            <div style={{position:"absolute",top:4,right:6,fontSize:12,color:"#b080e0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>{myFrags>=TESLA_FRAGMENTS_REQUIRED?"Tesla":"🔒 Tesla"}</div>
+                            {cardBody(card)}
+                          </div>
+                        ))}
+                      </div>}
+                    <div style={{fontSize:12,color:"var(--text-dim)",marginTop:10,lineHeight:1.5}}>
+                      Les fragments s'obtiennent via certaines <b>rencontres</b> (🔬) et les <b>récompenses de combat</b> contre l'Empire. La carte se choisit à la <b>première visite du héros</b> — visiter tôt sécurise le choix Ford, attendre d'avoir {TESLA_FRAGMENTS_REQUIRED} fragments ouvre les prototypes.
+                    </div>
+                    <button onClick={()=>setFactoryPreview(false)} className="act-btn" style={{marginTop:12,width:"100%",fontWeight:600}}>Fermer</button>
+                  </div>
                 );
               })()}
 

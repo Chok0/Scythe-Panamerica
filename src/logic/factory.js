@@ -2,6 +2,7 @@
 // La carte d'usine est une 5e colonne d'action : HAUT = 1 coût + 1 gain,
 // BAS = déplacer 1 unité de 2 hex (+1 si Vitesse). Voir data/plans.js.
 import { MATS, maxBottomCubes, ENLIST_ONGOING, BUILDING_TYPES } from '../data/mats.js';
+import { TESLA_FRAGMENTS_REQUIRED } from '../data/plans.js';
 import { TERRAINS } from '../data/terrains.js';
 import { hMap } from '../data/hexes.js';
 import { getWorkerHexes } from './resources.js';
@@ -11,6 +12,15 @@ import { shuffleArray } from './hexMath.js';
 // ── Offre de l'Usine : (nb joueurs + 1) cartes tirées au hasard du deck ──
 export const drawFactoryOffer = (deck, count) =>
   shuffleArray(deck).slice(0, Math.min(deck.length, Math.max(1, count)));
+
+// ── Prendre une carte à l'Usine (humain, bot d'App.jsx, simulateur) ──
+// Marque la visite, attache la carte, et CONSOMME les fragments Tesla si
+// c'est un prototype Tesla. Mute p (copie de l'appelant).
+export const claimFactoryCard = (p, card) => {
+  p.visitedRR = true;
+  p.factoryCard = card;
+  if (card.deck === "tesla") p.fragments = Math.max(0, (p.fragments || 0) - TESLA_FRAGMENTS_REQUIRED);
+};
 
 // ── Coût du HAUT : payable sur les pistes (pièces/puissance/pop/cartes) ──
 const trackValue = (p, res) =>

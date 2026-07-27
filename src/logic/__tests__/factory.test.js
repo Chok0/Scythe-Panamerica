@@ -1,10 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   PLANS_FORD, PLANS_TESLA, PLANS_ORIGINAL, ALL_FACTORY_CARDS,
-  factoryCostLabel, factoryGainLabel, FACTORY_COL,
+  factoryCostLabel, factoryGainLabel, FACTORY_COL, TESLA_FRAGMENTS_REQUIRED,
 } from '../../data/plans.js';
 import {
-  drawFactoryOffer, canPayFactoryCost, payFactoryCost,
+  drawFactoryOffer, claimFactoryCard, canPayFactoryCost, payFactoryCost,
   factoryEffectPossible, factoryWorkerHexes, factoryResourceHex,
 } from '../factory.js';
 import { spendLowCards } from '../cards.js';
@@ -62,6 +62,29 @@ describe('offre de l\'Usine (course à l\'Usine)', () => {
 
   it('ne déborde jamais de la taille du deck', () => {
     expect(drawFactoryOffer(PLANS_TESLA, 99).length).toBe(PLANS_TESLA.length);
+  });
+});
+
+describe('prise de carte à l\'Usine (claimFactoryCard)', () => {
+  it('un prototype Tesla CONSOMME les fragments requis', () => {
+    const p = mkPlayer();
+    p.fragments = TESLA_FRAGMENTS_REQUIRED + 1;
+    claimFactoryCard(p, PLANS_TESLA[0]);
+    expect(p.visitedRR).toBe(true);
+    expect(p.factoryCard.id).toBe(PLANS_TESLA[0].id);
+    expect(p.fragments).toBe(1);
+  });
+
+  it('une carte Ford ne touche pas aux fragments', () => {
+    const p = mkPlayer();
+    p.fragments = 2;
+    claimFactoryCard(p, PLANS_FORD[0]);
+    expect(p.fragments).toBe(2);
+    expect(p.factoryCard.id).toBe(PLANS_FORD[0].id);
+  });
+
+  it('la quête Tesla exige 2 fragments', () => {
+    expect(TESLA_FRAGMENTS_REQUIRED).toBe(2);
   });
 });
 
