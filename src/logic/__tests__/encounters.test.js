@@ -3,11 +3,21 @@ import { ENCOUNTERS } from '../../data/encounters.js';
 import { resolveBotEncounter } from '../botEncounters.js';
 import { createPlayer } from '../player.js';
 
-describe('deck de rencontres — 15 cartes Panamerica + 12 triptyques du jeu original', () => {
-  it('27 cartes, ids uniques, 12 marquées src:"original"', () => {
-    expect(ENCOUNTERS.length).toBe(27);
-    expect(new Set(ENCOUNTERS.map(c => c.id)).size).toBe(27);
+describe('deck de rencontres — 15 Panamerica + 12 triptyques originaux + 6 extension', () => {
+  it('33 cartes, ids uniques, 12 marquées src:"original"', () => {
+    expect(ENCOUNTERS.length).toBe(33);
+    expect(new Set(ENCOUNTERS.map(c => c.id)).size).toBe(33);
     expect(ENCOUNTERS.filter(c => c.src === "original").length).toBe(12);
+  });
+
+  it('~50% des cartes offrent un choix Fragment Tesla, à des positions variées', () => {
+    const hasFrag = (c) => c.choices.some(ch => /Fragment/.test(ch.desc));
+    const fragCards = ENCOUNTERS.filter(hasFrag);
+    expect(fragCards.length).toBe(16); // 16/33 ≈ 48.5%
+    // positions variées : le fragment n'est pas cantonné à l'option 2
+    const slots = new Set();
+    fragCards.forEach(c => c.choices.forEach((ch, i) => { if (/Fragment/.test(ch.desc)) slots.add(i); }));
+    expect(slots.size).toBe(3);
   });
 
   it('structure du triptyque : 3 options, la 1re gratuite gagne +1 pop, les coûts sont gardés', () => {
