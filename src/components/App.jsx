@@ -21,7 +21,7 @@ import SetupScreen from './SetupScreen.jsx';
 import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
-import { getValidMoves, findPathWaypoints, marshToll } from '../logic/movement.js';
+import { getValidMoves, findPathWaypoints, marshToll, marshFree } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer } from '../logic/player.js';
 import { botTurn, estimateScore } from '../logic/bot.js';
@@ -662,8 +662,8 @@ export default function App(){
             logs.push(`🤖 ${bf.name}: +2 Métal`);
           }
           if(p.empireKills>=3&&!p.starLiberator){p.stars++;p.starLiberator=true;logs.push(`⭐💀 ${bf.name}: LIBÉRATEUR !`);}
-          // Chimère: Bayou captures destroyed Empire mech (1×/game)
-          if(p.faction==="bayou"&&!p.chimereUsed){
+          // Chimère (slot 2): Bayou captures destroyed Empire mech (1×/game)
+          if(p.faction==="bayou"&&!p.chimereUsed&&(p.unlockedAbilities||[]).includes(2)){
             p.mechs=[...p.mechs,{id:`${p.faction}_chimere`,hexId:botHeroHex}];
             p.chimereUsed=true;p.capturedMech=(p.capturedMech||0)+1;
             logs.push(`🤖🧟 ${bf.name}: Chimère ! Mecha Empire capturé !`);
@@ -1163,22 +1163,19 @@ export default function App(){
   const ENLIST_BONUSES=ENLIST_IMMEDIATE; // bonus immédiat par colonne (source unique dans mats.js)
   // colIdx : action bottom qui reçoit la recrue (→ bonus immédiat de la section)
   // recruitIdx : QUELLE recrue permanente poser (0-3, indépendante de colIdx)
-  const doEnlist=useCallback((colIdx,recruitIdx,overrideRes)=>{
+  const doEnlist=useCallback((colIdx,recruitIdx)=>{
     if(!me||(me.recruits||0)>=4)return;
     if((me.enlistMap||[])[colIdx]!=null){addLog(`⚠ Déjà une recrue sur ${BOTTOM[colIdx]}`);return;}
     if((me.enlistMap||[]).includes(recruitIdx)){addLog(`⚠ Recrue ${ENLIST_ONGOING[recruitIdx].label} déjà posée`);return;}
     const costs=getBottomCost(me);
     const cost=costs[3]; // Enlist is bottom col 3
     const effectiveQty=cost.qty;
-    // Ressource alternative de faction (Chasse des Marais : le Bayou enrôle
-    // au bois — sa péninsule n'a qu'un hex de nourriture)
-    const enlistRes=overrideRes||cost.res;
-    if(countRes(me,enlistRes)<effectiveQty){addLog(`⚠ ${effectiveQty} ${resFR(enlistRes)} requis`);return;}
+    if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${resFR(cost.res)} requis`);return;}
     const bonus=ENLIST_BONUSES[colIdx];
     const recruit=ENLIST_ONGOING[recruitIdx];
     const colBonus=cost.bonus||0; // bonus $ imprimé de la colonne Enlist
     setPlayers(prev=>{
-      const n=[...prev];let p=spendRes(n[0],enlistRes,effectiveQty);
+      const n=[...prev];let p=spendRes(n[0],cost.res,effectiveQty);
       p.recruits=(p.recruits||0)+1;
       p.enlistMap=[...(p.enlistMap||[null,null,null,null])];
       p.enlistMap[colIdx]=recruitIdx; // stocke la recrue choisie (pas un booléen)
@@ -1188,7 +1185,7 @@ export default function App(){
       if(earned){p.stars++;p.starRecruits=true;}
       n[0]=p;return n;
     });
-    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${frBot(BOTTOM[colIdx])} (-${effectiveQty} ${resFR(enlistRes)}${colBonus>0?`, +${colBonus}$`:""}) — immédiat ${bonus.label}`);
+    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${frBot(BOTTOM[colIdx])} (-${effectiveQty} ${resFR(cost.res)}${colBonus>0?`, +${colBonus}$`:""}) — immédiat ${bonus.label}`);
     addLog(`   Permanent ${recruit.icon} ${recruit.label} quand vous/voisins faites ${BOTTOM[colIdx]}`);
     if((me.recruits||0)+1>=4)addLog(`⭐ 4 Recrues enrôlées !`);
     finishBottom(3);
@@ -1642,6 +1639,10 @@ export default function App(){
       const toll=marshToll(p,hexId,moveSource.unitType,marshCarried);
       if(toll){
         addLog(toll);
+        // Sang du Marais : le Bayou traverse gratuitement — on garde le log
+        // d'information mais aucune perte n'est à afficher.
+      }
+      if(toll&&!marshFree(p.faction)){
         // Toast de perte au centre — le système de floaters automatique ne
         // suit que les gains, les pertes du péage sont poussées ici
         const bx=window.innerWidth*0.5;const by=window.innerHeight*0.40;let stack=0;
@@ -1895,7 +1896,7 @@ export default function App(){
             const loot=Math.min(n[0].coins||0,2);
             if(loot>0){n[atkIdx].coins+=loot;n[0].coins-=loot;}
           }
-          if(n[atkIdx].faction==="bayou"&&!n[atkIdx].chimereUsed&&prev[0].mechs.some(m=>m.hexId===combat.hexId)){
+          if(n[atkIdx].faction==="bayou"&&!n[atkIdx].chimereUsed&&(n[atkIdx].unlockedAbilities||[]).includes(2)&&prev[0].mechs.some(m=>m.hexId===combat.hexId)){
             n[atkIdx].mechs=[...n[atkIdx].mechs,{id:`${n[atkIdx].faction}_chimere`,hexId:combat.hexId}];
             n[atkIdx].chimereUsed=true;n[atkIdx].capturedMech=(n[atkIdx].capturedMech||0)+1;
           }
@@ -1971,7 +1972,7 @@ export default function App(){
           // Empire attacked → player stays in place, no transport needed
           p.empireKills=(p.empireKills||0)+1;
           if(p.empireKills>=3&&!p.starLiberator){p.stars++;p.starLiberator=true;addLog(`⭐💀 LIBÉRATEUR ! 3 Empire détruits !`);}
-          if(p.faction==="bayou"&&!p.chimereUsed){
+          if(p.faction==="bayou"&&!p.chimereUsed&&(p.unlockedAbilities||[]).includes(2)){
             p.mechs=[...p.mechs,{id:`${p.faction}_chimere`,hexId:combat.hexId}];
             p.chimereUsed=true;p.capturedMech=(p.capturedMech||0)+1;
             addLog(`🧟 Chimère ! Mecha Empire capturé → 5e mecha Bayou !`);
@@ -2133,8 +2134,8 @@ export default function App(){
           });
           addLog(`🏴‍☠️ Flibuste ! +2💰 pillées sur ${ef.name}`);
         }
-        // Chimère: Bayou captures 1 enemy mech (1×/game, becomes 5th mech)
-        if(me.faction==="bayou"&&!me.chimereUsed&&preEnemyMechs.length>0){
+        // Chimère (slot 2, avec Flibuste): Bayou captures 1 enemy mech (1×/game, becomes 5th mech)
+        if(me.faction==="bayou"&&!me.chimereUsed&&(me.unlockedAbilities||[]).includes(2)&&preEnemyMechs.length>0){
           setPlayers(prev=>{
             const n=[...prev];
             const p={...n[0],mechs:[...n[0].mechs]};
@@ -3352,7 +3353,7 @@ export default function App(){
                 const conf={
                   servitude:{icon:"⛓",title:"Servitude",desc:`Capturer un ouvrier chassé sur #${o.hexId} ? Il rejoint vos rangs (−2 Popularité · ${me.capturedWorkers||0}/2 captures).`,yes:"⛓ Capturer (−2 Pop)"},
                   trap:{icon:"🪤",title:"Tierra Minada",desc:`Poser un piège sur #${o.hexId} ? (${(me.trapTokens||[]).length}/4 posés — inflige −3⚡ à l'ennemi qui le déclenche)`,yes:"🪤 Poser le piège"},
-                  flag:{icon:"🏴",title:"Comptoir",desc:`Établir un comptoir sur #${o.hexId} ? (${(me.flagTokens||[]).length}/4 — +1 territoire au score ; rappel : l'objectif de faction exige des comptoirs NON adjacents entre eux)`,yes:"🏴 Établir le comptoir"},
+                  flag:{icon:"🏴",title:"Comptoir",desc:`Établir un comptoir sur #${o.hexId} ? (${(me.flagTokens||[]).length}/4 — +1 territoire et +2$ au score ; rappel : « Réseau Invisible » exige les 4 comptoirs NON adjacents entre eux, dont au moins un sur un Lac)`,yes:"🏴 Établir le comptoir"},
                 }[o.type];
                 const apply=()=>{
                   setPlayers(prev=>{
@@ -4359,21 +4360,7 @@ export default function App(){
                   </div>;
                 })()}
                 {ba==="Build"&&!maxed&&(hasRes&&buildableHexes.length>0&&availBuildings.length>0?<div>{!bottomPick||bottomPick.packUp?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{availBuildings.map(bt=><button key={bt.type} onClick={()=>setBottomPick({building:bt})} className="act-btn">{bt.icon} {bt.name}</button>)}</div>:<div><div style={{fontSize:13,marginBottom:6}}>Placer {bottomPick.building.icon} sur :</div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{buildableHexes.map(hid=><button key={hid} onClick={()=>doBuild(hid,bottomPick.building.type)} className="act-btn">#{hid}</button>)}</div><button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre</button></div>}</div>:<div style={{fontSize:13,color:"var(--text-muted)"}}>Insuffisant</div>)}
-                {ba==="Enlist"&&!maxed&&(()=>{
-                  // Chasse des Marais (Bayou) : enrôler au bois si la
-                  // nourriture manque — même flux que la ressource
-                  // alternative de Déployer
-                  const enlistAlt=FACTIONS[me.faction]?.enlistAltRes;
-                  const altOk=enlistAlt&&countRes(me,enlistAlt)>=bc.qty;
-                  if(!hasRes&&altOk&&!bottomPick?.enlistRes){
-                    return <div>
-                      <div style={{fontSize:12,color:"var(--brass)",marginBottom:6}}>🌿 {FACTIONS[me.faction].enlistAltName} — enrôler avec :</div>
-                      <button onClick={()=>setBottomPick({enlistRes:enlistAlt})} className="act-btn" style={{width:"100%",borderColor:"#5a8a3a"}}>
-                        {enlistAlt==="bois"?"🪵":"📦"} {resFR(enlistAlt)} ({countRes(me,enlistAlt)}) — au lieu de {resFR(bc.res)}
-                      </button>
-                    </div>;
-                  }
-                  return (hasRes||altOk)?(()=>{
+                {ba==="Enlist"&&!maxed&&(hasRes?(()=>{
                   // Étape 1 : choisir la SECTION (→ bonus immédiat de la colonne)
                   // Étape 2 : choisir la RECRUE permanente à y poser (décorrélée)
                   if(!bottomPick||bottomPick.enlistCol==null){
@@ -4397,7 +4384,7 @@ export default function App(){
                     <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:6}}>
                       {ENLIST_ONGOING.map((rec,ri)=>{
                         const used=(me.enlistMap||[]).includes(ri);
-                        return <button key={ri} onClick={()=>{doEnlist(col,ri,bottomPick?.enlistRes);setBottomPick(null);}} className="act-btn" disabled={used} style={{textAlign:"center",opacity:used?0.3:1,cursor:used?"not-allowed":"pointer",borderColor:used?"var(--border)":"#5a9a7a"}}>
+                        return <button key={ri} onClick={()=>{doEnlist(col,ri);setBottomPick(null);}} className="act-btn" disabled={used} style={{textAlign:"center",opacity:used?0.3:1,cursor:used?"not-allowed":"pointer",borderColor:used?"var(--border)":"#5a9a7a"}}>
                           <div style={{fontWeight:700,fontSize:15}}>{rec.icon} {rec.label}</div>
                           <div style={{fontSize:12,color:"#8fd0b0",marginTop:1}}>à chaque {BOTTOM[col]} (vous/voisins)</div>
                           {used&&<div style={{fontSize:12,color:"#8A3030"}}>déjà posée</div>}
@@ -4406,8 +4393,7 @@ export default function App(){
                     </div>
                     <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre section</button>
                   </div>;
-                })():<div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
-                })()}
+                })():<div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>)}
                 {maxed&&<div style={{fontSize:14,color:"var(--success)"}}>{ba} au maximum</div>}
                 <button onClick={requestEndTurn} className="act-btn" style={{marginTop:8,width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)"}}>Passer →</button>
               </div>

@@ -22,7 +22,12 @@ export const COMBAT_ABILITIES = {
     apply: () => ({ powerBonus: 0, cardBonus: 0 }),
   },
   bayou: {
-    name: "Flibuste", desc: "Victoire → perdant donne 2 pièces",
+    // v0.15 — Chimère fusionnée ici : le slot 2 est le « butin du pirate ».
+    // Elle était capacité de FACTION, mais ne se déclenchait qu'une fois par
+    // partie et sur une victoire contre un mecha — quasi jamais en partie
+    // standard (Empire désactivé). La place de faction revient au Sang du
+    // Marais, actif dès le tour 1.
+    name: "Flibuste", desc: "Victoire → perdant donne 2 pièces · Chimère : si la victime était un mecha, capturez-le (1×/partie, devient votre 5e mecha)",
     apply: () => ({ powerBonus: 0, cardBonus: 0 }),
   },
   dominion: {

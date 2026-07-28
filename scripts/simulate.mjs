@@ -274,6 +274,9 @@ const playGame = (gameIdx, log) => {
         round });                       // pivot stratégique : la partie traîne-t-elle ?
       let p = result.player;
       if (log) result.logs.forEach(l => log(`  ${l}`));
+      // Instrumentation v0.15 : combien de fois ce bot met le pied dans un
+      // marécage ? (le Bayou y passe gratuitement — c'est sa sortie d'îlot)
+      p._marsh = (p._marsh || 0) + result.logs.filter(l => /marécage/i.test(l)).length;
 
       // ── PvE : le bot attaque l'Empire s'il a bougé sur son hex (App.jsx) ──
       const empireOnHero = Object.entries(empire).find(([, hid]) => hid === p.hero);
@@ -297,7 +300,8 @@ const playGame = (gameIdx, log) => {
             p.resources[hid].metal = (p.resources[hid].metal || 0) + 2;
           }
           if (p.empireKills >= 3 && !p.starLiberator) { p.stars++; p.starLiberator = true; }
-          if (p.faction === 'bayou' && !p.chimereUsed) {
+          // Chimère : slot 2 (fusionnée avec Flibuste depuis v0.15)
+          if (p.faction === 'bayou' && !p.chimereUsed && (p.unlockedAbilities || []).includes(2)) {
             p.mechs = [...p.mechs, { id: `${p.faction}_chimere`, hexId: p.hero }];
             p.chimereUsed = true; p.capturedMech = (p.capturedMech || 0) + 1;
           }
@@ -460,6 +464,7 @@ const playGame = (gameIdx, log) => {
     builtGare: (p.buildings || []).some(b => b.type === 'gare'),
     traps: (p.trapTokens || []).length, flags: (p.flagTokens || []).length,
     imperialCoins: p.imperialCoins || 0, chimere: !!p.chimereUsed, capturedWorkers: p.capturedWorkers || 0,
+    marsh: p._marsh || 0,
     encounters: p.encounters || 0,
     fragments: p.fragments || 0, teslaCard: p.factoryCard?.deck === "tesla",
     ...scorePlayer(p, structureBonus, players),
@@ -531,7 +536,7 @@ const avg = (arr) => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length) 
 
 const byFaction = {}; const byMat = {}; const byProfile = {}; const byFactionProfile = {};
 Object.keys(BOT_PROFILES).forEach(k => { byProfile[k] = { games: 0, wins: 0, scores: [], stars: [], pops: [] }; });
-FACTION_IDS.forEach(f => { byFaction[f] = { games: 0, wins: 0, triggers: 0, scores: [], stars: [], abilities: [], gares: 0, traps: [], flags: [], flagPts: [], imperial: [], chimeres: 0, captured: [], encounters: [], pops: [], terrs: [], coins: [], starScores: [], terScores: [], resScores: [] }; });
+FACTION_IDS.forEach(f => { byFaction[f] = { games: 0, wins: 0, triggers: 0, scores: [], stars: [], abilities: [], gares: 0, traps: [], flags: [], flagPts: [], imperial: [], chimeres: 0, captured: [], marsh: [], encounters: [], pops: [], terrs: [], coins: [], starScores: [], terScores: [], resScores: [] }; });
 MATS.forEach(m => { byMat[m.name] = { games: 0, wins: 0, scores: [] }; });
 const starCounts = {}; STAR_FLAGS.forEach(([, l]) => { starCounts[l] = { all: 0, winners: 0 }; });
 let stalemates = 0; const allIssues = []; const roundsArr = [];
@@ -551,7 +556,7 @@ games.forEach(g => {
     bf.stars.push(s.stars);
     bf.abilities.push(s.abilities); if (s.builtGare) bf.gares++;
     bf.traps.push(s.traps); bf.flags.push(s.flags); bf.flagPts.push(s.flagBonusPts || 0);
-    bf.imperial.push(s.imperialCoins); if (s.chimere) bf.chimeres++;
+    bf.imperial.push(s.imperialCoins); if (s.chimere) bf.chimeres++; bf.marsh.push(s.marsh);
     bf.captured.push(s.capturedWorkers); bf.encounters.push(s.encounters);
     bf.pops.push(s.pop); bf.terrs.push(s.territories); bf.coins.push(s.coins);
     bf.starScores.push(s.starScore); bf.terScores.push(s.terScore); bf.resScores.push(s.resScore);
@@ -629,7 +634,7 @@ FACTION_IDS.forEach(f => {
     : f === 'bayou' ? `chimère ${pct(d.chimeres, d.games)}`
     : f === 'confederation' ? `ouvriers capturés ${avg(d.captured).toFixed(2)}`
     : `—`;
-  P(`  ${FACTIONS[f].name.padEnd(16)} abilities mech ${avg(d.abilities).toFixed(1)}/4 | gare ${pct(d.gares, d.games).padStart(6)} | rencontres ${avg(d.encounters).toFixed(1)} | ${extra}`);
+  P(`  ${FACTIONS[f].name.padEnd(16)} abilities mech ${avg(d.abilities).toFixed(1)}/4 | gare ${pct(d.gares, d.games).padStart(6)} | rencontres ${avg(d.encounters).toFixed(1)} | marécages ${avg(d.marsh).toFixed(2)} | ${extra}`);
 });
 
 P(`\n── Win rate par plateau joueur ──`);

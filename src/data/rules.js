@@ -1,6 +1,34 @@
 /**
  * Structured game rules data for Scythe: Panamerica
  */
+import { FACTIONS } from './factions.js';
+import { COMBAT_ABILITIES } from './combat.js';
+import { TERRAINS } from './terrains.js';
+import { getMechAbilities } from './mechAbilities.js';
+
+// v0.15 — les listes « Riverwalk » et « Capacités de combat » étaient copiées
+// à la main et avaient dérivé (elles annonçaient encore les terrains d'avant
+// le check-up des rivières). Elles sont désormais DÉRIVÉES des données : plus
+// de désynchronisation possible entre la règle affichée et le code qui joue.
+const tLabel = (t) => TERRAINS[t]?.label || t;
+const RIVERWALK_LIST = Object.values(FACTIONS).map(f =>
+  `${f.name} (${f.rwName}) — ${(f.riverwalk || []).map(tLabel).join(" ↔ ")}`);
+const COMBAT_LIST = Object.entries(FACTIONS).map(([id, f]) =>
+  `${f.name} — ${COMBAT_ABILITIES[id]?.name} : ${COMBAT_ABILITIES[id]?.desc}`);
+
+// Fiches de faction — également dérivées : les descriptions écrites à la main
+// annonçaient encore les riverwalks, capacités et objectifs d'avant v0.15.
+const FACTION_PAGES = Object.entries(FACTIONS).map(([id, f]) => ({
+  title: f.isExtension ? `${f.name} (Extension)` : f.name,
+  content: `Héros: ${f.hero} & ${f.companion} | ⚡${f.power} 🃏${f.cards}`,
+  list: [
+    `Ability: ${f.ability} — ${f.abilityDesc}`,
+    `Riverwalk (${f.rwName}): ${(f.riverwalk || []).map(tLabel).join(" ↔ ")}`,
+    `Combat: ${COMBAT_ABILITIES[id]?.name} (${COMBAT_ABILITIES[id]?.desc})`,
+    `Position (${getMechAbilities(id)[3].name}): ${getMechAbilities(id)[3].desc}`,
+    `Objectif de Faction: ${f.fObj.name} — ${f.fObj.desc}`,
+  ],
+}));
 
 export const RULES = [
   {
@@ -56,7 +84,7 @@ export const RULES = [
           "Forêt 🌲 — produit du Bois",
           "Village 🏘 — recrute des Ouvriers",
           "Lac 〰 — infranchissable (sauf capacités spéciales)",
-          "Marécage ≋ — pas de ressource. Franchissable par tous, mais la traversée se paie : -1 Popularité par ouvrier, -1 Puissance par héros/mecha, et l'unité doit s'y arrêter"
+          "Marécage ≋ — pas de ressource. Franchissable par tous, mais la traversée se paie : -1 Popularité par ouvrier, -1 Puissance par héros/mecha, et l'unité doit s'y arrêter. Exception : le Bayou (Sang du Marais) traverse gratuitement et sans s'arrêter"
         ]
       },
       {
@@ -88,7 +116,7 @@ export const RULES = [
       },
       {
         title: "Capture & Méchas",
-        content: "Le Bayou peut capturer des mechas ennemis. La Confédération peut capturer des ouvriers ennemis. Ces mécaniques uniques alimentent leurs objectifs de faction respectifs."
+        content: "Le Bayou peut capturer un mecha ennemi vaincu (Chimère, 1×/partie, une fois son mecha de combat déployé). La Confédération peut capturer des ouvriers ennemis (Servitude, capacité de faction). Ces mécaniques uniques alimentent leurs objectifs de faction respectifs."
       }
     ]
   },
@@ -132,7 +160,7 @@ export const RULES = [
       },
       {
         title: "Marécages (péage)",
-        content: "Tout le monde peut entrer sur un marécage, mais la traversée coûte -1 Popularité par ouvrier et -1 Puissance par unité de combat (héros ou mecha) qui y entre — les ouvriers transportés par un mecha paient aussi. Impossible de le traverser sans s'arrêter : même avec un déplacement de 2 hex, l'unité est stoppée sur le marécage."
+        content: "Tout le monde peut entrer sur un marécage, mais la traversée coûte -1 Popularité par ouvrier et -1 Puissance par unité de combat (héros ou mecha) qui y entre — les ouvriers transportés par un mecha paient aussi. Impossible de le traverser sans s'arrêter : même avec un déplacement de 2 hex, l'unité est stoppée sur le marécage. SEULE EXCEPTION — le Bayou : sa capacité de faction « Sang du Marais » lui offre le passage gratuit et sans arrêt dès le tour 1, et son mecha Pirogue (slot 4) lui permet ensuite de bondir d'un marécage à n'importe quel autre du plateau. Les marécages sont sa route : c'est ainsi qu'il quitte son îlot sans franchir de rivière."
       },
       {
         title: "La Base (drapeau)",
@@ -141,14 +169,7 @@ export const RULES = [
       {
         title: "Riverwalk",
         content: "Chaque faction a une capacité de traversée de rivière spécifique, débloquée avec un mecha :",
-        list: [
-          "Confédération (Gué) — Plaine ↔ Village",
-          "Frente Libre (Sentier) — Sierra ↔ Désert",
-          "Nations Souv. (Piste) — Plaine ↔ Forêt",
-          "Acadiane (Portage) — Forêt ↔ Village",
-          "Bayou (Mangrove) — Désert ↔ Village",
-          "Dominion (Queen's Road) — Forêt ↔ Plaine"
-        ]
+        list: RIVERWALK_LIST
       },
       {
         title: "Transport",
@@ -180,14 +201,7 @@ export const RULES = [
       {
         title: "Capacités de Combat (Mecha #3)",
         content: "Chaque faction a une capacité de combat unique, débloquée avec le 3ème mecha :",
-        list: [
-          "Confédération — Cavaliers : +2 Puissance si attaquant",
-          "Frente Libre — Peuple Armé : +1 Carte si ≥1 ouvrier allié sur l'hex",
-          "Nations Souv. — Ronin : +1 Carte si mecha seul (0 ouvrier allié)",
-          "Acadiane — White Flag : Peut refuser le combat (retraite + 2 Pop)",
-          "Bayou — Flibuste : Victoire → perdant donne 2 pièces",
-          "Dominion — Discipline : +2 Puissance si plus de Cartes Combat que l'adversaire"
-        ]
+        list: COMBAT_LIST
       }
     ]
   },
@@ -325,66 +339,7 @@ export const RULES = [
     title: "Factions",
     icon: "🏴",
     sections: [
-      {
-        title: "Confédération",
-        content: "Héros: J. Cole & Dixie | ⚡4 🃏1",
-        list: [
-          "Ability: Servitude — capacité spéciale de faction",
-          "Riverwalk (Gué): Plaine ↔ Village",
-          "Combat: Cavaliers (+2 Pui si attaquant)",
-          "Objectif de Faction: Le Joug — 2 ouvriers capturés + 3+ hex avec ouvriers"
-        ]
-      },
-      {
-        title: "Frente Libre",
-        content: "Héros: E. Rojas & Trueno | ⚡2 🃏3",
-        list: [
-          "Ability: Tierra Minada — pose des pièges sur la carte",
-          "Riverwalk (Sentier): Sierra ↔ Désert",
-          "Combat: Peuple Armé (+1 Carte si ouvrier allié sur hex)",
-          "Objectif de Faction: Terre Libérée — 4 Traps + 3 ouvriers sur Sierras/Déserts"
-        ]
-      },
-      {
-        title: "Nations Souveraines",
-        content: "Héros: Aiyana & Koda | ⚡3 🃏2",
-        list: [
-          "Ability: Esprit Sauvage — affinité avec la nature",
-          "Riverwalk (Piste): Plaine ↔ Forêt",
-          "Combat: Ronin (+1 Carte si mecha seul)",
-          "Objectif de Faction: Le Grand Retour — 5+ hex Plaine/Forêt contrôlés"
-        ]
-      },
-      {
-        title: "Acadiane",
-        content: "Héros: M. Thibodeau & Brume | ⚡1 🃏3",
-        list: [
-          "Ability: Comptoir — pose des comptoirs commerciaux",
-          "Riverwalk (Portage): Forêt ↔ Village",
-          "Combat: White Flag (peut refuser → retraite + 2 Pop)",
-          "Objectif de Faction: Réseau Invisible — 4 Comptoirs + héros sur un Lac"
-        ]
-      },
-      {
-        title: "Bayou",
-        content: "Héros: Cap. Zeke & Croc | ⚡2 🃏3",
-        list: [
-          "Ability: Chimère — capacité spéciale liée aux créatures",
-          "Riverwalk (Mangrove): Désert ↔ Village",
-          "Combat: Flibuste (victoire → perdant donne 2 pièces)",
-          "Objectif de Faction: Le Prédateur — 1 mecha capturé + 2 Empire détruits"
-        ]
-      },
-      {
-        title: "Dominion (Extension)",
-        content: "Héros: Col. Whitfield & Sterling | ⚡3 🃏2",
-        list: [
-          "Ability: Commerce Impérial — génère des pièces via le commerce",
-          "Riverwalk (Queen's Road): Forêt ↔ Plaine",
-          "Combat: Discipline (+2 Pui si plus de Cartes Combat que l'adversaire)",
-          "Objectif de Faction: Le Tribut — 10+ pièces via Commerce Impérial"
-        ]
-      }
+      ...FACTION_PAGES
     ]
   },
   {

@@ -91,7 +91,16 @@ export const LEGACY_MAP = {
 // (28 reste forêt : le bois du Bayou vient de là)
 const V3_TERRAIN_CHANGES = {
   6: "village", 8: "foret", 11: "toundra", 12: "plaine", 16: "montagne",
-  37: "montagne", 38: "desert",
+  37: "montagne",
+  // v0.15 — ÉCHANGE 38 ↔ 30 : le Bayou n'avait qu'UN hex de nourriture à deux
+  // pas de son départ (contre 2-3 aux autres) alors qu'Enrôler coûte de la
+  // nourriture sur les six plateaux : recrues 2,6/4 et étoile des recrues à
+  // 43 % contre 93 % pour les Nations. Le champ passe donc à #38, adjacent à
+  // son village de départ (#35), et le désert au centre (#30), près de
+  // l'Usine — une correction de CARTE plutôt qu'une capacité de faction
+  // supplémentaire : le Bayou doit sortir de son îlot, pas recevoir un
+  // passe-droit.
+  38: "champs", 30: "desert",
 };
 const V3_HEXES = DEFAULT_HEXES.map(h => V3_TERRAIN_CHANGES[h.id] ? { ...h, t: V3_TERRAIN_CHANGES[h.id] } : h);
 // Rivières retirées en v3 : bords de lacs superflus (5, 13) et abords des

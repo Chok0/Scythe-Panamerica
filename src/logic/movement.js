@@ -25,6 +25,12 @@ export const getRailNetwork = (fromId, rails, blockedHexes) => {
   return visited;
 };
 
+// « Sang du Marais » (Bayou) : le marécage est sa ROUTE, pas un obstacle —
+// ni péage ni arrêt forcé, et ce dès le tour 1 (capacité de FACTION, pas de
+// mecha : c'est l'analogue du « Seaworthy » nordique du jeu original).
+// Le mecha Pirogue (slot 3) reste l'étage au-dessus : le bond marais↔marais.
+export const marshFree = (factionId) => factionId === "bayou";
+
 // 1-step movement from a single hex (no rail — rail handled in getValidMoves)
 export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) => {
   const f = FACTIONS[factionId], adj = ADJ[fromId] || [];
@@ -102,7 +108,8 @@ export const getValidMoves = (fromId, factionId, abilities, player, rails, unitT
     const reach = (id) => {
       if (id !== fromId && !all.has(id)) {
         all.add(id);
-        if (hMap[id]?.t !== "marecage" && !(blockedHexes && blockedHexes.has(id))) next.push(id);
+        const stopsHere = hMap[id]?.t === "marecage" && !marshFree(factionId);
+        if (!stopsHere && !(blockedHexes && blockedHexes.has(id))) next.push(id);
       }
     };
     frontier.forEach(fid => {
@@ -125,9 +132,11 @@ export const getValidMoves = (fromId, factionId, abilities, player, rails, unitT
 // Tout le monde peut entrer sur un marécage, mais la traversée se paie :
 //   -1 popularité par OUVRIER qui y entre, -1 puissance par unité de COMBAT
 //   (héros ou mecha) — les ouvriers transportés par un mecha paient aussi.
+// Exception : le Bayou (Sang du Marais) ne paie rien et ne s'arrête pas.
 // Mute `p` en place et rend un libellé de log ("" si pas de marécage).
 export const marshToll = (p, toId, unitType, carriedWorkers = 0) => {
   if (hMap[toId]?.t !== "marecage") return "";
+  if (marshFree(p?.faction)) return `≋ Sang du Marais : traversée du marécage #${toId} sans péage`;
   const parts = [];
   if (unitType === "worker") {
     p.pop = Math.max(0, p.pop - 1);
@@ -158,7 +167,7 @@ export const findPathWaypoints = (fromId, toId, factionId, abilities, player, ra
     const cur = queue.shift();
     // Un marécage ou un hex ennemi ne peut pas être traversé (arrêt forcé) :
     // on n'étend pas le chemin depuis là, sauf s'il est l'hex de départ.
-    if (cur !== fromId && (hMap[cur]?.t === "marecage" || (blockedHexes && blockedHexes.has(cur)))) continue;
+    if (cur !== fromId && ((hMap[cur]?.t === "marecage" && !marshFree(factionId)) || (blockedHexes && blockedHexes.has(cur)))) continue;
     const nexts = new Set(getValidMoves1Step(cur, factionId, abilities, player, rails));
     // Même règle que getValidMoves : le réseau de rails ne s'emprunte que
     // depuis l'hex de DÉPART (à bord dès le début), pas en cours de route

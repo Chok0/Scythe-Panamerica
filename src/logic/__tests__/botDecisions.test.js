@@ -220,30 +220,22 @@ describe('Identité du Bayou — prédateur, et verrou alimentaire levé', () =>
     expect(fo.check({ ...p, capturedMech: 0 })).toBe(false);
   });
 
-  it('Chasse des Marais : il enrôle au bois quand la nourriture manque', () => {
-    const p = createPlayer('bayou', 1, true);
-    p.botProfile = 'equilibre'; p.botNoise = 0;
-    const hex = p.workers[0].hexId;
-    p.resources = { [hex]: { bois: 9 } };   // que du bois, zéro nourriture
-    let enlisted = false;
-    for (let i = 0; i < 12 && !enlisted; i++) {
-      const r = run({ ...p, lastCol: i % 4, workers: p.workers.map(w => ({ ...w })), mechs: [] });
-      if ((r.player.recruits || 0) > 0) enlisted = true;
-    }
-    expect(enlisted, 'le Bayou reste bloqué sur Enrôler faute de nourriture').toBe(true);
+  it('la nourriture lui est accessible à 1 hex (échange de carte 38 ↔ 30)', async () => {
+    const { ADJ } = await import('../../data/hexes.js');
+    const { FACTIONS } = await import('../../data/factions.js');
+    const start = FACTIONS.bayou.workerHex;               // [35, 28]
+    const near = new Set(start.flatMap(h => [h, ...(ADJ[h] || [])]));
+    const foodAdj = [...near].filter(h => ["champs", "plaine"].includes(hMap[h]?.t));
+    expect(foodAdj.length, 'le Bayou est encore affamé').toBeGreaterThanOrEqual(1);
+    expect(hMap[38]?.t).toBe("champs");                   // le champ est venu à lui
+    expect(hMap[30]?.t).toBe("desert");                   // le désert est parti au centre
   });
 
-  it('une faction sans ressource alternative reste bloquée (la règle n\'est pas universelle)', () => {
-    const p = createPlayer('nations', 1, true); // pas d'enlistAltRes
-    p.botProfile = 'equilibre'; p.botNoise = 0;
-    const hex = p.workers[0].hexId;
-    p.resources = { [hex]: { bois: 9 } };
-    let enlisted = false;
-    for (let i = 0; i < 12; i++) {
-      const r = run({ ...p, lastCol: i % 4, workers: p.workers.map(w => ({ ...w })), mechs: [] });
-      if ((r.player.recruits || 0) > 0) enlisted = true;
-    }
-    expect(enlisted).toBe(false);
+  it('« Bois flotté » retiré : plus de doublon avec l\'Esprit Sauvage des Nations', async () => {
+    const { FACTIONS } = await import('../../data/factions.js');
+    expect(FACTIONS.bayou.deployAltRes).toBeUndefined();
+    expect(FACTIONS.nations.deployAltRes).toBe("bois");   // l'identité reste aux Nations
+    expect(FACTIONS.acadiane.deployAltRes).toBe("petrole"); // et à l'Acadiane
   });
 });
 

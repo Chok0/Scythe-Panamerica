@@ -109,29 +109,43 @@ export const BOT_PROFILES = {
     buildPriority: ["arsenal", "memorial", "gare", "moulin"],
   },
   // v0.15 — Profil PRÉDATEUR, écrit pour le Bayou : un pirate des marais qui
-  // chasse les MACHINES. Chimère lui offre un 5e mecha en capturant une épave
-  // adverse (Empire ou joueur), Flibuste lui verse 2 pièces à chaque victoire,
-  // et Bois flotté lui déploie ses mechas en bois — la ressource la plus
-  // abondante. Il démarre à 2 puissance mais 3 cartes : c'est un combattant
-  // aux CARTES, pas à la puissance brute. Son plan : sortir vite une meute de
-  // mechas bon marché, puis chasser les mechas isolés pour la Chimère.
+  // chasse les MACHINES. Son butin tient tout entier dans le mecha de combat
+  // (slot 2) : Flibuste lui verse 2 pièces à chaque victoire et la Chimère lui
+  // remorque une épave adverse, une fois par partie, pour en faire son 5e
+  // mecha. Il démarre à 2 puissance mais 3 cartes : c'est un combattant aux
+  // CARTES, pas à la puissance brute. Son plan : sortir la meute D'ABORD —
+  // avant le slot 2, une chasse ne rapporte rien (voir mechHunter dans
+  // bot.js) — puis traquer les mechas isolés. Le Sang du Marais lui donne les
+  // raccourcis : il surgit du marécage là où personne ne l'attend.
   predateur: {
     key: "predateur", name: "Prédateur", icon: "🐊",
     desc: "Meute de mechas bon marché, chasse aux machines (Chimère) et rançon des vaincus (Flibuste)",
+    // v0.15 — profil mesuré le PIRE du jeu (19,6 % de victoires, 3,25 étoiles
+    // contre 4,68 au harceleur). Diagnostic : il chassait bien, mais ne
+    // CONVERTISSAIT pas. Trois corrections, toutes calquées sur ce qui avait
+    // redressé le harceleur :
+    //  · la popularité passe 4e → 2e à l'enrôlement. Ses combats déplacent des
+    //    ouvriers et lui coûtent de la pop ; or le palier de pop MULTIPLIE
+    //    étoiles, territoires et ressources. Il finissait tout son score en ×1.
+    //  · starRush 3 → 4 et encounterPull 8 → 12 : il traînait au lieu de
+    //    fermer la partie, et laissait les jetons rencontre aux autres.
+    //  · lootPull : Flibuste est littéralement du pillage — les tas de
+    //    ressources adverses valent autant que les machines.
     popTarget: 8,
-    tradePopBoost: 4,
+    tradePopBoost: 5,    // racheter la pop que ses razzias lui coûtent
     chasePopStar: false,
     aggroMargin: 1,      // attaque sur avantage léger — ses cartes font le reste
     attackReward: 12,    // Flibuste : chaque victoire rapporte aussi 2 pièces
-    earlyAttack: false,  // il lui faut d'abord ses mechas
-    encounterPull: 8,
+    earlyAttack: false,  // il lui faut d'abord ses mechas (Flibuste = slot 2)
+    encounterPull: 12,
     bolsterBoost: 2,     // Soutien → CARTES de combat (son vrai carburant)
-    produceBoost: 1,
+    produceBoost: 2,     // le métal de sa meute ne tombe pas du ciel
     maxWorkersEarly: 5,
-    starRush: 3,
-    moveBoost: 4,        // la chasse demande de la mobilité
+    starRush: 4,
+    moveBoost: 5,        // la chasse demande de la mobilité (+ Sang du Marais)
     mechHunter: true,    // cible en priorité les mechas (Chimère + objectif)
-    enlistPriority: [3, 0, 1, 2],   // cartes de combat, puis puissance
+    lootPull: 6,         // rançon : les magots adverses valent le détour
+    enlistPriority: [3, 2, 0, 1],   // cartes, PUIS popularité, puis puissance
     buildPriority: ["gare", "arsenal", "moulin", "memorial"],
   },
   thesauriseur: {

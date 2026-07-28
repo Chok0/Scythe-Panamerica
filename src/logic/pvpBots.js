@@ -140,8 +140,8 @@ export const resolveBotPvp = (playersArr, attIdx, defIdx, hexId) => {
     const loot = Math.min(loser.coins || 0, 2);
     if (loot > 0) { winner.coins += loot; loser.coins -= loot; logs.push(`🏴‍☠️ Flibuste ! ${winnerF.name} pille ${loot}💰`); }
   }
-  // Chimère (Bayou, 1×/partie) : capture un mecha vaincu
-  if (winner.faction === "bayou" && !winner.chimereUsed) {
+  // Chimère (Bayou, slot 2 avec Flibuste, 1×/partie) : capture un mecha vaincu
+  if (winner.faction === "bayou" && !winner.chimereUsed && (winner.unlockedAbilities || []).includes(2)) {
     const loserHadMech = playersArr[attackerWins ? defIdx : attIdx].mechs.some(m => m.hexId === hexId);
     if (loserHadMech) {
       winner.mechs = [...winner.mechs, { id: `${winner.faction}_chimere`, hexId }];

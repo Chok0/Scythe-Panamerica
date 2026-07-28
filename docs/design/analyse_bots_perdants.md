@@ -306,14 +306,149 @@ a d'abord fait PIRE (13 % contre 25 % pour l'équilibré) — signe que le probl
    Or Enrôler coûte de la NOURRITURE sur les six plateaux, et l'étoile des
    recrues est la plus discriminante du jeu (Δ49 points de pourcentage entre
    gagnants et derniers). Le Bayou ne recrutait que 2,6 fois sur 4.
-   Correctif thématique dans la lignée de « Bois flotté » et de la « Vapeur
-   des Lacs » de l'Acadiane : **Chasse des Marais** — le Bayou enrôle avec du
-   bois. Le mécanisme de ressource alternative, jusque-là réservé à Déployer,
-   est généralisé à Enrôler (`enlistAltRes`, côté bots ET interface joueur).
+   Deux correctifs ont été essayés ; le premier a été **rejeté en revue de
+   design** et il vaut la peine de dire pourquoi.
 
-**Résultat** — étoile des recrues 43 % → **85 %**, recrues 2,6 → **3,7**,
-score moyen 62,5 → **69,0**, et le profil prédateur passe de 13 % à 25 % de
-victoires : il était affamé, pas mal conçu.
+   *Rejeté* — « Chasse des Marais » : donner au Bayou une ressource alternative
+   pour Enrôler (du bois au lieu de la nourriture). Ça marchait (étoile des
+   recrues 43 % → 85 %) mais c'était une fausse bonne idée : ça faisait doublon
+   avec l'« Esprit Sauvage » des Nations, ça diluait deux identités d'un coup,
+   et surtout ça résolvait par une CAPACITÉ un problème qui était de la CARTE.
+   La réaction naturelle d'un joueur humain devant une pénurie n'est pas de
+   réclamer un passe-droit : c'est de commercer, ou de sortir de son îlot en
+   déployant un mecha ou en posant une Gare — très accessible pour le Bayou,
+   dont l'îlot de départ contient une forêt.
+
+   *Retenu* — **échange des hexes 38 ↔ 30** (`hexes.js`). Le champ passe en
+   #38, juste en face du village de départ du Bayou (#35), et le désert
+   descend au centre (#30), près de l'Usine. La nourriture devient accessible
+   sans rien changer aux règles — mais il faut la MÉRITER : **#38 est séparé
+   de #35 par une rivière**. Le Bayou doit donc déployer son mecha Mangrove ou
+   poser une Gare, exactement le plan qu'un humain suivrait. Bonus : #38 est
+   aussi à la frontière de la Frente Libre, ce qui crée une vraie tension sur
+   un hex que les deux factions convoitent.
+
+### Le Bayou, faction des marais — arbitrage de sa capacité (v0.15)
+
+Trois candidates étaient restées en suspens. Arbitrage :
+
+| Candidate | Verdict |
+|---|---|
+| Vol d'argent | Déjà pris — c'est **Flibuste**, sa capacité de combat (mecha slot 2) |
+| Vol de mecha (Chimère) | Calquée sur la **Servitude** de la Confédération (capturer une unité sur victoire) : même reproche que Bois flotté / Esprit Sauvage. **Rétrogradée au slot 2**, fusionnée avec Flibuste — le pirate rançonne le vaincu (2 pièces) et, 1×/partie, remorque son épave |
+| **Circulation libre sur les marais** | **Retenue** |
+
+Pourquoi le marais l'emporte : c'est la seule des trois qui soit active **dès
+le tour 1**, comme toutes les vraies capacités de faction (Servitude, Tierra
+Minada, Esprit Sauvage, Comptoir). La Chimère, elle, ne se déclenchait qu'une
+fois par partie et sur une victoire contre un mecha — mesurée à 37-55 % des
+parties, souvent après le tour 20. C'est aussi l'analogue direct du
+« Seaworthy » nordique du jeu original : un terrain que toute la faction
+traverse gratuitement, avant même le premier mecha.
+
+**Sang du Marais** : les unités du Bayou traversent les marécages sans payer
+le péage (-1♥ par ouvrier / -1⚡ par unité de combat) et **sans arrêt forcé**.
+Le mecha **Pirogue** (slot 3) devient l'étage supérieur de la même idée : du
+marais, on bondit vers n'importe quel autre marais du plateau.
+
+Ce n'est pas un cadeau gratuit — c'est la géographie du Bayou. Le marécage #20
+touche son #28 de départ **sans rivière**, et ouvre #16 (montagne/métal) puis
+#23 (désert/pétrole), également sans rivière — alors que la liaison directe
+#28 → #23 est barrée par une rivière. Le marais est littéralement son pont
+sans péage, et c'est ce qui fait de lui la seule faction à ne pas démarrer
+enclavée (îlot de 31 hexes contre 3 pour toutes les autres — les autres
+atteignent le même continent, mais en payant le péage à chaque passage).
+
+**Bug de bot au passage** : `pickMoveTarget` portait le commentaire « Avoid
+lakes/swamps for non-appropriate factions » … mais appliquait le malus de −5 à
+**toutes** les factions. Le Bayou fuyait donc son propre marais et l'Acadiane
+ses propres lacs. Corrigé, avec exemption par faction — le Bayou met désormais
+le pied dans un marécage 1,32 fois par partie contre 0,03-0,48 aux autres.
+
+### Check-up des riverwalks — deux capacités mortes (v0.15)
+
+La carte ayant été retouchée plusieurs fois, les riverwalks n'avaient jamais
+été revérifiés. Critère retenu : **un riverwalk doit ouvrir au moins une
+SORTIE de l'îlot de départ de sa faction**, sinon le joueur paie un mecha pour
+rien. Audit reproductible : `node scripts/riverwalkAudit.mjs` (verrouillé par
+un test).
+
+| Faction | Avant | Sorties | Après | Sorties |
+|---|---|---|---|---|
+| Confédération (Gué) | plaine + village | 1 + 0 | plaine + **désert** | 1 + 1 |
+| Frente (Sentier) | sierra + désert | 0 + 1 | **montagne** + désert | 2 + 1 |
+| Nations (Piste) | plaine + forêt | **0 + 0** ⚠ | **plaine + toundra** | 2 + 1 |
+| Acadiane (Portage) | forêt + village | **0 + 0** ⚠ | **plaine + montagne** | 1 + 1 |
+| Bayou (Mangrove) | désert + village | 1 + 2 | **champs** + village | 3 + 2 |
+| Dominion (Queen's Road) | forêt + montagne | 2 + 0 | forêt + **plaine** | 2 + 2 |
+
+Les Nations et l'Acadiane payaient un mecha pour une capacité qui n'ouvrait
+**aucun** passage. L'Acadiane est la plus enclavée du jeu — elle n'a que deux
+sorties terrestres sur tout le plateau (#9→#12 et #9→#16) — et le Portage
+n'en ouvrait aucune des deux. Son winrate passe de 22 % à ~31 %.
+
+Le désert du Bayou a été retiré non pas parce qu'il était mort, mais parce que
+le Sang du Marais ouvre désormais #23 **gratuitement** : le mettre au riverwalk
+revenait à faire payer un mecha pour un passage déjà ouvert.
+
+### Objectifs de faction : de 2 % à 76 % de réussite (v0.15)
+
+Mesure sur 400 parties : l'étoile d'objectif de faction n'était pas du tout la
+même récompense selon la faction.
+
+| Faction | Objectif | Avant | Après |
+|---|---|---|---|
+| Dominion | Le Tribut — pièces via Commerce Impérial | **76 %** | 25 % (seuil 10 → **20** ; il en gagnait 16,1 passivement) |
+| Bayou | Le Prédateur | 20 % | 20 % (inchangé) |
+| Confédération | Le Joug | 19 % | 22 % (inchangé) |
+| Frente | Terre Libérée | 8 % | 25 % (3 → **2** ouvriers sur sierra/désert) |
+| Nations | Le Grand Retour | **2 %** | 15 % (5 → **4** hexes plaine/forêt) |
+| Acadiane | Réseau Invisible | **2 %** | 34 % (voir ci-dessous) |
+
+Trois enseignements :
+
+1. **Le Tribut se validait tout seul.** 76 % de réussite pour une étoile que le
+   Dominion décrochait sans plan, simplement en jouant sa capacité. Le seuil
+   est passé au-dessus de sa moyenne : il faut désormais bâtir son commerce.
+
+2. **Le Grand Retour demandait un plateau parfait.** Un joueur contrôle 5,5
+   hexes en fin de partie ; en exiger 5 d'un couple de terrains précis était
+   hors de portée. Seuil à 4 — elle en tient déjà 2 au départ.
+
+3. **Le Réseau Invisible avait un verrou invisible** : « héros SUR un lac »
+   était un INSTANTANÉ de fin de partie. Il fallait que le héros s'y trouve
+   encore au décompte, alors qu'il n'y entre qu'avec le Batelier (slot 3) et
+   qu'il a mille raisons d'en repartir. Reformulé en ACQUIS durable — *un
+   comptoir posé sur un lac* — les deux piliers de l'identité (réseau étalé,
+   maîtrise des lacs) sont préservés et l'objectif devient jouable.
+
+   Le bot y contribuait aussi : il posait son comptoir sur le premier hex venu
+   et sabotait sa propre condition de non-adjacence. Il garde désormais son
+   jeton plutôt que de le coller au réseau, et son héros vise les lacs tant
+   qu'il n'y a pas de comptoir lacustre.
+
+**Effet de bord détecté et corrigé** : l'échange 38 ↔ 30 a supprimé une sierra
+du plateau (il n'en reste que deux, #32 et #45) — et #38 était justement la
+sierra voisine du départ de la Frente. Son objectif exigeait 3 ouvriers sur
+sierra/désert : devenu hors de portée, ramené à 2.
+
+### Profil prédateur : il chassait bien, il ne convertissait pas
+
+Le profil du Bayou est resté le pire du jeu (19,6 % de victoires, **3,25
+étoiles** contre 4,58 au harceleur) alors même que ses combats se passaient
+bien. Le diagnostic est le même que pour le harceleur un cran plus tôt : la
+popularité arrivait **4e** dans ses priorités d'enrôlement, alors que ses
+combats déplacent des ouvriers et lui coûtent de la pop — et que le palier de
+pop MULTIPLIE étoiles, territoires et ressources. Il finissait tout son score
+en ×1.
+
+Corrections : popularité 4e → 2e à l'enrôlement, `starRush` 3 → 4,
+`encounterPull` 8 → 12, `lootPull` ajouté (Flibuste est littéralement du
+pillage), et surtout — la chasse aux machines ne se déclenche plus **avant le
+mecha slot 2**. La Chimère y ayant été rétrogradée, attaquer une machine sans
+lui, c'est risquer un combat pour rien : ni épave, ni pièces.
+
+→ **19,6 % → 25,5 %** de victoires, score 62,1 → 66,2, étoiles 3,25 → 3,51.
 
 ### Équilibre des factions après le check-up
 
@@ -331,7 +466,34 @@ une espérance de ~26 % — sans avoir touché à une seule valeur d'équilibrag
 uniquement en réparant un objectif impossible, une famine géographique et des
 profils contraires à l'identité des factions.
 
-**Point à surveiller** : l'Acadiane partage la famine alimentaire du Bayou
-(1 seul hex de nourriture à portée) et reste la plus basse (25,0 %). Ses
-comptoirs compensent au scoring ; à trancher en playtest humain avant de lui
-accorder, elle aussi, une ressource alternative pour Enrôler.
+### Après la refonte carte + riverwalks + objectifs (900 parties, seed 3)
+
+| Faction | Winrate | Objectif de faction | Étoile mechas |
+|---|---|---|---|
+| Frente | 34,5 % | 25 % | 96 % |
+| Nations | 32,5 % | 15 % | 93 % |
+| Acadiane | 31,4 % | 34 % | 79 % |
+| Confédération | 26,2 % | 22 % | 91 % |
+| Bayou | 23,5 % | 20 % | 69 % |
+| Dominion | 20,7 % | 25 % | 95 % |
+
+L'Acadiane, longtemps la faction la plus faible du jeu (22 %), remonte à 31 %
+uniquement en réparant son riverwalk mort et son objectif verrouillé. Le
+Dominion redescend de 35 % à 21 %, conséquence assumée de la perte de son
+étoile quasi-automatique.
+
+**Rappel méthodologique** : ces winrates sont des signaux de QUALITÉ DE
+DÉCISION des bots, pas une validation d'équilibrage. Un humain bat ces bots
+sans difficulté ; seul le playtest humain tranche l'équilibrage. Ce qui est
+validé ici, en revanche, est structurel et vaut pour un humain aussi : plus
+aucune capacité morte, plus aucun objectif de faction hors de portée ou
+offert.
+
+**Points à surveiller** :
+
+- L'étoile mechas du Bayou (69 %) et de l'Acadiane (79 %) reste en retrait :
+  toutes deux sont pauvres en métal près de leur départ. À observer en
+  playtest avant tout correctif — les deux ont maintenant une sortie d'îlot
+  jouable (marais et Portage).
+- Le Dominion n'a toujours **aucune capacité de position** (slot 3 de mecha)
+  codée, contrairement aux cinq autres factions.

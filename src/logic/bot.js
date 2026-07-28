@@ -189,9 +189,8 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
   let score = 0;
 
   // Can we afford the bottom action?
-  const altRes = bottomAction === "Deploy" ? FACTIONS[p.faction]?.deployAltRes
-    : bottomAction === "Enlist" ? FACTIONS[p.faction]?.enlistAltRes : null;
-  const canBottom = bc && (countRes(p, bc.res) >= bc.qty || (altRes && countRes(p, altRes) >= bc.qty));
+  const altRes = FACTIONS[p.faction]?.deployAltRes;
+  const canBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && altRes && countRes(p, altRes) >= bc.qty));
   const bottomMaxed = bottomAction === "Upgrade" ? (p.upgrades || 0) >= 6
     : bottomAction === "Deploy" ? p.mechs.length >= 4
     : bottomAction === "Build" ? (p.buildings || []).length >= 4
@@ -451,7 +450,13 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
     if (prof.mechHunter && (purpose === "hero" || purpose === "mech")) {
       const empireHere = empire && Object.values(empire).includes(hexId);
       const mechHere = ctx && ctx.oppMechHexes && ctx.oppMechHexes.has(hexId);
-      if (empireHere || mechHere) s += (p.chimereUsed ? 4 : 10);
+      // v0.15 — la Chimère est passée au slot 2 (avec Flibuste) : chasser une
+      // machine avant d'avoir ce mecha, c'est risquer un combat pour RIEN —
+      // ni épave remorquée, ni pièces pillées. Mesuré : le Bayou partait à la
+      // chasse avec 69 % d'étoile mechas seulement, donc avant même d'avoir
+      // fini sa meute. Tant que le slot 2 n'est pas déployé, la prime tombe.
+      const canPlunder = (p.unlockedAbilities || []).includes(2);
+      if (empireHere || mechHere) s += !canPlunder ? 2 : (p.chimereUsed ? 4 : 10);
     }
     if (purpose === "hero" || purpose === "mech") {
       if (ctx && ctx.attackable && ctx.attackable.has(hexId)) {
@@ -583,8 +588,45 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
       }
     }
 
-    // Avoid lakes/swamps for non-appropriate factions
-    if (hex.t === "lac" || hex.t === "marecage") s -= 5;
+    // ── Eaux : malus GÉNÉRIQUE, exemptions par faction ────────────────────
+    // v0.15 — bug relevé en partie : le commentaire disait « pour les factions
+    // non concernées » mais le code s'appliquait à TOUT LE MONDE. Le Bayou
+    // fuyait donc son propre marais et l'Acadiane ses propres lacs, alors que
+    // ce sont précisément leurs autoroutes. Conséquence mesurable : le Bayou
+    // ne sortait jamais de son îlot par le marécage #20 (adjacent à son #28
+    // de départ, SANS rivière) et attendait un mecha Riverwalk qui arrivait
+    // dix tours trop tard.
+    if (hex.t === "lac") {
+      // Seule l'Acadiane peut y ENTRER (Batelier, slot 3) : pour elle, un lac
+      // est un tremplin vers tous les autres lacs du plateau — et son héros y
+      // pose le comptoir lacustre qu'exige « Réseau Invisible ».
+      if (p.faction === "acadiane" && (p.unlockedAbilities || []).includes(3)) {
+        const flags = p.flagTokens || [];
+        const hasLakePost = flags.some(fl => hMap[fl.hexId]?.t === "lac");
+        s += (purpose === "hero" && !hasLakePost && flags.length < 4) ? 12 : 3;
+      } else s -= 5;
+    }
+    // Comptoir Acadiane : le héros cherche des hexes qui ÉTALENT le réseau —
+    // un comptoir collé à un autre ne compte pas pour l'objectif de faction.
+    if (p.faction === "acadiane" && purpose === "hero" && (p.flagTokens || []).length < 4) {
+      const flags = p.flagTokens || [];
+      if (!flags.some(fl => fl.hexId === hexId)) {
+        s += flags.some(fl => (ADJ[hexId] || []).includes(fl.hexId)) ? -3 : 4;
+      }
+    }
+    if (hex.t === "marecage") {
+      if (p.faction === "bayou") {
+        // Sang du Marais : ni péage ni arrêt forcé dès le tour 1. Le marécage
+        // est une case de passage NEUTRE, et carrément un tremplin une fois la
+        // Pirogue déployée (bond vers n'importe quel autre marais).
+        s += (p.unlockedAbilities || []).includes(3) ? 4 : 0;
+      } else {
+        // Pour les autres, c'est un péage (-1♥ ouvrier / -1⚡ combattant) ET un
+        // arrêt forcé : un ouvrier n'a rien à y faire, une unité de combat peut
+        // l'encaisser si la case sert de raccourci.
+        s -= purpose === "worker" ? 8 : 5;
+      }
+    }
 
     if (s > bestScore) { bestScore = s; bestHex = hexId; }
   }
@@ -905,9 +947,8 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const bottomPayableNow = (() => {
     const c = getBottomCost(p)[col];
     if (!c || isBottomMaxed(p, BOTTOM[col])) return false;
-    const alt = BOTTOM[col] === "Deploy" ? FACTIONS[p.faction]?.deployAltRes
-      : BOTTOM[col] === "Enlist" ? FACTIONS[p.faction]?.enlistAltRes : null;
-    return countRes(p, c.res) >= c.qty || (alt && countRes(p, alt) >= c.qty);
+    const alt = FACTIONS[p.faction]?.deployAltRes;
+    return countRes(p, c.res) >= c.qty || (BOTTOM[col] === "Deploy" && alt && countRes(p, alt) >= c.qty);
   })();
   if (action === "Move" && cashDeadlock && !bottomPayableNow && !(ctx && ctx.endgame)) {
     // Scythe rule: Move's alternative is "gain 1$"
@@ -994,10 +1035,21 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         p.trapTokens = [...(p.trapTokens || []), { hexId: target, disarmed: false }];
         logs.push(`🤖🪤 ${f.name}: Trap #${target} (${p.trapTokens.length}/4)`);
       }
-      // Acadiane flag placement
+      // Acadiane flag placement — v0.15 : le bot posait son comptoir sur le
+      // premier hex venu et ruinait son propre objectif (« Réseau Invisible »
+      // exige des comptoirs DEUX À DEUX NON ADJACENTS : mesuré à 2 % de
+      // réussite). Tant que le réseau n'est pas bouclé, il garde son jeton
+      // plutôt que de le coller à un comptoir existant ; une fois les 3
+      // posés, l'objectif est acquis et le 4e vaut son territoire n'importe où.
       if (p.faction === "acadiane" && (p.flagTokens || []).length < 4 && !(p.flagTokens || []).some(fl => fl.hexId === target)) {
-        p.flagTokens = [...(p.flagTokens || []), { hexId: target }];
-        logs.push(`🤖🏴 ${f.name}: Comptoir #${target} (${p.flagTokens.length}/4)`);
+        const placed = p.flagTokens || [];
+        const touchesNetwork = placed.some(fl => (ADJ[target] || []).includes(fl.hexId));
+        if (!touchesNetwork) {
+          p.flagTokens = [...placed, { hexId: target }];
+          logs.push(`🤖🏴 ${f.name}: Comptoir #${target} (${p.flagTokens.length}/4)`);
+        } else {
+          logs.push(`🤖🏴 ${f.name}: comptoir gardé (#${target} colle au réseau)`);
+        }
       }
     }
 
@@ -1281,12 +1333,9 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const bottomAction = BOTTOM[col];
   const botCosts = getBottomCost(p);
   const bc = botCosts[col];
-  // Ressource ALTERNATIVE de la faction : Déployer (Esprit Sauvage, Vapeur des
-  // Lacs, Bois flotté) et, depuis v0.15, Enrôler (Chasse des Marais du Bayou —
-  // sa péninsule n'a qu'un hex de nourriture, voir factions.js)
-  const altResB = bottomAction === "Deploy" ? FACTIONS[p.faction]?.deployAltRes
-    : bottomAction === "Enlist" ? FACTIONS[p.faction]?.enlistAltRes : null;
-  const canAffordBottom = bc && (countRes(p, bc.res) >= bc.qty || (altResB && countRes(p, altResB) >= bc.qty));
+  // Ressource ALTERNATIVE de déploiement (Esprit Sauvage, Vapeur des Lacs)
+  const altResB = FACTIONS[p.faction]?.deployAltRes;
+  const canAffordBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && altResB && countRes(p, altResB) >= bc.qty));
   let bottomDone = false;
   if (canAffordBottom) {
     if (bottomAction === "Upgrade" && (p.upgrades || 0) < 6 && ((p.upgrades || 0) < 2 || p.stars >= 4)) {
@@ -1347,8 +1396,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         if (building.type === "gare") placeBotRails(p, spot, rails, logs, f.name);
       }
     } else if (bottomAction === "Enlist" && (p.recruits || 0) < 4) {
-      const enlistRes = (altResB && countRes(p, bc.res) < bc.qty) ? altResB : bc.res;
-      const sp = spendRes(p, enlistRes, bc.qty); Object.assign(p, { resources: sp.resources });
+      const sp = spendRes(p, bc.res, bc.qty); Object.assign(p, { resources: sp.resources });
       p.recruits = (p.recruits || 0) + 1;
       bottomDone = true;
       // Priorité d'enlist du profil (équilibré : puissance > pièces > pop > cartes ;
