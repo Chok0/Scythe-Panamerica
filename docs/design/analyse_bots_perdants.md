@@ -262,3 +262,76 @@ espérance de ~26 %.
 absence de tours morts, sémantique de `losingTrigger`, refus/acceptation de
 conclure selon le score, fidélité de `estimateScore` au décompte, et refus de
 brader un palier de popularité pour produire.
+
+---
+
+## Check-up d'identité des factions (v0.15)
+
+Après la Confédération, revue systématique : le profil attribué correspond-il
+au MATÉRIEL de la faction (ability, bonus de combat, objectif, géographie) ?
+
+| Faction | Matériel | Profils attribués | Verdict |
+|---|---|---|---|
+| Confédération | Cavaliers +2 en attaque · Servitude · riverwalk village | harceleur, blitz | ✅ corrigé (bâtisseur retiré) |
+| Frente | Peuple Armé (+1 carte SUR ses ouvriers) · 4 pièges · sierra/désert | équilibré, thésauriseur, bâtisseur | ✅ cohérent : elle tient son terrain, ne conquiert pas |
+| Nations | Ronin (+1 carte mecha SEUL) · mechas en bois · plaines/forêts | équilibré, bâtisseur, blitz | ✅ cohérent (expansion) |
+| Acadiane | White Flag (REFUSE le combat) · comptoirs · lacs | thésauriseur, bâtisseur | ✅ cohérent : elle ne se bat jamais volontairement |
+| Bayou | Chimère (capture un mecha) · Flibuste · mechas en bois | **prédateur**, blitz | ✅ corrigé (bâtisseur pacifiste retiré) |
+| Dominion | Discipline · Commerce Impérial | équilibré, thésauriseur, blitz | ✅ cohérent (marchand) |
+
+### Bayou : deux bugs structurels, pas un problème de profil
+
+Le Bayou plafonnait à 19 % de victoires. Le profil « prédateur » créé pour lui
+a d'abord fait PIRE (13 % contre 25 % pour l'équilibré) — signe que le problème
+était ailleurs. Deux causes réelles :
+
+1. **Son objectif de faction était impossible en partie standard.** « Le
+   Prédateur » exigeait *2 Empire détruits*, or l'Empire est désactivé par
+   défaut (mécanique de campagne) : le Bayou perdait d'office une étoile que
+   toutes les autres factions pouvaient décrocher. Corrigé — la prédation
+   compte désormais les mechas de l'Empire **ou** les victoires en combat
+   contre les joueurs. Même esprit, jouable dans les deux modes.
+
+2. **Famine alimentaire.** Mesure des ressources accessibles à deux pas du
+   départ :
+
+   | Faction | nourriture à portée | étoile Recrues |
+   |---|---|---|
+   | Nations | 3 | 93 % |
+   | Frente | 2 | — |
+   | Confédération | 3 | — |
+   | **Bayou** | **1** | **43 %** |
+   | **Acadiane** | **1** | — |
+
+   Or Enrôler coûte de la NOURRITURE sur les six plateaux, et l'étoile des
+   recrues est la plus discriminante du jeu (Δ49 points de pourcentage entre
+   gagnants et derniers). Le Bayou ne recrutait que 2,6 fois sur 4.
+   Correctif thématique dans la lignée de « Bois flotté » et de la « Vapeur
+   des Lacs » de l'Acadiane : **Chasse des Marais** — le Bayou enrôle avec du
+   bois. Le mécanisme de ressource alternative, jusque-là réservé à Déployer,
+   est généralisé à Enrôler (`enlistAltRes`, côté bots ET interface joueur).
+
+**Résultat** — étoile des recrues 43 % → **85 %**, recrues 2,6 → **3,7**,
+score moyen 62,5 → **69,0**, et le profil prédateur passe de 13 % à 25 % de
+victoires : il était affamé, pas mal conçu.
+
+### Équilibre des factions après le check-up
+
+| Faction | Avant | Après |
+|---|---|---|
+| Dominion | 35,0 % | 27,8 % |
+| Nations | 32,7 % | 29,0 % |
+| Confédération | 31,1 % | 29,7 % |
+| Frente | 29,8 % | 28,9 % |
+| Acadiane | 24,1 % | 25,0 % |
+| **Bayou** | **19,1 %** | **27,8 %** |
+
+L'écart passe de **16 points** (19-35 %) à **4,7 points** (25,0-29,7 %) pour
+une espérance de ~26 % — sans avoir touché à une seule valeur d'équilibrage :
+uniquement en réparant un objectif impossible, une famine géographique et des
+profils contraires à l'identité des factions.
+
+**Point à surveiller** : l'Acadiane partage la famine alimentaire du Bayou
+(1 seul hex de nourriture à portée) et reste la plus basse (25,0 %). Ses
+comptoirs compensent au scoring ; à trancher en playtest humain avant de lui
+accorder, elle aussi, une ressource alternative pour Enrôler.

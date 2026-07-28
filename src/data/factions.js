@@ -75,11 +75,27 @@ export const FACTIONS = {
   bayou: {
     name: "Bayou", color: "#7B2D8B", hero: "Cap. Zeke", companion: "Croc",
     power: 2, cards: 3, workerHex: [35, 28], riverwalk: ["desert", "village"], rwName: "Mangrove",
-    ability: "Chimère & Bois flotté", abilityDesc: "Chimère : capture un mecha ennemi vaincu (Empire OU joueur, 1×/partie, devient votre 5e mecha) · Bois flotté : déploie ses mechas avec du bois au lieu du métal",
-    deployAltRes: "bois", deployAltName: "Bois flotté",
+    // v0.15 — « Chasse des Marais » : réponse au verrou structurel mesuré en
+    // simulation. Le Bayou n'a qu'UN hex de nourriture à deux pas de son
+    // départ (contre 2-3 pour les autres) alors qu'Enrôler coûte de la
+    // nourriture sur TOUS les plateaux : recrues 2,6/4 et étoile des recrues
+    // à 43 % contre 93 % pour les Nations — or c'est l'étoile la plus
+    // discriminante du jeu. Le marais nourrit les siens : il enrôle au bois,
+    // exactement comme il déploie au bois flotté.
+    ability: "Chimère, Bois flotté & Chasse des Marais",
+    abilityDesc: "Chimère : capture un mecha ennemi vaincu (Empire OU joueur, 1×/partie, devient votre 5e mecha) · Bois flotté : déploie ses mechas avec du bois au lieu du métal · Chasse des Marais : enrôle avec du bois au lieu de la nourriture",
+    deployAltRes: "bois",
+    enlistAltRes: "bois", enlistAltName: "Chasse des Marais", deployAltName: "Bois flotté",
+    // v0.15 — CORRECTIF : « 2 Empire détruits » rendait cet objectif
+    // IMPOSSIBLE en partie standard, l'Empire étant désactivé par défaut
+    // (mécanique réservée au mode campagne). Le Bayou perdait donc d'office
+    // une étoile que toutes les autres factions pouvaient décrocher — première
+    // cause de son 19 % de victoires. La prédation compte désormais les
+    // mechas de l'Empire ET les victoires en combat contre les joueurs :
+    // même esprit (le chasseur), jouable dans les deux modes.
     fObj: {
-      name: "Le Prédateur", desc: "1 mecha capturé + 2 Empire détruits",
-      check: p => (p.capturedMech || 0) >= 1 && (p.empireKills || 0) >= 2,
+      name: "Le Prédateur", desc: "1 mecha capturé + 2 proies vaincues (Empire ou joueur)",
+      check: p => (p.capturedMech || 0) >= 1 && ((p.empireKills || 0) + (p.combatWins || 0)) >= 2,
     },
   },
   dominion: {

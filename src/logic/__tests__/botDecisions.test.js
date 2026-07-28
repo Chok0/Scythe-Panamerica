@@ -207,6 +207,46 @@ describe('Identité de la Confédération — profil harceleur', () => {
   });
 });
 
+describe('Identité du Bayou — prédateur, et verrou alimentaire levé', () => {
+  it('son objectif de faction est réalisable SANS l\'Empire (désactivé en partie standard)', async () => {
+    const { FACTIONS } = await import('../../data/factions.js');
+    const fo = FACTIONS.bayou.fObj;
+    const p = createPlayer('bayou', 1, false);
+    p.capturedMech = 1; p.empireKills = 0; p.combatWins = 2; // 2 proies joueur
+    expect(fo.check(p), 'objectif impossible sans l\'Empire').toBe(true);
+    // et il reste réalisable avec l'Empire (mode campagne)
+    expect(fo.check({ ...p, combatWins: 0, empireKills: 2 })).toBe(true);
+    // sans capture de mecha, toujours non
+    expect(fo.check({ ...p, capturedMech: 0 })).toBe(false);
+  });
+
+  it('Chasse des Marais : il enrôle au bois quand la nourriture manque', () => {
+    const p = createPlayer('bayou', 1, true);
+    p.botProfile = 'equilibre'; p.botNoise = 0;
+    const hex = p.workers[0].hexId;
+    p.resources = { [hex]: { bois: 9 } };   // que du bois, zéro nourriture
+    let enlisted = false;
+    for (let i = 0; i < 12 && !enlisted; i++) {
+      const r = run({ ...p, lastCol: i % 4, workers: p.workers.map(w => ({ ...w })), mechs: [] });
+      if ((r.player.recruits || 0) > 0) enlisted = true;
+    }
+    expect(enlisted, 'le Bayou reste bloqué sur Enrôler faute de nourriture').toBe(true);
+  });
+
+  it('une faction sans ressource alternative reste bloquée (la règle n\'est pas universelle)', () => {
+    const p = createPlayer('nations', 1, true); // pas d'enlistAltRes
+    p.botProfile = 'equilibre'; p.botNoise = 0;
+    const hex = p.workers[0].hexId;
+    p.resources = { [hex]: { bois: 9 } };
+    let enlisted = false;
+    for (let i = 0; i < 12; i++) {
+      const r = run({ ...p, lastCol: i % 4, workers: p.workers.map(w => ({ ...w })), mechs: [] });
+      if ((r.player.recruits || 0) > 0) enlisted = true;
+    }
+    expect(enlisted).toBe(false);
+  });
+});
+
 describe('P7 — Produire ne se paie pas au prix d\'un palier de popularité', () => {
   it('à 6 ouvriers et pop 7, le bot évite le Produire qui le ferait retomber au palier ×1', () => {
     // 6 ouvriers → Produire coûte 1⚡ ET 1♥ (règle Scythe). À pop 7, produire

@@ -189,8 +189,9 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
   let score = 0;
 
   // Can we afford the bottom action?
-  const altRes = FACTIONS[p.faction]?.deployAltRes;
-  const canBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && altRes && countRes(p, altRes) >= bc.qty));
+  const altRes = bottomAction === "Deploy" ? FACTIONS[p.faction]?.deployAltRes
+    : bottomAction === "Enlist" ? FACTIONS[p.faction]?.enlistAltRes : null;
+  const canBottom = bc && (countRes(p, bc.res) >= bc.qty || (altRes && countRes(p, altRes) >= bc.qty));
   const bottomMaxed = bottomAction === "Upgrade" ? (p.upgrades || 0) >= 6
     : bottomAction === "Deploy" ? p.mechs.length >= 4
     : bottomAction === "Build" ? (p.buildings || []).length >= 4
@@ -442,6 +443,16 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
 
     // Avoid enemy hexes for workers (displacement risk)
     if (purpose === "worker" && enemyHexes && enemyHexes.has(hexId)) s -= 15;
+    // ── CHASSE AUX MACHINES (profil prédateur / Bayou) ────────────────
+    // Sa Chimère capture le mecha qu'il détruit — Empire OU joueur — et en
+    // fait son 5e mecha ; son objectif de faction compte les proies. Il vise
+    // donc les MACHINES, là où les autres profils visent le butin ou le
+    // territoire. Tant que la Chimère n'a pas servi, la prime est maximale.
+    if (prof.mechHunter && (purpose === "hero" || purpose === "mech")) {
+      const empireHere = empire && Object.values(empire).includes(hexId);
+      const mechHere = ctx && ctx.oppMechHexes && ctx.oppMechHexes.has(hexId);
+      if (empireHere || mechHere) s += (p.chimereUsed ? 4 : 10);
+    }
     if (purpose === "hero" || purpose === "mech") {
       if (ctx && ctx.attackable && ctx.attackable.has(hexId)) {
         // Combat PvP : l'agressivité dépend du profil — l'équilibré attaque
@@ -855,13 +866,16 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         power: op.power >= 14 && !op.starPower,
       },
       workerHexes: new Set(op.workers.map(w => w.hexId)),
+      mechHexes: op.mechs.map(m => m.hexId),
     }));
+  // Hex portant un mecha adverse : proies de la Chimère (profil prédateur)
+  const oppMechHexes = new Set(oppIntel.flatMap(o => o.mechHexes));
   // Adversaire le plus avancé : c'est LUI qu'il faut gêner en priorité
   const topOpp = oppIntel.length ? oppIntel.reduce((a, b) => (b.score > a.score ? b : a)) : null;
   // Un adversaire est-il sur le point de conclure la partie ?
   const oppOneStarFromEnd = oppIntel.some(o => o.stars >= 5);
   // Toutes les décisions du tour voient désormais ce renseignement
-  ctx = { ...(ctx || {}), oppIntel, topOpp, oppOneStarFromEnd };
+  ctx = { ...(ctx || {}), oppIntel, topOpp, oppOneStarFromEnd, oppMechHexes };
 
   // ── STRATEGIC COLUMN SELECTION ──
   // Dominion « Relentless » (test Rusviet) : peut rejouer la même colonne
@@ -891,8 +905,9 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const bottomPayableNow = (() => {
     const c = getBottomCost(p)[col];
     if (!c || isBottomMaxed(p, BOTTOM[col])) return false;
-    const alt = FACTIONS[p.faction]?.deployAltRes;
-    return countRes(p, c.res) >= c.qty || (BOTTOM[col] === "Deploy" && alt && countRes(p, alt) >= c.qty);
+    const alt = BOTTOM[col] === "Deploy" ? FACTIONS[p.faction]?.deployAltRes
+      : BOTTOM[col] === "Enlist" ? FACTIONS[p.faction]?.enlistAltRes : null;
+    return countRes(p, c.res) >= c.qty || (alt && countRes(p, alt) >= c.qty);
   })();
   if (action === "Move" && cashDeadlock && !bottomPayableNow && !(ctx && ctx.endgame)) {
     // Scythe rule: Move's alternative is "gain 1$"
@@ -1266,8 +1281,12 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const bottomAction = BOTTOM[col];
   const botCosts = getBottomCost(p);
   const bc = botCosts[col];
-  const altResB = FACTIONS[p.faction]?.deployAltRes;
-  const canAffordBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && altResB && countRes(p, altResB) >= bc.qty));
+  // Ressource ALTERNATIVE de la faction : Déployer (Esprit Sauvage, Vapeur des
+  // Lacs, Bois flotté) et, depuis v0.15, Enrôler (Chasse des Marais du Bayou —
+  // sa péninsule n'a qu'un hex de nourriture, voir factions.js)
+  const altResB = bottomAction === "Deploy" ? FACTIONS[p.faction]?.deployAltRes
+    : bottomAction === "Enlist" ? FACTIONS[p.faction]?.enlistAltRes : null;
+  const canAffordBottom = bc && (countRes(p, bc.res) >= bc.qty || (altResB && countRes(p, altResB) >= bc.qty));
   let bottomDone = false;
   if (canAffordBottom) {
     if (bottomAction === "Upgrade" && (p.upgrades || 0) < 6 && ((p.upgrades || 0) < 2 || p.stars >= 4)) {
@@ -1328,7 +1347,8 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         if (building.type === "gare") placeBotRails(p, spot, rails, logs, f.name);
       }
     } else if (bottomAction === "Enlist" && (p.recruits || 0) < 4) {
-      const sp = spendRes(p, bc.res, bc.qty); Object.assign(p, { resources: sp.resources });
+      const enlistRes = (altResB && countRes(p, bc.res) < bc.qty) ? altResB : bc.res;
+      const sp = spendRes(p, enlistRes, bc.qty); Object.assign(p, { resources: sp.resources });
       p.recruits = (p.recruits || 0) + 1;
       bottomDone = true;
       // Priorité d'enlist du profil (équilibré : puissance > pièces > pop > cartes ;

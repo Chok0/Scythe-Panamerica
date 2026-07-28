@@ -108,6 +108,32 @@ export const BOT_PROFILES = {
     // moteur double — c'est SA combinaison, avant la Gare et le Moulin.
     buildPriority: ["arsenal", "memorial", "gare", "moulin"],
   },
+  // v0.15 — Profil PRÉDATEUR, écrit pour le Bayou : un pirate des marais qui
+  // chasse les MACHINES. Chimère lui offre un 5e mecha en capturant une épave
+  // adverse (Empire ou joueur), Flibuste lui verse 2 pièces à chaque victoire,
+  // et Bois flotté lui déploie ses mechas en bois — la ressource la plus
+  // abondante. Il démarre à 2 puissance mais 3 cartes : c'est un combattant
+  // aux CARTES, pas à la puissance brute. Son plan : sortir vite une meute de
+  // mechas bon marché, puis chasser les mechas isolés pour la Chimère.
+  predateur: {
+    key: "predateur", name: "Prédateur", icon: "🐊",
+    desc: "Meute de mechas bon marché, chasse aux machines (Chimère) et rançon des vaincus (Flibuste)",
+    popTarget: 8,
+    tradePopBoost: 4,
+    chasePopStar: false,
+    aggroMargin: 1,      // attaque sur avantage léger — ses cartes font le reste
+    attackReward: 12,    // Flibuste : chaque victoire rapporte aussi 2 pièces
+    earlyAttack: false,  // il lui faut d'abord ses mechas
+    encounterPull: 8,
+    bolsterBoost: 2,     // Soutien → CARTES de combat (son vrai carburant)
+    produceBoost: 1,
+    maxWorkersEarly: 5,
+    starRush: 3,
+    moveBoost: 4,        // la chasse demande de la mobilité
+    mechHunter: true,    // cible en priorité les mechas (Chimère + objectif)
+    enlistPriority: [3, 0, 1, 2],   // cartes de combat, puis puissance
+    buildPriority: ["gare", "arsenal", "moulin", "memorial"],
+  },
   thesauriseur: {
     key: "thesauriseur", name: "Thésauriseur", icon: "📦",
     desc: "Produire, empiler, éviter les coups — les ressources et le palier de pop font le score",
@@ -210,10 +236,23 @@ export const FACTION_PROFILE_WEIGHTS = {
   // dans ~40 % de ses parties : mesurée 41 % de dernières places. Elle joue
   // désormais son plan — harcèlement mobile, razzia, déni de développement.
   confederation: { harceleur: 3, blitz: 2, equilibre: 1 },
-  frente: { equilibre: 2, blitz: 1, thesauriseur: 1 },
+  // Frente : guérilla — le héros sème 4 pièges (territoires gratuits + déni),
+  // ses ouvriers tiennent sierras et déserts, et Peuple Armé lui donne +1 carte
+  // quand elle défend SUR ses propres ouvriers. Elle tient son terrain plus
+  // qu'elle ne conquiert : profils patients, pas de razzia.
+  frente: { equilibre: 2, thesauriseur: 1, batisseur: 1 },
+  // Nations : expansion sur plaines et forêts (son objectif de faction), avec
+  // Ronin (+1 carte quand un mecha est SEUL) et des mechas en bois.
   nations: { equilibre: 2, batisseur: 1, blitz: 1 },
-  acadiane: { thesauriseur: 2, batisseur: 1, equilibre: 1 },
-  bayou: { blitz: 2, batisseur: 1, equilibre: 1 },
+  // Acadiane : commerçante insaisissable — White Flag lui permet de REFUSER
+  // le combat (retraite + 2 pop), donc elle ne se bat jamais volontairement ;
+  // elle essaime ses comptoirs et thésaurise. Le bâtisseur (course à la pop)
+  // reste cohérent avec elle, contrairement aux factions guerrières.
+  acadiane: { thesauriseur: 2, batisseur: 2, equilibre: 1 },
+  // Bayou : le prédateur (v0.15) — le profil « bâtisseur » pacifiste n'avait
+  // aucun sens pour une faction dont l'ability, le combat et l'objectif
+  // tournent tous autour de la chasse aux mechas.
+  bayou: { predateur: 3, blitz: 2, equilibre: 1 },
   dominion: { equilibre: 2, thesauriseur: 2, blitz: 1 },
 };
 
