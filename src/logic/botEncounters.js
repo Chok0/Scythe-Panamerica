@@ -4,7 +4,7 @@
 // la rencontre se résout après les combats du tour.
 import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTIONS } from '../data/factions.js';
-import { BUILDING_TYPES, ENLIST_IMMEDIATE, MATS, maxBottomCubes } from '../data/mats.js';
+import { BUILDING_TYPES, ENLIST_IMMEDIATE, matById, maxBottomCubes } from '../data/mats.js';
 import { BOT_PROFILES } from './botProfiles.js';
 
 /**
@@ -46,7 +46,7 @@ export const resolveBotEncounter = (player, deck) => {
   // Amélioration gagnée en rencontre : VRAI déplacement de cube (haut→bas au
   // hasard parmi les emplacements valides), pas un simple compteur
   if (choice.grantsUpgrade && (p.upgrades || 0) < 6) {
-    const mat = MATS.find(m => m.id === p.matId);
+    const mat = matById(p.matId);
     const validTop = []; const validBottom = [];
     if (mat) {
       (p.cubesOnTop || []).forEach((c, i) => { if (c > 0) validTop.push(i); });

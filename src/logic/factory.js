@@ -1,7 +1,7 @@
 // ═══ Logique des cartes d'usine (Rouge River) — partagée UI joueur + bots ═══
 // La carte d'usine est une 5e colonne d'action : HAUT = 1 coût + 1 gain,
 // BAS = déplacer 1 unité de 2 hex (+1 si Vitesse). Voir data/plans.js.
-import { MATS, maxBottomCubes, ENLIST_ONGOING, BUILDING_TYPES } from '../data/mats.js';
+import { matById, maxBottomCubes, ENLIST_ONGOING, BUILDING_TYPES } from '../data/mats.js';
 import { TESLA_FRAGMENTS_REQUIRED } from '../data/plans.js';
 import { TERRAINS } from '../data/terrains.js';
 import { hMap } from '../data/hexes.js';
@@ -51,7 +51,7 @@ export const factoryProduceHexes = (p) =>
 // ── Un effet de gain est-il résoluble dans l'état actuel du joueur ? ──
 // (les gains impossibles sont passés : « si ouvrier » sans ouvrier, piste maxée…)
 export const factoryEffectPossible = (p, eff) => {
-  const mat = MATS.find(m => m.id === p.matId);
+  const mat = matById(p.matId);
   switch (eff.type) {
     case "coins": case "power": case "pop": case "cards":
       return true;

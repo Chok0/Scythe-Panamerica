@@ -11,7 +11,7 @@ import { BALANCE } from '../data/balance.js';
 import { EMPIRE_START, drawEmpireCombat } from '../data/empire.js';
 import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, FACTORY_COL, PLANS_FORD, PLANS_TESLA, ALL_FACTORY_CARDS, TESLA_FRAGMENTS_REQUIRED, TESLA_OFFER_SIZE, factoryCostLabel, factoryGainLabel, factoryEffectLabel, FACTORY_BOTTOM_DESC } from '../data/plans.js';
-import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes, FR_TOP as FR_TOP_MAP, FR_BOT as FR_BOT_MAP, frTop, frBot } from '../data/mats.js';
+import { MATS, matById, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes, FR_TOP as FR_TOP_MAP, FR_BOT as FR_BOT_MAP, frTop, frBot } from '../data/mats.js';
 import { OBJECTIVES, ALL_OBJECTIVES } from '../data/objectives.js';
 import { structureBonusDetail, pickStructureBonus, STRUCTURE_BONUSES } from '../data/structureBonus.js';
 import { reconcileHand, topCardsSum, spendTopCards, spendPickedCards, handSummary } from '../logic/cards.js';
@@ -153,7 +153,7 @@ export default function App(){
   const panStart=useRef(null);
   const mapRef=useRef(null);
 
-  const me=players[0];const myFaction=me?FACTIONS[me.faction]:null;const myMat=me?MATS.find(m=>m.id===me.matId):null;
+  const me=players[0];const myFaction=me?FACTIONS[me.faction]:null;const myMat=me?matById(me.matId):null;
   // 2 unités de base au Move, 3 si le cube de l'option « +1 unité » est retiré
   const moveLimit=2+(me?topUpgradeCount(me,"Move","worker"):0);
 
@@ -1020,7 +1020,7 @@ export default function App(){
     const cost=costs[0]; // Upgrade is always bottom col 0
     const effectiveQty=cost.qty;
     if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${resFR(cost.res)} requis`);return;}
-    const mat=MATS.find(m=>m.id===me.matId);
+    const mat=matById(me.matId);
     if(!mat)return;
     if((me.cubesOnTop||[])[fromCol]<=0){addLog(`⚠ Pas de cube sur cette action top`);return;}
     // Plafond règle Scythe : jamais plus de (base - 1) cubes → coût min 1
@@ -2324,7 +2324,7 @@ export default function App(){
   // juste comptabilisé », constaté en partie réelle.
   const doEncounterUpgrade=useCallback((fromCol,toCol)=>{
     if(!me||(me.upgrades||0)>=6)return;
-    const mat=MATS.find(m=>m.id===me.matId);
+    const mat=matById(me.matId);
     if(!mat)return;
     if((me.cubesOnTop||[])[fromCol]<=0){addLog(`⚠ Pas de cube sur cette action top`);return;}
     if((me.cubesOnBottom||[])[toCol]>=maxBottomCubes(mat,toCol)){addLog(`⚠ Plus de place sur cette action bottom`);return;}
@@ -3496,7 +3496,7 @@ export default function App(){
 
               {/* RENCONTRE → AMÉLIORATION GRATUITE (cube haut → bas) */}
               {encounterUpgrade&&(()=>{
-                const mat=MATS.find(m=>m.id===me.matId);
+                const mat=matById(me.matId);
                 return(
                 <div style={{padding:"20px",background:"linear-gradient(180deg,#16120e,var(--bg2))",borderRadius:10,border:"1px solid var(--gold-dim)",animation:"slideUp 0.35s ease"}}>
                   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
@@ -3772,7 +3772,7 @@ export default function App(){
               {upgradePicking&&(()=>{
                 const from=bottomPick?.upgradeFrom;const to=bottomPick?.upgradeTo;
                 const ready=from!=null&&to!=null;
-                const mat=MATS.find(m=>m.id===me.matId);
+                const mat=matById(me.matId);
                 return(
                   <div style={{margin:"8px 8px 10px",padding:"10px 12px",borderRadius:8,background:"rgba(212,178,84,0.10)",border:"1px solid var(--gold)",boxShadow:"0 0 12px rgba(212,178,84,0.18)",animation:"slideUp 0.2s ease"}}>
                     <div style={{fontFamily:"var(--font-title)",fontWeight:800,fontSize:15,color:"var(--gold)",marginBottom:4}}>⬆ Amélioration en cours — sur les cartes ci-dessous :</div>
@@ -3797,7 +3797,7 @@ export default function App(){
                 const bottomAction=BOTTOM[i];
                 const costs=getBottomCost(me);
                 const bc=costs[i];
-                const mat=MATS.find(m=>m.id===me.matId);
+                const mat=matById(me.matId);
                 const cubesTop=(me.cubesOnTop||[])[i]||0;
                 const cubesBot=(me.cubesOnBottom||[])[i]||0;
                 // Cases utilisables plafonnées : le coût ne descend jamais sous 1
@@ -4287,7 +4287,7 @@ export default function App(){
             const availBuildings=BUILDING_TYPES.filter(bt=>!(me.buildings||[]).some(b=>b.type===bt.type));
             const buildableHexes=workerHexes.filter(h=>!(me.buildings||[]).some(b=>b.hexId===h));
             const deployHexes=workerHexes;
-            const mat=MATS.find(m=>m.id===me.matId);
+            const mat=matById(me.matId);
             return(
               <div style={{padding:"12px 16px",borderTop:"1px solid var(--border)",animation:"slideUp 0.25s ease"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>

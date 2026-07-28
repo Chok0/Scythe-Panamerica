@@ -1,10 +1,10 @@
 import { FACTIONS } from '../data/factions.js';
 import { HEXES, HOME_BASES, CURRENT_MAP, homeBaseHex } from '../data/hexes.js';
-import { MATS } from '../data/mats.js';
+import { matById } from '../data/mats.js';
 import { drawCardValue } from './cards.js';
 
 export const createPlayer = (factionId, matId, isBot) => {
-  const f = FACTIONS[factionId], pm = MATS.find(m => m.id === matId);
+  const f = FACTIONS[factionId], pm = matById(matId);
   // Le héros démarre SUR la base (hex invisible sous le drapeau), hors plateau.
   const base = homeBaseHex(factionId);
   return {

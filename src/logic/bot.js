@@ -1,7 +1,7 @@
 import { FACTIONS } from '../data/factions.js';
 import { TERRAINS } from '../data/terrains.js';
 import { hMap, ADJ, HEXES, HOME_BASES, homeBaseHex } from '../data/hexes.js';
-import { MATS, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, getBottomCost, topUpgradeCount, maxBottomCubes, frBot } from '../data/mats.js';
+import { matById, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, getBottomCost, topUpgradeCount, maxBottomCubes, frBot } from '../data/mats.js';
 import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from './resources.js';
 import { canPayProduce, payProduce } from './production.js';
 import { getValidMoves, findPathWaypoints, marshToll } from './movement.js';
@@ -431,7 +431,7 @@ const applyFactoryGainsBot = (p, gains, rails, logs, f, prof) => {
         break;
       case "cards": p.combatCards = (p.combatCards || 0) + eff.qty; logs.push(`🤖⚙ ${f.name}: +${eff.qty}🃏 (usine)`); break;
       case "upgrade": {
-        const mat = MATS.find(m => m.id === p.matId);
+        const mat = matById(p.matId);
         const validTop = []; const validBottom = [];
         (p.cubesOnTop || []).forEach((c, i) => { if (c > 0) validTop.push(i); });
         (mat?.bottomSlots || []).forEach((s, i) => { if ((p.cubesOnBottom || [])[i] < maxBottomCubes(mat, i)) validBottom.push(i); });
@@ -951,7 +951,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   let bottomDone = false;
   if (canAffordBottom) {
     if (bottomAction === "Upgrade" && (p.upgrades || 0) < 6 && ((p.upgrades || 0) < 2 || p.stars >= 4)) {
-      const mat = MATS.find(m => m.id === p.matId);
+      const mat = matById(p.matId);
       const validTop = []; const validBottom = [];
       if (mat) {
         (p.cubesOnTop || []).forEach((c, i) => { if (c > 0) validTop.push(i); });

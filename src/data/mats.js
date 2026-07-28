@@ -33,6 +33,56 @@ export const MATS = [
 
 export const BOTTOM = ["Upgrade", "Deploy", "Build", "Enlist"];
 
+// ═══ PLATEAUX DU JEU ORIGINAL (ids 101-107) — RÉSERVE CAMPAGNE ═══
+// Les 7 plateaux du Scythe de base, transcrits depuis leurs valeurs
+// officielles. HORS ROTATION STANDARD (SetupScreen/startGame n'utilisent que
+// MATS) : ils seront débloqués par le mode campagne, comme PLANS_ORIGINAL et
+// OBJECTIVES_ORIGINAL. Invariants du jeu original, tous vérifiés par tests :
+//   - Σ coûts de base        = 13 ressources (Panamerica : 10-12, plus rapide)
+//   - Σ bonus $ du bas       = 6$ pile        (Panamerica : 4-7, hétérogène)
+//   - Σ cases d'amélioration = 6 en bas ET 6 en haut (étoile des 6 Améliorations)
+//   - cases du HAUT dictées par l'action : Move 2, Bolster 2, Trade 1, Produce 1
+//   - départ échelonné pauvre→riche : 2♥/4$ (Industrie) → 4♥/7$ (Agriculture) —
+//     dans le jeu de base l'ordre du tour compensait ; ici, à surveiller.
+// NOTE transcription : le Militant affichait Améliorer « réductible à 2 »
+// (5 cases au total) — corrigé à 1 (2 cases), l'invariant des 6 cases et
+// l'étoile des 6 Améliorations l'exigent.
+export const MATS_ORIGINAL = [
+  { id: 101, name: "Industrie", original: true, pop: 2, coins: 4,
+    topRow: ["Bolster", "Produce", "Move", "Trade"],
+    topCubes: [2, 1, 2, 1], bottomSlots: [1, 2, 1, 2],
+    bottomCosts: [{ res: "petrole", base: 3, bonus: 3 }, { res: "metal", base: 3, bonus: 2 }, { res: "bois", base: 3, bonus: 1 }, { res: "nourriture", base: 4, bonus: 0 }] },
+  { id: 102, name: "Ingénierie", original: true, pop: 2, coins: 5,
+    topRow: ["Produce", "Trade", "Bolster", "Move"],
+    topCubes: [1, 1, 2, 2], bottomSlots: [1, 2, 2, 1],
+    bottomCosts: [{ res: "petrole", base: 3, bonus: 2 }, { res: "metal", base: 4, bonus: 0 }, { res: "bois", base: 3, bonus: 3 }, { res: "nourriture", base: 3, bonus: 1 }] },
+  { id: 103, name: "Patriotisme", original: true, pop: 2, coins: 6,
+    topRow: ["Move", "Bolster", "Trade", "Produce"],
+    topCubes: [2, 2, 1, 1], bottomSlots: [0, 3, 2, 1],
+    bottomCosts: [{ res: "petrole", base: 2, bonus: 1 }, { res: "metal", base: 4, bonus: 3 }, { res: "bois", base: 4, bonus: 0 }, { res: "nourriture", base: 3, bonus: 2 }] },
+  { id: 104, name: "Mécanique", original: true, pop: 3, coins: 6,
+    topRow: ["Trade", "Bolster", "Move", "Produce"],
+    topCubes: [1, 2, 2, 1], bottomSlots: [1, 2, 1, 2],
+    bottomCosts: [{ res: "petrole", base: 3, bonus: 0 }, { res: "metal", base: 3, bonus: 2 }, { res: "bois", base: 3, bonus: 2 }, { res: "nourriture", base: 4, bonus: 2 }] },
+  { id: 105, name: "Agriculture", original: true, pop: 4, coins: 7,
+    topRow: ["Move", "Trade", "Produce", "Bolster"],
+    topCubes: [2, 1, 1, 2], bottomSlots: [0, 2, 2, 2],
+    bottomCosts: [{ res: "petrole", base: 2, bonus: 1 }, { res: "metal", base: 4, bonus: 0 }, { res: "bois", base: 4, bonus: 2 }, { res: "nourriture", base: 3, bonus: 3 }] },
+  { id: 106, name: "Innovation", original: true, pop: 3, coins: 5,
+    topRow: ["Trade", "Produce", "Bolster", "Move"],
+    topCubes: [1, 1, 2, 2], bottomSlots: [0, 1, 3, 2],
+    bottomCosts: [{ res: "petrole", base: 3, bonus: 3 }, { res: "metal", base: 3, bonus: 1 }, { res: "bois", base: 4, bonus: 2 }, { res: "nourriture", base: 3, bonus: 0 }] },
+  { id: 107, name: "Militant", original: true, pop: 3, coins: 4,
+    topRow: ["Bolster", "Move", "Produce", "Trade"],
+    topCubes: [2, 2, 1, 1], bottomSlots: [2, 1, 1, 2],
+    bottomCosts: [{ res: "petrole", base: 3, bonus: 0 }, { res: "metal", base: 3, bonus: 3 }, { res: "bois", base: 4, bonus: 1 }, { res: "nourriture", base: 3, bonus: 2 }] },
+];
+
+// Tous les plateaux (standard + campagne) — les LOOKUPS par id passent par
+// matById pour qu'un plateau original assigné en campagne fonctionne partout.
+export const ALL_MATS = [...MATS, ...MATS_ORIGINAL];
+export const matById = (id) => ALL_MATS.find(m => m.id === id);
+
 // Libellés FR des actions (source unique pour l'UI ET les logs — avant, les
 // noms d'action apparaissaient en anglais dans le journal alors que l'UI les
 // traduisait déjà). `frTop`/`frBot` acceptent le nom EN et rendent le FR.
@@ -65,7 +115,7 @@ export const topSlots = (action, n) => (TOP_UPGRADES[action] || []).slice(-n);
 // Bonus débloqués (res) sur la colonne `col` du joueur : les cases d'indice
 // >= cubes restants (les cubes occupent les premiers indices)
 export const topUnlocked = (p, col) => {
-  const mat = MATS.find(m => m.id === p.matId);
+  const mat = matById(p.matId);
   const n = (mat?.topCubes || [])[col] || 0;
   const cubes = (p.cubesOnTop || [])[col] ?? n;
   return topSlots((p.topRow || [])[col], n).slice(cubes).map(s => s.res);
@@ -94,7 +144,7 @@ export const ENLIST_IMMEDIATE = [
 ];
 
 export const getBottomCost = (player) => {
-  const mat = MATS.find(m => m.id === player.matId);
+  const mat = matById(player.matId);
   if (!mat) return [{ res: "petrole", qty: 2 }, { res: "metal", qty: 3 }, { res: "bois", qty: 3 }, { res: "nourriture", qty: 3 }];
   return mat.bottomCosts.map((bc, i) => ({
     res: bc.res,
