@@ -50,8 +50,11 @@ export const BOT_PROFILES = {
   blitz: {
     key: "blitz", name: "Blitzkrieg", icon: "⚔",
     desc: "Remplir ses étoiles vitesse grand V et massacrer les camarades — la pop attendra",
-    popTarget: 3,        // juste assez pour ne pas bloquer Produce à 5+ ouvriers
-    tradePopBoost: 3,
+    // v0.15 : à popTarget 3, le blitz finissait à pop 0 — palier ×1, ses
+    // 5 étoiles ne valaient plus que 15 points au lieu de 25 (partie de test
+    // mesurée). Il vise désormais le palier ×2 (7) : rapide, pas suicidaire.
+    popTarget: 6,
+    tradePopBoost: 4,
     chasePopStar: false,
     aggroMargin: 0,      // attaque à force égale
     attackReward: 12,

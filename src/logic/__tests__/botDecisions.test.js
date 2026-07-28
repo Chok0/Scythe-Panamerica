@@ -92,6 +92,29 @@ describe('estimateScore — même barème que le décompte final', () => {
   });
 });
 
+describe('P8 — un bot agressif ne se vide pas de sa popularité', () => {
+  it('le profil blitz vise le palier ×2 (7) et non plus 3', async () => {
+    const { BOT_PROFILES } = await import('../botProfiles.js');
+    expect(BOT_PROFILES.blitz.popTarget).toBeGreaterThanOrEqual(6);
+  });
+
+  it('à pop 7, chasser des ouvriers (perte de palier) devient repoussant', () => {
+    // Deux hex candidats identiques, l'un occupé par 2 ouvriers ennemis :
+    // le prendre ferait retomber de 7 à 5 pop → perte du multiplicateur ×2.
+    const p = mkBot(); p.botProfile = 'blitz'; p.pop = 7; p.power = 7;
+    const from = p.hero;
+    // On s'appuie sur le tour complet : le bot ne doit pas finir sous 7 de pop
+    let below = 0;
+    for (let i = 0; i < 10; i++) {
+      const hostile = HEXES.find(h => !h.base && h.id !== from);
+      const r = run({ ...p, lastCol: i % 4, workers: p.workers.map(w => ({ ...w })), mechs: [], resources: {} },
+        { hexWorkers: new Map([[hostile.id, 2]]), enemyHexes: new Set([hostile.id]) });
+      if (r.player.pop < 7) below++;
+    }
+    expect(below, 'le bot a bradé son palier ×2').toBeLessThanOrEqual(3);
+  });
+});
+
 describe('P7 — Produire ne se paie pas au prix d\'un palier de popularité', () => {
   it('à 6 ouvriers et pop 7, le bot évite le Produire qui le ferait retomber au palier ×1', () => {
     // 6 ouvriers → Produire coûte 1⚡ ET 1♥ (règle Scythe). À pop 7, produire

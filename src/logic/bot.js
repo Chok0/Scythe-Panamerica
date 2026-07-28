@@ -53,10 +53,42 @@ export const estimateScore = (p, ctx) => {
 // dit si l'action envisagée poserait bien cette 6e étoile.
 // Mesuré avant correctif : 41 % des parties étaient finies par un bot qui
 // perdait au décompte — le garde-fou ne couvrait que les actions du bas.
+// Étoiles LATENTES : une mission secrète ou un objectif de faction déjà rempli
+// se révèle automatiquement en fin de tour — un bot à 4 étoiles avec deux
+// objectifs mûrs est en réalité à 6. Sans ça, le veto (qui ne testait que
+// « exactement 5 étoiles ») était contourné par les tours à plusieurs étoiles :
+// partie de test observée avec bâtiment gratuit + étoile de combat + objectif
+// de faction dans le MÊME tour, 4 → 6 étoiles d'un coup.
+const effectiveStars = (p, ctx) => {
+  let s = p.stars || 0;
+  try {
+    if (p.objective && !p.objectiveRevealed && p.objective.check(p, { players: ctx && ctx.allPlayers })) s++;
+    const fo = FACTIONS[p.faction]?.fObj;
+    if (fo && !p.fObjRevealed && fo.check(p, { players: ctx && ctx.allPlayers })) s++;
+  } catch { /* un objectif exotique ne doit jamais casser la décision */ }
+  return s;
+};
+
 export const losingTrigger = (p, ctx, wouldTrigger) => {
-  if (!wouldTrigger || (p.stars || 0) !== 5) return false;
+  if (!wouldTrigger) return false;
   if (!ctx || ctx.bestOppScore == null) return false;
+  if (effectiveStars(p, ctx) < 5) return false;   // la 6e n'est pas en jeu
   return estimateScore(p, ctx) < ctx.bestOppScore;
+};
+
+// ── P8 : PLANCHER DE PALIER DE POPULARITÉ ─────────────────────────────
+// Chasser des ouvriers coûte 1 popularité chacun. Les seuils existants
+// (p.pop >= 2/3, ou min(7, popTarget) qui tombe à 3 pour le blitz) laissaient
+// un bot agressif se vider jusqu'à 0 : partie de test mesurée avec un blitz à
+// 5 étoiles ET pop 0 — palier ×1, ses étoiles ne valaient plus que 15 points
+// au lieu de 25. Retomber sous un palier coûte plus cher que le gain du raid.
+const popTierPenalty = (p, cost) => {
+  if (cost <= 0) return 0;
+  const after = (p.pop || 0) - cost;
+  if (p.pop >= 13 && after < 13) return 8;   // perte du ×3
+  if (p.pop >= 7 && after < 7) return 12;    // perte du ×2 : la plus chère
+  if (after <= 1) return 10;                 // à sec : Produire se bloque aussi
+  return 0;
 };
 
 // Bottom action maxed out? (no more stars/progress from it)
@@ -426,10 +458,18 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
         // la victoire chasse les ouvriers du hex (-1 pop chacun) ; sous le
         // palier visé par le profil, l'attaque perd de sa valeur
         const popLoss = ctx && ctx.hexWorkers ? (ctx.hexWorkers.get(hexId) || 0) : 0;
-        const popAfford = p.pop - popLoss >= Math.min(7, prof.popTarget) ? 0 : 8;
+        // P8 : au coût brut s'ajoute la perte de PALIER, qui ampute tout le
+        // score final — un blitz ne doit pas se vider jusqu'au palier ×1
+        const popAfford = (p.pop - popLoss >= Math.min(7, prof.popTarget) ? 0 : 8)
+          + popTierPenalty(p, popLoss);
         // « Factory control often determines game outcome » : l'Usine vaut
         // 3 territoires au score — prime de combat pour la prendre/reprendre
         const factoryPrize = hexId === 22 ? 6 : 0;
+        // P4 : gagner ce combat donnerait une étoile de combat (1re ou 2e) —
+        // donc la 6e étoile si l'on en a 5. Les combats sont résolus APRÈS le
+        // tour (pvpBots), hors de portée du veto de scoreColumn : c'est ici
+        // qu'il faut renoncer quand on est distancé au score.
+        if (wantCombatStar && losingTrigger(p, ctx, true)) s -= 40;
         // Un gros magot (≥4) justifie le combat même sans étoile à la clé
         if (!overextended && myStrength >= defStrength + prof.aggroMargin && (wantCombatStar || prof.earlyAttack || loot >= 4 || factoryPrize) && (prof.earlyAttack || getPhase(p) !== "early" || nearHome))
           s += (wantCombatStar ? prof.attackReward : Math.floor(prof.attackReward / 2)) + Math.min(4, myStrength - defStrength) + loot + threat + (nearHome ? 6 : 0) + factoryPrize - popLoss - popAfford;
@@ -437,8 +477,10 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
       } else if (enemyHexes && enemyHexes.has(hexId)) {
         // Hex avec seulement des ouvriers ennemis : déplacement possible mais coûte de la pop
         // Servitude : la Confédération y gagne un ouvrier → elle les chasse activement
-        if (p.faction === "confederation" && (p.capturedWorkers || 0) < 2 && p.pop >= 2) s += 6;
+        const wCost = ctx && ctx.hexWorkers ? (ctx.hexWorkers.get(hexId) || 1) : 1;
+        if (p.faction === "confederation" && (p.capturedWorkers || 0) < 2 && p.pop >= 4) s += 6;
         else s -= 4;
+        s -= popTierPenalty(p, wCost); // P8 : ne pas brader un palier pour un raid
         // Raid : un gros tas de ressources sur un hex d'ouvriers vaut le coût en
         // pop pour les profils agressifs — prendre le hex neutralise le magot
         // du thésauriseur au scoring ; ralentir l'économie du leader compte aussi

@@ -110,15 +110,21 @@ winrates bot-vs-bot.
 | Métrique | Avant | Après | Cible |
 |---|---|---|---|
 | **Tours morts « +1$ » / partie (derniers)** | 4,1 | **0,0** | < 1 ✅ |
-| Score du dernier | 40,6 | **50,2** | ↑ ✅ |
+| Score du dernier | 40,6 | **52,8** | ↑ ✅ |
 | Étoiles du dernier | 2,4 | **3,0** | ↑ ✅ |
-| Écart gagnant−dernier | 48,9 | **43,6** | ↓ ✅ |
-| Derniers au palier ×1 (pop ≤ 6) | 32,3 % | **20,7 %** | < 20 % ≈ ✅ |
-| Gagnants au palier ×1 | 14,3 % | **6,0 %** | ↓ ✅ |
-| Étoile Recrues (derniers) | 29 % | **46 %** | ↑ ✅ |
-| Étoile Bâtiments (derniers) | 22 % | **27 %** | ↑ ✅ |
-| Dernière place — pire profil | bâtisseur 40 % | **33 %** | resserré ✅ |
-| « Déclencheur perd » | 41,1 % | 37,8 % | < 25 % ❌ |
+| Derniers au palier ×1 (pop ≤ 6) | 32,3 % | **9,7 %** | < 20 % ✅ |
+| Gagnants au palier ×1 | 14,3 % | **3,3 %** | ↓ ✅ |
+| Ressources du dernier (pts) | 9,8 | **10,5** | ↑ ✅ |
+| Étoile Recrues (derniers) | 29 % | **~46 %** | ↑ ✅ |
+| Dernière place — pire profil | bâtisseur 40 % | **36,5 %** | resserré ✅ |
+| **« Déclencheur perd »** | 41,1 % | **22,4 %** | < 25 % ✅ |
+
+Honnêteté de mesure : le « déclencheur perd » a été revérifié sur plusieurs
+graines après le correctif final — **23,5 % (101) · 21,5 % (202) · 26,6 %
+(303)**, soit ~24 % contre 41 % avant. Toutes les autres métriques sont issues
+de la graine 101, avant et après, à périmètre identique. Ces chiffres
+mesurent la QUALITÉ DE DÉCISION des bots, pas l'équilibre du jeu pour un
+humain (verdict de playtest : les parties bot-vs-bot ne valident pas cela).
 
 **Ce qui a été implémenté** (P1→P5 + deux découvertes) :
 
@@ -158,12 +164,43 @@ winrates bot-vs-bot.
   Frente et la tuile bonus) : le bot « croyait mener » dans 75 % des
   déclenchements perdants. Aligné sur le barème réel.
 
-**Sur le « déclencheur perd » à 37,8 %** : la ventilation par taille de partie
-montre que ce n'est pas (principalement) un défaut d'IA — **22 % à 2 joueurs,
-33 % à 3, 46 % à 4, 49 % à 5**. Avec quatre adversaires, la probabilité qu'au
-moins un dépasse le déclencheur est mécaniquement élevée ; c'est le
-comportement du scoring de Scythe, pas une erreur de décision. Les garde-fous
-fonctionnent (jusqu'à 11 renoncements observés sur une seule partie).
+- **P8 (découverte de la partie de test)** — **Plancher de palier de
+  popularité**. Chasser un ouvrier coûte 1♥ ; les seuils existants
+  (`p.pop >= 2/3`, ou `min(7, popTarget)` qui tombait à 3 pour le blitz)
+  laissaient un bot agressif se vider jusqu'à 0 — partie de test mesurée avec
+  un blitz à **5 étoiles ET pop 0** (palier ×1 : ses étoiles ne valaient plus
+  que 15 points au lieu de 25). Un malus explicite (`popTierPenalty`) est
+  désormais appliqué à toute action qui ferait retomber sous un palier, et le
+  blitz vise 6 de popularité au lieu de 3. Le veto de fin de partie couvre
+  aussi les **étoiles de combat**, attribuées après le tour (pvpBots) donc
+  hors de portée de `scoreColumn`.
+
+- **P9 (découverte de la partie de test)** — **Servitude n'est plus
+  automatique chez les bots**. La capture d'ouvrier de la Confédération coûte
+  2 popularité et s'appliquait d'office (c'est pourtant un CHOIX pour le
+  joueur humain, via `abilityOffer`) : −4 pop sur la partie, soit un palier de
+  score perdu. La partie de test l'a vue conclure à **pop 3, palier ×1, 6
+  étoiles et dernière place**. Le bot ne capture désormais que si sa
+  popularité le supporte — sauf pour la 2ᵉ capture, qui complète l'objectif de
+  faction « Le Joug ».
+
+- **P10** — **Étoiles latentes**. Le veto ne testait que « exactement 5
+  étoiles » : un bot pouvait passer de 4 à 6 dans le MÊME tour (bâtiment
+  gratuit d'usine + étoile de combat + objectif de faction), observé en partie
+  de test. `losingTrigger` compte désormais les objectifs DÉJÀ remplis mais non
+  révélés — un bot à 4 étoiles avec deux missions mûres se sait à 6.
+
+**P8 et P10 ont fait l'essentiel du « déclencheur perd »** (41 % → ~24 %) :
+des bots qui gardent leur palier ont un score réel proche de leur estimation,
+donc le garde-fou décide juste. La ventilation par taille de partie montre que
+le reliquat est structurel — **22 % à 2 joueurs contre 49 % à 5** : avec quatre
+adversaires, la probabilité qu'au moins un dépasse le déclencheur est
+mécaniquement élevée ; c'est le scoring de Scythe, pas une erreur de décision.
+
+**Piste ouverte** : la Confédération reste la faction la plus souvent dernière
+(41 %). Son ability (capture) et son objectif de faction la poussent vers des
+actions coûteuses en popularité ; à examiner en playtest humain avant tout
+nouvel ajustement automatique.
 
 **Verrouillé par les tests** (`src/logic/__tests__/botDecisions.test.js`) :
 absence de tours morts, sémantique de `losingTrigger`, refus/acceptation de
