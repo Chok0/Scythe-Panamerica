@@ -1,15 +1,17 @@
 import { FACTIONS } from '../data/factions.js';
 import { TERRAINS } from '../data/terrains.js';
 import { hMap, ADJ, HEXES, HOME_BASES, homeBaseHex } from '../data/hexes.js';
-import { MATS, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, getBottomCost, topUpgradeCount, maxBottomCubes, frBot } from '../data/mats.js';
+import { matById, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, getBottomCost, topUpgradeCount, maxBottomCubes, frBot } from '../data/mats.js';
 import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from './resources.js';
-import { canPayProduce, payProduce } from './production.js';
+import { canPayProduce, payProduce, getProduceCost } from './production.js';
 import { getValidMoves, findPathWaypoints, marshToll } from './movement.js';
 import { transportUnits } from './transport.js';
-import { BOT_PROFILES } from './botProfiles.js';
+import { BOT_PROFILES, effectiveProfile } from './botProfiles.js';
 import { BALANCE } from '../data/balance.js';
 import { getMechAbilities } from '../data/mechAbilities.js';
-import { getPlanBottomBonus } from './planEffects.js';
+import { FACTORY_COL, TESLA_FRAGMENTS_REQUIRED, factoryCostLabel, factoryEffectLabel } from '../data/plans.js';
+import { COMBAT_ABILITIES } from '../data/combat.js';
+import { canPayFactoryCost, payFactoryCost, factoryEffectPossible, factoryResourceHex } from './factory.js';
 
 // ══════════════════════════════════════════════════════
 // Strategic Bot AI — based on Scythe competitive strategy
@@ -23,15 +25,71 @@ const getPhase = (p) => p.stars >= 5 ? "late" : p.stars >= 3 ? "mid" : "early";
 // territoires (unités + bâtiments, Usine = 3), paires de ressources, pièces —
 // multipliés par le palier de popularité. Sert au « end-game trigger
 // management » du corpus : finir si en tête, engranger sinon.
-export const estimateScore = (p) => {
+// v0.15 : l'estimation servait de garde-fou de fin de partie mais divergeait
+// du VRAI décompte — le bot croyait mener dans 75 % des cas où il déclenchait
+// la fin en perdant. Trois écarts corrigés : (1) seules les ressources sur
+// des territoires CONTRÔLÉS comptent, (2) les pièges Frente non désarmés sont
+// des territoires, (3) la tuile « bonus de pose » (jusqu'à 16$) est intégrée
+// quand le contexte la fournit.
+export const estimateScore = (p, ctx) => {
   const tier = p.pop >= 13 ? 2 : p.pop >= 7 ? 1 : 0;
   const sm = [3, 4, 5][tier], tm = [2, 3, 4][tier], rm = [1, 2, 3][tier];
   const hexes = new Set([p.hero, ...p.workers.map(w => w.hexId), ...p.mechs.map(m => m.hexId),
     ...(p.buildings || []).map(b => b.hexId)].filter(h => hMap[h] && !hMap[h].base));
+  (p.trapTokens || []).forEach(t => { if (!t.disarmed && hMap[t.hexId] && !hMap[t.hexId].base) hexes.add(t.hexId); });
   let res = 0;
-  Object.values(p.resources || {}).forEach(r => Object.values(r).forEach(n => { res += n; }));
+  Object.entries(p.resources || {}).forEach(([hid, r]) => {
+    if (!hexes.has(parseInt(hid))) return;   // règle : territoires contrôlés seulement
+    Object.values(r).forEach(n => { res += n; });
+  });
+  const sb = ctx && ctx.structureBonus;
+  const sbCoins = sb ? sb.score(sb.count(p, ctx.allPlayers), p) : 0;
   return (p.stars || 0) * sm + (hexes.size + (hexes.has(22) ? 2 : 0) + (p.flagTokens || []).length) * tm
-    + Math.floor(res / 2) * rm + (p.coins || 0) + (p.flagTokens || []).length * 2;
+    + Math.floor(res / 2) * rm + (p.coins || 0) + (p.flagTokens || []).length * 2 + sbCoins;
+};
+
+// ── P4 : « ne pas finir la partie en étant derrière » ──────────────────
+// Poser sa 6e étoile déclenche la fin IMMÉDIATE : si notre score estimé est
+// inférieur au meilleur adversaire, c'est offrir la victoire. `wouldTrigger`
+// dit si l'action envisagée poserait bien cette 6e étoile.
+// Mesuré avant correctif : 41 % des parties étaient finies par un bot qui
+// perdait au décompte — le garde-fou ne couvrait que les actions du bas.
+// Étoiles LATENTES : une mission secrète ou un objectif de faction déjà rempli
+// se révèle automatiquement en fin de tour — un bot à 4 étoiles avec deux
+// objectifs mûrs est en réalité à 6. Sans ça, le veto (qui ne testait que
+// « exactement 5 étoiles ») était contourné par les tours à plusieurs étoiles :
+// partie de test observée avec bâtiment gratuit + étoile de combat + objectif
+// de faction dans le MÊME tour, 4 → 6 étoiles d'un coup.
+const effectiveStars = (p, ctx) => {
+  let s = p.stars || 0;
+  try {
+    if (p.objective && !p.objectiveRevealed && p.objective.check(p, { players: ctx && ctx.allPlayers })) s++;
+    const fo = FACTIONS[p.faction]?.fObj;
+    if (fo && !p.fObjRevealed && fo.check(p, { players: ctx && ctx.allPlayers })) s++;
+  } catch { /* un objectif exotique ne doit jamais casser la décision */ }
+  return s;
+};
+
+export const losingTrigger = (p, ctx, wouldTrigger) => {
+  if (!wouldTrigger) return false;
+  if (!ctx || ctx.bestOppScore == null) return false;
+  if (effectiveStars(p, ctx) < 5) return false;   // la 6e n'est pas en jeu
+  return estimateScore(p, ctx) < ctx.bestOppScore;
+};
+
+// ── P8 : PLANCHER DE PALIER DE POPULARITÉ ─────────────────────────────
+// Chasser des ouvriers coûte 1 popularité chacun. Les seuils existants
+// (p.pop >= 2/3, ou min(7, popTarget) qui tombe à 3 pour le blitz) laissaient
+// un bot agressif se vider jusqu'à 0 : partie de test mesurée avec un blitz à
+// 5 étoiles ET pop 0 — palier ×1, ses étoiles ne valaient plus que 15 points
+// au lieu de 25. Retomber sous un palier coûte plus cher que le gain du raid.
+const popTierPenalty = (p, cost) => {
+  if (cost <= 0) return 0;
+  const after = (p.pop || 0) - cost;
+  if (p.pop >= 13 && after < 13) return 8;   // perte du ×3
+  if (p.pop >= 7 && after < 7) return 12;    // perte du ×2 : la plus chère
+  if (after <= 1) return 10;                 // à sec : Produire se bloque aussi
+  return 0;
 };
 
 // Bottom action maxed out? (no more stars/progress from it)
@@ -56,15 +114,75 @@ const neededResources = (p) => {
   return need;
 };
 
+// ── Colonne 4 : carte d'usine (HAUT 1 coût → 1 gain, BAS move 2 hex) ──
+const scoreFactoryColumn = (p, prof, ctx) => {
+  const card = p.factoryCard;
+  if (!card) return -999;
+  let score = 0;
+  if (canPayFactoryCost(p, card)) {
+    score += 14;
+    // Gains « physiques » (mech/bâtiment/recrue/amélioration) = progrès
+    // d'étoile GRATUIT → priorité forte tant que la piste n'est pas maxée
+    const flat = card.gain.flatMap(g => g.type === "choice" ? g.options : [g]);
+    if (flat.some(g => ["mech", "building", "enlist", "upgrade"].includes(g.type) && factoryEffectPossible(p, g))) score += 10;
+    if (flat.some(g => g.type === "produce2" && factoryEffectPossible(p, g))) score += 6;
+    if (flat.some(g => g.type === "resources" && factoryEffectPossible(p, g))) score += 4;
+  } else {
+    score += 3; // bas seul : repositionnement 2 hex, utile mais pas prioritaire
+  }
+  if (getPhase(p) === "late" || (ctx && ctx.endgame)) score += 4; // 2 hex = territoires
+  return score;
+};
+
+// ── Combien de ressources `res` le TOP de cette colonne livrerait-il ce tour ? ──
+// (P2, planification à 1 coup) : Commerce achète 2-3 ressources du type voulu,
+// Produire récolte sur les hex d'ouvriers du bon terrain. Sert à créditer une
+// colonne dont le HAUT rend son propre BAS payable au tour SUIVANT.
+const topYieldFor = (p, action, res) => {
+  if (action === "Trade") return p.coins >= 1 ? 2 + topUpgradeCount(p, "Trade", "metal") : 0;
+  if (action === "Produce") {
+    if (!canPayProduce(p)) return 0;
+    const byHex = {};
+    p.workers.forEach(w => { const t = TERRAINS[hMap[w.hexId]?.t]?.res; if (t === res) byHex[w.hexId] = (byHex[w.hexId] || 0) + 1; });
+    // 2 hex de base (+1 par amélioration) : on somme les meilleurs
+    const n = 2 + topUpgradeCount(p, "Produce", "nourriture");
+    return Object.values(byHex).sort((a, b) => b - a).slice(0, n).reduce((a, b) => a + b, 0);
+  }
+  return 0;
+};
+
+// ── Rentabilité PROPRE AU PLATEAU d'une action du bas (P2) ──
+// Les priorités fixes (Enrôler > Déployer > …) ignoraient que le MÊME Construire
+// coûte 2 bois +2$ sur Fordisme et 4 bois +0$ sur Forge. On corrige le score par
+// la rentabilité réelle de la colonne sur CE plateau : bonus $ imprimé contre
+// surcoût par rapport au minimum du jeu (2 ressources).
+const matValueOf = (bc) => {
+  if (!bc) return 0;
+  return (bc.bonus || 0) * 1.5 - Math.max(0, bc.qty - 2) * 2.5;
+};
+
 // Score a column choice based on strategic value
 const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
+  if (col === FACTORY_COL) return scoreFactoryColumn(p, prof, ctx);
   const action = p.topRow[col];
   const f = FACTIONS[p.faction];
   const phase = getPhase(p);
+  // ── ÉCONOMIE (P1) : Soutien et Commerce coûtent 1$. Un bot fauché qui les
+  // choisit quand même perd son tour (« pas d'$ » au journal) — mesuré 4 tours
+  // morts/partie chez les perdants. Produire est gratuit : c'est LUI la sortie
+  // de la famine, avec les bonus $ des actions du bas.
+  const broke = p.coins < 1;
   // Fin imminente : un ADVERSAIRE est à 5+ étoiles — le scoring final approche
   // même si nous ne sommes qu'à 2 étoiles (corpus : « spread out when the end
   // is imminent »). Sans ce flag, le bot ne pivotait que sur SES étoiles.
   const endNear = phase === "late" || !!(ctx && ctx.endgame);
+  // ── P4 bis : « ENGRANGER AVANT DE FINIR » ────────────────────────────
+  // À 5 étoiles et derrière au score estimé, poser la 6e équivaut à offrir la
+  // partie (mesuré : le déclencheur perdant a 6,1 étoiles mais 10 ressources
+  // contre 21 au vainqueur, et un palier de pop inférieur). Le bot bascule
+  // alors en mode capitalisation : ressources, popularité, territoires.
+  const stockpiling = (p.stars || 0) >= 5 && ctx && ctx.bestOppScore != null
+    && estimateScore(p, ctx) < ctx.bestOppScore;
   const costs = getBottomCost(p);
   const bc = costs[col];
   const bottomAction = BOTTOM[col];
@@ -80,8 +198,12 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
 
   // Corpus stratégie : l'étoile Amélioration est un piège de tempo — 2 upgrades
   // suffisent (réduction de coût) ; en fin de course (4+ étoiles) l'étoile
-  // 6-upgrades redevient une source valable pour boucler la partie
-  const upgradeWorthIt = (p.upgrades || 0) < 2 || p.stars >= 4;
+  // 6-upgrades redevient une source valable pour boucler la partie.
+  // Conscience des adversaires : si quelqu'un est à UNE étoile de finir, les
+  // investissements de long terme (améliorations) n'auront jamais le temps de
+  // rapporter — on encaisse ce qui se compte tout de suite.
+  const raceIsOver = !!(ctx && ctx.oppOneStarFromEnd);
+  const upgradeWorthIt = (!raceIsOver || p.stars >= 4) && ((p.upgrades || 0) < 2 || p.stars >= 4);
   // HUGE bonus for being able to do a bottom action (it's the main way to get stars)
   if (canBottom && !bottomMaxed) {
     score += 25;
@@ -95,6 +217,12 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
     }
     else if (bottomAction === "Build") score += 8;
     else if (bottomAction === "Upgrade") { if (upgradeWorthIt) score += 5; else score -= 20; }
+    // P2 : rentabilité de CETTE colonne sur CE plateau (bonus $ vs surcoût) —
+    // sans ça, le Construire 4 bois +0$ de la Forge était joué comme le
+    // Construire 2 bois +2$ du Fordisme (Forge mesurée 42 % de dernières places)
+    score += matValueOf(bc);
+    // Trésorerie exsangue : le bonus $ imprimé de la colonne est une bouée
+    if (broke && (bc?.bonus || 0) > 0) score += 3 + (bc.bonus || 0);
     const oneAway = bottomAction === "Upgrade" ? (p.upgrades || 0) === 5
       : bottomAction === "Deploy" ? p.mechs.length === 3
       : bottomAction === "Build" ? (p.buildings || []).length === 3
@@ -103,9 +231,13 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
     // la 6e ÉTOILE → finir seulement si on est en tête au score estimé ;
     // sinon retarder le déclenchement et engranger territoires/pop d'abord
     // (« delaying your final star to prevent an opponent victory »).
+    // v0.15 : le malus de -18 ne pesait RIEN face au +25/+15 de la colonne —
+    // mesuré 41 % de parties finies par un bot qui perdait au décompte, avec
+    // 6,1 étoiles mais 2× moins de ressources que le vainqueur. Il faut un
+    // veto, pas une préférence.
     if (oneAway && (p.stars || 0) === 5 && ctx && ctx.bestOppScore != null) {
-      if (estimateScore(p) >= ctx.bestOppScore) score += 30;
-      else score -= 18;
+      if (estimateScore(p, ctx) >= ctx.bestOppScore) score += 30;
+      else score -= 70;
     } else if (prof.starRush && oneAway) {
       // Blitz : priorité absolue aux bottoms à une action de leur étoile
       score += prof.starRush;
@@ -113,6 +245,22 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
   } else if (bottomMaxed) {
     // Colonne au bottom épuisé : le top seul doit vraiment valoir le coup
     score -= 8;
+  } else if (bc) {
+    // ── P2, PRÉPARATION À 1 COUP ────────────────────────────────────────
+    // Le bas n'est pas payable MAINTENANT, mais le HAUT de cette même colonne
+    // peut livrer ce qu'il manque : le tour prochain, la colonne devient
+    // jouable en entier. Avant, ce cas valait 0 — le bot ne préparait jamais
+    // ses actions du bas et enchaînait les tops sans débouché.
+    const gap = bc.qty - countRes(p, bc.res);
+    const yield_ = topYieldFor(p, action, bc.res);
+    if (gap > 0 && yield_ > 0) {
+      // Couverture totale du manque = préparation parfaite ; partielle = moitié
+      const covers = yield_ >= gap;
+      score += (covers ? 12 : 6) + matValueOf(bc) * 0.5;
+      // Enrôler et Déployer restent les moteurs d'étoiles à préparer en premier
+      if (bottomAction === "Enlist") score += 4;
+      else if (bottomAction === "Deploy") score += 3;
+    }
   }
 
   // Top action value
@@ -131,6 +279,33 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
       if (phase === "early") score += 8;
       // More workers = more production value
       score += Math.min(wHexes.size, 2) * 3;
+      // P1 : Produire est GRATUIT — c'est la seule action qui crée de la valeur
+      // sans trésorerie. Fauché, elle prime sur tout le reste (le bot fauché
+      // bouclait sur « Move → +1$ », 4 tours morts par partie).
+      if (broke) score += 12;
+      // P4 bis : en mode capitalisation, les ressources sont LE levier de
+      // score qui manque au déclencheur perdant (2 par paire × multiplicateur)
+      if (stockpiling) score += 10;
+      // P4 : produire dans un village peut faire franchir les 8 ouvriers →
+      // étoile automatique → fin de partie. À 5 étoiles et derrière, on freine.
+      const villagers = p.workers.filter(w => hMap[w.hexId]?.t === "village").length;
+      if (villagers > 0 && !p.starWorkers && losingTrigger(p, ctx, p.workers.length + villagers >= 8)) score -= 20;
+      // ── P7 : PRODUIRE COÛTE DE LA POPULARITÉ (6+ ouvriers) ─────────────
+      // Règle Scythe : dès 4 ouvriers Produire coûte 1⚡, dès 6 il coûte AUSSI
+      // 1♥, dès 8 encore 1$. Un bot qui produit 13 fois avec 6+ ouvriers se
+      // saigne de 13 popularité — c'est la vraie cause des derniers à pop 0
+      // (mesuré : 29 % des derniers finissent au palier ×1). Un humain
+      // n'échange jamais un palier de score contre 2 ressources.
+      const pc = getProduceCost(p.workers.length);
+      if (pc.pop > 0) {
+        // Franchir un palier VERS LE BAS (7→6 ou 13→12) ampute tout le score
+        if (p.pop - pc.pop < 7 && p.pop >= 7) score -= 18;
+        else if (p.pop - pc.pop < 13 && p.pop >= 13) score -= 12;
+        else score -= 3;                       // simple érosion : léger malus
+        if (p.pop <= 2) score -= 15;           // à sec, l'économie se bloque
+      }
+      // Idem pour la puissance : produire à 0⚡ devient impossible
+      if (pc.pui > 0 && p.power <= 1) score -= 10;
       // Planification : produire vaut plus si nos ouvriers sont sur des hex
       // qui produisent les ressources dont nos bottoms ont besoin
       const need = neededResources(p);
@@ -162,25 +337,47 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
       }
       // Also good for getting pop in late game
       if (endNear) score += 3;
-      // Fin imminente sous un palier de pop : chaque point de pop peut changer
-      // les multiplicateurs du score final (×2/×3 territoires et paires)
-      if (ctx && ctx.endgame && (p.pop === 6 || p.pop === 12)) score += 6;
-      // Maintenir le palier de pop du profil — sous le palier 7, tout le score
-      // final est amputé (multiplicateurs ×3/×2/×1) et Produce à 5+ ouvriers
-      // coûte 1 pop (à 0 pop l'économie se bloque)
-      if (p.pop < prof.popTarget && (p.stars >= 1 || p.workers.length >= 5)) score += prof.tradePopBoost;
-      if (prof.chasePopStar && p.pop >= 13 && !p.starPop) score += 6;
+      // ── P3, SPRINT DE PALIER ──────────────────────────────────────────
+      // Franchir 6→7 ou 12→13 pop multiplie TOUT le score final (×2 puis ×3
+      // sur étoiles, territoires et paires de ressources). En fin de partie
+      // c'est le meilleur dollar dépensé du jeu : mesuré 32 % des derniers
+      // finissaient sous le palier 7 après avoir pourtant acheté de la pop
+      // toute la partie au goutte-à-goutte.
+      const sprint = endNear || !!(ctx && ctx.endgame) || stockpiling;
+      const popGain = 1 + topUpgradeCount(p, "Trade", "pop");
+      const nearTier = (p.pop + popGain >= 7 && p.pop < 7) || (p.pop + popGain >= 13 && p.pop < 13);
+      if (sprint && nearTier) score += 22;      // le palier se joue MAINTENANT
+      // Capitalisation : le palier de pop multiplie TOUT — c'est l'écart n°1
+      // entre le déclencheur perdant (palier 1,0) et le vainqueur (1,7)
+      if (stockpiling && p.pop < 13) score += 8;
+      else if (nearTier) score += 6;            // hors sprint : simple préférence
+      // Maintenir le palier de pop du profil — mais seulement avec une
+      // trésorerie saine (P1) : acheter +1 pop avec son dernier dollar coupe
+      // l'accès à Soutien/Commerce du tour suivant.
+      const popEngine = p.coins >= 2 || sprint;
+      if (popEngine && p.pop < prof.popTarget && (p.stars >= 1 || p.workers.length >= 5)) score += prof.tradePopBoost;
+      // Étoile 18 pop : même garde-fou P4 — à 5 étoiles et derrière au score,
+      // franchir 18 de popularité termine la partie… en la perdant.
+      if (prof.chasePopStar && p.pop >= 13 && !p.starPop && p.coins >= 3) {
+        score += losingTrigger(p, ctx, p.pop + popGain >= 18) ? -20 : 6;
+      }
     }
   } else if (action === "Bolster") {
     if (p.coins >= 1) {
       score += 5 + prof.bolsterBoost;
+      // P1 : dépenser son DERNIER dollar en puissance assèche l'économie —
+      // sauf si le combat est imminent (fin de partie, étoile de combat visée)
+      if (p.coins === 1 && !endNear && (p.combatWins || 0) >= 2) score -= 4;
       // Value increases if we have Arsenal/Memorial buildings
       if ((p.buildings || []).some(b => b.type === "arsenal")) score += 3;
       if ((p.buildings || []).some(b => b.type === "memorial")) score += 3;
       // Need power for combat
       if (p.power < 4) score += 4;
-      // Star potential at 16 power
-      if (p.power >= 13) score += 5;
+      // Star potential at 16 power — mais P4 : à 5 étoiles, franchir 16 de
+      // puissance TERMINE la partie. Ne pas offrir la victoire à l'adversaire
+      // si notre score estimé est derrière (le garde-fou n'existait que sur
+      // les actions du bas : mesuré 41 % des parties finies par un perdant).
+      if (p.power >= 13) score += losingTrigger(p, ctx, p.power + 2 >= 16 && !p.starPower) ? -20 : 5;
     }
   } else if (action === "Move") {
     score += 7 + (prof.moveBoost || 0);
@@ -214,7 +411,11 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
   // (corpus : « attack when you can put together enough power to GUARANTEE a
   // win » ; mesuré en partie réelle : Nations a perdu 8 v 10 puis 8 v 12,
   // offrant les 2 étoiles de combat du défenseur humain)
-  const myStrength = Math.min(Math.floor(p.power * 0.7) + 1, 7, p.power) + Math.min(p.combatCards || 0, 2) * 2;
+  // v0.15 : le bonus de combat de la FACTION en attaque était ignoré dans
+  // l'estimation — la Confédération (Cavaliers, +2 en attaque) sous-évaluait
+  // systématiquement ses propres charges, alors que c'est tout son plan de jeu.
+  const atkBonus = (COMBAT_ABILITIES[p.faction]?.apply(p, null, true)?.powerBonus) || 0;
+  const myStrength = Math.min(Math.floor(p.power * 0.7) + 1, 7, p.power) + Math.min(p.combatCards || 0, 2) * 2 + atkBonus;
   const wantCombatStar = (p.combatWins || 0) < 2;
   // Planification : les ouvriers convergent vers les ressources manquantes des bottoms
   const need = neededResources(p);
@@ -241,6 +442,22 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
 
     // Avoid enemy hexes for workers (displacement risk)
     if (purpose === "worker" && enemyHexes && enemyHexes.has(hexId)) s -= 15;
+    // ── CHASSE AUX MACHINES (profil prédateur / Bayou) ────────────────
+    // Sa Chimère capture le mecha qu'il détruit — Empire OU joueur — et en
+    // fait son 5e mecha ; son objectif de faction compte les proies. Il vise
+    // donc les MACHINES, là où les autres profils visent le butin ou le
+    // territoire. Tant que la Chimère n'a pas servi, la prime est maximale.
+    if (prof.mechHunter && (purpose === "hero" || purpose === "mech")) {
+      const empireHere = empire && Object.values(empire).includes(hexId);
+      const mechHere = ctx && ctx.oppMechHexes && ctx.oppMechHexes.has(hexId);
+      // v0.15 — la Chimère est passée au slot 2 (avec Flibuste) : chasser une
+      // machine avant d'avoir ce mecha, c'est risquer un combat pour RIEN —
+      // ni épave remorquée, ni pièces pillées. Mesuré : le Bayou partait à la
+      // chasse avec 69 % d'étoile mechas seulement, donc avant même d'avoir
+      // fini sa meute. Tant que le slot 2 n'est pas déployé, la prime tombe.
+      const canPlunder = (p.unlockedAbilities || []).includes(2);
+      if (empireHere || mechHere) s += !canPlunder ? 2 : (p.chimereUsed ? 4 : 10);
+    }
     if (purpose === "hero" || purpose === "mech") {
       if (ctx && ctx.attackable && ctx.attackable.has(hexId)) {
         // Combat PvP : l'agressivité dépend du profil — l'équilibré attaque
@@ -266,25 +483,62 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
         // la victoire chasse les ouvriers du hex (-1 pop chacun) ; sous le
         // palier visé par le profil, l'attaque perd de sa valeur
         const popLoss = ctx && ctx.hexWorkers ? (ctx.hexWorkers.get(hexId) || 0) : 0;
-        const popAfford = p.pop - popLoss >= Math.min(7, prof.popTarget) ? 0 : 8;
+        // P8 : au coût brut s'ajoute la perte de PALIER, qui ampute tout le
+        // score final — un blitz ne doit pas se vider jusqu'au palier ×1
+        const popAfford = (p.pop - popLoss >= Math.min(7, prof.popTarget) ? 0 : 8)
+          + popTierPenalty(p, popLoss);
         // « Factory control often determines game outcome » : l'Usine vaut
         // 3 territoires au score — prime de combat pour la prendre/reprendre
         const factoryPrize = hexId === 22 ? 6 : 0;
+        // P4 : gagner ce combat donnerait une étoile de combat (1re ou 2e) —
+        // donc la 6e étoile si l'on en a 5. Les combats sont résolus APRÈS le
+        // tour (pvpBots), hors de portée du veto de scoreColumn : c'est ici
+        // qu'il faut renoncer quand on est distancé au score.
+        if (wantCombatStar && losingTrigger(p, ctx, true)) s -= 40;
         // Un gros magot (≥4) justifie le combat même sans étoile à la clé
         if (!overextended && myStrength >= defStrength + prof.aggroMargin && (wantCombatStar || prof.earlyAttack || loot >= 4 || factoryPrize) && (prof.earlyAttack || getPhase(p) !== "early" || nearHome))
-          s += (wantCombatStar ? prof.attackReward : Math.floor(prof.attackReward / 2)) + Math.min(4, myStrength - defStrength) + loot + threat + (nearHome ? 6 : 0) + factoryPrize - popLoss - popAfford;
+          s += (wantCombatStar ? prof.attackReward : Math.floor(prof.attackReward / 2)) + Math.min(4, myStrength - defStrength) + loot + threat + (nearHome ? 6 : 0) + factoryPrize - popLoss - popAfford
+            // Harceleur : le butin est sa monnaie, et déloger une garnison
+            // adverse la renvoie à sa base — déni de développement durable
+            + (prof.lootPull ? Math.min(prof.lootPull, loot * 2) : 0)
+            + (prof.disruption ? Math.min(prof.disruption, popLoss * 3) : 0);
         else s -= 12;
       } else if (enemyHexes && enemyHexes.has(hexId)) {
         // Hex avec seulement des ouvriers ennemis : déplacement possible mais coûte de la pop
         // Servitude : la Confédération y gagne un ouvrier → elle les chasse activement
-        if (p.faction === "confederation" && (p.capturedWorkers || 0) < 2 && p.pop >= 2) s += 6;
+        const wCost = ctx && ctx.hexWorkers ? (ctx.hexWorkers.get(hexId) || 1) : 1;
+        if (p.faction === "confederation" && (p.capturedWorkers || 0) < 2 && p.pop >= 4) s += 6;
         else s -= 4;
+        s -= popTierPenalty(p, wCost); // P8 : ne pas brader un palier pour un raid
+        // ── DÉNI D'ÉTOILE ADVERSE (conscience des adversaires) ───────────
+        // Chasser les ouvriers de quelqu'un qui en a 7 lui coûte son étoile
+        // des 8 ouvriers : ses ouvriers repartent de la base. De même, gêner
+        // celui qui MÈNE vaut plus que gêner un traînard.
+        // Le déni reste soumis au plancher de palier (P8) : gêner l'adversaire
+        // ne vaut jamais de sacrifier son PROPRE multiplicateur de score.
+        if (ctx && ctx.oppIntel && popTierPenalty(p, wCost) === 0) {
+          for (const o of ctx.oppIntel) {
+            if (!o.workerHexes.has(hexId)) continue;
+            if (o.aboutToStar.workers) s += 10;         // lui refuser l'étoile des 8
+            if (ctx.topOpp && o.faction === ctx.topOpp.faction) s += 5; // freiner le leader
+          }
+        }
+        // ── RAZZIA (profil harceleur) ────────────────────────────────────
+        // Chasser les ouvriers d'un hub adverse ne fait pas que coûter de la
+        // pop : ça ÉTOUFFE son développement (plus de Produire ni de Déployer
+        // sur ce hex, ses ouvriers repartent de la base). Plus le hub est
+        // peuplé, plus le déni fait mal — c'est le plan de la Confédération.
+        if (prof.disruption && p.pop >= 4) s += Math.min(prof.disruption, 3 + wCost * 3);
         // Raid : un gros tas de ressources sur un hex d'ouvriers vaut le coût en
         // pop pour les profils agressifs — prendre le hex neutralise le magot
         // du thésauriseur au scoring ; ralentir l'économie du leader compte aussi
         const wLoot = ctx && ctx.hexLoot ? (ctx.hexLoot.get(hexId) || 0) : 0;
         const wThreat = ctx && ctx.hexThreat ? (ctx.hexThreat.get(hexId) || 0) : 0;
-        if (wLoot >= 3 && prof.aggroMargin <= 2 && p.pop >= 3) s += Math.min(12, wLoot);
+        // Le harceleur pille dès le premier tas ; les autres attendent 3+
+        const lootFloor = prof.lootPull ? 1 : 3;
+        if (wLoot >= lootFloor && (prof.lootPull || prof.aggroMargin <= 2) && p.pop >= 3) {
+          s += Math.min(12, wLoot) + (prof.lootPull ? Math.min(prof.lootPull, wLoot * 2) : 0);
+        }
         if (wThreat >= 3 && prof.aggroMargin <= 2 && p.pop >= 3) s += Math.floor(wThreat / 2);
       }
     }
@@ -297,12 +551,22 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
     // Le bâtisseur fait la course aux jetons (gains de pop des rencontres)
     if (purpose === "hero" && ctx && ctx.encounterHexes && ctx.encounterHexes.has(hexId)) s += prof.encounterPull;
 
-    // Rouge River : plan d'usine (gros avantage permanent) + l'hex vaut
+    // Rouge River : carte d'usine (gros avantage permanent) + l'hex vaut
     // 3 territoires au score → destination majeure du héros tant qu'il n'a
-    // pas visité — forte prise sur l'hex, convergence progressive sinon
+    // pas visité — forte prise sur l'hex, convergence progressive sinon.
     if (purpose === "hero" && !p.visitedRR && !p.factoryCard) {
-      if (hexId === 22) s += 14;
-      else {
+      // ── P6, QUÊTE TESLA ──────────────────────────────────────────────
+      // Un profil patient (teslaHunter) qui vise un prototype RETARDE sa
+      // visite : arriver à l'Usine sans ses 2 fragments, c'est prendre une
+      // carte Ford et fermer définitivement l'accès Tesla. Il chasse d'abord
+      // les rencontres 🔬 (l'aimant à jetons ci-dessus fait le travail).
+      // Abandon si les prototypes sont partis ou si la fin approche.
+      const onTeslaQuest = prof.teslaHunter && ctx && ctx.teslaAvailable
+        && (p.fragments || 0) < TESLA_FRAGMENTS_REQUIRED && !ctx.endgame;
+      if (onTeslaQuest) {
+        if (hexId === 22) s -= 12; // ne pas entrer dans l'Usine trop tôt
+      } else if (hexId === 22) s += 14;
+      else if (!onTeslaQuest) {
         const rr = hMap[22];
         if (rr) {
           const d = Math.sqrt((hex.rx - rr.rx) ** 2 + (hex.ry - rr.ry) ** 2);
@@ -324,12 +588,74 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
       }
     }
 
-    // Avoid lakes/swamps for non-appropriate factions
-    if (hex.t === "lac" || hex.t === "marecage") s -= 5;
+    // ── Eaux : malus GÉNÉRIQUE, exemptions par faction ────────────────────
+    // v0.15 — bug relevé en partie : le commentaire disait « pour les factions
+    // non concernées » mais le code s'appliquait à TOUT LE MONDE. Le Bayou
+    // fuyait donc son propre marais et l'Acadiane ses propres lacs, alors que
+    // ce sont précisément leurs autoroutes. Conséquence mesurable : le Bayou
+    // ne sortait jamais de son îlot par le marécage #20 (adjacent à son #28
+    // de départ, SANS rivière) et attendait un mecha Riverwalk qui arrivait
+    // dix tours trop tard.
+    if (hex.t === "lac") {
+      // Seule l'Acadiane peut y ENTRER (Batelier, slot 3) : pour elle, un lac
+      // est un tremplin vers tous les autres lacs du plateau — et son héros y
+      // pose le comptoir lacustre qu'exige « Réseau Invisible ».
+      if (p.faction === "acadiane" && (p.unlockedAbilities || []).includes(3)) {
+        const flags = p.flagTokens || [];
+        const hasLakePost = flags.some(fl => hMap[fl.hexId]?.t === "lac");
+        s += (purpose === "hero" && !hasLakePost && flags.length < 4) ? 12 : 3;
+      } else s -= 5;
+    }
+    // Comptoir Acadiane : le héros cherche des hexes qui ÉTALENT le réseau —
+    // un comptoir collé à un autre ne compte pas pour l'objectif de faction.
+    if (p.faction === "acadiane" && purpose === "hero" && (p.flagTokens || []).length < 4) {
+      const flags = p.flagTokens || [];
+      if (!flags.some(fl => fl.hexId === hexId)) {
+        s += flags.some(fl => (ADJ[hexId] || []).includes(fl.hexId)) ? -3 : 4;
+      }
+    }
+    if (hex.t === "marecage") {
+      if (p.faction === "bayou") {
+        // Sang du Marais : ni péage ni arrêt forcé dès le tour 1. Le marécage
+        // est une case de passage NEUTRE, et carrément un tremplin une fois la
+        // Pirogue déployée (bond vers n'importe quel autre marais).
+        s += (p.unlockedAbilities || []).includes(3) ? 4 : 0;
+      } else {
+        // Pour les autres, c'est un péage (-1♥ ouvrier / -1⚡ combattant) ET un
+        // arrêt forcé : un ouvrier n'a rien à y faire, une unité de combat peut
+        // l'encaisser si la case sert de raccourci.
+        s -= purpose === "worker" ? 8 : 5;
+      }
+    }
 
     if (s > bestScore) { bestScore = s; bestHex = hexId; }
   }
   return bestHex || validMoves[Math.floor(Math.random() * validMoves.length)];
+};
+
+// ── P6 : choisir l'HEX de construction selon la tuile « bonus de pose » ──
+// Les bots posaient toujours sur le premier hex d'ouvriers venu, ignorant la
+// tuile tirée en début de partie (jusqu'à 9$, voire 16$ pour Avant-Postes).
+// On classe les candidats : d'abord ceux qui valident la tuile, en préférant
+// à valeur égale un hex DÉFENDU (héros/mecha présent — un avant-poste isolé
+// se fait raser). Les tuiles géométriques (Ligne, Terroirs, Terres
+// Lointaines) n'ont pas de prédicat statique : on les évalue en simulant
+// l'ajout du bâtiment et en gardant le meilleur gain marginal.
+const pickBuildHex = (p, candidates, ctx) => {
+  const sb = ctx && ctx.structureBonus;
+  if (!sb || candidates.length <= 1) return candidates[0];
+  const players = ctx.allPlayers;
+  const before = sb.score(sb.count(p, players), p);
+  const guarded = new Set([p.hero, ...p.mechs.map(m => m.hexId)]);
+  let best = candidates[0], bestScore = -Infinity;
+  for (const hid of candidates) {
+    // Gain marginal réel de la tuile si l'on construit ICI
+    const simulated = { ...p, buildings: [...(p.buildings || []), { type: "_sim", hexId: hid }] };
+    let s = sb.score(sb.count(simulated, players), simulated) - before;
+    if (guarded.has(hid)) s += 0.5;         // hex tenu par une unité de combat
+    if (s > bestScore) { bestScore = s; best = hid; }
+  }
+  return best;
 };
 
 // Choose which building to construct based on phase (or profile order)
@@ -345,6 +671,174 @@ const pickBuilding = (p, availBuildings, prof) => {
     if (b) return b;
   }
   return availBuildings[0];
+};
+
+// Gare : pose 3 segments de rail chaînés depuis l'hex de la Gare — partagé
+// entre le Build classique et le bâtiment gratuit d'une carte d'usine.
+// Empile dans p._pendingRails (appliqué au réseau par l'appelant App/sim).
+const placeBotRails = (p, gareHex, rails, logs, fName) => {
+  p._pendingRails = p._pendingRails || [];
+  const taken = (a, b) => [...rails, ...p._pendingRails]
+    .some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+  const candidatesFrom = (from) => (ADJ[from] || []).filter(id => {
+    const h = hMap[id]; if (!h) return false;
+    if (h.base) return false;                       // pas de rail vers une base
+    if (h.t === "lac" || h.t === "marecage") return false; // R6: pas de rail sur l'eau
+    return !taken(from, id);
+  });
+  const endpoints = [gareHex];
+  for (let ri = 0; ri < 3; ri++) {
+    // Chaînage : repart du dernier point qui a encore une arête libre
+    let from = null, opts = [];
+    for (let ei = endpoints.length - 1; ei >= 0; ei--) {
+      opts = candidatesFrom(endpoints[ei]);
+      if (opts.length > 0) { from = endpoints[ei]; break; }
+    }
+    if (from === null) break;
+    const to = opts[Math.floor(Math.random() * opts.length)];
+    p._pendingRails.push([from, to]);
+    logs.push(`🤖🛤 ${fName}: Rail #${from}↔#${to}`);
+    if (!endpoints.includes(to)) endpoints.push(to);
+  }
+};
+
+// ── Résolution AUTOMATIQUE des gains du HAUT d'une carte d'usine (bots) ──
+// Miroir des pickers du joueur : mêmes règles, choix par heuristique.
+const applyFactoryGainsBot = (p, gains, rails, logs, f, prof, ctx) => {
+  // P4 : un gain GRATUIT (amélioration, recrue, bâtiment, mecha) peut poser la
+  // 6e étoile et terminer la partie — ces gains contournaient totalement le
+  // garde-fou de scoreColumn (mesuré : « 6 Améliorations » et « 4 Recrues »
+  // étaient les déclencheurs perdants les plus fréquents). On saute le gain
+  // qui finirait la partie en position de perdant : la carte reste jouable
+  // au tour suivant, une fois l'écart comblé.
+  const wouldEndBadly = (type) => {
+    const finishes = type === "upgrade" ? (p.upgrades || 0) === 5 && !p.starUpgrades
+      : type === "enlist" ? (p.recruits || 0) === 3 && !p.starRecruits
+      : type === "building" ? (p.buildings || []).length === 3 && !p.starBuildings
+      : type === "mech" ? p.mechs.length === 3 && !p.starMechs
+      : false;
+    return losingTrigger(p, ctx, finishes);
+  };
+  for (let eff of gains) {
+    if (eff.type === "choice") {
+      // Préférer le progrès d'étoile le moins avancé encore possible
+      const opts = eff.options.filter(o => factoryEffectPossible(p, o));
+      if (opts.length === 0) { logs.push(`🤖⚙ ${f.name}: choix impossible — passé`); continue; }
+      const prio = { mech: 4 - p.mechs.length, building: 4 - (p.buildings || []).length,
+        enlist: 4 - (p.recruits || 0), upgrade: (p.upgrades || 0) < 2 ? 3 : 6 - (p.upgrades || 0) };
+      eff = opts.sort((a, b) => (prio[b.type] ?? 0) - (prio[a.type] ?? 0))[0];
+    }
+    if (!factoryEffectPossible(p, eff)) { logs.push(`🤖⚙ ${f.name}: ${factoryEffectLabel(eff)} impossible — passé`); continue; }
+    if (wouldEndBadly(eff.type)) { logs.push(`🤖🤐 ${f.name}: renonce à ${factoryEffectLabel(eff)} (finirait la partie en perdant)`); continue; }
+    switch (eff.type) {
+      case "coins": p.coins += eff.qty; logs.push(`🤖⚙ ${f.name}: +${eff.qty}$ (usine)`); break;
+      case "power":
+        p.power = Math.min(p.power + eff.qty, 16); logs.push(`🤖⚙ ${f.name}: +${eff.qty}⚡ (usine)`);
+        if (p.power >= 16 && !p.starPower) { p.stars++; p.starPower = true; logs.push(`⭐ ${f.name}: Puissance max !`); }
+        break;
+      case "pop":
+        p.pop = Math.min(p.pop + eff.qty, 18); logs.push(`🤖⚙ ${f.name}: +${eff.qty}♥ (usine)`);
+        if (p.pop >= 18 && !p.starPop) { p.stars++; p.starPop = true; logs.push(`⭐ ${f.name}: Popularité max !`); }
+        break;
+      case "cards": p.combatCards = (p.combatCards || 0) + eff.qty; logs.push(`🤖⚙ ${f.name}: +${eff.qty}🃏 (usine)`); break;
+      case "upgrade": {
+        const mat = matById(p.matId);
+        const validTop = []; const validBottom = [];
+        (p.cubesOnTop || []).forEach((c, i) => { if (c > 0) validTop.push(i); });
+        (mat?.bottomSlots || []).forEach((s, i) => { if ((p.cubesOnBottom || [])[i] < maxBottomCubes(mat, i)) validBottom.push(i); });
+        if (validTop.length === 0 || validBottom.length === 0) break;
+        const fromC = pickUpgradeSource(p, validTop);
+        const toC = pickUpgradeDest(p, validBottom, mat);
+        p.cubesOnTop = [...(p.cubesOnTop || [])]; p.cubesOnTop[fromC]--;
+        p.cubesOnBottom = [...(p.cubesOnBottom || [])]; p.cubesOnBottom[toC]++;
+        p.upgrades = (p.upgrades || 0) + 1;
+        logs.push(`🤖⚙ ${f.name}: Améliorer ${p.upgrades}/6 (usine, gratuit)`);
+        if (p.upgrades >= 6 && !p.starUpgrades) { p.stars++; p.starUpgrades = true; logs.push(`⭐ ${f.name}: 6 upgrades !`); }
+        break;
+      }
+      case "enlist": {
+        const priority = prof.enlistPriority || [0, 1, 2, 3];
+        p.enlistMap = [...(p.enlistMap || [null, null, null, null])];
+        const freeCols = priority.filter(ci => p.enlistMap[ci] == null);
+        const freeRecruits = priority.filter(ri => !p.enlistMap.includes(ri));
+        if (freeCols.length === 0 || freeRecruits.length === 0) break;
+        p.enlistMap[freeCols[0]] = freeRecruits[0];
+        p.recruits = (p.recruits || 0) + 1;
+        const imm = ENLIST_IMMEDIATE[freeCols[0]];
+        if (imm) imm.apply(p);
+        logs.push(`🤖⚙ ${f.name}: Enrôler ${frBot(BOTTOM[freeCols[0]])} (usine, gratuit) → immédiat ${imm ? imm.icon + imm.label : "?"}`);
+        if (p.recruits >= 4 && !p.starRecruits) { p.stars++; p.starRecruits = true; logs.push(`⭐ ${f.name}: 4 recrues !`); }
+        break;
+      }
+      case "building": {
+        const wh = getWorkerHexes(p).filter(h => hMap[h] && !hMap[h].base && !(p.buildings || []).some(b => b.hexId === h));
+        const avail = BUILDING_TYPES.filter(bt => !(p.buildings || []).some(b => b.type === bt.type));
+        if (wh.length === 0 || avail.length === 0) break;
+        const building = pickBuilding(p, avail, prof);
+        const spot = pickBuildHex(p, wh, ctx); // P6 : hex choisi selon la tuile bonus
+        p.buildings = [...(p.buildings || []), { type: building.type, hexId: spot }];
+        logs.push(`🤖⚙ ${f.name}: ${building.name} #${spot} (usine, gratuit)`);
+        if (p.buildings.length >= 4 && !p.starBuildings) { p.stars++; p.starBuildings = true; logs.push(`⭐ ${f.name}: 4 bâtiments !`); }
+        if (building.type === "gare") placeBotRails(p, spot, rails, logs, f.name);
+        break;
+      }
+      case "mech": {
+        const wh = getWorkerHexes(p).filter(h => hMap[h] && !hMap[h].base);
+        if (wh.length === 0 || p.mechs.length >= 4) break;
+        const abilityIdx = p.mechs.length;
+        const abilityNames = getMechAbilities(p.faction).map(a => a.name);
+        p.mechs = [...p.mechs, { id: `${p.faction}_m${p.mechs.length}`, hexId: wh[0] }];
+        p.unlockedAbilities = [...(p.unlockedAbilities || []), abilityIdx];
+        logs.push(`🤖⚙ ${f.name}: Mecha #${wh[0]} (usine, gratuit) → 🔓 ${abilityNames[abilityIdx]}`);
+        if (p.mechs.length >= 4 && !p.starMechs) { p.stars++; p.starMechs = true; logs.push(`⭐ ${f.name}: 4 mechas !`); }
+        break;
+      }
+      case "produce2": {
+        const byHex = {}; p.workers.forEach(w => { const k = String(w.hexId); (byHex[k] = byHex[k] || []).push(w); });
+        const need = neededResources(p);
+        const hexScore = (hid) => {
+          const res = TERRAINS[hMap[parseInt(hid)]?.t]?.res;
+          return (res && need[res] ? 10 : res === "ouvriers" ? 6 : res ? 3 : 0) + byHex[hid].length;
+        };
+        const hexIds = Object.keys(byHex)
+          .filter(h => TERRAINS[hMap[parseInt(h)]?.t]?.res)
+          .sort((a, b) => hexScore(b) - hexScore(a)).slice(0, 2);
+        hexIds.forEach(hidStr => {
+          const hid = parseInt(hidStr); const hex = hMap[hid]; const t = TERRAINS[hex?.t]; let wc = byHex[hidStr].length;
+          if (!t) return;
+          if ((p.buildings || []).some(b => b.type === "moulin" && b.hexId === hid)) wc++;
+          if (hex.t === "village" && p.workers.length < 8) {
+            const toAdd = Math.min(wc, 8 - p.workers.length);
+            for (let i = 0; i < toAdd; i++) p.workers.push({ id: `${p.faction}_w${p.workers.length}`, hexId: hid });
+            if (toAdd > 0) logs.push(`🤖⚙ ${f.name}: +${toAdd} ouv. #${hid} (usine)`);
+            if (p.workers.length >= 8 && !p.starWorkers) { p.stars++; p.starWorkers = true; logs.push(`⭐ ${f.name}: 8 ouvriers !`); }
+          } else if (t.res && t.res !== "ouvriers") {
+            if (!p.resources[hidStr]) p.resources[hidStr] = {};
+            p.resources[hidStr] = { ...p.resources[hidStr] };
+            p.resources[hidStr][t.res] = (p.resources[hidStr][t.res] || 0) + wc;
+            logs.push(`🤖⚙ ${f.name}: +${wc} ${resFR(t.res)} #${hid} (usine)`);
+          }
+        });
+        break;
+      }
+      case "resources": {
+        const hex = factoryResourceHex(p);
+        if (hex == null) break;
+        const need = neededResources(p);
+        const key = String(hex);
+        p.resources = { ...p.resources, [key]: { ...(p.resources[key] || {}) } };
+        const picks = [];
+        for (let i = 0; i < eff.qty; i++) {
+          const pick = Object.keys(need).find(r => need[r] > 0) || "metal";
+          if (need[pick]) need[pick]--;
+          p.resources[key][pick] = (p.resources[key][pick] || 0) + 1;
+          picks.push(resFR(pick));
+        }
+        logs.push(`🤖⚙ ${f.name}: +${picks.join(", +")} #${hex} (usine)`);
+        break;
+      }
+    }
+  }
 };
 
 // Choose which top cube to remove for upgrade. Retirer un cube AMÉLIORE
@@ -383,13 +877,53 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   };
 
   // ── Profil stratégique + bruit décisionnel (niveau de difficulté) ──
-  const prof = BOT_PROFILES[p.botProfile] || BOT_PROFILES.equilibre;
+  // PIVOT : le profil peut être « replié » si le plan de départ ne paie plus
+  // et que la fin approche (voir effectiveProfile) — un bot doit savoir
+  // renoncer, comme un humain qui voit que sa stratégie ne passera pas.
+  const prof = effectiveProfile(p, ctx, estimateScore(p, ctx));
+  if (prof.pivoted && !p._pivotLogged) {
+    p._pivotLogged = true;
+    logs.push(`🤖🔄 ${f.name}: son plan ne paie pas — repli sur la popularité, les territoires et les ressources`);
+  }
   const noise = p.botNoise || 0;
+
+  // ── CONSCIENCE DES ADVERSAIRES ────────────────────────────────────────
+  // Les bots raisonnaient en vase clos : leur propre plan, jamais celui des
+  // autres. On lit ici ce que chaque adversaire A DÉJÀ FAIT et ce à quoi il
+  // est ENGAGÉ (pistes à une action de leur étoile), pour pouvoir accélérer,
+  // ralentir ou lui couper l'herbe sous le pied.
+  const oppIntel = (ctx && ctx.allPlayers ? ctx.allPlayers : [])
+    .filter(op => op && op.faction !== p.faction)
+    .map(op => ({
+      faction: op.faction,
+      stars: op.stars || 0,
+      score: estimateScore(op, ctx),
+      // « À une action de » : ces pistes vont donner une étoile très bientôt
+      aboutToStar: {
+        workers: op.workers.length === 7 && !op.starWorkers,
+        mechs: op.mechs.length === 3 && !op.starMechs,
+        buildings: (op.buildings || []).length === 3 && !op.starBuildings,
+        recruits: (op.recruits || 0) === 3 && !op.starRecruits,
+        pop: op.pop >= 16 && !op.starPop,
+        power: op.power >= 14 && !op.starPower,
+      },
+      workerHexes: new Set(op.workers.map(w => w.hexId)),
+      mechHexes: op.mechs.map(m => m.hexId),
+    }));
+  // Hex portant un mecha adverse : proies de la Chimère (profil prédateur)
+  const oppMechHexes = new Set(oppIntel.flatMap(o => o.mechHexes));
+  // Adversaire le plus avancé : c'est LUI qu'il faut gêner en priorité
+  const topOpp = oppIntel.length ? oppIntel.reduce((a, b) => (b.score > a.score ? b : a)) : null;
+  // Un adversaire est-il sur le point de conclure la partie ?
+  const oppOneStarFromEnd = oppIntel.some(o => o.stars >= 5);
+  // Toutes les décisions du tour voient désormais ce renseignement
+  ctx = { ...(ctx || {}), oppIntel, topOpp, oppOneStarFromEnd, oppMechHexes };
 
   // ── STRATEGIC COLUMN SELECTION ──
   // Dominion « Relentless » (test Rusviet) : peut rejouer la même colonne
   const canRepeat = p.faction === "dominion" && BALANCE.dominionRelentless;
-  const cols = [0, 1, 2, 3].filter(c => canRepeat || c !== p.lastCol);
+  // La carte d'usine (Rouge River) ajoute une 5e colonne jouable (FACTORY_COL)
+  const cols = [0, 1, 2, 3, ...(p.factoryCard ? [FACTORY_COL] : [])].filter(c => canRepeat || c !== p.lastCol);
   let bestCol = cols[0], bestScore = -999;
   for (const col of cols) {
     const s = scoreColumn(p, col, empire, enemyHexes, rails, prof, ctx)
@@ -397,20 +931,31 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     if (s > bestScore) { bestScore = s; bestCol = col; }
   }
   const col = bestCol;
-  const action = p.topRow[col];
+  const action = col === FACTORY_COL ? "Factory" : p.topRow[col];
 
   // ── EXECUTE TOP ACTION ──
   // Move → « +1$ » SEULEMENT en vrai blocage économique (impossible de payer
   // Produce) ou en tout début de partie. Avant, tout Move à 0$ devenait +1$ :
   // la Confédération a passé une partie ENTIÈRE en boucle +1$/Trade sans
   // jamais déplacer une unité (mesuré : 2 territoires, 0 étoile, 8 pts).
+  // ── P1 : le « +1$ » est un TOUR MORT (aucun territoire, aucune ressource) ──
+  // Mesuré : 4,1 par partie chez les bots derniers contre 0,3 chez les
+  // gagnants. On ne le joue plus qu'en blocage économique RÉEL : fauché, hors
+  // de portée de Produire, ET sans action du bas payable à enchaîner. Sinon on
+  // déplace (territoires, rencontres, butin) — ce que ferait un humain.
   const cashDeadlock = p.coins <= 0 && !canPayProduce(p);
-  if (action === "Move" && p.coins <= 0 && (cashDeadlock || getPhase(p) === "early")) {
+  const bottomPayableNow = (() => {
+    const c = getBottomCost(p)[col];
+    if (!c || isBottomMaxed(p, BOTTOM[col])) return false;
+    const alt = FACTIONS[p.faction]?.deployAltRes;
+    return countRes(p, c.res) >= c.qty || (BOTTOM[col] === "Deploy" && alt && countRes(p, alt) >= c.qty);
+  })();
+  if (action === "Move" && cashDeadlock && !bottomPayableNow && !(ctx && ctx.endgame)) {
     // Scythe rule: Move's alternative is "gain 1$"
     // (+1 si le cube d'amélioration de l'option 💰 a été retiré)
     const coinGain = 1 + topUpgradeCount(p, "Move", "coins");
     p.coins += coinGain;
-    logs.push(`🤖 ${f.name}: +${coinGain}$ (Déplacer)`);
+    logs.push(`🤖 ${f.name}: +${coinGain}$ (Déplacer, blocage économique)`);
   } else if (action === "Move") {
     // Nations Pack Up (strategic building repositioning)
     if (p.faction === "nations" && (p.unlockedAbilities || []).includes(3) && (p.buildings || []).length > 0 && Math.random() < 0.3) {
@@ -490,10 +1035,21 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         p.trapTokens = [...(p.trapTokens || []), { hexId: target, disarmed: false }];
         logs.push(`🤖🪤 ${f.name}: Trap #${target} (${p.trapTokens.length}/4)`);
       }
-      // Acadiane flag placement
+      // Acadiane flag placement — v0.15 : le bot posait son comptoir sur le
+      // premier hex venu et ruinait son propre objectif (« Réseau Invisible »
+      // exige des comptoirs DEUX À DEUX NON ADJACENTS : mesuré à 2 % de
+      // réussite). Tant que le réseau n'est pas bouclé, il garde son jeton
+      // plutôt que de le coller à un comptoir existant ; une fois les 3
+      // posés, l'objectif est acquis et le 4e vaut son territoire n'importe où.
       if (p.faction === "acadiane" && (p.flagTokens || []).length < 4 && !(p.flagTokens || []).some(fl => fl.hexId === target)) {
-        p.flagTokens = [...(p.flagTokens || []), { hexId: target }];
-        logs.push(`🤖🏴 ${f.name}: Comptoir #${target} (${p.flagTokens.length}/4)`);
+        const placed = p.flagTokens || [];
+        const touchesNetwork = placed.some(fl => (ADJ[target] || []).includes(fl.hexId));
+        if (!touchesNetwork) {
+          p.flagTokens = [...placed, { hexId: target }];
+          logs.push(`🤖🏴 ${f.name}: Comptoir #${target} (${p.flagTokens.length}/4)`);
+        } else {
+          logs.push(`🤖🏴 ${f.name}: comptoir gardé (#${target} colle au réseau)`);
+        }
       }
     }
 
@@ -640,8 +1196,14 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       const moulinB = (p.buildings || []).find(b => b.type === "moulin");
       if (moulinB && !hexIds.includes(String(moulinB.hexId))) hexIds.push(String(moulinB.hexId));
       // Régime d'ouvriers : 5 en early (règle du corpus), puis 8 pour l'étoile
-      // — le thésauriseur sort tous ses ouvriers tout de suite
-      const workerCap = getPhase(p) === "early" ? prof.maxWorkersEarly : 8;
+      // — le thésauriseur sort tous ses ouvriers tout de suite.
+      // P7 : le 6e ouvrier rend CHAQUE Produire coûteux en popularité. Sans
+      // moteur de pop (Mémorial, recrue pop, palier confortable), on reste à 5
+      // — sauf pour aller décrocher l'étoile des 8, à portée immédiate.
+      const popEngine = p.pop >= 9 || (p.buildings || []).some(b => b.type === "memorial");
+      const goingForStar = p.workers.length >= 7 && !p.starWorkers && p.pop >= 4;
+      const hardCap = (popEngine || goingForStar) ? 8 : 5;
+      const workerCap = Math.min(getPhase(p) === "early" ? prof.maxWorkersEarly : 8, hardCap);
       hexIds.forEach(hidStr => {
         const hid = parseInt(hidStr); const hex = hMap[hid]; const t = TERRAINS[hex?.t]; let wc = (byHex[hidStr] || []).length;
         if (!t) return; // hex de base (ouvrier retraité) ou hex invalide : pas de production
@@ -659,12 +1221,20 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       logs.push(`🤖 ${f.name}: Produire`);
     }
   } else if (action === "Trade") {
-    if (p.coins >= 1 && ((prof.chasePopStar && p.pop >= 13 && !p.starPop) || (p.pop < prof.popTarget && (p.stars >= 1 || p.workers.length >= 5)))) {
-      // Push toward the 18-pop star once in the top popularity tier
-      // (+1 si le cube d'amélioration de l'option ♥ a été retiré)
-      const popGain = 1 + topUpgradeCount(p, "Trade", "pop");
-      p.coins--; p.pop = Math.min(p.pop + popGain, 18);
-      logs.push(`🤖 ${f.name}: +${popGain} Pop`);
+    // ── P3 : la popularité s'achète au bon MOMENT, pas au goutte-à-goutte ──
+    // (+1 si le cube d'amélioration de l'option ♥ a été retiré)
+    const popGainT = 1 + topUpgradeCount(p, "Trade", "pop");
+    const endNearT = getPhase(p) === "late" || !!(ctx && ctx.endgame);
+    // Franchir un palier (7 ou 13) multiplie TOUT le score final : prioritaire
+    const crossesTier = (p.pop < 7 && p.pop + popGainT >= 7) || (p.pop < 13 && p.pop + popGainT >= 13);
+    // Hors palier, on n'achète de la pop qu'avec une trésorerie saine (P1) :
+    // dépenser son dernier dollar coupe Soutien/Commerce du tour suivant.
+    const popRoutine = p.coins >= 2 && p.pop < prof.popTarget && (p.stars >= 1 || p.workers.length >= 5);
+    const popStarPush = prof.chasePopStar && p.pop >= 13 && !p.starPop && p.coins >= 3
+      && !losingTrigger(p, ctx, p.pop + popGainT >= 18);
+    if (p.coins >= 1 && ((crossesTier && (endNearT || p.coins >= 2)) || popRoutine || popStarPush)) {
+      p.coins--; p.pop = Math.min(p.pop + popGainT, 18);
+      logs.push(`🤖 ${f.name}: +${popGainT} Pop${crossesTier ? ` (palier ${p.pop >= 13 ? "×3" : "×2"} franchi !)` : ""}`);
     } else if (p.coins >= 1) {
       // Strategic resource choice: pick what we need for upcoming bottom action
       const costs = getBottomCost(p);
@@ -714,23 +1284,62 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       // No coins: take pop instead if possible (shouldn't happen often)
       logs.push(`🤖 ${f.name}: (pas d'$)`);
     }
+  } else if (action === "Factory") {
+    // ── HAUT de la carte d'usine : payer 1 coût → résoudre les gains ──
+    const card = p.factoryCard;
+    if (card && canPayFactoryCost(p, card)) {
+      payFactoryCost(p, card);
+      logs.push(`🤖⚙ ${f.name}: ${card.name} — paie ${factoryCostLabel(card)}`);
+      applyFactoryGainsBot(p, card.gain, rails, logs, f, prof, ctx);
+    } else {
+      logs.push(`🤖⚙ ${f.name}: ${card ? card.name : "usine"} (coût impayable — bas seulement)`);
+    }
   }
   p.lastCol = col;
 
   // ── BOTTOM ACTION ──
+  // Colonne d'usine : le BAS est un déplacement (1 unité, 2 hex, +1 Vitesse),
+  // pas une action de plateau — résolu ici puis retour direct (pas d'enlist
+  // ongoing : seules les 4 actions bottom du plateau le déclenchent)
+  if (col === FACTORY_COL) {
+    const candidates = [{ type: "hero", from: p.hero }, ...p.mechs.map((m, i) => ({ type: "mech", from: m.hexId, idx: i }))];
+    let moved = false;
+    for (const cand of candidates) {
+      let mv = getValidMoves(cand.from, p.faction, p.unlockedAbilities || [], p, rails, cand.type, enemyHexes, 1).filter(id => !forbidden.has(id));
+      if (mv.length === 0) continue;
+      const target = pickMoveTarget(mv, p, empire, enemyHexes, cand.type, ctx, prof);
+      if (target == null || target === cand.from) continue;
+      recordCombatRoute(cand.from, target);
+      if (cand.type === "hero") {
+        p.hero = target;
+        const tr = transportUnits(p, cand.from, target, "hero");
+        Object.assign(p, { resources: tr.player.resources });
+        logs.push(`🤖⚙ ${f.name}: ${f.hero} → #${target} (bas d'usine, 2 hex)`);
+      } else {
+        p.mechs = [...p.mechs];
+        p.mechs[cand.idx] = { ...p.mechs[cand.idx], hexId: target };
+        const tr = transportUnits(p, cand.from, target, "mech", { carryWorkers: true });
+        Object.assign(p, { workers: tr.player.workers, resources: tr.player.resources });
+        logs.push(`🤖⚙ ${f.name}: Mech → #${target} (bas d'usine, 2 hex)`);
+      }
+      const toll = marshToll(p, target, cand.type);
+      if (toll) logs.push(`🤖${toll}`);
+      moved = true;
+      break;
+    }
+    if (!moved) logs.push(`🤖⚙ ${f.name}: pas de déplacement d'usine possible`);
+  }
+  // (col d'usine : BOTTOM[4] est undefined → tout le bloc ci-dessous est inerte)
   const bottomAction = BOTTOM[col];
   const botCosts = getBottomCost(p);
   const bc = botCosts[col];
-  // Bonus du plan d'usine (Rouge River) : réduction de coût appliquée AVANT
-  // le test de solvabilité ; pièces/puissance créditées après l'action
-  const planB = getPlanBottomBonus(p, bottomAction);
-  if (bc && planB.costReduction > 0) bc.qty = Math.max(0, bc.qty - planB.costReduction);
+  // Ressource ALTERNATIVE de déploiement (Esprit Sauvage, Vapeur des Lacs)
   const altResB = FACTIONS[p.faction]?.deployAltRes;
   const canAffordBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && altResB && countRes(p, altResB) >= bc.qty));
   let bottomDone = false;
   if (canAffordBottom) {
     if (bottomAction === "Upgrade" && (p.upgrades || 0) < 6 && ((p.upgrades || 0) < 2 || p.stars >= 4)) {
-      const mat = MATS.find(m => m.id === p.matId);
+      const mat = matById(p.matId);
       const validTop = []; const validBottom = [];
       if (mat) {
         (p.cubesOnTop || []).forEach((c, i) => { if (c > 0) validTop.push(i); });
@@ -777,38 +1386,14 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
       if (wh.length > 0 && avail.length > 0) {
         const sp = spendRes(p, bc.res, bc.qty); Object.assign(p, { resources: sp.resources });
         const building = pickBuilding(p, avail, prof);
-        p.buildings = [...(p.buildings || []), { type: building.type, hexId: wh[0] }];
+        const spot = pickBuildHex(p, wh, ctx); // P6 : hex choisi selon la tuile bonus
+        p.buildings = [...(p.buildings || []), { type: building.type, hexId: spot }];
         bottomDone = true;
-        logs.push(`🤖 ${f.name}: Construire ${building.name} #${wh[0]}`);
+        logs.push(`🤖 ${f.name}: Construire ${building.name} #${spot}`);
         if (p.buildings.length >= 4 && !p.starBuildings) { p.stars++; p.starBuildings = true; logs.push(`⭐ ${f.name}: 4 bâtiments !`); }
-        // Gare: place rails — 3 segments SANS doublon : le filtre doit voir
-        // aussi les rails posés dans CETTE action (_pendingRails), sinon le
-        // bot ping-ponge sur la première arête (rail #36↔#32 posé 3 fois)
-        if (building.type === "gare") {
-          p._pendingRails = p._pendingRails || [];
-          const taken = (a, b) => [...rails, ...p._pendingRails]
-            .some(([x, y]) => (x === a && y === b) || (x === b && y === a));
-          const candidatesFrom = (from) => (ADJ[from] || []).filter(id => {
-            const h = hMap[id]; if (!h) return false;
-            if (h.base) return false;                       // pas de rail vers une base
-            if (h.t === "lac" || h.t === "marecage") return false; // R6: pas de rail sur l'eau
-            return !taken(from, id);
-          });
-          const endpoints = [wh[0]];
-          for (let ri = 0; ri < 3; ri++) {
-            // Chaînage : repart du dernier point qui a encore une arête libre
-            let from = null, opts = [];
-            for (let ei = endpoints.length - 1; ei >= 0; ei--) {
-              opts = candidatesFrom(endpoints[ei]);
-              if (opts.length > 0) { from = endpoints[ei]; break; }
-            }
-            if (from === null) break;
-            const to = opts[Math.floor(Math.random() * opts.length)];
-            p._pendingRails.push([from, to]);
-            logs.push(`🤖🛤 ${f.name}: Rail #${from}↔#${to}`);
-            if (!endpoints.includes(to)) endpoints.push(to);
-          }
-        }
+        // Gare: place rails — 3 segments SANS doublon (helper partagé avec le
+        // bâtiment gratuit des cartes d'usine)
+        if (building.type === "gare") placeBotRails(p, spot, rails, logs, f.name);
       }
     } else if (bottomAction === "Enlist" && (p.recruits || 0) < 4) {
       const sp = spendRes(p, bc.res, bc.qty); Object.assign(p, { resources: sp.resources });
@@ -844,20 +1429,27 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     p.coins += bc.bonus;
     logs.push(`🤖💰 ${f.name}: +${bc.bonus}$ (${frBot(bottomAction)})`);
   }
-  // Gains du plan d'usine une fois l'action bottom réellement effectuée
-  if (bottomDone && (planB.bonusCoins > 0 || planB.bonusPower > 0)) {
-    p.coins += planB.bonusCoins;
-    p.power = Math.min(p.power + planB.bonusPower, 16);
-    logs.push(`🤖⚙ ${f.name}: ${p.factoryCard.name} → ${planB.bonusCoins > 0 ? `+${planB.bonusCoins}$ ` : ""}${planB.bonusPower > 0 ? `+${planB.bonusPower}⚡` : ""}`.trim());
-  }
 
   // ── AUTOMATIC STARS ──
   if (p.pop >= 18 && !p.starPop) { p.stars++; p.starPop = true; logs.push(`⭐ ${f.name}: Popularité max !`); }
 
   // ── OBJECTIVE CHECK ──
-  if (p.objective && !p.objectiveRevealed && p.objective.check(p)) { p.objectiveRevealed = true; p.stars++; logs.push(`⭐ ${f.name}: objectif !`); }
+  // P4 : révéler est un CHOIX (comme pour le joueur humain). Un bot à 5 étoiles
+  // qui révèle alors qu'il est DERRIÈRE au score déclenche la fin et perd la
+  // partie — il garde donc sa mission sous le coude et continue d'engranger.
+  const holdBack = (label) => {
+    if (!losingTrigger(p, ctx, true)) return false;
+    logs.push(`🤖🤐 ${f.name}: garde ${label} sous le coude (finir maintenant = perdre)`);
+    return true;
+  };
+  if (p.objective && !p.objectiveRevealed && p.objective.check(p, { players: ctx && ctx.allPlayers })
+      && !holdBack("sa mission secrète")) {
+    p.objectiveRevealed = true; p.stars++; logs.push(`⭐ ${f.name}: objectif !`);
+  }
   const fObj = FACTIONS[p.faction]?.fObj;
-  if (fObj && !p.fObjRevealed && fObj.check(p)) { p.fObjRevealed = true; p.stars++; logs.push(`🏛⭐ ${f.name}: obj. faction !`); }
+  if (fObj && !p.fObjRevealed && fObj.check(p) && !holdBack("son objectif de faction")) {
+    p.fObjRevealed = true; p.stars++; logs.push(`🏛⭐ ${f.name}: obj. faction !`);
+  }
 
   // ── DOMINION COMMERCE IMPÉRIAL ──
   if (p.faction === "dominion") {

@@ -10,9 +10,9 @@ import { getCombatBonus } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
 import { EMPIRE_START, drawEmpireCombat } from '../data/empire.js';
 import { ENCOUNTERS } from '../data/encounters.js';
-import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } from '../data/plans.js';
-import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes, FR_TOP as FR_TOP_MAP, FR_BOT as FR_BOT_MAP, frTop, frBot } from '../data/mats.js';
-import { OBJECTIVES } from '../data/objectives.js';
+import { FACTORY_RR_HEX, FACTORY_COL, PLANS_FORD, PLANS_TESLA, ALL_FACTORY_CARDS, TESLA_FRAGMENTS_REQUIRED, TESLA_OFFER_SIZE, factoryCostLabel, factoryGainLabel, factoryEffectLabel, FACTORY_BOTTOM_DESC } from '../data/plans.js';
+import { MATS, matById, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes, FR_TOP as FR_TOP_MAP, FR_BOT as FR_BOT_MAP, frTop, frBot } from '../data/mats.js';
+import { OBJECTIVES, ALL_OBJECTIVES } from '../data/objectives.js';
 import { structureBonusDetail, pickStructureBonus, STRUCTURE_BONUSES } from '../data/structureBonus.js';
 import { reconcileHand, topCardsSum, spendTopCards, spendPickedCards, handSummary } from '../logic/cards.js';
 import RulesPage from './RulesPage.jsx';
@@ -21,14 +21,14 @@ import SetupScreen from './SetupScreen.jsx';
 import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
-import { getValidMoves, findPathWaypoints, marshToll } from '../logic/movement.js';
+import { getValidMoves, findPathWaypoints, marshToll, marshFree } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer } from '../logic/player.js';
 import { botTurn, estimateScore } from '../logic/bot.js';
 import { BOT_PROFILES, assignBotProfile, BOT_NOISE, MAP_META_THREAT, playerStanding } from '../logic/botProfiles.js';
 import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../logic/pvpBots.js';
 import { resolveBotEncounter } from '../logic/botEncounters.js';
-import { getPlanBottomBonus, auraPowerCount } from '../logic/planEffects.js';
+import { drawFactoryOffer, claimFactoryCard, canPayFactoryCost, payFactoryCost, factoryEffectPossible, factoryWorkerHexes, factoryProduceHexes, factoryResourceHex } from '../logic/factory.js';
 import { playSfx, sfxForLog } from '../logic/sfx.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
 import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, ProduceTrack, RESOURCE_ICONS, BUILDING_ICONS, Glyph } from './svg/ActionIcons.jsx';
@@ -98,6 +98,7 @@ export default function App(){
   const[encounterBuild,setEncounterBuild]=useState(false); // rencontre → choisir le type de bâtiment (posé sur le hex du héros)
   const[encounterEnlist,setEncounterEnlist]=useState(null); // rencontre → enrôler : {col:null} puis {col}
   const[encounterUpgrade,setEncounterUpgrade]=useState(null); // rencontre → amélioration : {from:null} puis {from} (cube haut→bas)
+  const[encounterResources,setEncounterResources]=useState(null); // rencontre → ressources AU CHOIX : {remaining} (posées sur le hex du héros)
   const[rougeRiver,setRougeRiver]=useState(null); // {cards:[]}
   const[encounterTokens,setEncounterTokens]=useState(new Set(CURRENT_MAP.encounterHexes));
   // Deck de rencontres SANS remise (partagé joueur/bots) : mélangé au départ,
@@ -108,7 +109,16 @@ export default function App(){
     if(encounterDeckRef.current.length===0)encounterDeckRef.current=shuffleArray(ENCOUNTERS);
     return encounterDeckRef.current.shift();
   },[]);
-  const[rrVisitors,setRrVisitors]=useState(0); // how many players visited RR
+  // ── Offre de l'Usine (règle Scythe) : (nb joueurs + 1) cartes Ford tirées au
+  // départ ; chaque visiteur de la Rouge River en retire UNE — course à l'Usine.
+  const[factoryOffer,setFactoryOffer]=useState([]);
+  // Prototypes Tesla exposés à côté (visibles avec ≥1 Fragment Tesla)
+  const[teslaOffer,setTeslaOffer]=useState([]);
+  // Action TOP de la carte d'usine en cours de résolution : {queue:[effets restants],pick}
+  const[factoryFlow,setFactoryFlow]=useState(null);
+  // Vitrine de l'Usine (clic sur l'hex #22) : offre Ford + prototypes Tesla
+  // VISIBLES DE TOUS — motive la quête des fragments avant même d'y aller
+  const[factoryPreview,setFactoryPreview]=useState(false);
   const[moveSource,setMoveSource]=useState(null);
   // Transport partiel (mech) : choix des ouvriers/ressources à emporter avant le déplacement
   const[transportPick,setTransportPick]=useState(null);
@@ -143,11 +153,9 @@ export default function App(){
   const panStart=useRef(null);
   const mapRef=useRef(null);
 
-  const me=players[0];const myFaction=me?FACTIONS[me.faction]:null;const myMat=me?MATS.find(m=>m.id===me.matId):null;
-  // Plan « Réseau Neuronal » (mass_move) : 3 déplacements par action Move au lieu de 2
-  // 2 unités de base, 3 si le cube de l'option « +1 unité » est retiré
-  // (le plan « mass_move » garantit au moins 3)
-  const moveLimit=Math.max(me?.factoryCard?.topBonus==="mass_move"?3:2, 2+(me?topUpgradeCount(me,"Move","worker"):0));
+  const me=players[0];const myFaction=me?FACTIONS[me.faction]:null;const myMat=me?matById(me.matId):null;
+  // 2 unités de base au Move, 3 si le cube de l'option « +1 unité » est retiré
+  const moveLimit=2+(me?topUpgradeCount(me,"Move","worker"):0);
 
   useEffect(()=>{if(logRef.current)logRef.current.scrollTop=logRef.current.scrollHeight;},[log]);
 
@@ -339,13 +347,15 @@ export default function App(){
   // réhydratés à la reprise ; la carte (y compris procédurale) est embarquée
   // telle quelle (pure data) et rechargée via loadMap.
   const serializeGame=useCallback(()=>JSON.stringify({
-    v:1,date:Date.now(),turn,difficulty,empireEnabled,
-    map:CURRENT_MAP,empire,rails,encounterTokens:[...encounterTokens],rrVisitors,
+    v:2,date:Date.now(),turn,difficulty,empireEnabled,
+    map:CURRENT_MAP,empire,rails,encounterTokens:[...encounterTokens],
+    factoryOffer:factoryOffer.map(c=>c.id),teslaOffer:teslaOffer.map(c=>c.id),
     structureBonus:structureBonus?structureBonus.id:null,
     encounterDeck:encounterDeckRef.current.map(c=>c.id),
     log:log.slice(-500),step:stepRef.current,
-    players:players.map(p=>({...p,objective:p.objective?p.objective.id:null,objectives:(p.objectives||[]).map(o=>o.id)})),
-  }),[turn,difficulty,empireEnabled,empire,rails,encounterTokens,rrVisitors,structureBonus,log,players]);
+    players:players.map(p=>({...p,objective:p.objective?p.objective.id:null,objectives:(p.objectives||[]).map(o=>o.id),
+      factoryCard:p.factoryCard?p.factoryCard.id:null})),
+  }),[turn,difficulty,empireEnabled,empire,rails,encounterTokens,factoryOffer,teslaOffer,structureBonus,log,players]);
 
   useEffect(()=>{
     if(phase!=="playing"||currentP!==0||players.length===0||combat||encounter||botRunning)return;
@@ -363,13 +373,25 @@ export default function App(){
     encounterDeckRef.current=(data.encounterDeck||[]).map(id=>ENCOUNTERS.find(e=>e.id===id)).filter(Boolean);
     setEmpire(data.empire||{});
     setRails((data.rails||[]).map(r=>[...r]));
-    setRrVisitors(data.rrVisitors||0);
+    // Offre d'usine par id ; sauvegarde d'avant la refonte (v1, sans offre) :
+    // on retire l'offre des cartes déjà détenues et on complète au besoin
+    const heldIds=new Set(data.players.map(p=>typeof p.factoryCard==="string"?p.factoryCard:p.factoryCard?.id).filter(Boolean));
+    if(Array.isArray(data.factoryOffer)){
+      setFactoryOffer(data.factoryOffer.map(id=>PLANS_FORD.find(c=>c.id===id)).filter(Boolean));
+      setTeslaOffer((data.teslaOffer||[]).map(id=>PLANS_TESLA.find(c=>c.id===id)).filter(Boolean));
+    }else{
+      setFactoryOffer(drawFactoryOffer(PLANS_FORD.filter(c=>!heldIds.has(c.id)),data.players.length+1));
+      setTeslaOffer(drawFactoryOffer(PLANS_TESLA.filter(c=>!heldIds.has(c.id)),TESLA_OFFER_SIZE));
+    }
     setStructureBonus(data.structureBonus!=null?(STRUCTURE_BONUSES.find(b=>b.id===data.structureBonus)||null):null);
     setDifficulty(data.difficulty||"normal");
     setEmpireEnabled(!!data.empireEnabled);
     setPlayers(data.players.map(p=>({...p,
-      objective:p.objective!=null?(OBJECTIVES.find(o=>o.id===p.objective)||null):null,
-      objectives:(p.objectives||[]).map(id=>OBJECTIVES.find(o=>o.id===id)).filter(Boolean)})));
+      objective:p.objective!=null?(ALL_OBJECTIVES.find(o=>o.id===p.objective)||null):null,
+      objectives:(p.objectives||[]).map(id=>ALL_OBJECTIVES.find(o=>o.id===id)).filter(Boolean),
+      // Carte d'usine par id (v2) — un objet legacy (ancien modèle passif) est abandonné
+      factoryCard:typeof p.factoryCard==="string"?(ALL_FACTORY_CARDS.find(c=>c.id===p.factoryCard)||null)
+        :p.factoryCard?.id?(ALL_FACTORY_CARDS.find(c=>c.id===p.factoryCard.id)||null):null})));
     setLog((data.log||[]).map(e=>({...e})));
     stepRef.current=data.step||(data.log||[]).length;
     turnRef.current=data.turn||1;
@@ -407,12 +429,11 @@ export default function App(){
     if(empireEnabled)addLog(`🤖 Bots de l'Empire activés (mécanique campagne)`);
     // La carte de base démarre sans rails — seules les Gares en posent
     setRails([]);
-    setRrVisitors(0);
     // 🏦 Tuile bonus de pose tirée aussi en partie de base (demande de partie
     // réelle) — la mission « Ruée vers l'or » de la campagne garde sa variante
     const sb=pickStructureBonus();
     setStructureBonus(sb);
-    addLog(`🏦 Bonus de pose : ${sb.icon} ${sb.name} — +${sb.coins}$ ${sb.desc}`);
+    addLog(`🏦 Bonus de pose : ${sb.icon} ${sb.name} — ${sb.scale} ${sb.desc}`);
     const usedFactions=[selFaction];const usedMats=[selMat];
     const ps=[createPlayer(selFaction,selMat,false)];
     // Factions ET plateaux des bots TIRÉS AU HASARD (avant : l'ordre fixe de
@@ -435,6 +456,15 @@ export default function App(){
       p.objectives=[o1,o2];
       if(p.isBot){p.objective=Math.random()>0.5?o1:o2;}
     });
+    // ── Offre de l'Usine (règle Scythe) : nb joueurs + 1 cartes Ford tirées au
+    // hasard, posées sur la Rouge River pour toute la partie — chaque visiteur
+    // en retire une. Les prototypes Tesla s'exposent à côté (fragment requis).
+    // Le deck ORIGINAL (PLANS_ORIGINAL) reste de côté : déblocage en campagne.
+    const offer=drawFactoryOffer(PLANS_FORD,ps.length+1);
+    setFactoryOffer(offer);
+    setTeslaOffer(drawFactoryOffer(PLANS_TESLA,TESLA_OFFER_SIZE));
+    setFactoryFlow(null);
+    addLog(`⚙ Usine Rouge River : ${offer.length} plans Ford face cachée (joueurs + 1) — seuls les prototypes Tesla sont en vitrine (clic sur l'Usine)`);
     setPlayers(ps);setPhase("playing");setCurrentP(0);setTurn(1);turnRef.current=1;
     addLog(`⚔ ${ps.length} joueurs`);
     ps.forEach(p=>{
@@ -455,7 +485,7 @@ export default function App(){
   const revealObjective=useCallback((objIdx)=>{
     const p=players[0];if(!p||p.objectiveRevealed)return;
     const obj=p.objectives?.[objIdx];if(!obj)return;
-    if(obj.check(p)){setPlayers(prev=>{const n=[...prev];n[0]={...n[0],objectiveRevealed:true,revealedObjectiveIdx:objIdx,stars:n[0].stars+1};return n;});addLog(`⭐ "${obj.name}" révélé !`);}
+    if(obj.check(p,{players})){setPlayers(prev=>{const n=[...prev];n[0]={...n[0],objectiveRevealed:true,revealedObjectiveIdx:objIdx,stars:n[0].stars+1};return n;});addLog(`⭐ "${obj.name}" révélé !`);}
     else addLog(`❌ "${obj.name}" — condition non remplie`);
   },[players,addLog]);
 
@@ -532,7 +562,7 @@ export default function App(){
         }
       }
       // Reset commerceUsed for human player at start of new turn
-      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],commerceUsed:false,importUsed:false,planTopUsed:false};return n;});
+      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],commerceUsed:false,importUsed:false};return n;});
       turnRef.current=turn+1;setCurrentP(0);setTurn(t=>t+1);setBotRunning(false);addLog(`── Tour ${turn+1} ──`);logSnap("Début",players[0]);
       // Snapshots de debug des BOTS : leurs compteurs étaient invisibles au
       // journal — impossible de vérifier leurs gains (demande de partie réelle)
@@ -583,10 +613,21 @@ export default function App(){
         }
       });
       const botCtx={attackable,hexLoot,hexThreat,hexWorkers,forbidden:new Set(),encounterHexes:encounterTokens,
+        // Liste des joueurs en partie : objectifs relatifs aux adversaires
+        // (plus grande puissance, bases adverses…)
+        allPlayers:players,
+        // Tuile « bonus de pose » active : oriente le choix de l'hex de
+        // construction des bots (P6) — jusqu'ici ils l'ignoraient totalement
+        structureBonus,
+        // Reste-t-il un prototype Tesla en vitrine ? (quête des fragments)
+        teslaAvailable:teslaOffer.length>0,
+        // Tour courant : sert au pivot stratégique (une partie qui traîne
+        // signale qu'il est temps de sécuriser son score plutôt que d'espérer)
+        round:turn,
         // Fin imminente : un autre joueur (humain compris) est à 5+ étoiles
         endgame:players.some((op,oi)=>oi!==cp&&(op.stars||0)>=5),
         // Meilleur score adverse estimé — gestion de la 6e étoile (finir ou retarder)
-        bestOppScore:Math.max(...players.filter((_,oi)=>oi!==cp).map(op=>estimateScore(op)))};
+        bestOppScore:Math.max(...players.filter((_,oi)=>oi!==cp).map(op=>estimateScore(op,{structureBonus,allPlayers:players})))};
       let result=botTurn(players[cp],empire,botEnemyHexes,rails,botCtx);
       let p=result.player;const logs=[...result.logs];
       // ── BOT COMBAT: check if bot moved onto Empire mecha ──
@@ -608,17 +649,21 @@ export default function App(){
           // Remove empire mecha
           setEmpire(prev=>{const n={...prev};delete n[empireOnHero[0]];return n;});
           p.empireKills=(p.empireKills||0)+1;
-          // Bot picks random reward
+          // Récompense : un bot en quête Tesla prend le FRAGMENT (les bots
+          // n'y touchaient jamais — la quête leur était inaccessible)
+          const hunting=BOT_PROFILES[p.botProfile]?.teslaHunter&&!p.visitedRR
+            &&(p.fragments||0)<TESLA_FRAGMENTS_REQUIRED&&teslaOffer.length>0;
           const rw=Math.random();
-          if(rw<0.4){p.pop=Math.min(p.pop+2,18);logs.push(`🤖 ${bf.name}: +2 Pop`);}
+          if(hunting){p.fragments=(p.fragments||0)+1;logs.push(`🤖🔬 ${bf.name}: +1 Fragment Tesla (${p.fragments}/${TESLA_FRAGMENTS_REQUIRED})`);}
+          else if(rw<0.4){p.pop=Math.min(p.pop+2,18);logs.push(`🤖 ${bf.name}: +2 Pop`);}
           else{
             const hid=String(botHeroHex);if(!p.resources[hid])p.resources[hid]={};
             p.resources[hid].metal=(p.resources[hid].metal||0)+2;
             logs.push(`🤖 ${bf.name}: +2 Métal`);
           }
           if(p.empireKills>=3&&!p.starLiberator){p.stars++;p.starLiberator=true;logs.push(`⭐💀 ${bf.name}: LIBÉRATEUR !`);}
-          // Chimère: Bayou captures destroyed Empire mech (1×/game)
-          if(p.faction==="bayou"&&!p.chimereUsed){
+          // Chimère (slot 2): Bayou captures destroyed Empire mech (1×/game)
+          if(p.faction==="bayou"&&!p.chimereUsed&&(p.unlockedAbilities||[]).includes(2)){
             p.mechs=[...p.mechs,{id:`${p.faction}_chimere`,hexId:botHeroHex}];
             p.chimereUsed=true;p.capturedMech=(p.capturedMech||0)+1;
             logs.push(`🤖🧟 ${bf.name}: Chimère ! Mecha Empire capturé !`);
@@ -651,7 +696,7 @@ export default function App(){
           const dispHexes=[...new Set(displaced.map(w=>w.hexId))];
           n[oi]={...n[oi],workers:n[oi].workers.map(w=>botHexes.has(w.hexId)&&!defended(w.hexId)?{...w,hexId:ohbHex.id}:w)};
           // Bot loses pop for displacing workers
-          n[cp]={...n[cp],pop:Math.max(0,(n[cp].pop||0)-displaced.length)};
+          n[cp]={...n[cp],pop:Math.max(0,(n[cp].pop||0)-displaced.length),scaredWorkers:(n[cp].scaredWorkers||0)+displaced.length};
           // Pillage : le magot des hexes pris passe au nouvel occupant
           const deepResB=(pl)=>{const r={};Object.entries(pl.resources).forEach(([k,v])=>{r[k]={...v};});return r;};
           const loserB={...n[oi],resources:deepResB(n[oi])};
@@ -711,23 +756,28 @@ export default function App(){
       if(encounterTokens.has(n[cp].hero)){
         const encHex=n[cp].hero;
         if(encounterDeckRef.current.length===0)encounterDeckRef.current=shuffleArray(ENCOUNTERS);
-        const er=resolveBotEncounter(n[cp],encounterDeckRef.current);
+        const er=resolveBotEncounter(n[cp],encounterDeckRef.current,botCtx);
         n[cp]=er.player;logs.push(er.log);
         setEncounterTokens(prev=>{const s=new Set(prev);s.delete(encHex);return s;});
       }
-      // ── ROUGE RIVER BOT : héros sur l'Usine (1re visite) → plan auto ──
-      // Même règle que le joueur : autant de plans offerts qu'il reste de
-      // joueurs n'ayant pas encore visité (nJoueurs - visiteurs), Tesla
-      // accessible avec les fragments requis
+      // ── ROUGE RIVER BOT : héros sur l'Usine (1re visite) → carte d'usine ──
+      // Même règle que le joueur : le bot choisit dans l'OFFRE restante
+      // (course à l'Usine) ; les prototypes Tesla s'ajoutent avec un fragment
       if(n[cp].hero===FACTORY_RR_HEX&&!n[cp].visitedRR){
         const hasFrag=(n[cp].fragments||0)>=TESLA_FRAGMENTS_REQUIRED;
-        const pool=hasFrag?[...PLANS_FORD,...PLANS_TESLA]:[...PLANS_FORD];
-        const seeCount=Math.max(1,Math.min(pool.length,n.length-rrVisitors));
-        const visible=shuffleArray(pool).slice(0,seeCount);
-        const card=visible.find(c=>c.type==="tesla")||visible[Math.floor(Math.random()*visible.length)];
-        n[cp]={...n[cp],visitedRR:true,factoryCard:card};
-        setRrVisitors(prev=>prev+1);
-        logs.push(`⚙ ${FACTIONS[n[cp].faction].name} visite la Rouge River → plan « ${card.name} »${card.type==="tesla"?" (Tesla)":""}`);
+        const pool=[...factoryOffer,...(hasFrag?teslaOffer:[])];
+        if(pool.length>0){
+          const card=pool.find(c=>c.deck==="tesla")||pool[Math.floor(Math.random()*pool.length)];
+          const bp={...n[cp]};
+          claimFactoryCard(bp,card); // consomme les fragments si prototype Tesla
+          n[cp]=bp;
+          if(card.deck==="tesla")setTeslaOffer(prev=>prev.filter(c=>c.id!==card.id));
+          else setFactoryOffer(prev=>prev.filter(c=>c.id!==card.id));
+          logs.push(`⚙ ${FACTIONS[n[cp].faction].name} visite la Rouge River → « ${card.name} »${card.deck==="tesla"?` (Tesla, -${TESLA_FRAGMENTS_REQUIRED}🔬)`:""} [${factoryCostLabel(card)} → ${factoryGainLabel(card)}]`);
+        }else{
+          n[cp]={...n[cp],visitedRR:true};
+          logs.push(`⚙ ${FACTIONS[n[cp].faction].name} arrive à la Rouge River — plus aucune carte d'usine disponible`);
+        }
       }
       // ── ENLIST ONGOING: bot did a bottom action → trigger for self + neighbors ──
       if(result.bottomCol>=0){
@@ -753,7 +803,7 @@ export default function App(){
       }
     },350);
     return()=>clearTimeout(timer);
-  },[botRunning,currentP,players,phase,empire,turn,rails,encounterTokens,rrVisitors,addLog,addLogs]);
+  },[botRunning,currentP,players,phase,empire,turn,rails,encounterTokens,factoryOffer,teslaOffer,addLog,addLogs]);
 
   // After top-row → show bottom-row option
   const endHumanTurn=useCallback((col,movedOverride)=>{
@@ -801,16 +851,188 @@ export default function App(){
     requestEndTurn();
   },[addLog,requestEndTurn]);
 
+  // ═══ CARTE D'USINE — 5e colonne d'action (modèle Scythe) ═══
+  // HAUT : payer le coût → résoudre les gains (file factoryFlow, certains
+  // gains ouvrent un picker). BAS : déplacer 1 unité de 2 hex (+1 Vitesse),
+  // via le MÊME flux de déplacement que l'action Move (combats, péages,
+  // pièges, rencontres inclus) mais limité à une seule unité.
+  const factoryMoveMode=pendingBottom?.action==="FactoryMove";
+  // Limite d'unités déplaçables dans le mode courant (1 seule pour le bas d'usine)
+  const effMoveLimit=factoryMoveMode?1:moveLimit;
+
+  const finishFactoryMove=useCallback((moved)=>{
+    if((moved??1)>0)addLog(`✅ Déplacement d'usine terminé`);
+    setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:undefined,movedUnits:[],packUpUsed:false};return n;});
+    setMoveSource(null);setUnitPicker(null);setRouteDrop(null);setPreActionSnapshot(null);setTransportPick(null);
+    setPendingBottom(null);
+    requestEndTurn();
+  },[addLog,requestEndTurn]);
+
+  // Fin d'un déplacement : router vers la clôture du Move classique OU celle
+  // du bas de carte d'usine — tous les points de reprise (combat, rencontre,
+  // Rouge River, dépose en route) passent par ici.
+  const endMoveDone=useCallback((moved)=>{
+    if(factoryMoveMode)finishFactoryMove(moved);
+    else endHumanTurn(myMat.topRow.indexOf("Move"),moved);
+  },[factoryMoveMode,finishFactoryMove,endHumanTurn,myMat]);
+
+  // HAUT d'usine terminé (payé et résolu, ou passé) → proposer le BAS
+  const endFactoryTop=useCallback(()=>{
+    setFactoryFlow(null);
+    setSelAction(null);setPreActionSnapshot(null);
+    setPlayers(prev=>{const n=[...prev];n[0]={...n[0],lastCol:FACTORY_COL};return n;});
+    setPendingBottom({col:FACTORY_COL,action:"FactoryMove"});
+    setBottomPick(null);
+  },[]);
+
+  // Résout la file de gains du HAUT : applique d'un bloc les gains directs
+  // (pièces/puissance/pop/cartes), saute les gains impossibles, s'arrête au
+  // premier gain interactif (picker) — file vide = haut terminé.
+  const processFactoryQueue=useCallback((queue)=>{
+    const q=[...queue];
+    const autoTypes={coins:1,power:1,pop:1,cards:1};
+    const autos=[];
+    while(q.length>0){
+      const head=q[0];
+      if(autoTypes[head.type]){autos.push(q.shift());continue;}
+      if(!factoryEffectPossible(me,head)){addLog(`⚙ ${factoryEffectLabel(head)} — impossible, effet passé`);q.shift();continue;}
+      break;
+    }
+    if(autos.length>0){
+      setPlayers(prev=>{
+        const n=[...prev];const p={...n[0]};
+        autos.forEach(a=>{
+          if(a.type==="coins")p.coins+=a.qty;
+          else if(a.type==="power")p.power=Math.min(p.power+a.qty,16);
+          else if(a.type==="pop")p.pop=Math.min(p.pop+a.qty,18);
+          else p.combatCards=(p.combatCards||0)+a.qty;
+        });
+        n[0]=p;return n;
+      });
+      addLog(`⚙ ${me?.factoryCard?.name||"Usine"}: ${autos.map(factoryEffectLabel).join(" ")}`);
+    }
+    if(q.length===0){endFactoryTop();return;}
+    const head=q[0];
+    // Enrôler / Améliorer gratuits : mêmes pickers que les récompenses de
+    // rencontre — le champ source route la reprise vers la file d'usine
+    if(head.type==="enlist"){setFactoryFlow({queue:q});setEncounterEnlist({col:null,source:"factory"});return;}
+    if(head.type==="upgrade"){setFactoryFlow({queue:q});setEncounterUpgrade({from:null,source:"factory"});return;}
+    if(head.type==="resources"){setFactoryFlow({queue:q,pick:{remaining:head.qty}});return;}
+    if(head.type==="produce2"){setFactoryFlow({queue:q,pick:{hexes:[]}});return;}
+    setFactoryFlow({queue:q,pick:null}); // building / mech / choice → panneau usine
+  },[me,addLog,endFactoryTop]);
+
+  // Gain interactif résolu → passer au gain suivant de la file
+  const continueFactoryQueue=useCallback(()=>{
+    processFactoryQueue((factoryFlow?.queue||[]).slice(1));
+  },[factoryFlow,processFactoryQueue]);
+
+  // Payer le coût du HAUT et lancer la résolution des gains
+  const doFactoryTop=useCallback(()=>{
+    const card=me?.factoryCard;
+    if(!card||!canPayFactoryCost(me,card))return;
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0]};
+      payFactoryCost(p,card);
+      n[0]=p;return n;
+    });
+    addLog(`⚙ ${card.name}: coût payé (${factoryCostLabel(card)})`);
+    processFactoryQueue(card.gain);
+  },[me,addLog,processFactoryQueue]);
+
+  // Gain « A OU B » : l'option choisie remplace la tête de file
+  const doFactoryChoice=useCallback((opt)=>{
+    processFactoryQueue([opt,...(factoryFlow?.queue||[]).slice(1)]);
+  },[factoryFlow,processFactoryQueue]);
+
+  // Gain « 1 Mecha (hex ouvrier) » : pose gratuite + choix de capacité
+  const doFactoryMech=useCallback((hexId)=>{
+    if(!me||me.mechs.length>=4||pendingAbility)return;
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0],mechs:[...n[0].mechs]};
+      p.mechs.push({id:`${p.faction}_m${p.mechs.length}`,hexId});
+      const earned=p.mechs.length>=4&&!p.starMechs;
+      if(earned){p.stars++;p.starMechs=true;}
+      n[0]=p;return n;
+    });
+    addLog(`⬡ ${me.factoryCard?.name||"Usine"}: Mecha gratuit déployé sur #${hexId}`);
+    if(me.mechs.length+1>=4)addLog(`⭐ 4 Mechas déployés !`);
+    setPendingAbility({source:"factory"}); // la reprise (confirmAbility) continue la file
+  },[me,addLog,pendingAbility]);
+
+  // Gain « 1 Bâtiment (hex ouvrier) » : pose gratuite (Gare → pose de rails,
+  // la file reprend à la fin de la pose)
+  const doFactoryBuilding=useCallback((buildingType,hexId)=>{
+    if(!me||(me.buildings||[]).length>=4)return;
+    if((me.buildings||[]).some(b=>b.hexId===hexId)){addLog(`⚠ Déjà un bâtiment sur #${hexId}`);return;}
+    if((me.buildings||[]).some(b=>b.type===buildingType)){addLog(`⚠ ${buildingType} déjà construit`);return;}
+    const bt=BUILDING_TYPES.find(b=>b.type===buildingType);
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0],buildings:[...(n[0].buildings||[])]};
+      p.buildings.push({type:buildingType,hexId});
+      const earned=p.buildings.length>=4&&!p.starBuildings;
+      if(earned){p.stars++;p.starBuildings=true;}
+      n[0]=p;return n;
+    });
+    addLog(`🏗 ${me.factoryCard?.name||"Usine"}: ${bt?.name||buildingType} gratuit sur #${hexId}`);
+    if((me.buildings||[]).length+1>=4)addLog(`⭐ 4 Bâtiments construits !`);
+    if(buildingType==="gare"){
+      setRailPlacement({remaining:3,fromHex:null,gareHex:hexId,source:"factory"});
+      addLog(`🚂 Posez 3 segments de rail depuis la Gare ou un rail existant (pas sur lac/marécage)`);
+      return;
+    }
+    continueFactoryQueue();
+  },[me,addLog,continueFactoryQueue]);
+
+  // Gain « Produire sur 2 territoires » : production gratuite sur les hex choisis
+  const doFactoryProduce=useCallback((hexIds)=>{
+    if(!me||hexIds.length===0)return;
+    const workersByHex={};me.workers.forEach(w=>{const k=String(w.hexId);(workersByHex[k]=workersByHex[k]||[]).push(w);});
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0],resources:{...n[0].resources},workers:[...n[0].workers]};
+      Object.keys(n[0].resources).forEach(k=>{p.resources[k]={...n[0].resources[k]};});
+      hexIds.slice(0,2).forEach(hid=>{
+        const hidStr=String(hid);const hex=hMap[hid];const t=TERRAINS[hex?.t];if(!t)return;
+        let wCount=(workersByHex[hidStr]||[]).length;
+        const hasMoulin=(p.buildings||[]).some(b=>b.type==="moulin"&&b.hexId===hid);
+        if(hasMoulin)wCount++;
+        if(wCount<=0)return;
+        if(hex.t==="village"){if(p.workers.length<8){for(let i=0;i<wCount&&p.workers.length<8;i++)p.workers.push({id:`${p.faction}_w${p.workers.length}`,hexId:hid});addLog(`👷 +ouv. #${hid} (usine)`);}}
+        else if(t.res&&t.res!=="ouvriers"){if(!p.resources[hidStr])p.resources[hidStr]={};p.resources[hidStr][t.res]=(p.resources[hidStr][t.res]||0)+wCount;addLog(`🏭 +${wCount} ${resFR(t.res)} #${hid} (usine)`);}
+      });
+      n[0]=p;return n;
+    });
+    continueFactoryQueue();
+  },[me,addLog,continueFactoryQueue]);
+
+  // Gain « ressources au choix » : 1 clic = 1 ressource, posée sur un hex
+  // ouvrier gardé (héros/mecha) de préférence
+  const doFactoryResource=useCallback((resType)=>{
+    if(!me||!factoryFlow)return;
+    const hex=factoryResourceHex(me);
+    if(hex==null){continueFactoryQueue();return;}
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0],resources:{...n[0].resources}};
+      Object.keys(n[0].resources).forEach(k=>{p.resources[k]={...n[0].resources[k]};});
+      const key=String(hex);
+      if(!p.resources[key])p.resources[key]={};
+      p.resources[key][resType]=(p.resources[key][resType]||0)+1;
+      n[0]=p;return n;
+    });
+    addLog(`📦 +1 ${resFR(resType)} sur #${hex} (usine)`);
+    const remaining=(factoryFlow.pick?.remaining??1)-1;
+    if(remaining<=0)continueFactoryQueue();
+    else setFactoryFlow(prev=>({...prev,pick:{remaining}}));
+  },[me,factoryFlow,addLog,continueFactoryQueue]);
+
   // ── BOTTOM-ROW: UPGRADE (2-step: pick top source → pick bottom dest) ──
   const doUpgrade=useCallback((fromCol,toCol)=>{
     if(!me||(me.upgrades||0)>=6)return;
     const costs=getBottomCost(me);
     const cost=costs[0]; // Upgrade is always bottom col 0
-    // Apply plan bottom bonus (cost reduction)
-    const planBonus=getPlanBottomBonus(me,"Upgrade");
-    const effectiveQty=Math.max(0,cost.qty-planBonus.costReduction);
+    const effectiveQty=cost.qty;
     if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${resFR(cost.res)} requis`);return;}
-    const mat=MATS.find(m=>m.id===me.matId);
+    const mat=matById(me.matId);
     if(!mat)return;
     if((me.cubesOnTop||[])[fromCol]<=0){addLog(`⚠ Pas de cube sur cette action top`);return;}
     // Plafond règle Scythe : jamais plus de (base - 1) cubes → coût min 1
@@ -821,15 +1043,13 @@ export default function App(){
       p.cubesOnTop=[...(p.cubesOnTop||[])];p.cubesOnTop[fromCol]--;
       p.cubesOnBottom=[...(p.cubesOnBottom||[])];p.cubesOnBottom[toCol]++;
       p.upgrades=(p.upgrades||0)+1;
-      p.coins+=(mat.bottomCosts[toCol].bonus||0)+planBonus.bonusCoins;
-      p.power=Math.min(p.power+planBonus.bonusPower,16);
+      p.coins+=(mat.bottomCosts[toCol].bonus||0);
       const earned=p.upgrades>=6&&!p.starUpgrades;
       if(earned){p.stars++;p.starUpgrades=true;}
       n[0]=p;return n;
     });
     const topName=me.topRow[fromCol];const bottomName=BOTTOM[toCol];
-    planBonus.logs.forEach(l=>addLog(l));
-    addLog(`⬆ Améliorer ${(me.upgrades||0)+1}/6: ${frTop(topName)}↑ → ${frBot(bottomName)}↓ (-${effectiveQty} ${resFR(cost.res)}, +${(mat.bottomCosts[toCol].bonus||0)+planBonus.bonusCoins}$)`);
+    addLog(`⬆ Améliorer ${(me.upgrades||0)+1}/6: ${frTop(topName)}↑ → ${frBot(bottomName)}↓ (-${effectiveQty} ${resFR(cost.res)}, +${mat.bottomCosts[toCol].bonus||0}$)`);
     if((me.upgrades||0)+1>=6)addLog(`⭐ 6 Améliorations complétées !`);
     finishBottom(0);
   },[me,addLog,finishBottom]);
@@ -846,10 +1066,8 @@ export default function App(){
     if(!me||me.mechs.length>=4||pendingAbility)return;
     const costs=getBottomCost(me);
     const depCost=costs[1]; // Deploy is bottom col 1
-    const baseRes=overrideRes||depCost.res;
-    const planBonus=getPlanBottomBonus(me,"Deploy");
-    const qty=Math.max(0,depCost.qty-planBonus.costReduction);
-    const res=overrideRes||baseRes;
+    const qty=depCost.qty;
+    const res=overrideRes||depCost.res;
     if(countRes(me,res)<qty){addLog(`⚠ ${qty} ${resFR(res)} requis`);return;}
     // Bonus $ imprimé de la colonne Deploy (règle Scythe : chaque action du
     // bas rapporte ses pièces) — avant, seul Upgrade créditait quoi que ce soit
@@ -858,13 +1076,11 @@ export default function App(){
       const n=[...prev];let p=spendRes(n[0],res,qty);
       p.mechs=[...p.mechs,{id:`${p.faction}_m${p.mechs.length}`,hexId:targetHex}];
       // Do NOT unlock ability yet — player chooses
-      p.coins+=planBonus.bonusCoins+colBonus;
-      p.power=Math.min(p.power+planBonus.bonusPower,16);
+      p.coins+=colBonus;
       const earned=p.mechs.length>=4&&!p.starMechs;
       if(earned){p.stars++;p.starMechs=true;}
       n[0]=p;return n;
     });
-    planBonus.logs.forEach(l=>addLog(l));
     addLog(`⬡ Mecha déployé sur #${targetHex} (-${qty} ${resFR(res)}${colBonus>0?`, +${colBonus}$`:""})`);
     if(me.mechs.length+1>=4)addLog(`⭐ 4 Mechas déployés !`);
     // Show ability picker — finishBottom will be called after player picks
@@ -880,12 +1096,13 @@ export default function App(){
     const source=pendingAbility;
     setPendingAbility(null);
     if(source&&source.source==="deploy") finishBottom(source.col);
+    if(source&&source.source==="factory") continueFactoryQueue(); // mecha gratuit d'usine → gain suivant
     if(source&&source.source==="encounter"){
       // Resume movement check after encounter mech ability pick
       const moved=(me.movedUnits||[]).length;
-      if(moved>=moveLimit){setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
+      if(moved>=effMoveLimit){setTimeout(()=>endMoveDone(),100);}
     }
-  },[pendingAbility,me,addLog,finishBottom,endHumanTurn,myMat]);
+  },[pendingAbility,me,addLog,finishBottom,continueFactoryQueue,effMoveLimit,endMoveDone]);
 
   // ── BOTTOM-ROW: BUILD ──
   const doBuild=useCallback((targetHex,buildingType)=>{
@@ -896,21 +1113,18 @@ export default function App(){
     if((me.buildings||[]).some(b=>b.type===buildingType)){addLog(`⚠ ${buildingType} déjà construit`);return;}
     const costs=getBottomCost(me);
     const cost=costs[2]; // Build is bottom col 2
-    const planBonus=getPlanBottomBonus(me,"Build");
-    const effectiveQty=Math.max(0,cost.qty-planBonus.costReduction);
+    const effectiveQty=cost.qty;
     if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${resFR(cost.res)} requis`);return;}
     const bt=BUILDING_TYPES.find(b=>b.type===buildingType);
     const colBonus=cost.bonus||0; // bonus $ imprimé de la colonne Build
     setPlayers(prev=>{
       const n=[...prev];let p=spendRes(n[0],cost.res,effectiveQty);
       p.buildings=[...(p.buildings||[]),{type:buildingType,hexId:targetHex}];
-      p.coins+=planBonus.bonusCoins+colBonus;
-      p.power=Math.min(p.power+planBonus.bonusPower,16);
+      p.coins+=colBonus;
       const earned=p.buildings.length>=4&&!p.starBuildings;
       if(earned){p.stars++;p.starBuildings=true;}
       n[0]=p;return n;
     });
-    planBonus.logs.forEach(l=>addLog(l));
     addLog(`🏗 ${bt.name} construit sur #${targetHex} (-${effectiveQty} ${resFR(cost.res)}${colBonus>0?`, +${colBonus}$`:""})`);
     if((me.buildings||[]).length+1>=4)addLog(`⭐ 4 Bâtiments construits !`);
     if(buildingType==="gare"){
@@ -955,8 +1169,7 @@ export default function App(){
     if((me.enlistMap||[]).includes(recruitIdx)){addLog(`⚠ Recrue ${ENLIST_ONGOING[recruitIdx].label} déjà posée`);return;}
     const costs=getBottomCost(me);
     const cost=costs[3]; // Enlist is bottom col 3
-    const planBonus=getPlanBottomBonus(me,"Enlist");
-    const effectiveQty=Math.max(0,cost.qty-planBonus.costReduction);
+    const effectiveQty=cost.qty;
     if(countRes(me,cost.res)<effectiveQty){addLog(`⚠ ${effectiveQty} ${resFR(cost.res)} requis`);return;}
     const bonus=ENLIST_BONUSES[colIdx];
     const recruit=ENLIST_ONGOING[recruitIdx];
@@ -967,13 +1180,11 @@ export default function App(){
       p.enlistMap=[...(p.enlistMap||[null,null,null,null])];
       p.enlistMap[colIdx]=recruitIdx; // stocke la recrue choisie (pas un booléen)
       bonus.apply(p);
-      p.coins+=planBonus.bonusCoins+colBonus;
-      p.power=Math.min(p.power+planBonus.bonusPower,16);
+      p.coins+=colBonus;
       const earned=p.recruits>=4&&!p.starRecruits;
       if(earned){p.stars++;p.starRecruits=true;}
       n[0]=p;return n;
     });
-    planBonus.logs.forEach(l=>addLog(l));
     addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${frBot(BOTTOM[colIdx])} (-${effectiveQty} ${resFR(cost.res)}${colBonus>0?`, +${colBonus}$`:""}) — immédiat ${bonus.label}`);
     addLog(`   Permanent ${recruit.icon} ${recruit.label} quand vous/voisins faites ${BOTTOM[colIdx]}`);
     if((me.recruits||0)+1>=4)addLog(`⭐ 4 Recrues enrôlées !`);
@@ -1009,36 +1220,6 @@ export default function App(){
       n[0]=p;return n;
     });
     addLog(`🏛 Import Impérial : -2💰 → +1 ${resFR(resType)}`);
-  },[me,addLog]);
-
-  // ── PLAN « Five Dollar Day » (pop_worker) : action libre 1×/tour, -2$ → +2 Pop +1 ouvrier ──
-  const doPlanPopWorker=useCallback(()=>{
-    if(!me||me.factoryCard?.topBonus!=="pop_worker"||me.planTopUsed||me.coins<2)return;
-    setPlayers(prev=>{
-      const n=[...prev];const p={...n[0],workers:[...n[0].workers]};
-      p.coins-=2;p.pop=Math.min(p.pop+2,18);
-      if(p.workers.length<8)p.workers.push({id:`${p.faction}_w${p.workers.length}`,hexId:p.hero});
-      p.planTopUsed=true;
-      n[0]=p;return n;
-    });
-    addLog(`⚙ Five Dollar Day : -2$ → +2 Pop${me.workers.length<8?" +1 ouvrier":""}`);
-  },[me,addLog]);
-
-  // ── PLAN « River Rouge Special » (teleport_res) : 1×/tour, rapatrier les ressources d'un hex vers le héros ──
-  const doPlanTeleportRes=useCallback((fromHid)=>{
-    if(!me||me.factoryCard?.topBonus!=="teleport_res"||me.planTopUsed)return;
-    setPlayers(prev=>{
-      const n=[...prev];const p={...n[0],resources:{...n[0].resources}};
-      Object.keys(p.resources).forEach(k=>{p.resources[k]={...p.resources[k]};});
-      const src=p.resources[String(fromHid)]||{};
-      const destKey=String(p.hero);
-      if(!p.resources[destKey])p.resources[destKey]={};
-      Object.entries(src).forEach(([rt,q])=>{p.resources[destKey][rt]=(p.resources[destKey][rt]||0)+q;});
-      delete p.resources[String(fromHid)];
-      p.planTopUsed=true;
-      n[0]=p;return n;
-    });
-    addLog(`⚙ River Rouge Special : ressources de #${fromHid} téléportées vers le héros (#${me.hero})`);
   },[me,addLog]);
 
   // ── ANIMATIONS DE GAIN (floaters) ──────────────────────────────────
@@ -1103,7 +1284,7 @@ export default function App(){
   // par-dessus des tirages aléatoires de l'IA). Les objets porteurs de
   // fonctions (objectifs) sont conservés par référence lors du clonage.
   const gameRef=useRef({});
-  gameRef.current={players,empire,rails,encounterTokens,rrVisitors,selAction,preActionSnapshot};
+  gameRef.current={players,empire,rails,encounterTokens,factoryOffer,teslaOffer,selAction,preActionSnapshot};
   const cloneVal=useCallback((v)=>{
     if(Array.isArray(v))return v.map(cloneVal);
     if(v&&typeof v==="object"){
@@ -1114,7 +1295,7 @@ export default function App(){
   },[]);
   const snapshotGame=useCallback(()=>{
     const g=gameRef.current;
-    return {players:g.players.map(cloneVal),empire:{...g.empire},rails:g.rails.map(r=>[...r]),encounterTokens:[...g.encounterTokens],rrVisitors:g.rrVisitors,
+    return {players:g.players.map(cloneVal),empire:{...g.empire},rails:g.rails.map(r=>[...r]),encounterTokens:[...g.encounterTokens],factoryOffer:[...g.factoryOffer],teslaOffer:[...g.teslaOffer],
       // Contexte d'action : un undo de sous-coup (déplacement 2/2 → 1/2) doit
       // rester DANS l'action en cours — sinon on peut garder le 1er déplacement
       // et enchaîner une autre action top (Move gratuit + Produce).
@@ -1125,12 +1306,12 @@ export default function App(){
     setEmpire({...snap.empire});
     setRails(snap.rails.map(r=>[...r]));
     setEncounterTokens(new Set(snap.encounterTokens));
-    setRrVisitors(snap.rrVisitors);
+    setFactoryOffer([...(snap.factoryOffer||[])]);setTeslaOffer([...(snap.teslaOffer||[])]);
     // annule tout état transitoire d'action en cours — mais restaure le
     // contexte d'action capturé (selAction/preActionSnapshot) du snapshot
     setSelAction(snap.selAction??null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(snap.preActionSnapshot??null);setTradePicks([]);
     setPendingBottom(null);setBottomPick(null);setCombat(null);setEncounter(null);setRougeRiver(null);
-    setEncounterBuild(false);setEncounterEnlist(null);setEncounterUpgrade(null);
+    setEncounterBuild(false);setEncounterEnlist(null);setEncounterUpgrade(null);setEncounterResources(null);setFactoryFlow(null);setFactoryPreview(false);
     setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);setEndOfTurn(false);
   },[cloneVal]);
   const pushHistory=useCallback(()=>{ setUndoStack(s=>[...s.slice(-40),snapshotGame()]); setRedoStack([]); },[snapshotGame]);
@@ -1161,38 +1342,36 @@ export default function App(){
 
   const validMoves=useMemo(()=>{
     if(!moveSource||!me)return new Set();
-    let moves=getValidMoves(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails,moveSource.unitType,enemyOccupiedHexes);
+    // Bas de carte d'usine : 2 hex de base (+1 avec Vitesse) → bonusSteps=1
+    let moves=getValidMoves(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails,moveSource.unitType,enemyOccupiedHexes,factoryMoveMode?1:0);
     // Workers cannot enter hexes with any enemy units
     if(moveSource.unitType==="worker"){
       moves=moves.filter(id=>!enemyOccupiedHexes.has(id));
     }
     return new Set(moves);
-  },[moveSource,me,rails,enemyOccupiedHexes,empire]);
+  },[moveSource,me,rails,enemyOccupiedHexes,empire,factoryMoveMode]);
 
   // Déplacement au clic : hex → unités du joueur encore déplaçables ce tour.
   // Cliquer un hex surligné sélectionne l'unité (picker si plusieurs).
+  // Actif pour l'action Move ET le bas de carte d'usine (1 seule unité).
   const movableUnits=useMemo(()=>{
     const m=new Map();
-    if(!me||selAction!=="Move")return m;
-    if((me.movedUnits||[]).length>=moveLimit)return m;
+    if(!me||(selAction!=="Move"&&!factoryMoveMode))return m;
+    if((me.movedUnits||[]).length>=effMoveLimit)return m;
     const moved=new Set(me.movedUnits||[]);
     const add=(hid,u)=>{if(!m.has(hid))m.set(hid,[]);m.get(hid).push(u);};
     if(!moved.has("hero"))add(me.hero,{type:"hero",id:"hero",icon:"★",label:myFaction?.hero||"Héros"});
     me.mechs.forEach(mm=>{if(!moved.has(mm.id))add(mm.hexId,{type:"mech",id:mm.id,icon:"⬡",label:"Mecha"});});
     me.workers.forEach(w=>{if(!moved.has(w.id))add(w.hexId,{type:"worker",id:w.id,icon:"●",label:"Ouvrier"});});
     return m;
-  },[me,selAction,myFaction]);
+  },[me,selAction,myFaction,factoryMoveMode,effMoveLimit]);
 
   // Mode « amélioration sur cartes » : pendant l'action Améliorer, les cartes
   // d'action restent affichées et leurs cases de cubes deviennent cliquables
   // (source en rangée haut, destination en rangée bas + bouton Valider)
   const upgradePicking=!!me&&pendingBottom?.action==="Upgrade"&&(me.upgrades||0)<6
     &&(()=>{const c=getBottomCost(me)[BOTTOM.indexOf("Upgrade")];if(!c)return false;
-      // Réduction du plan d'usine (ex. Trimotor -1) appliquée avant le test de
-      // solvabilité, comme dans doUpgrade — sinon les cubes restaient incliquables
-      // alors que l'amélioration était payable
-      const eff=Math.max(0,c.qty-getPlanBottomBonus(me,"Upgrade").costReduction);
-      return countRes(me,c.res)>=eff;})();
+      return countRes(me,c.res)>=c.qty;})();
 
   // Cibles cliquables sur la carte pour les actions bottom Deploy/Build
   // (en plus des boutons du panneau : cliquer l'hex surligné place directement)
@@ -1204,26 +1383,18 @@ export default function App(){
     // (double mecha observé en partie réelle, une seule capacité débloquée)
     if(!me||!pendingBottom||pendingAbility||railPlacement)return none;
     const workerHexes=getWorkerHexes(me);
-    const isLand=(h)=>{const hx=hMap[h];return hx&&hx.t!=="lac"&&hx.t!=="marecage";};
     if(pendingBottom.action==="Deploy"&&me.mechs.length<4){
       const bc=getBottomCost(me)[1];
-      const qty=Math.max(0,bc.qty-getPlanBottomBonus(me,"Deploy").costReduction);
+      const qty=bc.qty;
       const deployAlt=FACTIONS[me.faction]?.deployAltRes;
       const res=deployAlt?bottomPick?.deployRes:bc.res; // faction à ressource alternative : attendre le choix métal/bois
       if(!res||countRes(me,res)<qty)return none;
-      const hexes=me.factoryCard?.bottomBonus==="deploy_adjacency"
-        ?[...new Set(workerHexes.flatMap(h=>[h,...(ADJ[h]||[])]))].filter(isLand)
-        :workerHexes;
-      return{type:"deploy",res:deployAlt?res:undefined,hexes:new Set(hexes)};
+      return{type:"deploy",res:deployAlt?res:undefined,hexes:new Set(workerHexes)};
     }
     if(pendingBottom.action==="Build"&&bottomPick?.building&&(me.buildings||[]).length<4){
       const bc=getBottomCost(me)[2];
-      const qty=Math.max(0,bc.qty-getPlanBottomBonus(me,"Build").costReduction);
-      if(countRes(me,bc.res)<qty)return none;
-      const base=me.factoryCard?.bottomBonus==="build_no_worker"
-        ?[...new Set([...workerHexes,me.hero,...me.mechs.map(m=>m.hexId)])].filter(isLand)
-        :workerHexes;
-      return{type:"build",hexes:new Set(base.filter(h=>!(me.buildings||[]).some(b=>b.hexId===h)))};
+      if(countRes(me,bc.res)<bc.qty)return none;
+      return{type:"build",hexes:new Set(workerHexes.filter(h=>!(me.buildings||[]).some(b=>b.hexId===h)))};
     }
     return none;
   },[me,pendingBottom,bottomPick,pendingAbility,railPlacement]);
@@ -1345,11 +1516,14 @@ export default function App(){
         const remaining=railPlacement.remaining-1;
         addLog(`🛤 Rail posé #${from}↔#${hexId} (${remaining} restant${remaining>1?"s":""})`);
         if(remaining<=0){
+          const fromFactory=railPlacement.source==="factory";
           setRailPlacement(null);
           addLog(`✅ 3 rails posés !`);
-          finishBottom(2);
+          // Gare gratuite d'une carte d'usine : reprendre la file de gains ;
+          // Gare du Build classique : clôture normale de l'action du bas
+          if(fromFactory)continueFactoryQueue();else finishBottom(2);
         } else {
-          setRailPlacement({remaining,fromHex:null});
+          setRailPlacement(prev=>({...prev,remaining,fromHex:null}));
         }
         return;
       }
@@ -1465,6 +1639,10 @@ export default function App(){
       const toll=marshToll(p,hexId,moveSource.unitType,marshCarried);
       if(toll){
         addLog(toll);
+        // Sang du Marais : le Bayou traverse gratuitement — on garde le log
+        // d'information mais aucune perte n'est à afficher.
+      }
+      if(toll&&!marshFree(p.faction)){
         // Toast de perte au centre — le système de floaters automatique ne
         // suit que les gains, les pertes du péage sont poussées ici
         const bx=window.innerWidth*0.5;const by=window.innerHeight*0.40;let stack=0;
@@ -1476,18 +1654,7 @@ export default function App(){
         }
       }
 
-      p.movesLeft=(me.movesLeft||moveLimit)-1;p.movedUnits=[...(me.movedUnits||[]),moveSource.unitId];
-
-      // ── PLAN « Iron Horse » (move_mine) : chaque déplacement mine 1 ressource du terrain d'arrivée ──
-      if(me.factoryCard?.topBonus==="move_mine"){
-        const destT=TERRAINS[hMap[hexId]?.t];
-        if(destT?.res&&destT.res!=="ouvriers"){
-          const hid=String(hexId);
-          if(!p.resources[hid])p.resources[hid]={};
-          p.resources[hid][destT.res]=(p.resources[hid][destT.res]||0)+1;
-          addLog(`⚙ ${me.factoryCard.name}: +1 ${resFR(destT.res)} miné sur #${hexId}`);
-        }
-      }
+      p.movesLeft=(me.movesLeft||effMoveLimit)-1;p.movedUnits=[...(me.movedUnits||[]),moveSource.unitId];
 
       // ── SCYTHE RULE: displace enemy workers when hero/mech enters (no combat) ──
       const movingCombat2=moveSource.unitType==="hero"||moveSource.unitType==="mech";
@@ -1519,6 +1686,7 @@ export default function App(){
         if(displaced>0){
           // Lose 1 pop per displaced worker
           p.pop=Math.max(0,p.pop-displaced);
+          p.scaredWorkers=(p.scaredWorkers||0)+displaced; // objectif « L'Intimidation » (deck original)
           addLog(`♥ -${displaced} Pop (ouvriers déplacés)`);
           // Servitude (Confédération) : la capture est un CHOIX du joueur
           // (-2 Pop, max 2) — proposée après le déplacement, plus d'office
@@ -1581,18 +1749,22 @@ export default function App(){
         // Rouge River (hex #22) — first visit by this hero?
         if(hexId===FACTORY_RR_HEX&&!me.visitedRR){
           const hasFragments=(me.fragments||0)>=TESLA_FRAGMENTS_REQUIRED;
-          const available=hasFragments?[...PLANS_FORD,...PLANS_TESLA]:[...PLANS_FORD];
-          const shuffled=shuffleArray(available);
-          // Règle Scythe : l'Usine offre autant de plans qu'il y a de JOUEURS,
-          // et chaque visiteur en retire un (course à l'Usine — le dernier n'a
-          // plus de choix). Avant, le nombre offert = taille du deck (5 ou 10),
-          // sans rapport avec le nombre de joueurs.
-          const seeCount=Math.max(1,Math.min(shuffled.length,players.length-rrVisitors));
-          const visible=shuffled.slice(0,seeCount);
-          setRougeRiver({cards:visible,hasFragments});
-          setRrVisitors(prev=>prev+1);
-          addLog(`⚙ Rouge River ! ${hasFragments?"Plans Ford + Tesla accessibles !":"Plans Ford uniquement."} (${visible.length} cartes)`);
-          return; // Pause — player picks a card
+          // Règle Scythe : le visiteur choisit dans l'OFFRE restante (nb
+          // joueurs + 1 cartes tirées au départ, chaque visiteur en retire
+          // une — course à l'Usine, le dernier prend ce qui reste). Les
+          // prototypes Tesla s'ajoutent avec un Fragment.
+          const visible=[...factoryOffer,...(hasFragments?teslaOffer:[])];
+          if(visible.length===0){
+            setPlayers(prev=>{const n=[...prev];n[0]={...n[0],visitedRR:true};return n;});
+            addLog(`⚙ Rouge River : plus aucune carte d'usine disponible`);
+          }else{
+            // L'offre Ford (face cachée) se DÉCOUVRE ici ; les prototypes Tesla
+            // restent affichés verrouillés si les fragments manquent — on voit
+            // ce à quoi on renonce en prenant une carte Ford (choix définitif)
+            setRougeRiver({cards:visible,hasFragments,lockedTesla:hasFragments?[]:[...teslaOffer]});
+            addLog(`⚙ Rouge River ! Offre découverte : ${factoryOffer.length} plan${factoryOffer.length>1?"s":""} Ford${hasFragments?" + prototypes Tesla accessibles !":teslaOffer.length>0?` (Tesla verrouillé — ${TESLA_FRAGMENTS_REQUIRED}🔬 requis)`:""}`);
+            return; // Pause — player picks a card
+          }
         }
       }
       
@@ -1608,14 +1780,14 @@ export default function App(){
           .filter(hid=>{const h=hMap[hid];return h&&h.t!=="lac"&&h.t!=="marecage"&&!enemyOccupiedHexes.has(hid);});
         const hasCargo=p.workers.some(w=>w.hexId===hexId)||Object.keys(p.resources[String(hexId)]||{}).length>0;
         if(mids.length>0&&hasCargo){
-          dropOffer={mids,destHex:hexId,endAfter:p.movedUnits.length>=moveLimit};
+          dropOffer={mids,destHex:hexId,endAfter:p.movedUnits.length>=effMoveLimit};
           // La modale (routeDrop) porte l'affordance ; on ne LOGUE que la dépose
           // réelle (« 📦 Ouvrier déposé … au passage ») — l'annonce du simple
           // « possible » était du bruit au journal quand rien n'était déposé.
           setRouteDrop(dropOffer);
         }
       }
-      if(p.movedUnits.length>=moveLimit&&!dropOffer)endHumanTurn(myMat.topRow.indexOf("Move"),p.movedUnits.length);
+      if(p.movedUnits.length>=effMoveLimit&&!dropOffer)endMoveDone(p.movedUnits.length);
       return;
     }
     // ── CIBLES D'ACTION BOTTOM : Deploy/Build en cliquant l'hex sur la carte ──
@@ -1634,8 +1806,8 @@ export default function App(){
       }
       setProducePicks(p=>[...p,hexId]);return;
     }
-    // ── SÉLECTION D'UNITÉ AU CLIC (action Move) : cliquer le pion à déplacer ──
-    if(selAction==="Move"&&movableUnits.has(hexId)){
+    // ── SÉLECTION D'UNITÉ AU CLIC (action Move ou bas de carte d'usine) ──
+    if((selAction==="Move"||factoryMoveMode)&&movableUnits.has(hexId)){
       const units=movableUnits.get(hexId);
       setUnitPicker(null);
       if(units.length===1){doMove(units[0].type,units[0].id,hexId);}
@@ -1644,8 +1816,12 @@ export default function App(){
     }
     if(moveSource){setMoveSource(null);setTransportPick(null);return;}
     setUnitPicker(null);
+    // ── VITRINE DE L'USINE : cliquer la Rouge River (hors action en cours)
+    // ouvre la modale publique — offre Ford + prototypes Tesla visibles de
+    // tous, pour motiver la quête des fragments avant d'y aller ──
+    if(hexId===FACTORY_RR_HEX&&!selAction&&!pendingBottom&&!rougeRiver)setFactoryPreview(true);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,finishBottom,combat,empire,players,encounterTokens,rrVisitors,railPlacement,rails,carryOnMove,selAction,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,carryOnMove,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes,rougeRiver]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -1720,7 +1896,7 @@ export default function App(){
             const loot=Math.min(n[0].coins||0,2);
             if(loot>0){n[atkIdx].coins+=loot;n[0].coins-=loot;}
           }
-          if(n[atkIdx].faction==="bayou"&&!n[atkIdx].chimereUsed&&prev[0].mechs.some(m=>m.hexId===combat.hexId)){
+          if(n[atkIdx].faction==="bayou"&&!n[atkIdx].chimereUsed&&(n[atkIdx].unlockedAbilities||[]).includes(2)&&prev[0].mechs.some(m=>m.hexId===combat.hexId)){
             n[atkIdx].mechs=[...n[atkIdx].mechs,{id:`${n[atkIdx].faction}_chimere`,hexId:combat.hexId}];
             n[atkIdx].chimereUsed=true;n[atkIdx].capturedMech=(n[atkIdx].capturedMech||0)+1;
           }
@@ -1796,7 +1972,7 @@ export default function App(){
           // Empire attacked → player stays in place, no transport needed
           p.empireKills=(p.empireKills||0)+1;
           if(p.empireKills>=3&&!p.starLiberator){p.stars++;p.starLiberator=true;addLog(`⭐💀 LIBÉRATEUR ! 3 Empire détruits !`);}
-          if(p.faction==="bayou"&&!p.chimereUsed){
+          if(p.faction==="bayou"&&!p.chimereUsed&&(p.unlockedAbilities||[]).includes(2)){
             p.mechs=[...p.mechs,{id:`${p.faction}_chimere`,hexId:combat.hexId}];
             p.chimereUsed=true;p.capturedMech=(p.capturedMech||0)+1;
             addLog(`🧟 Chimère ! Mecha Empire capturé → 5e mecha Bayou !`);
@@ -1851,7 +2027,7 @@ export default function App(){
         const wfWorkerCount=enemy.workers.filter(w=>w.hexId===combat.hexId).length;
         addLog(`⭐ Étoile combat ${(me.combatWins||0)+1}/2 (White Flag) !${wfWorkerCount>0?` ♥ -${wfWorkerCount} Pop (ouvriers déplacés)`:""}`);
         setCombat(null);
-        if((me.movedUnits||[]).length+1>=moveLimit){setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
+        if((me.movedUnits||[]).length+1>=effMoveLimit){setTimeout(()=>endMoveDone(),100);}
         return;
       }
       
@@ -1958,8 +2134,8 @@ export default function App(){
           });
           addLog(`🏴‍☠️ Flibuste ! +2💰 pillées sur ${ef.name}`);
         }
-        // Chimère: Bayou captures 1 enemy mech (1×/game, becomes 5th mech)
-        if(me.faction==="bayou"&&!me.chimereUsed&&preEnemyMechs.length>0){
+        // Chimère (slot 2, avec Flibuste): Bayou captures 1 enemy mech (1×/game, becomes 5th mech)
+        if(me.faction==="bayou"&&!me.chimereUsed&&(me.unlockedAbilities||[]).includes(2)&&preEnemyMechs.length>0){
           setPlayers(prev=>{
             const n=[...prev];
             const p={...n[0],mechs:[...n[0].mechs]};
@@ -1991,13 +2167,12 @@ export default function App(){
     }
     
     setCombat(null);
-    // Check if movement is done
-    const newMovesLeft=(me.movesLeft||moveLimit)-1;
-    if((me.movedUnits||[]).length+1>=moveLimit){
-      // Need to trigger endHumanTurn after state updates (il logue ✅ lui-même)
-      setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);
+    // Check if movement is done (Move classique ou bas de carte d'usine)
+    if((me.movedUnits||[]).length+1>=effMoveLimit){
+      // Need to trigger la clôture after state updates (elle logue ✅ elle-même)
+      setTimeout(()=>endMoveDone(),100);
     }
-  },[combat,me,players,empire,myFaction,myMat,addLog,endHumanTurn]);
+  },[combat,me,players,empire,myFaction,myMat,addLog,effMoveLimit,endMoveDone]);
 
   // ── WHITE FLAG (Acadiane défenseur, slot 2) : céder le hex sans combattre ──
   const resolveWhiteFlag=useCallback(()=>{
@@ -2055,17 +2230,17 @@ export default function App(){
       n[0]=p;return n;
     });
     setCombat(null);
-    if((me.movedUnits||[]).length>=moveLimit){
-      setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);
+    if((me.movedUnits||[]).length>=effMoveLimit){
+      setTimeout(()=>endMoveDone(),100);
     }
-  },[combat,me,addLog,endHumanTurn,myMat]);
+  },[combat,me,addLog,effMoveLimit,endMoveDone]);
 
   // Reprend le tour humain après un picker de rencontre (mecha/bâtiment/recrue) :
   // si tous les déplacements sont faits, on enchaîne sur l'action bottom.
   const resumeAfterEncounter=useCallback(()=>{
     const moved=(me?.movedUnits||[]).length;
-    if(moved>=moveLimit){setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
-  },[me,moveLimit,endHumanTurn,myMat]);
+    if(moved>=effMoveLimit){setTimeout(()=>endMoveDone(),100);}
+  },[me,effMoveLimit,endMoveDone]);
 
   // ── ENCOUNTER RESOLUTION ──
   const resolveEncounter=useCallback((choiceIdx)=>{
@@ -2093,9 +2268,27 @@ export default function App(){
     if(choice.grantsBuilding){ setEncounterBuild(true); return; }
     if(choice.grantsRecruit){ setEncounterEnlist({col:null}); return; }
     if(choice.grantsUpgrade&&(me.upgrades||0)<6){ setEncounterUpgrade({from:null}); return; }
+    if(choice.grantsResources>0){ setEncounterResources({remaining:choice.grantsResources}); return; }
     // Resume movement check
     resumeAfterEncounter();
   },[encounter,me,addLog,resumeAfterEncounter]);
+
+  // ── RÉCOMPENSE RENCONTRE : ressources AU CHOIX (posées sur le hex du héros) ──
+  const doEncounterResource=useCallback((resType)=>{
+    if(!encounterResources||!me)return;
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0],resources:{...n[0].resources}};
+      Object.keys(n[0].resources).forEach(k=>{p.resources[k]={...n[0].resources[k]};});
+      const key=String(p.hero);
+      if(!p.resources[key])p.resources[key]={};
+      p.resources[key][resType]=(p.resources[key][resType]||0)+1;
+      n[0]=p;return n;
+    });
+    addLog(`📦 +1 ${resFR(resType)} sur #${me.hero} (rencontre)`);
+    const remaining=encounterResources.remaining-1;
+    if(remaining<=0){setEncounterResources(null);resumeAfterEncounter();}
+    else setEncounterResources({remaining});
+  },[encounterResources,me,addLog,resumeAfterEncounter]);
 
   // ── RÉCOMPENSE RENCONTRE : bâtiment gratuit (posé sur le hex du héros) ──
   const doEncounterBuild=useCallback((buildingType)=>{
@@ -2134,19 +2327,20 @@ export default function App(){
       if(earned){p.stars++;p.starRecruits=true;}
       n[0]=p;return n;
     });
-    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${BOTTOM[colIdx]} (rencontre) — immédiat ${bonus.label}`);
+    addLog(`🤝 Recrue ${(me.recruits||0)+1}/4 sur ${BOTTOM[colIdx]} (${encounterEnlist?.source==="factory"?"usine":"rencontre"}) — immédiat ${bonus.label}`);
     addLog(`   Permanent ${recruit.icon} ${recruit.label} quand vous/voisins faites ${BOTTOM[colIdx]}`);
     if((me.recruits||0)+1>=4)addLog(`⭐ 4 Recrues enrôlées !`);
+    const fromFactory=encounterEnlist?.source==="factory";
     setEncounterEnlist(null);
-    resumeAfterEncounter();
-  },[me,addLog,resumeAfterEncounter]);
+    if(fromFactory)continueFactoryQueue();else resumeAfterEncounter();
+  },[me,addLog,resumeAfterEncounter,encounterEnlist,continueFactoryQueue]);
 
   // ── RÉCOMPENSE RENCONTRE : amélioration gratuite (vrai cube haut→bas) ──
   // Avant : simple compteur incrémenté, sans choix ni effet — « pas appliqué,
   // juste comptabilisé », constaté en partie réelle.
   const doEncounterUpgrade=useCallback((fromCol,toCol)=>{
     if(!me||(me.upgrades||0)>=6)return;
-    const mat=MATS.find(m=>m.id===me.matId);
+    const mat=matById(me.matId);
     if(!mat)return;
     if((me.cubesOnTop||[])[fromCol]<=0){addLog(`⚠ Pas de cube sur cette action top`);return;}
     if((me.cubesOnBottom||[])[toCol]>=maxBottomCubes(mat,toCol)){addLog(`⚠ Plus de place sur cette action bottom`);return;}
@@ -2159,29 +2353,34 @@ export default function App(){
       if(earned){p.stars++;p.starUpgrades=true;}
       n[0]=p;return n;
     });
-    addLog(`⬆ Améliorer ${(me.upgrades||0)+1}/6 (rencontre): ${frTop(me.topRow[fromCol])}↑ → ${frBot(BOTTOM[toCol])}↓`);
+    addLog(`⬆ Améliorer ${(me.upgrades||0)+1}/6 (${encounterUpgrade?.source==="factory"?"usine":"rencontre"}): ${frTop(me.topRow[fromCol])}↑ → ${frBot(BOTTOM[toCol])}↓`);
     if((me.upgrades||0)+1>=6)addLog(`⭐ 6 Améliorations complétées !`);
+    const fromFactory=encounterUpgrade?.source==="factory";
     setEncounterUpgrade(null);
-    resumeAfterEncounter();
-  },[me,addLog,resumeAfterEncounter]);
+    if(fromFactory)continueFactoryQueue();else resumeAfterEncounter();
+  },[me,addLog,resumeAfterEncounter,encounterUpgrade,continueFactoryQueue]);
 
   // ── ROUGE RIVER — PICK FACTORY CARD ──
+  // La carte choisie QUITTE l'offre (course à l'Usine) et devient la 5e
+  // colonne d'action du joueur pour le reste de la partie.
   const pickFactoryCard=useCallback((card)=>{
     if(!rougeRiver)return;
     setPlayers(prev=>{
       const n=[...prev];const p={...n[0]};
-      p.visitedRR=true;
-      p.factoryCard=card;
+      claimFactoryCard(p,card); // consomme les fragments si prototype Tesla
       n[0]=p;return n;
     });
-    addLog(`⚙ Plan choisi: ${card.name} (${card.type==="tesla"?"Tesla":"Ford"}) — ${card.desc}`);
+    if(card.deck==="tesla")setTeslaOffer(prev=>prev.filter(c=>c.id!==card.id));
+    else setFactoryOffer(prev=>prev.filter(c=>c.id!==card.id));
+    if(card.deck==="tesla")addLog(`🔬 ${TESLA_FRAGMENTS_REQUIRED} Fragments Tesla consommés`);
+    addLog(`⚙ Carte d'usine choisie: ${card.name}${card.deck==="tesla"?" (Tesla)":""} — HAUT ${factoryCostLabel(card)} → ${factoryGainLabel(card)} · BAS ${FACTORY_BOTTOM_DESC}`);
     setRougeRiver(null);
     const moved=(me.movedUnits||[]).length;
-    if(moved>=moveLimit){setTimeout(()=>endHumanTurn(myMat.topRow.indexOf("Move")),100);}
-  },[rougeRiver,me,endHumanTurn,myMat,addLog]);
+    if(moved>=effMoveLimit){setTimeout(()=>endMoveDone(),100);}
+  },[rougeRiver,me,effMoveLimit,endMoveDone,addLog]);
 
   const doMove=(unitType,unitId,fromHex)=>{
-    if(!me.movesLeft)setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:moveLimit,movedUnits:[]};return n;});
+    if(!me.movesLeft)setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:effMoveLimit,movedUnits:[]};return n;});
     setMoveSource({unitType,unitId,fromHex});setSelHex(null);setUnitPicker(null);
   };
 
@@ -2195,10 +2394,8 @@ export default function App(){
         // +1 si le cube d'amélioration de l'option ⚡ a été retiré (2 → 3)
         const upg=topUpgradeCount(p,"Bolster","power");
         const bonus=(hasArsenal?1:0)+upg;
-        // Plan « L'Onde Tesla » : +1 Pui par mecha proche du héros
-        const aura=auraPowerCount(p,hMap);
-        p.power=Math.min(p.power+2+bonus+aura,16);
-        addLog(`💪 -1$ → +${2+bonus+aura} Pui${upg?" (Amélioration +1)":""}${hasArsenal?" (Arsenal +1)":""}${aura>0?` (Onde Tesla +${aura})`:""}`);}
+        p.power=Math.min(p.power+2+bonus,16);
+        addLog(`💪 -1$ → +${2+bonus} Pui${upg?" (Amélioration +1)":""}${hasArsenal?" (Arsenal +1)":""}`);}
       else{
         // +1 si le cube d'amélioration de l'option 🃏 a été retiré (1 → 2)
         const upg=topUpgradeCount(p,"Bolster","combatCards");
@@ -2231,11 +2428,8 @@ export default function App(){
         // Moulin building: +1 production on this hex (as if +1 worker)
         const hasMoulin=(p.buildings||[]).some(b=>b.type==="moulin"&&b.hexId===hid);
         if(hasMoulin)wCount++;
-        // Plan « Model M » : production doublée sur chaque hex
-        const hasModelM=p.factoryCard?.topBonus==="produce_x2";
-        if(hasModelM)wCount*=2;
-        if(hex.t==="village"){if(p.workers.length<8){for(let i=0;i<wCount&&p.workers.length<8;i++)p.workers.push({id:`${p.faction}_w${p.workers.length}`,hexId:hid});addLog(`👷 +ouv. #${hid}${hasMoulin?" (Moulin +1)":""}${hasModelM?" (Model M ×2)":""}`);}}
-        else if(t.res&&t.res!=="ouvriers"){if(!p.resources[hidStr])p.resources[hidStr]={};p.resources[hidStr][t.res]=(p.resources[hidStr][t.res]||0)+wCount;addLog(`🏭 +${wCount} ${resFR(t.res)} #${hid}${hasMoulin?" (Moulin +1)":""}${hasModelM?" (Model M ×2)":""}`);}
+        if(hex.t==="village"){if(p.workers.length<8){for(let i=0;i<wCount&&p.workers.length<8;i++)p.workers.push({id:`${p.faction}_w${p.workers.length}`,hexId:hid});addLog(`👷 +ouv. #${hid}${hasMoulin?" (Moulin +1)":""}`);}}
+        else if(t.res&&t.res!=="ouvriers"){if(!p.resources[hidStr])p.resources[hidStr]={};p.resources[hidStr][t.res]=(p.resources[hidStr][t.res]||0)+wCount;addLog(`🏭 +${wCount} ${resFR(t.res)} #${hid}${hasMoulin?" (Moulin +1)":""}`);}
       });n[0]=p;return n;});
     if(costLabel!=="Gratuit")addLog(`💳 ${costLabel}`);
     setProducePicks([]);
@@ -2342,8 +2536,9 @@ export default function App(){
       const starScore=p.stars*starMult;
       const terScore=(territories+factoryBonus+flagBonus)*terMult;
       const resScore=resPairs*resMult;
-      // Bonus de construction : X$ par bâtiment sur les tuiles qualifiées
-      const sbDetail=structureBonusDetail(p,structureBonus);
+      // Bonus de construction : barème 2/4/6/9$ (ou tuile spéciale) selon la
+      // tuile tirée — `players` sert aux tuiles relatives aux adversaires
+      const sbDetail=structureBonusDetail(p,structureBonus,players);
       // Comptoirs Acadiane : postes de commerce — +2$ chacun au scoring
       // (v0.12 : levier structurel mesuré, sa trésorerie était la pire du jeu)
       const flagCoins=(p.flagTokens||[]).length*2;
@@ -2427,7 +2622,7 @@ export default function App(){
               </div>
               <div style={{fontSize:13,color:"var(--text-dim)",marginTop:4}}>
                 Pop: {s.pop} (palier {["0-6","7-12","13-18"][s.popTier]}) — {s.totalRes} ressources
-                {structureBonus&&s.sbCoins>0&&<span style={{color:"var(--gold)",marginLeft:8}}>🏦 {structureBonus.icon} {structureBonus.name}: +{s.sbCoins}$ ({s.sbCount} bât.)</span>}
+                {structureBonus&&s.sbCoins>0&&<span style={{color:"var(--gold)",marginLeft:8}}>🏦 {structureBonus.icon} {structureBonus.name}: +{s.sbCoins}$ ({s.sbCount} {structureBonus.unit})</span>}
                 {s.flagCoins>0&&<span style={{color:"var(--gold)",marginLeft:8}}>⚑ Comptoirs: +{s.flagCoins}$</span>}
               </div>
             </div>
@@ -2553,7 +2748,7 @@ export default function App(){
             // « ! » : un objectif secret / de faction est PRÊT à être révélé
             // (condition remplie, pas encore révélé) — notification demandée
             // en partie réelle, la condition passait inaperçue
-            const ready=(s.key==="obj"&&!me.objectiveRevealed&&(me.objectives||[]).some(o=>o.check(me)))
+            const ready=(s.key==="obj"&&!me.objectiveRevealed&&(me.objectives||[]).some(o=>o.check(me,{players})))
               ||(s.key==="fobj"&&!me.fObjRevealed&&myFaction.fObj&&myFaction.fObj.check(me));
             return(
             <button key={s.key} onClick={()=>setStarDetail(d=>d===s.key?null:s.key)} title={`${s.name} — ${s.prog}${ready?" — prêt à révéler en fin de tour !":""}`}
@@ -2823,7 +3018,7 @@ export default function App(){
             const isSel=selHex===hex.id;const isHov=hovHex===hex.id;
             const isFactory=hex.t==="factory";
             const isSrc=(!moveSource&&movableUnits.has(hex.id))||actionTargets.hexes.has(hex.id)||produceEligible.has(hex.id);
-            const isBonusTile=structureBonus&&hex.t!=="lac"&&hex.t!=="marecage"&&hex.t!=="factory"&&structureBonus.check(hex.id);
+            const isBonusTile=structureBonus&&hex.t!=="lac"&&hex.t!=="marecage"&&hex.t!=="factory"&&structureBonus.check(hex.id,players[0],players);
             // Territorial control contour (§2.3 refonte visuelle) : la première unité
             // présente sur l'hex porte la couleur de contrôle — un hex n'est jamais
             // occupé par deux factions à la fois hors résolution de combat.
@@ -2997,8 +3192,8 @@ export default function App(){
           </g>
         </svg>
 
-        {/* ═══ UNIT PICKER — plusieurs unités sur le hex cliqué ═══ */}
-        {unitPicker&&selAction==="Move"&&(
+        {/* ═══ UNIT PICKER — plusieurs unités sur le hex cliqué (Move ou bas d'usine) ═══ */}
+        {unitPicker&&(selAction==="Move"||factoryMoveMode)&&(
           <div style={{position:"absolute",bottom:16,left:"50%",transform:"translateX(-50%)",zIndex:8,
             background:"rgba(14,12,8,0.95)",border:"1px solid var(--gold-dim)",borderRadius:10,
             padding:"10px 14px",boxShadow:"0 6px 30px rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",animation:"slideUp 0.2s ease"}}>
@@ -3022,7 +3217,7 @@ export default function App(){
         )}
 
         {/* ═══ MODAL OVERLAYS (combat/encounter/RR/dépose en route/pouvoir optionnel) ═══ */}
-        {(combat||encounter||encounterBuild||encounterEnlist||rougeRiver||routeDrop||abilityOffer)&&(
+        {(combat||encounter||encounterBuild||encounterEnlist||encounterUpgrade||encounterResources||rougeRiver||factoryPreview||routeDrop||abilityOffer)&&(
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
             <div style={{maxWidth:460,width:"92%",maxHeight:"80vh",overflow:"auto",borderRadius:12,border:"1px solid var(--border-light)",boxShadow:"0 10px 50px rgba(0,0,0,0.8)"}}>
 
@@ -3146,7 +3341,7 @@ export default function App(){
                       <button disabled={resAtDest.length===0} onClick={()=>dropRes(mid)} className="act-btn" style={{fontSize:13,opacity:resAtDest.length===0?0.4:1}}>📦 Déposer les ressources ({resAtDest.map(([rt,q])=>`${q}${rt}`).join(",")||"—"})</button>
                     </div>
                   ))}
-                  <button onClick={()=>{const end=routeDrop.endAfter;setRouteDrop(null);if(end)endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginTop:6,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Continuer ▶</button>
+                  <button onClick={()=>{const end=routeDrop.endAfter;setRouteDrop(null);if(end)endMoveDone();}} className="act-btn" style={{marginTop:6,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Continuer ▶</button>
                 </div>);
               })()}
 
@@ -3158,7 +3353,7 @@ export default function App(){
                 const conf={
                   servitude:{icon:"⛓",title:"Servitude",desc:`Capturer un ouvrier chassé sur #${o.hexId} ? Il rejoint vos rangs (−2 Popularité · ${me.capturedWorkers||0}/2 captures).`,yes:"⛓ Capturer (−2 Pop)"},
                   trap:{icon:"🪤",title:"Tierra Minada",desc:`Poser un piège sur #${o.hexId} ? (${(me.trapTokens||[]).length}/4 posés — inflige −3⚡ à l'ennemi qui le déclenche)`,yes:"🪤 Poser le piège"},
-                  flag:{icon:"🏴",title:"Comptoir",desc:`Établir un comptoir sur #${o.hexId} ? (${(me.flagTokens||[]).length}/4 — +1 territoire au score ; rappel : l'objectif de faction exige des comptoirs NON adjacents entre eux)`,yes:"🏴 Établir le comptoir"},
+                  flag:{icon:"🏴",title:"Comptoir",desc:`Établir un comptoir sur #${o.hexId} ? (${(me.flagTokens||[]).length}/4 — +1 territoire et +2$ au score ; rappel : « Réseau Invisible » exige les 4 comptoirs NON adjacents entre eux, dont au moins un sur un Lac)`,yes:"🏴 Établir le comptoir"},
                 }[o.type];
                 const apply=()=>{
                   setPlayers(prev=>{
@@ -3255,6 +3450,24 @@ export default function App(){
                 );
               })()}
 
+              {/* RENCONTRE → RESSOURCES AU CHOIX (cartes du deck original) */}
+              {encounterResources&&(
+                <div style={{padding:"20px",background:"linear-gradient(180deg,#141410,var(--bg2))",borderRadius:10,border:"1px solid var(--gold-dim)",animation:"slideUp 0.35s ease"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+                    <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(201,168,76,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:25,border:"2px solid var(--gold)",flexShrink:0}}>📦</div>
+                    <div>
+                      <div style={{fontFamily:"var(--font-title)",color:"var(--gold)",fontSize:18,fontWeight:700}}>Ressources au choix</div>
+                      <div style={{fontSize:13,color:"var(--text-dim)"}}>Encore {encounterResources.remaining} à choisir — posées sur le hex de la rencontre (#{me.hero})</div>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+                    {[["metal","⚙"],["bois","🪵"],["nourriture","🌽"],["petrole","🛢"]].map(([rt,ico])=>(
+                      <button key={rt} onClick={()=>doEncounterResource(rt)} className="act-btn" style={{textAlign:"center",fontSize:15,fontWeight:700}}>{ico} {resFR(rt)}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* RENCONTRE → RECRUE GRATUITE (colonne puis recrue permanente) */}
               {encounterEnlist&&(
                 <div style={{padding:"20px",background:"linear-gradient(180deg,#12160e,var(--bg2))",borderRadius:10,border:"1px solid #5a9a7a",animation:"slideUp 0.35s ease"}}>
@@ -3299,7 +3512,7 @@ export default function App(){
 
               {/* RENCONTRE → AMÉLIORATION GRATUITE (cube haut → bas) */}
               {encounterUpgrade&&(()=>{
-                const mat=MATS.find(m=>m.id===me.matId);
+                const mat=matById(me.matId);
                 return(
                 <div style={{padding:"20px",background:"linear-gradient(180deg,#16120e,var(--bg2))",borderRadius:10,border:"1px solid var(--gold-dim)",animation:"slideUp 0.35s ease"}}>
                   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
@@ -3341,28 +3554,116 @@ export default function App(){
                 );
               })()}
 
+              {/* ═══ VITRINE DE L'USINE (clic sur l'hex #22) — seuls les PROTOTYPES
+                  TESLA sont exposés (carotte de la quête des fragments) ; l'offre
+                  Ford reste FACE CACHÉE et ne se découvre qu'en arrivant à l'Usine ═══ */}
+              {factoryPreview&&!rougeRiver&&(()=>{
+                const myFrags=me.fragments||0;
+                return(
+                  <div style={{padding:"20px",background:"linear-gradient(180deg,#1a0a08,var(--bg2))",borderRadius:10,border:"1px solid var(--danger)",animation:"slideUp 0.35s ease"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+                      <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(139,32,32,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:25,border:"2px solid #8b2020",flexShrink:0}}>🏭</div>
+                      <div style={{flex:1}}>
+                        <div style={{fontFamily:"var(--font-title)",color:"#cc4433",fontSize:18,fontWeight:700}}>Rouge River — vitrine de l'Usine</div>
+                        <div style={{fontSize:12,color:"var(--text-dim)"}}>Une seule carte d'usine par joueur, choisie à la première visite du héros.</div>
+                      </div>
+                      <button onClick={()=>setFactoryPreview(false)} className="act-btn" style={{fontSize:14,padding:"6px 12px",minHeight:34}}>✕</button>
+                    </div>
+                    {/* Offre Ford — FACE CACHÉE : seul le nombre de cartes restantes est public */}
+                    <div style={{fontSize:13,fontWeight:700,color:"#7a9ab0",letterSpacing:1,textTransform:"uppercase",marginBottom:6}}>Plans Ford — {factoryOffer.length} carte{factoryOffer.length>1?"s":""} face cachée</div>
+                    {factoryOffer.length===0
+                      ?<div style={{fontSize:13,color:"var(--text-muted)",fontStyle:"italic",marginBottom:12}}>Offre épuisée — tout a été raflé.</div>
+                      :<div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
+                        {factoryOffer.map(card=>(
+                          <div key={card.id} title="Face cachée — se découvre en arrivant à l'Usine"
+                            style={{width:46,height:64,borderRadius:6,border:"1px solid #3A6A9A",flexShrink:0,
+                            background:"repeating-linear-gradient(135deg,#16222e,#16222e 5px,#1c2c3c 5px,#1c2c3c 10px)",
+                            display:"flex",alignItems:"center",justifyContent:"center",fontSize:19,color:"#3f608a"}}>⚙</div>
+                        ))}
+                        <div style={{fontSize:12,color:"var(--text-dim)",lineHeight:1.5,marginLeft:4}}>
+                          L'offre se découvre <b>en arrivant à l'Usine</b> — chaque visiteur retire une carte : le premier arrivé a le plus grand choix.
+                        </div>
+                      </div>}
+                    {/* Prototypes Tesla — les SEULES cartes exposées, visibles de tous */}
+                    <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+                      <span style={{fontSize:13,fontWeight:700,color:"#b080e0",letterSpacing:1,textTransform:"uppercase"}}>Prototypes Tesla — en vitrine</span>
+                      <span style={{fontSize:12,padding:"2px 8px",borderRadius:4,background:"rgba(100,60,200,0.15)",border:"1px solid #6040a0",color:myFrags>=TESLA_FRAGMENTS_REQUIRED?"#c0f0c0":"#a080d0"}}>
+                        🔬 {myFrags}/{TESLA_FRAGMENTS_REQUIRED} fragment{TESLA_FRAGMENTS_REQUIRED>1?"s":""} — consommés à la prise
+                      </span>
+                    </div>
+                    {teslaOffer.length===0
+                      ?<div style={{fontSize:13,color:"var(--text-muted)",fontStyle:"italic"}}>Plus aucun prototype — déjà emportés.</div>
+                      :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:8}}>
+                        {teslaOffer.map(card=>(
+                          <div key={card.id} className="rr-card tesla" style={{cursor:"default",opacity:myFrags>=TESLA_FRAGMENTS_REQUIRED?1:0.8}}>
+                            <div style={{position:"absolute",top:4,right:6,fontSize:12,color:"#b080e0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>{myFrags>=TESLA_FRAGMENTS_REQUIRED?"Tesla":"🔒 Tesla"}</div>
+                            <div style={{fontFamily:"var(--font-title)",fontSize:15,fontWeight:700,color:"#c090e0",marginBottom:5,paddingRight:30}}>{card.name}</div>
+                            <div style={{fontSize:13,color:"var(--text)",lineHeight:1.5}}>
+                              <span style={{color:"var(--gold-dim)",fontWeight:700}}>HAUT</span> {factoryCostLabel(card)} → {factoryGainLabel(card)}
+                            </div>
+                            <div style={{fontSize:12,color:"var(--text-dim)",lineHeight:1.5,marginTop:3}}>
+                              <span style={{color:"var(--gold-dim)",fontWeight:700}}>BAS</span> {FACTORY_BOTTOM_DESC}
+                            </div>
+                          </div>
+                        ))}
+                      </div>}
+                    <div style={{fontSize:12,color:"var(--text-dim)",marginTop:10,lineHeight:1.5}}>
+                      Les fragments s'obtiennent dans les <b>rencontres</b> (🔬) et en <b>combattant l'Empire</b> (s'il est présent). ⚠ Prendre une carte <b>Ford ferme définitivement</b> l'accès aux prototypes : la quête Tesla, c'est réunir {TESLA_FRAGMENTS_REQUIRED} fragments en évitant l'Usine tout ce temps.
+                    </div>
+                    <button onClick={()=>setFactoryPreview(false)} className="act-btn" style={{marginTop:12,width:"100%",fontWeight:600}}>Fermer</button>
+                  </div>
+                );
+              })()}
+
               {/* ROUGE RIVER */}
               {rougeRiver&&(
                 <div style={{padding:"20px",background:"linear-gradient(180deg,#1a0a08,var(--bg2))",borderRadius:10,border:"1px solid var(--danger)",animation:"slideUp 0.35s ease"}}>
                   <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
                     <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(139,32,32,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:25,border:"2px solid #8b2020",flexShrink:0}}>⚙</div>
                     <div>
-                      <div style={{fontFamily:"var(--font-title)",color:"#cc4433",fontSize:18,fontWeight:700}}>Rouge River</div>
+                      <div style={{fontFamily:"var(--font-title)",color:"#cc4433",fontSize:18,fontWeight:700}}>Rouge River — l'offre se découvre</div>
                       <div style={{fontSize:12,color:"var(--text-dim)"}}>
-                        {rougeRiver.hasFragments?<span>Plans Ford <span style={{color:"#9060c0",fontWeight:700}}>+ Tesla</span></span>:"Plans Ford"} — Choisissez 1 carte
+                        {rougeRiver.hasFragments?<span>Plans Ford <span style={{color:"#9060c0",fontWeight:700}}>+ prototypes Tesla</span> (vos {TESLA_FRAGMENTS_REQUIRED}🔬 seront consommés)</span>:"Plans Ford"} — Choisissez 1 carte : elle devient une <b>5e action</b> sur votre plateau
                       </div>
                     </div>
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(170px,1fr))",gap:8,maxHeight:250,overflowY:"auto"}}>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:8,maxHeight:280,overflowY:"auto"}}>
                     {rougeRiver.cards.map(card=>(
-                      <button key={card.id} onClick={()=>pickFactoryCard(card)} className={`rr-card ${card.type}`}>
-                        {card.type==="tesla"&&<div style={{position:"absolute",top:4,right:6,fontSize:12,color:"#b080e0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Tesla</div>}
-                        {card.type==="ford"&&<div style={{position:"absolute",top:4,right:6,fontSize:12,color:"#7a9ab0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Ford</div>}
-                        <div style={{fontFamily:"var(--font-title)",fontSize:15,fontWeight:700,color:card.type==="tesla"?"#c090e0":"#a0b8cc",marginBottom:5,paddingRight:30}}>{card.name}</div>
-                        <div style={{fontSize:13,color:"var(--text-dim)",lineHeight:1.5}}>{card.desc}</div>
+                      <button key={card.id} onClick={()=>pickFactoryCard(card)} className={`rr-card ${card.deck}`}>
+                        {card.deck==="tesla"&&<div style={{position:"absolute",top:4,right:6,fontSize:12,color:"#b080e0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Tesla</div>}
+                        {card.deck==="ford"&&<div style={{position:"absolute",top:4,right:6,fontSize:12,color:"#7a9ab0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>Ford</div>}
+                        <div style={{fontFamily:"var(--font-title)",fontSize:15,fontWeight:700,color:card.deck==="tesla"?"#c090e0":"#a0b8cc",marginBottom:5,paddingRight:30}}>{card.name}</div>
+                        <div style={{fontSize:13,color:"var(--text)",lineHeight:1.5}}>
+                          <span style={{color:"var(--gold-dim)",fontWeight:700}}>HAUT</span> {factoryCostLabel(card)} → {factoryGainLabel(card)}
+                        </div>
+                        <div style={{fontSize:12,color:"var(--text-dim)",lineHeight:1.5,marginTop:3}}>
+                          <span style={{color:"var(--gold-dim)",fontWeight:700}}>BAS</span> {FACTORY_BOTTOM_DESC}
+                        </div>
                       </button>
                     ))}
                   </div>
+                  {/* Prototypes Tesla VERROUILLÉS (fragments insuffisants) : affichés
+                      pour que le renoncement soit un choix éclairé — prendre une
+                      carte Ford ferme définitivement l'accès (visite unique) */}
+                  {(rougeRiver.lockedTesla||[]).length>0&&(
+                    <div style={{marginTop:10}}>
+                      <div style={{fontSize:12,color:"#a080d0",fontWeight:700,marginBottom:6}}>🔒 Prototypes Tesla — verrouillés ({me.fragments||0}/{TESLA_FRAGMENTS_REQUIRED}🔬) : prendre une carte Ford y renonce définitivement</div>
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))",gap:8}}>
+                        {rougeRiver.lockedTesla.map(card=>(
+                          <div key={card.id} className="rr-card tesla" style={{cursor:"not-allowed",opacity:0.55}}>
+                            <div style={{position:"absolute",top:4,right:6,fontSize:12,color:"#b080e0",fontWeight:700,letterSpacing:1,textTransform:"uppercase"}}>🔒 Tesla</div>
+                            <div style={{fontFamily:"var(--font-title)",fontSize:15,fontWeight:700,color:"#c090e0",marginBottom:5,paddingRight:30}}>{card.name}</div>
+                            <div style={{fontSize:13,color:"var(--text)",lineHeight:1.5}}>
+                              <span style={{color:"var(--gold-dim)",fontWeight:700}}>HAUT</span> {factoryCostLabel(card)} → {factoryGainLabel(card)}
+                            </div>
+                            <div style={{fontSize:12,color:"var(--text-dim)",lineHeight:1.5,marginTop:3}}>
+                              <span style={{color:"var(--gold-dim)",fontWeight:700}}>BAS</span> {FACTORY_BOTTOM_DESC}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -3449,23 +3750,27 @@ export default function App(){
           );})}
         </div>
 
-        {/* ── Bonus de construction actif ── */}
-        {structureBonus&&(
-          <div title={`En fin de partie : +${structureBonus.coins}$ ${structureBonus.desc} (tuiles marquées $ sur la carte)`}
+        {/* ── Bonus de construction actif (barème progressif 2/4/6/9$) ── */}
+        {structureBonus&&(()=>{
+          const d=structureBonusDetail(me,structureBonus,players);
+          return(
+          <div title={`En fin de partie : ${structureBonus.scale} — ${structureBonus.desc} (tuiles marquées $ sur la carte)`}
             style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:13,color:"var(--gold)",display:"flex",alignItems:"center",gap:6,background:"rgba(212,178,84,0.05)"}}>
             <span>🏦</span>
             <span style={{fontWeight:700,fontFamily:"var(--font-title)"}}>{structureBonus.icon} {structureBonus.name}</span>
-            <span style={{color:"var(--text-dim)",marginLeft:"auto"}}>+{structureBonus.coins}$/bât.</span>
+            <span style={{color:"var(--text-dim)",marginLeft:"auto"}}>{d.count} {structureBonus.unit} → +{d.coins}$</span>
           </div>
-        )}
+          );
+        })()}
 
-        {/* ── Plan d'usine actif (Rouge River) ── */}
+        {/* ── Carte d'usine active (Rouge River) : 5e action du plateau ── */}
         {me.factoryCard&&(
-          <div style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:13,display:"flex",gap:6,alignItems:"flex-start",background:me.factoryCard.type==="tesla"?"rgba(123,45,139,0.07)":"rgba(58,106,154,0.07)"}}>
+          <div style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:13,display:"flex",gap:6,alignItems:"flex-start",background:me.factoryCard.deck==="tesla"?"rgba(123,45,139,0.07)":"rgba(58,106,154,0.07)"}}>
             <span>⚙</span>
             <div style={{minWidth:0}}>
-              <span style={{fontWeight:700,fontFamily:"var(--font-title)",color:me.factoryCard.type==="tesla"?"#b080e0":"#8aa0b8"}}>{me.factoryCard.name}</span>
-              <div style={{color:"var(--text-dim)",fontSize:12,lineHeight:1.45}}>{me.factoryCard.desc}</div>
+              <span style={{fontWeight:700,fontFamily:"var(--font-title)",color:me.factoryCard.deck==="tesla"?"#b080e0":"#8aa0b8"}}>{me.factoryCard.name}</span>
+              <span style={{color:"var(--text-muted)",fontSize:11,marginLeft:6}}>5e action</span>
+              <div style={{color:"var(--text-dim)",fontSize:12,lineHeight:1.45}}>{factoryCostLabel(me.factoryCard)} → {factoryGainLabel(me.factoryCard)} · Bas : {FACTORY_BOTTOM_DESC}</div>
             </div>
           </div>
         )}
@@ -3483,7 +3788,7 @@ export default function App(){
               {upgradePicking&&(()=>{
                 const from=bottomPick?.upgradeFrom;const to=bottomPick?.upgradeTo;
                 const ready=from!=null&&to!=null;
-                const mat=MATS.find(m=>m.id===me.matId);
+                const mat=matById(me.matId);
                 return(
                   <div style={{margin:"8px 8px 10px",padding:"10px 12px",borderRadius:8,background:"rgba(212,178,84,0.10)",border:"1px solid var(--gold)",boxShadow:"0 0 12px rgba(212,178,84,0.18)",animation:"slideUp 0.2s ease"}}>
                     <div style={{fontFamily:"var(--font-title)",fontWeight:800,fontSize:15,color:"var(--gold)",marginBottom:4}}>⬆ Amélioration en cours — sur les cartes ci-dessous :</div>
@@ -3501,15 +3806,14 @@ export default function App(){
                 );
               })()}
               {myMat.topRow.map((action,i)=>{
-                // Plan « Le Blueprint Perdu » : peut rejouer la même colonne deux tours de suite.
                 // Pendant l'Améliorer, AUCUNE carte n'est grisée : les cubes de toutes les
                 // colonnes (y compris celle jouée ce tour) sont des cibles valides — le
                 // grisage laissait croire qu'on ne pouvait pas y appliquer l'amélioration
-                const disabled=me.lastCol===i&&me.factoryCard?.topBonus!=="copy_top"&&!upgradePicking;
+                const disabled=me.lastCol===i&&!upgradePicking;
                 const bottomAction=BOTTOM[i];
                 const costs=getBottomCost(me);
                 const bc=costs[i];
-                const mat=MATS.find(m=>m.id===me.matId);
+                const mat=matById(me.matId);
                 const cubesTop=(me.cubesOnTop||[])[i]||0;
                 const cubesBot=(me.cubesOnBottom||[])[i]||0;
                 // Cases utilisables plafonnées : le coût ne descend jamais sous 1
@@ -3635,6 +3939,51 @@ export default function App(){
                   </React.Fragment>
                 );
               })}
+
+              {/* ═══ 5e COLONNE : CARTE D'USINE (Rouge River) ═══
+                  HAUT : 1 coût → 1 gain (optionnel) · BAS : déplacer 1 unité
+                  de 2 hex (+1 si Vitesse). Comme les 4 colonnes du plateau,
+                  injouable deux tours de suite (lastCol). */}
+              {me.factoryCard&&(()=>{
+                const card=me.factoryCard;
+                const disabledF=me.lastCol===FACTORY_COL&&!upgradePicking;
+                const tesla=card.deck==="tesla";
+                const accent=tesla?"#b080e0":"#8aa0b8";
+                return(
+                  <button onClick={()=>{if(upgradePicking||disabledF)return;pushHistory();setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction("Factory");}}
+                    onMouseEnter={e=>{if(!disabledF&&!upgradePicking)e.currentTarget.style.borderColor=accent;}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border-dark)";}}
+                    style={{
+                      padding:0,margin:"0 8px 8px",borderRadius:8,overflow:"hidden",textAlign:"left",
+                      background:disabledF?"rgba(0,0,0,0.4)":tesla?"rgba(123,45,139,0.06)":"rgba(58,106,154,0.06)",
+                      border:"1px solid var(--border-dark)",
+                      color:disabledF?"var(--text-muted)":"var(--text)",
+                      opacity:disabledF?0.4:1,cursor:disabledF||upgradePicking?"not-allowed":"pointer",
+                      display:"flex",flexDirection:"column",transition:"border-color 0.15s ease",
+                    }}>
+                    <div style={{padding:"6px 10px",display:"flex",alignItems:"center",gap:6,background:"linear-gradient(180deg,rgba(30,40,58,0.7),rgba(20,26,40,0.55))",borderBottom:"1px solid var(--border)"}}>
+                      <span style={{fontSize:14}}>⚙</span>
+                      <span style={{fontSize:15,fontWeight:800,color:disabledF?"var(--text-muted)":accent,fontFamily:"var(--font-title)"}}>{card.name}</span>
+                      <span style={{fontSize:11,fontWeight:700,letterSpacing:1,textTransform:"uppercase",color:tesla?"#9060c0":"#5a7a94"}}>{tesla?"Tesla":"Ford"}</span>
+                      {disabledF?<span style={{marginLeft:"auto",fontSize:12,color:"var(--text-muted)",fontStyle:"italic"}}>joué</span>
+                        :<span style={{marginLeft:"auto",fontSize:12,fontWeight:700,color:"var(--gold-dim)",whiteSpace:"nowrap"}}>Usine</span>}
+                    </div>
+                    {/* RANGÉE HAUT : coût → gain */}
+                    <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{fontSize:13,color:canPayFactoryCost(me,card)?"var(--text)":"var(--text-muted)"}}>
+                        <b style={{color:"var(--gold-dim)"}}>{factoryCostLabel(card)}</b>
+                        <span style={{color:"var(--text-muted)"}}> → </span>
+                        {factoryGainLabel(card)}
+                      </span>
+                      {!canPayFactoryCost(me,card)&&<span style={{marginLeft:"auto",fontSize:11,color:"#8A3030"}}>coût impayable</span>}
+                    </div>
+                    {/* RANGÉE BAS : déplacement d'usine */}
+                    <div style={{padding:"7px 10px",display:"flex",alignItems:"center",gap:8,background:"rgba(0,0,0,0.28)",borderTop:"1px solid var(--border)"}}>
+                      <span style={{fontSize:13,color:"var(--text-dim)"}}>🚶 {FACTORY_BOTTOM_DESC}</span>
+                    </div>
+                  </button>
+                );
+              })()}
             </div>
           )}
 
@@ -3664,17 +4013,6 @@ export default function App(){
                     color:carryOnMove?"var(--gold)":"var(--text-muted)"}}>
                     🚚 Emporter ouvriers & ressources : {carryOnMove?"OUI":"NON (les laisser sur place)"}
                   </button>
-                  {/* Plan « River Rouge Special » : téléporter les ressources d'un hex vers le héros */}
-                  {me.factoryCard?.topBonus==="teleport_res"&&!me.planTopUsed&&!moveSource&&(()=>{
-                    const resHexes=Object.entries(me.resources).filter(([hid,r])=>parseInt(hid)!==me.hero&&Object.values(r).some(q=>q>0));
-                    if(resHexes.length===0)return null;
-                    return <div style={{marginTop:8}}>
-                      <div style={{fontSize:13,color:"#8aa0b8",marginBottom:4}}>⚙ River Rouge Special (1×/tour) — téléporter vers le héros (#{me.hero}) :</div>
-                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                        {resHexes.map(([hid,r])=><button key={hid} onClick={()=>doPlanTeleportRes(parseInt(hid))} className="act-btn" style={{fontSize:13,borderColor:"#4a5a6a"}}>#{hid} · {Object.entries(r).filter(([,q])=>q>0).map(([rt,q])=>`${q} ${rt.slice(0,4)}`).join(", ")}</button>)}
-                      </div>
-                    </div>;
-                  })()}
                   {moveSource&&<div style={{color:"#C9A84C",fontSize:14,marginTop:8,fontStyle:"italic"}}>
                     {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:<><Glyph icon={moveSource.unitType==="mech"?"⬡":"●"} size={14}/> {moveSource.unitType==="mech"?"Mecha":"Ouvrier"}</>} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts), ou une autre de vos unités pour changer.
                   </div>}
@@ -3829,6 +4167,91 @@ export default function App(){
                   <button onClick={()=>{const gp=1+topUpgradeCount(me,"Trade","pop");setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins-1,pop:Math.min(n[0].pop+gp,18)};return n;});addLog(`💰 -1$ → +${gp} Pop`);setTradePicks([]);endHumanTurn(myMat.topRow.indexOf("Trade"));}} className="act-btn" style={{width:"100%"}}>♥ +{1+topUpgradeCount(me,"Trade","pop")} Popularité (à la place)</button>
                 </div>}
               </div>);})()}
+              {/* ═══ ACTION DU HAUT DE LA CARTE D'USINE : payer 1 coût → 1 gain ═══ */}
+              {selAction==="Factory"&&me.factoryCard&&(()=>{
+                const card=me.factoryCard;
+                const canPay=canPayFactoryCost(me,card);
+                const head=factoryFlow?.queue?.[0]||null;
+                return(
+                  <div>
+                    <div style={{color:card.deck==="tesla"?"#b080e0":"#8aa0b8",fontFamily:"var(--font-title)",fontWeight:700,marginBottom:4,fontSize:16}}>⚙ {card.name} — action du haut</div>
+                    <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:8}}>{factoryCostLabel(card)} → {factoryGainLabel(card)} · puis en bas : {FACTORY_BOTTOM_DESC}</div>
+                    {!factoryFlow&&(
+                      <>
+                        {canPay
+                          ?<button onClick={doFactoryTop} className="act-btn" style={{width:"100%",fontWeight:700,background:"#3a6a3a",color:"#fff",border:"none"}}>⚙ Payer {factoryCostLabel(card)} → {factoryGainLabel(card)}</button>
+                          :<div style={{fontSize:13,color:"#8A3030",marginBottom:6}}>Coût impayable ({factoryCostLabel(card)})</div>}
+                        <button onClick={endFactoryTop} className="act-btn" style={{marginTop:8,width:"100%",fontWeight:600,opacity:0.85}}>⤵ Passer le haut → Déplacement d'usine</button>
+                      </>
+                    )}
+                    {factoryFlow&&head&&(()=>{
+                      // ── Résolution du gain interactif en tête de file ──
+                      if(head.type==="choice"){
+                        return <div>
+                          <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:6}}>Choisissez un gain :</div>
+                          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                            {head.options.map((opt,oi)=>{
+                              const ok=factoryEffectPossible(me,opt);
+                              return <button key={oi} disabled={!ok} onClick={()=>doFactoryChoice(opt)} className="act-btn" style={{opacity:ok?1:0.35,cursor:ok?"pointer":"not-allowed"}}>{factoryEffectLabel(opt)}{!ok&&<span style={{fontSize:12,color:"#8A3030"}}> (impossible)</span>}</button>;
+                            })}
+                          </div>
+                        </div>;
+                      }
+                      if(head.type==="mech"){
+                        const hexes=factoryWorkerHexes(me);
+                        return <div>
+                          <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:6}}>⬡ Mecha gratuit — choisissez l'hex ouvrier :</div>
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{hexes.map(hid=><button key={hid} onClick={()=>doFactoryMech(hid)} className="act-btn"><Glyph icon="⬡" size={14}/> #{hid}</button>)}</div>
+                        </div>;
+                      }
+                      if(head.type==="building"){
+                        const avail=BUILDING_TYPES.filter(bt=>!(me.buildings||[]).some(b=>b.type===bt.type));
+                        const hexes=factoryWorkerHexes(me).filter(h=>!(me.buildings||[]).some(b=>b.hexId===h));
+                        if(!factoryFlow.pick?.building){
+                          return <div>
+                            <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:6}}>🏗 Bâtiment gratuit — choisissez le type :</div>
+                            <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{avail.map(bt=><button key={bt.type} onClick={()=>setFactoryFlow(prev=>({...prev,pick:{building:bt}}))} className="act-btn">{bt.icon} {bt.name}</button>)}</div>
+                          </div>;
+                        }
+                        return <div>
+                          <div style={{fontSize:13,marginBottom:6}}>Placer {factoryFlow.pick.building.icon} {factoryFlow.pick.building.name} sur :</div>
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{hexes.map(hid=><button key={hid} onClick={()=>doFactoryBuilding(factoryFlow.pick.building.type,hid)} className="act-btn">#{hid}</button>)}</div>
+                          <button onClick={()=>setFactoryFlow(prev=>({...prev,pick:null}))} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre bâtiment</button>
+                        </div>;
+                      }
+                      if(head.type==="produce2"){
+                        const eligible=factoryProduceHexes(me);
+                        const picks=factoryFlow.pick?.hexes||[];
+                        const toggle=(hid)=>setFactoryFlow(prev=>{
+                          const cur=prev.pick?.hexes||[];
+                          return {...prev,pick:{hexes:cur.includes(hid)?cur.filter(h=>h!==hid):cur.length>=2?cur:[...cur,hid]}};
+                        });
+                        return <div>
+                          <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:6}}>🏭 Produire sur 2 territoires (gratuit) — sélection : {picks.length}/2</div>
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{eligible.map(hid=>{
+                            const t=TERRAINS[hMap[hid]?.t];
+                            const on=picks.includes(hid);
+                            return <button key={hid} onClick={()=>toggle(hid)} className="act-btn" style={{borderColor:on?"var(--gold)":"var(--border)",background:on?"rgba(212,178,84,0.12)":undefined}}>#{hid} · {t?.res==="ouvriers"?"👷":resFR(t?.res)}</button>;
+                          })}</div>
+                          <button disabled={picks.length===0} onClick={()=>doFactoryProduce(picks)} className="act-btn" style={{marginTop:8,width:"100%",fontWeight:700,...(picks.length>0?{background:"#3a6a3a",color:"#fff",border:"none"}:{opacity:0.45,cursor:"not-allowed"})}}>⚒ Produire ({picks.length} hex)</button>
+                        </div>;
+                      }
+                      if(head.type==="resources"){
+                        const remaining=factoryFlow.pick?.remaining??head.qty;
+                        const target=factoryResourceHex(me);
+                        return <div>
+                          <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:6}}>📦 Ressources au choix — encore {remaining} (posées sur #{target}) :</div>
+                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                            {["metal","bois","nourriture","petrole"].map(rt=><button key={rt} onClick={()=>doFactoryResource(rt)} className="act-btn">{rt==="metal"?"⚙":rt==="bois"?"🪵":rt==="nourriture"?"🌽":"🛢"} {resFR(rt)}</button>)}
+                          </div>
+                        </div>;
+                      }
+                      // enlist / upgrade se résolvent dans la modale (pickers de rencontre)
+                      return <div style={{fontSize:13,color:"var(--text-dim)"}}>Résolution en cours…</div>;
+                    })()}
+                  </div>
+                );
+              })()}
               {(()=>{
                 // Règle Scythe : l'action du HAUT est optionnelle — on peut
                 // l'ignorer (ex. Produire impayable) et passer directement à
@@ -3843,39 +4266,49 @@ export default function App(){
                 return <button onClick={()=>{setTransportPick(null);endHumanTurn(colIdx);}} className="act-btn"
                   style={{marginTop:8,width:"100%",fontWeight:600,...(moved>0?{background:"#3a6a3a",color:"#fff",border:"none"}:{opacity:0.85})}}>{label}</button>;
               })()}
-              <button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setTransportPick(null);setRouteDrop(null);setPreActionSnapshot(null);setTradePicks([]);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>
+              {!(selAction==="Factory"&&factoryFlow)&&<button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setTransportPick(null);setRouteDrop(null);setPreActionSnapshot(null);setTradePicks([]);setFactoryFlow(null);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>}
             </div>
           )}
 
+          {/* ═══ ACTION DU BAS DE LA CARTE D'USINE : déplacer 1 unité de 2 hex ═══ */}
+          {isMyTurn&&!combat&&!encounter&&!rougeRiver&&factoryMoveMode&&(()=>{
+            const moved=(me.movedUnits||[]).length;
+            return(
+              <div style={{padding:"12px 16px",borderTop:"1px solid var(--border)",animation:"slideUp 0.25s ease"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                  <span style={{fontFamily:"var(--font-title)",color:me.factoryCard?.deck==="tesla"?"#b080e0":"#8aa0b8",fontSize:16,fontWeight:700}}>▼ ⚙ {me.factoryCard?.name||"Usine"} — action du bas</span>
+                </div>
+                {moved===0&&!moveSource&&(
+                  <div style={{padding:"10px 12px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:14,color:"var(--gold)",lineHeight:1.5,marginBottom:8}}>
+                    👆 {FACTORY_BOTTOM_DESC} : cliquez l'unité à déplacer sur la carte (hexes surlignés), puis sa destination.
+                  </div>
+                )}
+                {moveSource&&<div style={{color:"#C9A84C",fontSize:14,marginBottom:8,fontStyle:"italic"}}>
+                  {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:moveSource.unitType==="mech"?"⬡ Mecha":"● Ouvrier"} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts).
+                </div>}
+                {moved>=1
+                  ?<button onClick={()=>finishFactoryMove(moved)} className="act-btn" style={{width:"100%",fontWeight:700,background:"#3a6a3a",color:"#fff",border:"none"}}>✓ Terminer le déplacement d'usine</button>
+                  :<button onClick={()=>{setMoveSource(null);setUnitPicker(null);setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:undefined,movedUnits:[]};return n;});requestEndTurn();}} className="act-btn" style={{width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)"}}>Passer →</button>}
+              </div>
+            );
+          })()}
+
           {/* Bottom-row action */}
-          {isMyTurn&&!combat&&!encounter&&!rougeRiver&&pendingBottom&&(()=>{
+          {isMyTurn&&!combat&&!encounter&&!rougeRiver&&pendingBottom&&!factoryMoveMode&&(()=>{
             const ba=pendingBottom.action;const colIdx=BOTTOM.indexOf(ba);
-            // Réduction du plan d'usine appliquée AVANT l'affichage et le test de
-            // solvabilité (comme doUpgrade/doDeploy/doBuild/doEnlist et le bot) —
-            // sinon le panneau affichait « Pas assez » sur une action payable
-            const costs=getBottomCost(me);const rawBc=costs[colIdx];
-            const planRed=rawBc?getPlanBottomBonus(me,ba).costReduction:0;
-            const bc=rawBc?{...rawBc,qty:Math.max(0,rawBc.qty-planRed)}:rawBc;
+            const costs=getBottomCost(me);const bc=costs[colIdx];
             const hasRes=bc?countRes(me,bc.res)>=bc.qty:false;const resCount=bc?countRes(me,bc.res):0;
             const workerHexes=getWorkerHexes(me);
             const maxed=ba==="Upgrade"?(me.upgrades||0)>=6:ba==="Deploy"?me.mechs.length>=4:ba==="Build"?(me.buildings||[]).length>=4:ba==="Enlist"?(me.recruits||0)>=4:false;
             const availBuildings=BUILDING_TYPES.filter(bt=>!(me.buildings||[]).some(b=>b.type===bt.type));
-            const isLand=(h)=>{const hx=hMap[h];return hx&&hx.t!=="lac"&&hx.t!=="marecage";};
-            // Plan « L'Onde Tesla » (build_no_worker) : un héros/mecha suffit pour construire
-            const buildBase=me.factoryCard?.bottomBonus==="build_no_worker"
-              ?[...new Set([...workerHexes,me.hero,...me.mechs.map(m=>m.hexId)])].filter(isLand)
-              :workerHexes;
-            const buildableHexes=buildBase.filter(h=>!(me.buildings||[]).some(b=>b.hexId===h));
-            // Plan « Réseau Neuronal » (deploy_adjacency) : Deploy aussi sur les hex adjacents aux ouvriers
-            const deployHexes=me.factoryCard?.bottomBonus==="deploy_adjacency"
-              ?[...new Set(workerHexes.flatMap(h=>[h,...(ADJ[h]||[])]))].filter(isLand)
-              :workerHexes;
-            const mat=MATS.find(m=>m.id===me.matId);
+            const buildableHexes=workerHexes.filter(h=>!(me.buildings||[]).some(b=>b.hexId===h));
+            const deployHexes=workerHexes;
+            const mat=matById(me.matId);
             return(
               <div style={{padding:"12px 16px",borderTop:"1px solid var(--border)",animation:"slideUp 0.25s ease"}}>
                 <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
                   <span style={{fontFamily:"var(--font-title)",color:"var(--brass)",fontSize:16,fontWeight:700}}>▼ {ba}</span>
-                  {bc&&<span style={{fontSize:13,color:hasRes&&!maxed?"var(--text-dim)":"#8A3030"}}>{maxed?"Maximum":` ${bc.qty} ${bc.res}${planRed>0?` (plan −${planRed})`:""} (${resCount} dispo)`}</span>}
+                  {bc&&<span style={{fontSize:13,color:hasRes&&!maxed?"var(--text-dim)":"#8A3030"}}>{maxed?"Maximum":` ${bc.qty} ${bc.res} (${resCount} dispo)`}</span>}
                 </div>
                 {/* UPGRADE — 2-step: pick top source then bottom dest */}
                 {ba==="Upgrade"&&!maxed&&(()=>{
@@ -3971,7 +4404,7 @@ export default function App(){
               avant de passer aux bots — c'est ICI que se révèlent les objectifs
               (mission secrète / objectif de faction), et révéler termine le tour ═══ */}
           {isMyTurn&&!combat&&!encounter&&!rougeRiver&&endOfTurn&&(()=>{
-            const revealables=(!me.objectiveRevealed?(me.objectives||[]).map((o,idx)=>({o,idx})).filter(({o})=>o.check(me)):[]);
+            const revealables=(!me.objectiveRevealed?(me.objectives||[]).map((o,idx)=>({o,idx})).filter(({o})=>o.check(me,{players})):[]);
             const fObjReady=!me.fObjRevealed&&myFaction.fObj&&myFaction.fObj.check(me);
             return(
               <div style={{padding:"12px 16px",borderTop:"1px solid var(--gold-dim)",animation:"slideUp 0.25s ease",background:"rgba(212,178,84,0.05)"}}>
@@ -4035,14 +4468,6 @@ export default function App(){
             </div>
           )}
 
-          {/* Plan « Five Dollar Day » — action libre 1×/tour */}
-          {me.factoryCard?.topBonus==="pop_worker"&&isMyTurn&&!combat&&!encounter&&!rougeRiver&&!me.planTopUsed&&me.coins>=2&&(
-            <div style={{padding:"8px 16px",borderTop:"1px solid #3a5a7a",fontSize:14,background:"rgba(58,106,154,0.05)"}}>
-              <div style={{color:"#8aa0b8",fontWeight:600,marginBottom:6}}>⚙ Five Dollar Day (1×/tour)</div>
-              <button onClick={doPlanPopWorker} className="act-btn" style={{width:"100%",borderColor:"#4a5a6a"}}>-2💰 → +2♥ Pop{me.workers.length<8?" + 1👷 ouvrier (sur le héros)":""}</button>
-            </div>
-          )}
-
           {/* Rail placement mode indicator */}
           {railPlacement&&(
             <div style={{padding:"8px 16px",borderTop:"1px solid #6a5030",background:"rgba(100,80,48,0.08)",fontSize:14}}>
@@ -4054,7 +4479,7 @@ export default function App(){
                   <button onClick={()=>setRailPlacement(prev=>({...prev,fromHex:null}))} className="act-btn" style={{fontSize:12,padding:"4px 10px"}}>Annuler</button>
                 </div>
               }
-              <button onClick={()=>{setRailPlacement(null);addLog(`⏭ Rails passés (${railPlacement.remaining} non posés)`);finishBottom(2);}} className="act-btn" style={{marginTop:6,width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)",fontSize:13}}>Terminer sans poser les rails restants</button>
+              <button onClick={()=>{const fromFactory=railPlacement.source==="factory";setRailPlacement(null);addLog(`⏭ Rails passés (${railPlacement.remaining} non posés)`);if(fromFactory)continueFactoryQueue();else finishBottom(2);}} className="act-btn" style={{marginTop:6,width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)",fontSize:13}}>Terminer sans poser les rails restants</button>
             </div>
           )}
 
@@ -4204,7 +4629,7 @@ export default function App(){
                   </div>
                 );})}
                 {structureBonus&&<div style={{marginTop:8,padding:"8px 10px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px solid var(--gold-dim)",fontSize:14,color:"var(--gold)"}}>
-                  🏦 Bonus de pose : <b>{structureBonus.icon} {structureBonus.name}</b> — +{structureBonus.coins}$ {structureBonus.desc} (tuiles marquées $ sur la carte).
+                  🏦 Bonus de pose : <b>{structureBonus.icon} {structureBonus.name}</b> — {structureBonus.scale} {structureBonus.desc} (tuiles marquées $ sur la carte).
                 </div>}
                 {/* Règle de scoring liée au PLACEMENT des bâtiments — toujours
                     lisible ici (demande de jeu réel : introuvable en partie) */}
@@ -4245,7 +4670,7 @@ export default function App(){
               {starDetail==="obj"&&me.objectives&&(<div>
                 <div style={{fontSize:14,fontWeight:700,color:"var(--brass)",marginBottom:6,fontFamily:"var(--font-title)"}}>Vos missions secrètes</div>
                 <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:8}}>{me.objectiveRevealed?"1 mission révélée (⭐ obtenue).":"Révélez-en une dès que sa condition est remplie."}</div>
-                {me.objectives.map((obj,idx)=>{const isRev=me.objectiveRevealed&&me.revealedObjectiveIdx===idx;const canRev=!me.objectiveRevealed&&obj.check(me);const met=obj.check(me);return(
+                {me.objectives.map((obj,idx)=>{const isRev=me.objectiveRevealed&&me.revealedObjectiveIdx===idx;const met=obj.check(me,{players});const canRev=!me.objectiveRevealed&&met;return(
                   <div key={obj.id||idx} style={{padding:"8px 10px",borderRadius:6,marginBottom:6,background:isRev?"rgba(122,170,85,0.12)":"rgba(0,0,0,0.25)",border:`1px solid ${isRev?"rgba(122,170,85,0.4)":met?"var(--gold-dim)":"var(--border)"}`,opacity:me.objectiveRevealed&&!isRev?0.45:1}}>
                     <div style={{fontSize:15,fontWeight:700,color:isRev?"#8fbf6a":met?"var(--gold)":"var(--text)"}}>{isRev?"✅":"🎯"} {obj.name}</div>
                     <div style={{fontSize:14,color:"var(--text-dim)",marginTop:2}}>{obj.desc}</div>

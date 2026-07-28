@@ -1,10 +1,10 @@
 import { FACTIONS } from '../data/factions.js';
 import { HEXES, HOME_BASES, CURRENT_MAP, homeBaseHex } from '../data/hexes.js';
-import { MATS } from '../data/mats.js';
+import { matById } from '../data/mats.js';
 import { drawCardValue } from './cards.js';
 
 export const createPlayer = (factionId, matId, isBot) => {
-  const f = FACTIONS[factionId], pm = MATS.find(m => m.id === matId);
+  const f = FACTIONS[factionId], pm = matById(matId);
   // Le héros démarre SUR la base (hex invisible sous le drapeau), hors plateau.
   const base = homeBaseHex(factionId);
   return {
@@ -27,8 +27,13 @@ export const createPlayer = (factionId, matId, isBot) => {
     enlistMap: [null, null, null, null],
     objectives: [], objective: null, objectiveRevealed: false, revealedObjectiveIdx: null, fObjRevealed: false,
     capturedWorkers: 0, capturedMech: 0, empireKills: 0, trapTokens: [], flagTokens: [], imperialCoins: 0,
+    // Ouvriers ennemis « fait fuir » (déplacement d'ouvriers seuls, hors
+    // combat) — objectif « L'Intimidation » du deck original (campagne)
+    scaredWorkers: 0,
     upgrades: 0, recruits: 0, combatWins: 0,
     starUpgrades: false, starMechs: false, starBuildings: false, starRecruits: false,
+    // Rouge River : fragments Tesla, visite unique, carte d'usine (5e colonne
+    // d'action — voir data/plans.js et logic/factory.js)
     fragments: 0, visitedRR: false, factoryCard: null,
   };
 };

@@ -21,7 +21,7 @@ import { botTurn, estimateScore } from '../src/logic/bot.js';
 import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../src/logic/pvpBots.js';
 import { resolveBotEncounter } from '../src/logic/botEncounters.js';
 import { ENCOUNTERS } from '../src/data/encounters.js';
-import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED } from '../src/data/plans.js';
+import { FACTORY_RR_HEX, PLANS_FORD, PLANS_TESLA, TESLA_FRAGMENTS_REQUIRED, TESLA_OFFER_SIZE } from '../src/data/plans.js';
 import { CURRENT_MAP, loadMap, DEFAULT_MAP, LEGACY_MAP } from '../src/data/hexes.js';
 import { generateAcceptedMap, validateMap } from '../src/data/mapGen.js';
 import { createPlayer } from '../src/logic/player.js';
@@ -33,6 +33,8 @@ import { EMPIRE_START, EMPIRE_RAILS, drawEmpireCombat } from '../src/data/empire
 import { getCombatBonus } from '../src/data/combat.js';
 import { OBJECTIVES } from '../src/data/objectives.js';
 import { shuffleArray } from '../src/logic/hexMath.js';
+import { claimFactoryCard } from '../src/logic/factory.js';
+import { pickStructureBonus, structureBonusDetail } from '../src/data/structureBonus.js';
 import { BOT_PROFILES, assignBotProfile, BOT_NOISE, MAP_META_THREAT, playerStanding } from '../src/logic/botProfiles.js';
 
 // ── CLI ──
@@ -101,7 +103,8 @@ const hbHexOf = (factionId) => {
 };
 
 // Scoring — réplique du calcul de fin de partie d'App.jsx
-const scorePlayer = (p) => {
+// `sb` : tuile « bonus de pose » de la partie (barème 2/4/6/9$)
+const scorePlayer = (p, sb, players) => {
   const popTier = p.pop <= 6 ? 0 : p.pop <= 12 ? 1 : 2;
   const starMult = [3, 4, 5][popTier];
   const terMult = [2, 3, 4][popTier];
@@ -132,7 +135,12 @@ const scorePlayer = (p) => {
   const resScore = resPairs * resMult;
   // Comptoirs Acadiane : +2$ chacun au scoring (postes de commerce, v0.12)
   const flagCoins = (p.flagTokens || []).length * 2;
-  return { total: starScore + terScore + resScore + p.coins + flagCoins, starScore, terScore, resScore, coins: p.coins, territories, totalRes, popTier, flagBonus, flagBonusPts: flagBonus * terMult + flagCoins };
+  // Bonus de pose (barème 2/4/6/9$) — les bots choisissent désormais leur hex
+  // de construction en fonction de la tuile (P6), il faut donc le scorer
+  const sbD = sb ? structureBonusDetail(p, sb, players) : { count: 0, coins: 0 };
+  return { total: starScore + terScore + resScore + p.coins + flagCoins + sbD.coins,
+    starScore, terScore, resScore, coins: p.coins, territories, totalRes, popTier, flagBonus,
+    flagBonusPts: flagBonus * terMult + flagCoins, sbCount: sbD.count, sbCoins: sbD.coins };
 };
 
 // Types d'étoiles pour l'analyse
@@ -200,7 +208,13 @@ const playGame = (gameIdx, log) => {
   let encounterTokens = new Set(CURRENT_MAP.encounterHexes);
   // Deck de rencontres sans remise, partagé entre les bots (comme en jeu)
   const encounterDeck = shuffleArray(ENCOUNTERS);
-  let rrVisitors = 0;
+  // Offre de l'Usine (règle Scythe) : nb joueurs + 1 cartes Ford tirées au
+  // départ, chaque visiteur en retire une ; prototypes Tesla à côté (fragment)
+  let factoryOffer = shuffleArray(PLANS_FORD).slice(0, players.length + 1);
+  let teslaOffer = shuffleArray(PLANS_TESLA).slice(0, TESLA_OFFER_SIZE);
+  // Tuile « bonus de pose » de la partie (comme App.jsx) : elle oriente le
+  // choix de l'hex de construction des bots et compte au scoring final
+  const structureBonus = pickStructureBonus();
   const issues = [];
   const combatStats = { pveAttacks: 0, pveWins: 0, defenses: 0, defWins: 0, pvp: 0, encounters: 0 };
   let round = 0, endedBy = 'cap';
@@ -253,9 +267,16 @@ const playGame = (gameIdx, log) => {
       });
       const result = botTurn(players[cp], empire, enemyHexes, rails, { attackable, hexLoot, hexThreat, hexWorkers, forbidden: new Set(), encounterHexes: encounterTokens,
         endgame: players.some((op, oi) => oi !== cp && (op.stars || 0) >= 5),
-        bestOppScore: Math.max(...players.filter((_, oi) => oi !== cp).map(op => estimateScore(op))) });
+        bestOppScore: Math.max(...players.filter((_, oi) => oi !== cp).map(op => estimateScore(op, { structureBonus, allPlayers: players }))),
+        allPlayers: players,            // objectifs relatifs aux adversaires
+        structureBonus,                 // P6 : choix de l'hex de construction
+        teslaAvailable: teslaOffer.length > 0,   // P6 : quête des fragments
+        round });                       // pivot stratégique : la partie traîne-t-elle ?
       let p = result.player;
       if (log) result.logs.forEach(l => log(`  ${l}`));
+      // Instrumentation v0.15 : combien de fois ce bot met le pied dans un
+      // marécage ? (le Bayou y passe gratuitement — c'est sa sortie d'îlot)
+      p._marsh = (p._marsh || 0) + result.logs.filter(l => /marécage/i.test(l)).length;
 
       // ── PvE : le bot attaque l'Empire s'il a bougé sur son hex (App.jsx) ──
       const empireOnHero = Object.entries(empire).find(([, hid]) => hid === p.hero);
@@ -279,7 +300,8 @@ const playGame = (gameIdx, log) => {
             p.resources[hid].metal = (p.resources[hid].metal || 0) + 2;
           }
           if (p.empireKills >= 3 && !p.starLiberator) { p.stars++; p.starLiberator = true; }
-          if (p.faction === 'bayou' && !p.chimereUsed) {
+          // Chimère : slot 2 (fusionnée avec Flibuste depuis v0.15)
+          if (p.faction === 'bayou' && !p.chimereUsed && (p.unlockedAbilities || []).includes(2)) {
             p.mechs = [...p.mechs, { id: `${p.faction}_chimere`, hexId: p.hero }];
             p.chimereUsed = true; p.capturedMech = (p.capturedMech || 0) + 1;
           }
@@ -303,7 +325,8 @@ const playGame = (gameIdx, log) => {
           const ohb = hbHexOf(players[oi].faction);
           const dispHexes = [...new Set(displaced.map(w => w.hexId))];
           players[oi] = { ...players[oi], workers: players[oi].workers.map(w => botHexes.has(w.hexId) && !defended(w.hexId) ? { ...w, hexId: ohb.id } : w) };
-          players[cp] = { ...players[cp], pop: Math.max(0, (players[cp].pop || 0) - displaced.length) };
+          players[cp] = { ...players[cp], pop: Math.max(0, (players[cp].pop || 0) - displaced.length),
+            scaredWorkers: (players[cp].scaredWorkers || 0) + displaced.length }; // objectif « L'Intimidation »
           // Pillage : les ressources des hexes pris passent au nouvel occupant
           const deepRes = (pl) => { const r = {}; Object.entries(pl.resources).forEach(([k, v]) => { r[k] = { ...v }; }); return r; };
           const loserC = { ...players[oi], resources: deepRes(players[oi]) };
@@ -343,21 +366,30 @@ const playGame = (gameIdx, log) => {
         combatStats.encounters++;
         encounterTokens.delete(players[cp].hero);
         if (encounterDeck.length === 0) encounterDeck.push(...shuffleArray(ENCOUNTERS));
-        const er = resolveBotEncounter(players[cp], encounterDeck);
+        const er = resolveBotEncounter(players[cp], encounterDeck, {
+          allPlayers: players,
+          bestOppScore: Math.max(...players.filter((_, oi) => oi !== cp).map(op => estimateScore(op, { structureBonus, allPlayers: players }))) });
         players[cp] = er.player;
         if (log) log(`  ${er.log}`);
       }
 
-      // ── Rouge River bot : héros sur l'Usine (1re visite) → plan auto (miroir App.jsx) ──
+      // ── Rouge River bot : héros sur l'Usine (1re visite) → carte d'usine
+      // choisie dans l'OFFRE restante (course à l'Usine, miroir App.jsx) ──
       if (players[cp].hero === FACTORY_RR_HEX && !players[cp].visitedRR) {
         const hasFrag = (players[cp].fragments || 0) >= TESLA_FRAGMENTS_REQUIRED;
-        const pool = hasFrag ? [...PLANS_FORD, ...PLANS_TESLA] : [...PLANS_FORD];
-        const seeCount = Math.max(1, Math.min(pool.length, pool.length - rrVisitors));
-        const visible = pool.sort(() => Math.random() - 0.5).slice(0, seeCount);
-        const card = visible.find(c => c.type === "tesla") || visible[Math.floor(Math.random() * visible.length)];
-        players[cp] = { ...players[cp], visitedRR: true, factoryCard: card };
-        rrVisitors++;
-        if (log) log(`  ⚙ ${players[cp].faction} visite la Rouge River → ${card.name}`);
+        const pool = [...factoryOffer, ...(hasFrag ? teslaOffer : [])];
+        if (pool.length > 0) {
+          const card = pool.find(c => c.deck === "tesla") || pool[Math.floor(Math.random() * pool.length)];
+          const bp = { ...players[cp] };
+          claimFactoryCard(bp, card); // consomme les fragments si prototype Tesla
+          players[cp] = bp;
+          if (card.deck === "tesla") teslaOffer = teslaOffer.filter(c => c.id !== card.id);
+          else factoryOffer = factoryOffer.filter(c => c.id !== card.id);
+          if (log) log(`  ⚙ ${players[cp].faction} visite la Rouge River → ${card.name}${card.deck === "tesla" ? ` (Tesla, -${TESLA_FRAGMENTS_REQUIRED}🔬)` : ""}`);
+        } else {
+          players[cp] = { ...players[cp], visitedRR: true };
+          if (log) log(`  ⚙ ${players[cp].faction} arrive à la Rouge River — offre épuisée`);
+        }
       }
 
       // ── Enlist ongoing (soi + voisins) ──
@@ -432,8 +464,10 @@ const playGame = (gameIdx, log) => {
     builtGare: (p.buildings || []).some(b => b.type === 'gare'),
     traps: (p.trapTokens || []).length, flags: (p.flagTokens || []).length,
     imperialCoins: p.imperialCoins || 0, chimere: !!p.chimereUsed, capturedWorkers: p.capturedWorkers || 0,
+    marsh: p._marsh || 0,
     encounters: p.encounters || 0,
-    ...scorePlayer(p),
+    fragments: p.fragments || 0, teslaCard: p.factoryCard?.deck === "tesla",
+    ...scorePlayer(p, structureBonus, players),
   })).sort((a, b) => b.total - a.total);
 
   return { gameIdx, nPlayers, rounds: Math.min(round, MAX_ROUNDS), endedBy, scored, issues, combatStats, empireLeft: Object.keys(empire).length, railsBuilt: combatStats.railsBuilt || 0 };
@@ -502,7 +536,7 @@ const avg = (arr) => arr.length ? (arr.reduce((a, b) => a + b, 0) / arr.length) 
 
 const byFaction = {}; const byMat = {}; const byProfile = {}; const byFactionProfile = {};
 Object.keys(BOT_PROFILES).forEach(k => { byProfile[k] = { games: 0, wins: 0, scores: [], stars: [], pops: [] }; });
-FACTION_IDS.forEach(f => { byFaction[f] = { games: 0, wins: 0, triggers: 0, scores: [], stars: [], abilities: [], gares: 0, traps: [], flags: [], flagPts: [], imperial: [], chimeres: 0, captured: [], encounters: [], pops: [], terrs: [], coins: [], starScores: [], terScores: [], resScores: [] }; });
+FACTION_IDS.forEach(f => { byFaction[f] = { games: 0, wins: 0, triggers: 0, scores: [], stars: [], abilities: [], gares: 0, traps: [], flags: [], flagPts: [], imperial: [], chimeres: 0, captured: [], marsh: [], encounters: [], pops: [], terrs: [], coins: [], starScores: [], terScores: [], resScores: [] }; });
 MATS.forEach(m => { byMat[m.name] = { games: 0, wins: 0, scores: [] }; });
 const starCounts = {}; STAR_FLAGS.forEach(([, l]) => { starCounts[l] = { all: 0, winners: 0 }; });
 let stalemates = 0; const allIssues = []; const roundsArr = [];
@@ -522,7 +556,7 @@ games.forEach(g => {
     bf.stars.push(s.stars);
     bf.abilities.push(s.abilities); if (s.builtGare) bf.gares++;
     bf.traps.push(s.traps); bf.flags.push(s.flags); bf.flagPts.push(s.flagBonusPts || 0);
-    bf.imperial.push(s.imperialCoins); if (s.chimere) bf.chimeres++;
+    bf.imperial.push(s.imperialCoins); if (s.chimere) bf.chimeres++; bf.marsh.push(s.marsh);
     bf.captured.push(s.capturedWorkers); bf.encounters.push(s.encounters);
     bf.pops.push(s.pop); bf.terrs.push(s.territories); bf.coins.push(s.coins);
     bf.starScores.push(s.starScore); bf.terScores.push(s.terScore); bf.resScores.push(s.resScore);
@@ -600,7 +634,7 @@ FACTION_IDS.forEach(f => {
     : f === 'bayou' ? `chimère ${pct(d.chimeres, d.games)}`
     : f === 'confederation' ? `ouvriers capturés ${avg(d.captured).toFixed(2)}`
     : `—`;
-  P(`  ${FACTIONS[f].name.padEnd(16)} abilities mech ${avg(d.abilities).toFixed(1)}/4 | gare ${pct(d.gares, d.games).padStart(6)} | rencontres ${avg(d.encounters).toFixed(1)} | ${extra}`);
+  P(`  ${FACTIONS[f].name.padEnd(16)} abilities mech ${avg(d.abilities).toFixed(1)}/4 | gare ${pct(d.gares, d.games).padStart(6)} | rencontres ${avg(d.encounters).toFixed(1)} | marécages ${avg(d.marsh).toFixed(2)} | ${extra}`);
 });
 
 P(`\n── Win rate par plateau joueur ──`);

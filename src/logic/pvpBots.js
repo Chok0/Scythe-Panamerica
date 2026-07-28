@@ -140,8 +140,8 @@ export const resolveBotPvp = (playersArr, attIdx, defIdx, hexId) => {
     const loot = Math.min(loser.coins || 0, 2);
     if (loot > 0) { winner.coins += loot; loser.coins -= loot; logs.push(`🏴‍☠️ Flibuste ! ${winnerF.name} pille ${loot}💰`); }
   }
-  // Chimère (Bayou, 1×/partie) : capture un mecha vaincu
-  if (winner.faction === "bayou" && !winner.chimereUsed) {
+  // Chimère (Bayou, slot 2 avec Flibuste, 1×/partie) : capture un mecha vaincu
+  if (winner.faction === "bayou" && !winner.chimereUsed && (winner.unlockedAbilities || []).includes(2)) {
     const loserHadMech = playersArr[attackerWins ? defIdx : attIdx].mechs.some(m => m.hexId === hexId);
     if (loserHadMech) {
       winner.mechs = [...winner.mechs, { id: `${winner.faction}_chimere`, hexId }];
@@ -172,6 +172,17 @@ export const resolveBotPvp = (playersArr, attIdx, defIdx, hexId) => {
 export const servitudeOnDisplace = (p, hexId) => {
   if (!BALANCE.servitudeOnDisplace) return { player: p, captured: false };
   if (p.faction !== "confederation" || p.pop < 2 || (p.capturedWorkers || 0) >= 2) return { player: p, captured: false };
+  // v0.15 — Servitude est un CHOIX pour le joueur humain (abilityOffer) mais
+  // s'appliquait d'office aux bots : -2 popularité par capture, soit -4 sur la
+  // partie, ce qui les faisait retomber d'un palier de score (mesuré : la
+  // Confédération finissait dernière 47 % du temps, et une partie de test l'a
+  // vue conclure à pop 3 = palier ×1). Le bot capture donc seulement si sa
+  // popularité le supporte : jamais au prix d'un palier (7 ou 13), sauf si
+  // l'objectif de faction « Le Joug » est à sa portée immédiate (2e capture).
+  const after = p.pop - 2;
+  const losesTier = (p.pop >= 13 && after < 13) || (p.pop >= 7 && after < 7);
+  const finishesJoug = (p.capturedWorkers || 0) === 1;
+  if (losesTier && !finishesJoug) return { player: p, captured: false };
   const n = { ...p, workers: [...p.workers] };
   n.pop = Math.max(0, n.pop - 2);
   n.workers.push({ id: `${n.faction}_serv${n.workers.length}`, hexId });

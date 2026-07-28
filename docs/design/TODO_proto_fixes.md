@@ -61,6 +61,54 @@ Plus aucun chantier en attente. Les deux derniers ont été livrés :
 - Icônes Scythe officielles (PNG) à la place des emoji.
 - Visualisation du tour du bot : surligner le hex qu'il choisit / tracer son déplacement (le scoreboard pulse déjà le bot actif).
 
+### ✅ Bots : réflexion revue (v0.15 — voir analyse_bots_perdants.md)
+Chantiers P1→P7 livrés : fin des tours morts « +1$ », préparation à 1 coup,
+rentabilité par plateau, sprint de palier de pop, veto de fin de partie
+(étendu aux gains gratuits d'usine/rencontres), production consciente du coût
+en popularité, pose de bâtiments selon la tuile bonus, quête Tesla des profils
+patients, estimateur de score aligné sur le vrai décompte.
+Reste ouvert : visualisation du tour du bot, cartes valuées côté bots.
+
+### 🏦 Bots : stratégie de pose des bâtiments (FAIT en v0.15 — historique)
+Les bots ignorent totalement la tuile « bonus de pose » tirée en début de
+partie (`pickBuilding` choisit le TYPE selon la phase/profil, l'hex est
+simplement le hex ouvrier le plus proche du centre) — l'écart humain/bot au
+scoring se creuse avec les tuiles à forte identité (Avant-Postes : 10$+).
+À développer dans `bot.js` :
+- À la construction (`Build` et bâtiment gratuit d'usine), scorer les hex
+  candidats selon la tuile active : `structureBonus.check(hid, p, players)`
+  donne déjà le prédicat de surlignage — un simple bonus au tri des
+  `getWorkerHexes` suffirait pour lacs/cultures/monts/villages/usine/rencontres.
+- Tuiles géométriques : « Ligne de Production » (préférer l'hex qui prolonge
+  l'alignement existant), « Terroirs Variés » (préférer un terrain non encore
+  couvert par ses bâtiments), « Terres Lointaines » (préférer l'hex le plus
+  loin de sa base — `walkDistToBase`).
+- « Avant-Postes » : n'envisager l'hex frontalier que s'il est défendable
+  (mech/héros à proximité) — sinon le 10$ ne vaut pas l'ouvrier exposé.
+- Passer la tuile active à `botTurn` via `ctx` (elle vit dans App.jsx).
+- Mesurer en simulation : le gain moyen 🏦 par tuile et par bot avant/après.
+
+### 🔬 Bot « stratégie Tesla » (FAIT en v0.15 — historique)
+Aujourd'hui tous les bots foncent à la Rouge River dès que possible
+(`pickMoveTarget`, aimant RR) et prennent une carte Ford — les prototypes
+Tesla (2 fragments consommés à la prise) restent de fait réservés au joueur
+humain. À développer, idéalement comme trait de profil (`botProfiles.js`,
+ex. `teslaHunter: true` sur thésauriseur/équilibré, ou tirage aléatoire par
+partie) :
+- RETARDER la visite de l'Usine tant que `fragments < TESLA_FRAGMENTS_REQUIRED`
+  ET qu'il reste un prototype dans `teslaOffer` : inverser l'aimant RR de
+  `pickMoveTarget` (malus au lieu de bonus) pour ce profil.
+- PRIORISER les sources de fragments : jetons rencontre (les 3 cartes 🔬 à
+  2$) et, si l'Empire est présent, la récompense fragment des combats PvE
+  (aujourd'hui les bots d'App.jsx ne prennent JAMAIS le fragment — ajouter le
+  choix fragment quand la quête est active) ; `resolveBotEncounter` doit
+  pondérer l'option 🔬 en conséquence.
+- ABANDONNER la quête proprement : si les prototypes sont épuisés (offre
+  Tesla vide) ou si la partie s'accélère (un adversaire à 4-5 étoiles),
+  redevenir un visiteur Ford classique avant que l'offre soit pillée.
+- Équilibrage à mesurer en simulation : winrate du profil chasseur vs
+  visiteurs précoces, taux de prototypes effectivement pris par les bots.
+
 ## 🔧 Historique des fixes
 
 ### ✅ Toutes les faction abilities — IMPLÉMENTÉES (6/6)

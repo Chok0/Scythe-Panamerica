@@ -44,6 +44,18 @@ export const spendTopCards = (p, n) => {
   return spent.reduce((a, b) => a + b, 0);
 };
 
+// Dépense les n cartes les plus FAIBLES : pour payer un coût hors combat
+// (carte d'usine) — on sacrifie naturellement ses moins bonnes cartes.
+export const spendLowCards = (p, n) => {
+  reconcileHand(p);
+  if (n <= 0) return 0;
+  const sorted = [...p.cardHand].sort((a, b) => a - b);
+  const spent = sorted.slice(0, n);
+  p.cardHand = sorted.slice(n);
+  p.combatCards = p.cardHand.length;
+  return spent.reduce((a, b) => a + b, 0);
+};
+
 // Dépense des cartes PRÉCISES (choisies par le joueur dans sa main) : retire
 // une carte par valeur listée, resynchronise le compteur, renvoie la somme
 // engagée. Repli sur la plus forte en cas de désynchronisation improbable.

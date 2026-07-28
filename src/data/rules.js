@@ -1,6 +1,34 @@
 /**
  * Structured game rules data for Scythe: Panamerica
  */
+import { FACTIONS } from './factions.js';
+import { COMBAT_ABILITIES } from './combat.js';
+import { TERRAINS } from './terrains.js';
+import { getMechAbilities } from './mechAbilities.js';
+
+// v0.15 — les listes « Riverwalk » et « Capacités de combat » étaient copiées
+// à la main et avaient dérivé (elles annonçaient encore les terrains d'avant
+// le check-up des rivières). Elles sont désormais DÉRIVÉES des données : plus
+// de désynchronisation possible entre la règle affichée et le code qui joue.
+const tLabel = (t) => TERRAINS[t]?.label || t;
+const RIVERWALK_LIST = Object.values(FACTIONS).map(f =>
+  `${f.name} (${f.rwName}) — ${(f.riverwalk || []).map(tLabel).join(" ↔ ")}`);
+const COMBAT_LIST = Object.entries(FACTIONS).map(([id, f]) =>
+  `${f.name} — ${COMBAT_ABILITIES[id]?.name} : ${COMBAT_ABILITIES[id]?.desc}`);
+
+// Fiches de faction — également dérivées : les descriptions écrites à la main
+// annonçaient encore les riverwalks, capacités et objectifs d'avant v0.15.
+const FACTION_PAGES = Object.entries(FACTIONS).map(([id, f]) => ({
+  title: f.isExtension ? `${f.name} (Extension)` : f.name,
+  content: `Héros: ${f.hero} & ${f.companion} | ⚡${f.power} 🃏${f.cards}`,
+  list: [
+    `Ability: ${f.ability} — ${f.abilityDesc}`,
+    `Riverwalk (${f.rwName}): ${(f.riverwalk || []).map(tLabel).join(" ↔ ")}`,
+    `Combat: ${COMBAT_ABILITIES[id]?.name} (${COMBAT_ABILITIES[id]?.desc})`,
+    `Position (${getMechAbilities(id)[3].name}): ${getMechAbilities(id)[3].desc}`,
+    `Objectif de Faction: ${f.fObj.name} — ${f.fObj.desc}`,
+  ],
+}));
 
 export const RULES = [
   {
@@ -34,7 +62,7 @@ export const RULES = [
       },
       {
         title: "Fin de tour & révélation d'objectifs",
-        content: "Chaque tour se conclut par une étape de validation (« Terminer le tour »). C'est à ce moment — et seulement là — que se révèlent la Mission secrète et l'Objectif de faction dont la condition est remplie : révéler pose l'étoile et termine le tour au passage. Un « ! » sur la barre des triomphes signale qu'un objectif est prêt."
+        content: "Chaque tour se conclut par une étape de validation (« Terminer le tour »). C'est à ce moment — et seulement là — que se révèlent la Mission secrète et l'Objectif de faction dont la condition est remplie : révéler pose l'étoile et termine le tour au passage. Un « ! » sur la barre des triomphes signale qu'un objectif est prêt. Les missions secrètes combinent 2-3 conditions, souvent avec une contrainte (plafond de pièces, zéro mecha…) : l'étoile se construit, elle ne tombe pas toute seule. Le deck de missions du Scythe original existe en réserve — déblocage prévu dans le mode campagne."
       }
     ]
   },
@@ -56,7 +84,7 @@ export const RULES = [
           "Forêt 🌲 — produit du Bois",
           "Village 🏘 — recrute des Ouvriers",
           "Lac 〰 — infranchissable (sauf capacités spéciales)",
-          "Marécage ≋ — pas de ressource. Franchissable par tous, mais la traversée se paie : -1 Popularité par ouvrier, -1 Puissance par héros/mecha, et l'unité doit s'y arrêter"
+          "Marécage ≋ — pas de ressource. Franchissable par tous, mais la traversée se paie : -1 Popularité par ouvrier, -1 Puissance par héros/mecha, et l'unité doit s'y arrêter. Exception : le Bayou (Sang du Marais) traverse gratuitement et sans s'arrêter"
         ]
       },
       {
@@ -68,12 +96,13 @@ export const RULES = [
         content: "Un réseau ferroviaire partagé entre tous les joueurs. La carte démarre sans aucun rail : construire une Gare pose 3 segments de rails, chaque segment devant partir de la Gare ou d'un rail existant (réseau connexe), jamais sur un lac ou un marécage. Une unité qui COMMENCE son déplacement sur le réseau peut rouler vers n'importe quel hex relié : le trajet en train coûte 1 PAS de déplacement (avec Vitesse, il reste donc 1 pas pour sortir du réseau). Entrer sur un rail en cours de déplacement ne donne pas accès au réseau ce tour-ci : on monte à bord un tour, on roule au suivant."
       },
       {
-        title: "Rouge River & Plans",
-        content: "L'Usine centrale (Rouge River) propose 2 types de plans au lieu d'un :",
+        title: "Rouge River & Cartes d'Usine",
+        content: "L'Usine centrale (Rouge River) expose au départ (nb joueurs + 1) cartes du deck Ford. Chaque visiteur en choisit UNE : elle devient une 5e action sur son plateau (haut : 1 coût → 1 gain · bas : déplacer 1 unité de 2 hex).",
         list: [
-          "Plans Ford — 5 plans utilitaires, toujours accessibles",
-          "Plans Tesla — 5 plans puissants, accessibles avec 1 Fragment Tesla",
-          "Fragments Tesla — obtenus via rencontres ou récompenses de combat PvE"
+          "Deck Ford — 12 cartes d'action ; l'offre (joueurs + 1) est FACE CACHÉE et ne se découvre qu'en arrivant à l'Usine",
+          "Prototypes Tesla — 2 cartes plus puissantes, EN VITRINE (visibles de tous) ; les prendre CONSOMME 2 Fragments Tesla",
+          "Vitrine — cliquer l'Usine (hex central) montre les prototypes Tesla et le nombre de cartes Ford restantes",
+          "Fragments Tesla — rencontres (🔬) ou combats contre l'Empire (si présent). Une seule carte par joueur : prendre une Ford ferme définitivement l'accès Tesla"
         ]
       },
       {
@@ -87,7 +116,7 @@ export const RULES = [
       },
       {
         title: "Capture & Méchas",
-        content: "Le Bayou peut capturer des mechas ennemis. La Confédération peut capturer des ouvriers ennemis. Ces mécaniques uniques alimentent leurs objectifs de faction respectifs."
+        content: "Le Bayou peut capturer un mecha ennemi vaincu (Chimère, 1×/partie, une fois son mecha de combat déployé). La Confédération peut capturer des ouvriers ennemis (Servitude, capacité de faction). Ces mécaniques uniques alimentent leurs objectifs de faction respectifs."
       }
     ]
   },
@@ -131,7 +160,7 @@ export const RULES = [
       },
       {
         title: "Marécages (péage)",
-        content: "Tout le monde peut entrer sur un marécage, mais la traversée coûte -1 Popularité par ouvrier et -1 Puissance par unité de combat (héros ou mecha) qui y entre — les ouvriers transportés par un mecha paient aussi. Impossible de le traverser sans s'arrêter : même avec un déplacement de 2 hex, l'unité est stoppée sur le marécage."
+        content: "Tout le monde peut entrer sur un marécage, mais la traversée coûte -1 Popularité par ouvrier et -1 Puissance par unité de combat (héros ou mecha) qui y entre — les ouvriers transportés par un mecha paient aussi. Impossible de le traverser sans s'arrêter : même avec un déplacement de 2 hex, l'unité est stoppée sur le marécage. SEULE EXCEPTION — le Bayou : sa capacité de faction « Sang du Marais » lui offre le passage gratuit et sans arrêt dès le tour 1, et son mecha Pirogue (slot 4) lui permet ensuite de bondir d'un marécage à n'importe quel autre du plateau. Les marécages sont sa route : c'est ainsi qu'il quitte son îlot sans franchir de rivière."
       },
       {
         title: "La Base (drapeau)",
@@ -140,14 +169,7 @@ export const RULES = [
       {
         title: "Riverwalk",
         content: "Chaque faction a une capacité de traversée de rivière spécifique, débloquée avec un mecha :",
-        list: [
-          "Confédération (Gué) — Plaine ↔ Village",
-          "Frente Libre (Sentier) — Sierra ↔ Désert",
-          "Nations Souv. (Piste) — Plaine ↔ Forêt",
-          "Acadiane (Portage) — Forêt ↔ Village",
-          "Bayou (Mangrove) — Désert ↔ Village",
-          "Dominion (Queen's Road) — Forêt ↔ Plaine"
-        ]
+        list: RIVERWALK_LIST
       },
       {
         title: "Transport",
@@ -179,14 +201,7 @@ export const RULES = [
       {
         title: "Capacités de Combat (Mecha #3)",
         content: "Chaque faction a une capacité de combat unique, débloquée avec le 3ème mecha :",
-        list: [
-          "Confédération — Cavaliers : +2 Puissance si attaquant",
-          "Frente Libre — Peuple Armé : +1 Carte si ≥1 ouvrier allié sur l'hex",
-          "Nations Souv. — Ronin : +1 Carte si mecha seul (0 ouvrier allié)",
-          "Acadiane — White Flag : Peut refuser le combat (retraite + 2 Pop)",
-          "Bayou — Flibuste : Victoire → perdant donne 2 pièces",
-          "Dominion — Discipline : +2 Puissance si plus de Cartes Combat que l'adversaire"
-        ]
+        list: COMBAT_LIST
       }
     ]
   },
@@ -297,29 +312,25 @@ export const RULES = [
     sections: [
       {
         title: "L'Usine Centrale",
-        content: "L'hex central (Rouge River, id 22) est l'ancienne usine de l'Empire. La première fois que votre héros y arrive, vous choisissez un Plan parmi ceux offerts. L'Usine propose autant de plans qu'il y a de JOUEURS, et chaque visiteur en retire un : le premier arrivé a l'embarras du choix, le dernier n'a plus qu'une carte imposée — c'est une course à l'Usine. Deux catégories de plans :"
+        content: "L'hex central (Rouge River, id 22) est l'ancienne usine de l'Empire. Au début de la partie, (nb joueurs + 1) cartes du deck Ford sont tirées au hasard et posées FACE CACHÉE sur l'Usine — on ne les découvre qu'en y arrivant. La première fois que votre héros y arrive, vous choisissez UNE carte parmi celles qui restent — course à l'Usine : le premier arrivé a l'embarras du choix, le dernier prend ce qui reste."
       },
       {
-        title: "Plans Ford",
-        content: "5 plans utilitaires inspirés de la production de masse :",
+        title: "La carte d'usine = une 5e action",
+        content: "Votre carte d'usine s'ajoute à votre plateau comme une colonne d'action supplémentaire, jouable au lieu des 4 autres (et comme elles, pas deux tours de suite) :",
         list: [
-          "Model M — Produce ×2 par ouvrier / Deploy à prix réduit",
-          "Trimotor — Move 3 hex (ignore rivières) / Upgrade à prix réduit",
-          "River Rouge Special — Téléport ressources / Build à prix réduit",
-          "Iron Horse — Move → Mine gratuit / Enlist à prix réduit",
-          "Five Dollar Day — Pop + ouvrier / Upgrade profitable"
+          "HAUT — payer 1 coût (pièces, puissance, popularité ou carte de combat) → recevoir 1 gain (pièces, pop, puissance, amélioration/recrue/bâtiment/mecha gratuits, production…)",
+          "BAS — déplacer 1 unité de 2 hex (+1 si la capacité Vitesse est débloquée)",
+          "Comme les autres colonnes : haut seul (si payable), bas seul, ou les deux — en commençant par le haut",
+          "Les gains « si ouvrier » (bâtiment, mecha, ressources, production) se posent sur un hex portant un de vos ouvriers"
         ]
       },
       {
-        title: "Plans Tesla",
-        content: "5 plans puissants inspirés de la technologie Tesla :",
-        list: [
-          "Golem — Move mecha à distance / Deploy + Puissance",
-          "L'Onde Tesla — Aura de puissance / Build sans ouvrier",
-          "Éclair — Move mecha 4 hex / Bolster gratuit",
-          "Le Blueprint Perdu — Copie action du haut / Enlist étendu",
-          "Réseau Neuronal — Move tous mechas / Deploy adjacence"
-        ]
+        title: "Prototypes Tesla",
+        content: "2 cartes du deck Tesla (5 cartes plus puissantes, même structure) sont EN VITRINE : contrairement à l'offre Ford face cachée, elles sont VISIBLES DE TOUS dès le début (cliquer l'Usine) — c'est la carotte de la quête des fragments. Les prendre exige 2 Fragments Tesla, CONSOMMÉS à la prise (rencontres 🔬, combats contre l'Empire s'il est présent). Et comme chaque joueur ne choisit qu'UNE carte à sa première visite, prendre une carte Ford ferme définitivement l'accès aux prototypes : la quête Tesla, c'est réunir 2 fragments en évitant l'Usine tout ce temps."
+      },
+      {
+        title: "Le deck original",
+        content: "Les 12 cartes d'usine du jeu original existent dans les données (deck « original ») mais restent de côté pour l'instant — elles seront débloquées comme récompense dans le mode campagne."
       }
     ]
   },
@@ -328,66 +339,7 @@ export const RULES = [
     title: "Factions",
     icon: "🏴",
     sections: [
-      {
-        title: "Confédération",
-        content: "Héros: J. Cole & Dixie | ⚡4 🃏1",
-        list: [
-          "Ability: Servitude — capacité spéciale de faction",
-          "Riverwalk (Gué): Plaine ↔ Village",
-          "Combat: Cavaliers (+2 Pui si attaquant)",
-          "Objectif de Faction: Le Joug — 2 ouvriers capturés + 3+ hex avec ouvriers"
-        ]
-      },
-      {
-        title: "Frente Libre",
-        content: "Héros: E. Rojas & Trueno | ⚡2 🃏3",
-        list: [
-          "Ability: Tierra Minada — pose des pièges sur la carte",
-          "Riverwalk (Sentier): Sierra ↔ Désert",
-          "Combat: Peuple Armé (+1 Carte si ouvrier allié sur hex)",
-          "Objectif de Faction: Terre Libérée — 4 Traps + 3 ouvriers sur Sierras/Déserts"
-        ]
-      },
-      {
-        title: "Nations Souveraines",
-        content: "Héros: Aiyana & Koda | ⚡3 🃏2",
-        list: [
-          "Ability: Esprit Sauvage — affinité avec la nature",
-          "Riverwalk (Piste): Plaine ↔ Forêt",
-          "Combat: Ronin (+1 Carte si mecha seul)",
-          "Objectif de Faction: Le Grand Retour — 5+ hex Plaine/Forêt contrôlés"
-        ]
-      },
-      {
-        title: "Acadiane",
-        content: "Héros: M. Thibodeau & Brume | ⚡1 🃏3",
-        list: [
-          "Ability: Comptoir — pose des comptoirs commerciaux",
-          "Riverwalk (Portage): Forêt ↔ Village",
-          "Combat: White Flag (peut refuser → retraite + 2 Pop)",
-          "Objectif de Faction: Réseau Invisible — 4 Comptoirs + héros sur un Lac"
-        ]
-      },
-      {
-        title: "Bayou",
-        content: "Héros: Cap. Zeke & Croc | ⚡2 🃏3",
-        list: [
-          "Ability: Chimère — capacité spéciale liée aux créatures",
-          "Riverwalk (Mangrove): Désert ↔ Village",
-          "Combat: Flibuste (victoire → perdant donne 2 pièces)",
-          "Objectif de Faction: Le Prédateur — 1 mecha capturé + 2 Empire détruits"
-        ]
-      },
-      {
-        title: "Dominion (Extension)",
-        content: "Héros: Col. Whitfield & Sterling | ⚡3 🃏2",
-        list: [
-          "Ability: Commerce Impérial — génère des pièces via le commerce",
-          "Riverwalk (Queen's Road): Forêt ↔ Plaine",
-          "Combat: Discipline (+2 Pui si plus de Cartes Combat que l'adversaire)",
-          "Objectif de Faction: Le Tribut — 10+ pièces via Commerce Impérial"
-        ]
-      }
+      ...FACTION_PAGES
     ]
   },
   {
