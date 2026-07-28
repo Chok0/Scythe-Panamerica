@@ -21,7 +21,7 @@ import SetupScreen from './SetupScreen.jsx';
 import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
-import { getValidMoves, findPathWaypoints, marshToll, marshFree } from '../logic/movement.js';
+import { getValidMoves, getValidMoves1Step, getRailNetwork, findPathWaypoints, marshToll, marshFree } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer } from '../logic/player.js';
 import { botTurn, estimateScore } from '../logic/bot.js';
@@ -1342,6 +1342,19 @@ export default function App(){
 
   const validMoves=useMemo(()=>{
     if(!moveSource||!me)return new Set();
+    // ── DÉPLACEMENT DÉCOMPOSÉ (v0.16) : continuation d'un move en cours —
+    // 1 pas simple à la fois. Le réseau de rails ne se prend pas EN MARCHE
+    // (règle « on monte à bord un tour, on roule au suivant ») et la fin de
+    // course n'engage pas de combat : pour attaquer à 2 hex, cliquez la
+    // cible directement depuis le départ.
+    if(moveSource.continuation){
+      const combatTriggers=new Set(Object.values(empire||{}));
+      players.slice(1).forEach(ep=>{combatTriggers.add(ep.hero);ep.mechs.forEach(m=>combatTriggers.add(m.hexId));});
+      let moves=getValidMoves1Step(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails)
+        .filter(id=>!combatTriggers.has(id));
+      if(moveSource.unitType==="worker")moves=moves.filter(id=>!enemyOccupiedHexes.has(id));
+      return new Set(moves);
+    }
     // Bas de carte d'usine : 2 hex de base (+1 avec Vitesse) → bonusSteps=1
     let moves=getValidMoves(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails,moveSource.unitType,enemyOccupiedHexes,factoryMoveMode?1:0);
     // Workers cannot enter hexes with any enemy units
@@ -1349,7 +1362,7 @@ export default function App(){
       moves=moves.filter(id=>!enemyOccupiedHexes.has(id));
     }
     return new Set(moves);
-  },[moveSource,me,rails,enemyOccupiedHexes,empire,factoryMoveMode]);
+  },[moveSource,me,rails,enemyOccupiedHexes,empire,factoryMoveMode,players]);
 
   // Déplacement au clic : hex → unités du joueur encore déplaçables ce tour.
   // Cliquer un hex surligné sélectionne l'unité (picker si plusieurs).
@@ -1654,7 +1667,9 @@ export default function App(){
         }
       }
 
-      p.movesLeft=(me.movesLeft||effMoveLimit)-1;p.movedUnits=[...(me.movedUnits||[]),moveSource.unitId];
+      // Continuation d'un déplacement décomposé : le move de l'unité est déjà
+      // compté — les pas restants ne consomment pas un 2e déplacement du tour
+      if(!moveSource.continuation){p.movesLeft=(me.movesLeft||effMoveLimit)-1;p.movedUnits=[...(me.movedUnits||[]),moveSource.unitId];}
 
       // ── SCYTHE RULE: displace enemy workers when hero/mech enters (no combat) ──
       const movingCombat2=moveSource.unitType==="hero"||moveSource.unitType==="mech";
@@ -1787,7 +1802,25 @@ export default function App(){
           setRouteDrop(dropOffer);
         }
       }
-      if(p.movedUnits.length>=effMoveLimit&&!dropOffer)endMoveDone(p.movedUnits.length);
+      // ── DÉPLACEMENT DÉCOMPOSÉ (v0.16, note du 28/07) : il reste des pas ?
+      // L'unité RESTE sélectionnée et continue hex par hex — le cas d'école :
+      // mech chargé, 1er pas, déposer une partie des ouvriers (panneau 🚚 du
+      // pas suivant), repartir avec le reste.
+      let contOffer=null;
+      if((moveSource.unitType==="hero"||moveSource.unitType==="mech")&&!dropOffer){
+        const budget=moveSource.continuation?(moveSource.stepsLeft||1)
+          :(((me.unlockedAbilities||[]).includes(0)?2:1)+(factoryMoveMode?1:0));
+        // Pas consommés par CE saut : 1 si la destination était à un pas
+        // simple (ou sur le réseau de rails depuis le départ), 2 sinon
+        const oneStep=new Set(getValidMoves1Step(fromHex,me.faction,me.unlockedAbilities||[],me,rails));
+        if(!moveSource.continuation){const rn=getRailNetwork(fromHex,rails,enemyOccupiedHexes);if(rn)rn.forEach(h=>oneStep.add(h));}
+        const used=oneStep.has(hexId)?1:2;
+        // Marécage = arrêt forcé (sauf Bayou) : pas de continuation
+        const marshStop=hMap[hexId]?.t==="marecage"&&!marshFree(me.faction);
+        if(budget-used>0&&!marshStop)contOffer={unitType:moveSource.unitType,unitId:moveSource.unitId,fromHex:hexId,stepsLeft:budget-used,continuation:true};
+      }
+      if(contOffer)setMoveSource(contOffer);
+      if((p.movedUnits||[]).length>=effMoveLimit&&!dropOffer&&!contOffer)endMoveDone((p.movedUnits||[]).length);
       return;
     }
     // ── CIBLES D'ACTION BOTTOM : Deploy/Build en cliquant l'hex sur la carte ──
@@ -3030,7 +3063,16 @@ export default function App(){
             const hexContents=allHexContents[hex.id]||[];
             const controlEntry=hexContents.find(u=>u.type!=="building")||hexContents[0];
             const controlColor=!isBaseHex(hex.id)?(controlEntry?.color||null):null;
+            // Tooltips natifs (note du 28/07 : « les icônes dollars sont
+            // revenues, je ne sais pas à quoi elles correspondent ») : le
+            // badge $ et la règle des rails s'expliquent au survol de l'hex
+            const hexHasRail=rails.some(([a,b])=>a===hex.id||b===hex.id);
+            const hexTitle=[
+              isBonusTile?`🏦 ${structureBonus.icon} ${structureBonus.name} — hex éligible au bonus de pose (${structureBonus.scale})`:null,
+              hexHasRail?"🛤 Rail : une unité qui COMMENCE son déplacement sur le réseau peut rejoindre tout nœud relié (coût 1 pas). Monter sur le rail en cours de route n'ouvre pas le réseau ce tour-ci, et le réseau est coupé aux nœuds occupés par l'ennemi.":null,
+            ].filter(Boolean).join("\n");
             return(<g key={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
+              {hexTitle&&<title>{hexTitle}</title>}
               <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc} controlColor={controlColor} wireframe={mapChoice!=="random"}/>
               {/* Bonus de construction : pastille $ sur les tuiles qualifiées */}
               {isBonusTile&&<g style={{pointerEvents:"none"}}>
@@ -4013,8 +4055,17 @@ export default function App(){
                     color:carryOnMove?"var(--gold)":"var(--text-muted)"}}>
                     🚚 Emporter ouvriers & ressources : {carryOnMove?"OUI":"NON (les laisser sur place)"}
                   </button>
-                  {moveSource&&<div style={{color:"#C9A84C",fontSize:14,marginTop:8,fontStyle:"italic"}}>
+                  {moveSource&&!moveSource.continuation&&<div style={{color:"#C9A84C",fontSize:14,marginTop:8,fontStyle:"italic"}}>
                     {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:<><Glyph icon={moveSource.unitType==="mech"?"⬡":"●"} size={14}/> {moveSource.unitType==="mech"?"Mecha":"Ouvrier"}</>} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts), ou une autre de vos unités pour changer.
+                    {(moveSource.unitType==="hero"||moveSource.unitType==="mech")&&myFaction.riverwalk&&<div style={{fontSize:12.5,color:"var(--text-dim)",marginTop:4,fontStyle:"normal"}}>
+                      {(me.unlockedAbilities||[]).includes(1)
+                        ?<>🌊 {myFaction.rwName} : les rivières ne se traversent que vers <b>{myFaction.riverwalk.join(" / ")}</b></>
+                        :<>🌊 Rivières infranchissables tant que <b>{myFaction.rwName}</b> (slot de mecha n°2) n'est pas débloqué</>}
+                    </div>}
+                  </div>}
+                  {moveSource&&moveSource.continuation&&<div style={{color:"#C9A84C",fontSize:14,marginTop:8}}>
+                    <div style={{fontStyle:"italic",marginBottom:6}}>🚶 {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:"⬡ Mecha"} en route (#{moveSource.fromHex}) — <b>{moveSource.stepsLeft} pas restant{moveSource.stepsLeft>1?"s":""}</b> : cliquez un hex adjacent pour continuer (un mech chargé peut déposer une partie de sa cargaison via le panneau 🚚), ou terminez ici.</div>
+                    <button onClick={()=>{const end=(me.movedUnits||[]).length>=effMoveLimit;setMoveSource(null);setTransportPick(null);if(end)endMoveDone((me.movedUnits||[]).length);}} className="act-btn" style={{width:"100%",background:"#3a6a3a",color:"#fff",border:"none",fontWeight:700}}>✓ Terminer ici</button>
                   </div>}
                   {/* ═══ TRANSPORT PARTIEL — répartition façon balance à deux plateaux
                       (modèle Scythe Digital Edition) : hex qui GARDE à gauche, mecha qui
@@ -4284,7 +4335,7 @@ export default function App(){
                   </div>
                 )}
                 {moveSource&&<div style={{color:"#C9A84C",fontSize:14,marginBottom:8,fontStyle:"italic"}}>
-                  {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:moveSource.unitType==="mech"?"⬡ Mecha":"● Ouvrier"} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts).
+                  {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:moveSource.unitType==="mech"?"⬡ Mecha":"● Ouvrier"} {moveSource.continuation?<>en route (#{moveSource.fromHex}) — <b>{moveSource.stepsLeft} pas restant{moveSource.stepsLeft>1?"s":""}</b> : cliquez un hex adjacent, ou « Terminer » ci-dessous.</>:<>sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts).</>}
                 </div>}
                 {moved>=1
                   ?<button onClick={()=>finishFactoryMove(moved)} className="act-btn" style={{width:"100%",fontWeight:700,background:"#3a6a3a",color:"#fff",border:"none"}}>✓ Terminer le déplacement d'usine</button>

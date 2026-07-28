@@ -122,3 +122,27 @@ describe('riverwalks : aucune capacité morte', () => {
     }
   });
 });
+
+// ── Vitesse et ouvriers (v0.16) — bug constaté en partie le 28/07 ──
+// Vitesse (slot 0) ne concerne que le héros et les mechas : un ouvrier reste
+// à 1 pas. Avant le correctif, un ouvrier sur rail profitait de la Vitesse du
+// joueur pour enchaîner réseau + 1 pas de sortie dans le même déplacement.
+describe('Vitesse ne s\'applique pas aux ouvriers', () => {
+  const stubW = { workers: [], mechs: [], hero: 11 };
+
+  it('à pied : la portée d\'un ouvrier est identique avec ou sans Vitesse', () => {
+    const sans = [...getValidMoves(11, 'dominion', [], stubW, [], 'worker', new Set())].sort((a, b) => a - b);
+    const avec = [...getValidMoves(11, 'dominion', [0], stubW, [], 'worker', new Set())].sort((a, b) => a - b);
+    expect(avec).toEqual(sans);
+    // …alors qu'un mech, lui, va bien plus loin avec Vitesse
+    const mech = getValidMoves(11, 'dominion', [0], stubW, [], 'mech', new Set());
+    expect(mech.length).toBeGreaterThan(avec.length);
+  });
+
+  it('sur le réseau de rails : l\'ouvrier roule (1 pas) mais n\'en sort pas', () => {
+    const RAILS_W = [[11, 8], [8, 12], [12, 9]];
+    const moves = new Set(getValidMoves(11, 'dominion', [0], stubW, RAILS_W, 'worker', new Set()));
+    expect(moves.has(9)).toBe(true);   // bout du réseau : 1 pas
+    expect(moves.has(16)).toBe(false); // sortie du réseau : exigerait la Vitesse
+  });
+});

@@ -135,13 +135,13 @@ est le vrai écart de niveau, avant même la stratégie.
 
 | Tour | Note | Verdict |
 |---|---|---|
-| T5 | « décomposer mon mouvement de 2 hex, déposer 2 ouvriers au passage » | **UX manquante** : la dépose au waypoint existe pour les ressources (cf. T24 « déposées sur #22 au passage ») mais pas d'UI pas-à-pas pour déposer des OUVRIERS à mi-trajet. À spécifier (mode « étape par étape » du déplacement). |
-| T7 | « les icônes dollars sont revenues sur le plateau » | **Expliqué, à rendre lisible** : ce sont les marqueurs de la tuile bonus de pose (« Cœur des Villages » — hexes village éligibles, `App.jsx:3021`). Un tooltip au survol du badge $ éviterait la confusion. Ironie : le humain a construit ses 3 bâtiments HORS villages → bonus de pose 0 $ (jusqu'à 9 $ laissés sur la table). |
-| T13 | « pourquoi Nations Souv. envoie un ouvrier au marécage » | **Tuning bot** : le malus ouvrier→marécage n'est que -8 (`bot.js:627`), rattrapable par le bruit de difficulté normale (3) quand les alternatives sont fades. Passer à un filtre dur (interdit sauf aucune autre option). |
-| T19a | « traverser la rivière vers plaines, accéder à l'îlot du Frente » | **À vérifier sur la carte** : le Gué n'ouvre que plaine et désert (`factions.js:20`). Si l'hex visé était autre chose (sierra/village), le refus est correct mais l'UI devrait DIRE pourquoi (« Gué : plaine/désert uniquement »). |
-| T19b | « sur un rail, mon premier move devrait m'emmener n'importe où sur le réseau, même celui de Bayou » | **Comportement conforme** : les rails n'ont pas de propriétaire, mais le réseau est coupé aux nœuds occupés par l'ennemi (règle du 22/07, `getRailNetwork` + blockedHexes) — Cap. Zeke et l'Arsenal squattaient #31, seul lien depuis #38. Afficher la raison de la coupure sur le plateau. |
-| T22 | « l'ouvrier n'aurait pas dû aller jusqu'au pétrole : réseau en 1 move, pas plus — Speed ne s'applique pas à lui » | **VRAI BUG** : `getValidMoves` calcule `hasSpeed` depuis les abilities du joueur quel que soit `unitType` (`movement.js:99-100`). Un ouvrier profite donc de Vitesse : réseau (pas 1) + 1 pas de sortie. Règle Scythe : Vitesse ne concerne que héros/mechs. Fix une ligne : `const hasSpeed = unitType !== "worker" && abilities.includes(0)`. |
-| T24 | « atteindre #40 : héros vers #27 puis 2e pas n'importe où sur le réseau » | **Décision de design à trancher** — c'est exactement la règle corrigée après la partie du 22/07 (« on monte à bord un tour, on roule au suivant », `movement.js:89-92`). Rouvrir = les rails redeviennent des quasi-téléports à 2 pas. Recommandation : garder la règle, l'énoncer dans un tooltip de l'hex rail. |
+| T5 | « décomposer mon mouvement de 2 hex, déposer 2 ouvriers au passage » | **UX manquante — fait** : déplacement décomposé. Une unité (héros/mech) qui n'a pas épuisé ses pas RESTE sélectionnée (« n pas restants ») et continue hex par hex ; le panneau 🚚 du pas suivant permet de déposer une partie des ouvriers/ressources avant de repartir. Bouton « ✓ Terminer ici » pour s'arrêter. |
+| T7 | « les icônes dollars sont revenues sur le plateau » | **Expliqué + fait** : ce sont les marqueurs de la tuile bonus de pose (« Cœur des Villages » — hexes village éligibles). Un tooltip au survol de l'hex l'explique désormais. Ironie : le humain a construit ses 3 bâtiments HORS villages → bonus de pose 0 $ (jusqu'à 9 $ laissés sur la table). |
+| T13 | « pourquoi Nations Souv. envoie un ouvrier au marécage » | **Tuning bot — fait** : le malus -8 était rattrapable par le bruit de difficulté ; c'est maintenant un filtre dur (un ouvrier bot n'entre au marécage qu'à défaut de toute case sèche ; le Bayou reste chez lui). |
+| T19a | « traverser la rivière vers plaines, accéder à l'îlot du Frente » | **À vérifier sur la carte** : le Gué n'ouvre que plaine et désert (`factions.js:20`). Si l'hex visé était autre chose (sierra/village), le refus est correct. **Fait côté UI** : la règle du riverwalk de la faction s'affiche à la sélection d'une unité (« Gué : plaine / désert uniquement », ou « rivières infranchissables tant que… »). |
+| T19b | « sur un rail, mon premier move devrait m'emmener n'importe où sur le réseau, même celui de Bayou » | **Comportement conforme + fait** : les rails n'ont pas de propriétaire, mais le réseau est coupé aux nœuds occupés par l'ennemi (règle du 22/07, `getRailNetwork` + blockedHexes) — Cap. Zeke et l'Arsenal squattaient #31, seul lien depuis #38. Le tooltip des hexes à rail énonce désormais la règle complète. |
+| T22 | « l'ouvrier n'aurait pas dû aller jusqu'au pétrole : réseau en 1 move, pas plus — Speed ne s'applique pas à lui » | **VRAI BUG — corrigé** : `getValidMoves` calculait `hasSpeed` depuis les abilities du joueur quel que soit `unitType` (`movement.js`). Un ouvrier profitait donc de Vitesse : réseau (pas 1) + 1 pas de sortie. Règle Scythe rétablie (Vitesse = héros/mechs) + tests de non-régression. |
+| T24 | « atteindre #40 : héros vers #27 puis 2e pas n'importe où sur le réseau » | **Décision prise : règle maintenue** — c'est exactement la règle corrigée après la partie du 22/07 (« on monte à bord un tour, on roule au suivant », `movement.js:89-92`). Rouvrir = les rails redeviennent des quasi-téléports à 2 pas. La règle est désormais énoncée dans le tooltip des hexes à rail. |
 
 ## 4. Ce que la partie valide
 
@@ -156,17 +156,62 @@ est le vrai écart de niveau, avant même la stratégie.
 
 ## 5. Backlog priorisé issu de cette partie
 
-| P | Chantier | Détail |
+| P | Chantier | Détail | Statut |
+|---|---|---|---|
+| **P0** | Phase & pivot sur l'horloge de partie | `getPhase` sur tour/max-étoiles-table, pivot possible dès mi-partie sur écart de score (RC2) — débloque mechs, drop-runs, sprints de palier et agressivité en un seul changement. | **fait** (`computePhase`, `PIVOT_MID_RATIO 0,55` dès T12/3⭐ table) |
+| **P0** | Bug Vitesse-ouvriers | `movement.js:99` — une ligne (note T22). | **fait** + test |
+| **P1** | Carburant de guerre des profils agressifs | Un blitz/prédateur sous ⚡6 après T8 doit sur-pondérer Soutien/Arsenal jusqu'à retrouver une `myStrength` compétitive, sinon son identité est lettre morte (RC1). | **fait** (Soutien +8 sous ⚡7 dès T5) |
+| **P1** | Conscience d'objectif de faction | Acadiane : deploy du slot requis + héros mobile tant que l'objectif est vivant ; généraliser (« mon objectif exige X, X passe en tête de mes priorités ») (RC4). | **fait** (`pickDeploySlot` : Batelier au 3e mecha, Flibuste/Chimère au 2e pour le prédateur ; +3 au Move tant que comptoirs < 4) |
+| **P1** | Étoiles d'ingénierie pour les bots | Courir puissance-max / 6 améliorations quand l'économie le permet — aucune amélioration bot en 25 tours (RC5). | **fait** (course ⚡16 dès 11 ; upgrades 3+ sur surplus de ressource) |
+| **P2** | Marécage interdit aux ouvriers bots | Filtre dur au lieu de -8 (note T13). | **fait** |
+| **P2** | Lisibilité UI | Tooltips : badges $ de la tuile de pose, refus de traversée (riverwalk), réseau de rails coupé (notes T7/T19). | **fait** (tooltips d'hex $ + rail ; règle riverwalk affichée à la sélection d'unité) |
+| **P2** | Déplacement pas-à-pas avec dépose d'ouvriers | Mode étape par étape du move (note T5). | **fait** (l'unité reste sélectionnée avec ses pas restants ; le panneau 🚚 du pas suivant permet la dépose partielle) |
+| **P3** | Trajectoires de convergence | Score « se rapprocher en N tours » d'une cible riche/leader pour que les quadrants se rencontrent (RC3). | **fait** (aimant vers la meilleure cible attaquable, gardé par ⚡5+) |
+
+### Stratégie popularité des bots (retour joueur du 28/07)
+
+« Remonter la popu à coup de +1 c'est absurde » — appliqué tel quel :
+
+- Le Commerce n'achète plus de pop en routine **qu'avec l'amélioration ♥ (+2)**
+  ou pour franchir un palier ; et sous le palier ×2, le premier cube
+  d'amélioration retiré est celui de Commerce (il débloque justement ♥+2).
+- La pop se grappille désormais **par les actions** : Soutien+Mémorial (+7 au
+  score tant que < ×3), immédiat d'enlist « +2♥ » (section Déployer) priorisé
+  sous le palier ×2, colonne portant la recrue ♥ bonifiée, et rencontres
+  sur-pondérées (+4 d'aimant) quand la pop est sous 7.
+
+### Combat : l'attaquant gagne les égalités (retour joueur du 28/07)
+
+Contre le leader qui déroule (3+ étoiles ou fin imminente), tout profil accepte
+désormais l'attaque **à parité** : la règle des égalités rend le pari gagnant
+sur le papier, la victoire freine sa course et l'unité reste consolider le hex.
+
+### A/B simulateur (800 parties, seed 1, avant → après)
+
+| Faction | avant | après |
 |---|---|---|
-| **P0** | Phase & pivot sur l'horloge de partie | `getPhase` sur tour/max-étoiles-table, pivot possible dès mi-partie sur écart de score (RC2) — débloque mechs, drop-runs, sprints de palier et agressivité en un seul changement. |
-| **P0** | Bug Vitesse-ouvriers | `movement.js:99` — une ligne (note T22). |
-| **P1** | Carburant de guerre des profils agressifs | Un blitz/prédateur sous ⚡6 après T8 doit sur-pondérer Soutien/Arsenal jusqu'à retrouver une `myStrength` compétitive, sinon son identité est lettre morte (RC1). |
-| **P1** | Conscience d'objectif de faction | Acadiane : deploy du slot requis + héros mobile tant que l'objectif est vivant ; généraliser (« mon objectif exige X, X passe en tête de mes priorités ») (RC4). |
-| **P1** | Étoiles d'ingénierie pour les bots | Courir puissance-max / 6 améliorations quand l'économie le permet — aucune amélioration bot en 25 tours (RC5). |
-| **P2** | Marécage interdit aux ouvriers bots | Filtre dur au lieu de -8 (note T13). |
-| **P2** | Lisibilité UI | Tooltips : badges $ de la tuile de pose, refus de traversée (riverwalk), réseau de rails coupé (notes T7/T19). |
-| **P2** | Déplacement pas-à-pas avec dépose d'ouvriers | Mode étape par étape du move (note T5). |
-| **P3** | Trajectoires de convergence | Score « se rapprocher en N tours » d'une cible riche/leader pour que les quadrants se rencontrent (RC3). |
+| Confédération | 25,9 % | 24,6 % |
+| Frente | 30,0 % | 24,8 % |
+| Nations | 37,7 % | 29,3 % |
+| **Acadiane** | 25,7 % | **47,6 %** |
+| Bayou | 24,5 % | 21,1 % |
+| Dominion | 26,4 % | 20,4 % |
+
+Zéro crash, zéro violation d'invariants, 154 tests verts. Deux lectures :
+
+1. **Hors Acadiane, le peloton se RESSERRE** (20-29 % contre 24-38 % avant) —
+   les bots jouent mieux de façon plus homogène, et l'outlier Nations (37,7 %)
+   rentre dans le rang.
+2. **L'Acadiane décolle** (étoiles moy 3,3 → 4,1) parce que son objectif de
+   faction est enfin VIVANT (Batelier déployé, héros mobile, 4e comptoir posé).
+   Deux crans de modération bot-side déjà appliqués (Batelier au 3e mecha et
+   non au 2e, Move +3 et non +5, convergence gardée par ⚡5+) ont ramené des
+   pointes de 60 % à ~48 %. Le reste n'est PLUS un problème de bot : c'est la
+   force de la faction elle-même qui ressort quand elle est bien jouée — la
+   v6 l'avait déjà mesurée « ~6 pts au-dessus du peloton » à objectif MORT.
+   → Chantier d'équilibrage GAME-side à trancher au simulateur (pistes déjà
+   utilisées par le passé : `resScoringCap`, valeur des comptoirs au score,
+   coût/condition du comptoir lacustre).
 
 ## 6. Note de coaching (pour mémoire)
 

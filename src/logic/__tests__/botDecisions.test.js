@@ -149,6 +149,17 @@ describe('Pivot stratégique — savoir renoncer à un plan qui ne paie pas', ()
     const p = mkBot(); p.botProfile = 'harceleur'; p.stars = 2; p.combatWins = 1;
     expect(shouldPivot(p, { bestOppScore: 100, endgame: true }, 40)).toBe(false);
   });
+
+  // v0.16 — partie du 28/07 : les 3 bots ne se sont repliés qu'au tour 24
+  // (sur 25), quand le joueur a posé sa 5e étoile. Le pivot doit pouvoir
+  // arriver dès la mi-partie sur un décrochage NET (< 55 % du meilleur).
+  it('mi-partie constatée + gros décrochage → repli sans attendre les 5 étoiles adverses', async () => {
+    const { shouldPivot } = await import('../botProfiles.js');
+    const p = mkBot(); p.stars = 1;
+    expect(shouldPivot(p, { bestOppScore: 100, round: 14 }, 40)).toBe(true);  // 40 < 55 : décroché
+    expect(shouldPivot(p, { bestOppScore: 100, round: 14 }, 60)).toBe(false); // retard simple : on s'accroche
+    expect(shouldPivot(p, { bestOppScore: 100, round: 5 }, 40)).toBe(false);  // trop tôt pour renoncer
+  });
 });
 
 describe('Conscience des adversaires', () => {
