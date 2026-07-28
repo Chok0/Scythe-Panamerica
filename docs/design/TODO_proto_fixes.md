@@ -61,6 +61,25 @@ Plus aucun chantier en attente. Les deux derniers ont été livrés :
 - Icônes Scythe officielles (PNG) à la place des emoji.
 - Visualisation du tour du bot : surligner le hex qu'il choisit / tracer son déplacement (le scoreboard pulse déjà le bot actif).
 
+### 🏦 Bots : stratégie de pose des bâtiments (à développer)
+Les bots ignorent totalement la tuile « bonus de pose » tirée en début de
+partie (`pickBuilding` choisit le TYPE selon la phase/profil, l'hex est
+simplement le hex ouvrier le plus proche du centre) — l'écart humain/bot au
+scoring se creuse avec les tuiles à forte identité (Avant-Postes : 10$+).
+À développer dans `bot.js` :
+- À la construction (`Build` et bâtiment gratuit d'usine), scorer les hex
+  candidats selon la tuile active : `structureBonus.check(hid, p, players)`
+  donne déjà le prédicat de surlignage — un simple bonus au tri des
+  `getWorkerHexes` suffirait pour lacs/cultures/monts/villages/usine/rencontres.
+- Tuiles géométriques : « Ligne de Production » (préférer l'hex qui prolonge
+  l'alignement existant), « Terroirs Variés » (préférer un terrain non encore
+  couvert par ses bâtiments), « Terres Lointaines » (préférer l'hex le plus
+  loin de sa base — `walkDistToBase`).
+- « Avant-Postes » : n'envisager l'hex frontalier que s'il est défendable
+  (mech/héros à proximité) — sinon le 10$ ne vaut pas l'ouvrier exposé.
+- Passer la tuile active à `botTurn` via `ctx` (elle vit dans App.jsx).
+- Mesurer en simulation : le gain moyen 🏦 par tuile et par bot avant/après.
+
 ### 🔬 Bot « stratégie Tesla » (à développer)
 Aujourd'hui tous les bots foncent à la Rouge River dès que possible
 (`pickMoveTarget`, aimant RR) et prennent une carte Ford — les prototypes

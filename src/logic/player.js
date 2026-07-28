@@ -27,6 +27,9 @@ export const createPlayer = (factionId, matId, isBot) => {
     enlistMap: [null, null, null, null],
     objectives: [], objective: null, objectiveRevealed: false, revealedObjectiveIdx: null, fObjRevealed: false,
     capturedWorkers: 0, capturedMech: 0, empireKills: 0, trapTokens: [], flagTokens: [], imperialCoins: 0,
+    // Ouvriers ennemis « fait fuir » (déplacement d'ouvriers seuls, hors
+    // combat) — objectif « L'Intimidation » du deck original (campagne)
+    scaredWorkers: 0,
     upgrades: 0, recruits: 0, combatWins: 0,
     starUpgrades: false, starMechs: false, starBuildings: false, starRecruits: false,
     // Rouge River : fragments Tesla, visite unique, carte d'usine (5e colonne

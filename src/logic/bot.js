@@ -359,6 +359,10 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
 };
 
 // Choose which building to construct based on phase (or profile order)
+// TODO (bonus de pose) : le choix du TYPE et de l'HEX ignore la tuile bonus
+// tirée en début de partie (Bord des Lacs, Ligne de Production, Avant-Postes…)
+// — scorer les hex candidats via structureBonus.check(hid, p, players) et
+// les critères géométriques ; voir docs/design/TODO_proto_fixes.md.
 const pickBuilding = (p, availBuildings, prof) => {
   const phase = getPhase(p);
   // Priority: Moulin early, Gare mid, Arsenal/Memorial late — sauf ordre imposé
@@ -1041,7 +1045,7 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   if (p.pop >= 18 && !p.starPop) { p.stars++; p.starPop = true; logs.push(`⭐ ${f.name}: Popularité max !`); }
 
   // ── OBJECTIVE CHECK ──
-  if (p.objective && !p.objectiveRevealed && p.objective.check(p)) { p.objectiveRevealed = true; p.stars++; logs.push(`⭐ ${f.name}: objectif !`); }
+  if (p.objective && !p.objectiveRevealed && p.objective.check(p, { players: ctx && ctx.allPlayers })) { p.objectiveRevealed = true; p.stars++; logs.push(`⭐ ${f.name}: objectif !`); }
   const fObj = FACTIONS[p.faction]?.fObj;
   if (fObj && !p.fObjRevealed && fObj.check(p)) { p.fObjRevealed = true; p.stars++; logs.push(`🏛⭐ ${f.name}: obj. faction !`); }
 

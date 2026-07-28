@@ -12,7 +12,7 @@ import { EMPIRE_START, drawEmpireCombat } from '../data/empire.js';
 import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, FACTORY_COL, PLANS_FORD, PLANS_TESLA, ALL_FACTORY_CARDS, TESLA_FRAGMENTS_REQUIRED, TESLA_OFFER_SIZE, factoryCostLabel, factoryGainLabel, factoryEffectLabel, FACTORY_BOTTOM_DESC } from '../data/plans.js';
 import { MATS, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes, FR_TOP as FR_TOP_MAP, FR_BOT as FR_BOT_MAP, frTop, frBot } from '../data/mats.js';
-import { OBJECTIVES } from '../data/objectives.js';
+import { OBJECTIVES, ALL_OBJECTIVES } from '../data/objectives.js';
 import { structureBonusDetail, pickStructureBonus, STRUCTURE_BONUSES } from '../data/structureBonus.js';
 import { reconcileHand, topCardsSum, spendTopCards, spendPickedCards, handSummary } from '../logic/cards.js';
 import RulesPage from './RulesPage.jsx';
@@ -386,8 +386,8 @@ export default function App(){
     setDifficulty(data.difficulty||"normal");
     setEmpireEnabled(!!data.empireEnabled);
     setPlayers(data.players.map(p=>({...p,
-      objective:p.objective!=null?(OBJECTIVES.find(o=>o.id===p.objective)||null):null,
-      objectives:(p.objectives||[]).map(id=>OBJECTIVES.find(o=>o.id===id)).filter(Boolean),
+      objective:p.objective!=null?(ALL_OBJECTIVES.find(o=>o.id===p.objective)||null):null,
+      objectives:(p.objectives||[]).map(id=>ALL_OBJECTIVES.find(o=>o.id===id)).filter(Boolean),
       // Carte d'usine par id (v2) — un objet legacy (ancien modèle passif) est abandonné
       factoryCard:typeof p.factoryCard==="string"?(ALL_FACTORY_CARDS.find(c=>c.id===p.factoryCard)||null)
         :p.factoryCard?.id?(ALL_FACTORY_CARDS.find(c=>c.id===p.factoryCard.id)||null):null})));
@@ -484,7 +484,7 @@ export default function App(){
   const revealObjective=useCallback((objIdx)=>{
     const p=players[0];if(!p||p.objectiveRevealed)return;
     const obj=p.objectives?.[objIdx];if(!obj)return;
-    if(obj.check(p)){setPlayers(prev=>{const n=[...prev];n[0]={...n[0],objectiveRevealed:true,revealedObjectiveIdx:objIdx,stars:n[0].stars+1};return n;});addLog(`⭐ "${obj.name}" révélé !`);}
+    if(obj.check(p,{players})){setPlayers(prev=>{const n=[...prev];n[0]={...n[0],objectiveRevealed:true,revealedObjectiveIdx:objIdx,stars:n[0].stars+1};return n;});addLog(`⭐ "${obj.name}" révélé !`);}
     else addLog(`❌ "${obj.name}" — condition non remplie`);
   },[players,addLog]);
 
@@ -612,6 +612,9 @@ export default function App(){
         }
       });
       const botCtx={attackable,hexLoot,hexThreat,hexWorkers,forbidden:new Set(),encounterHexes:encounterTokens,
+        // Liste des joueurs en partie : objectifs relatifs aux adversaires
+        // (plus grande puissance, bases adverses…)
+        allPlayers:players,
         // Fin imminente : un autre joueur (humain compris) est à 5+ étoiles
         endgame:players.some((op,oi)=>oi!==cp&&(op.stars||0)>=5),
         // Meilleur score adverse estimé — gestion de la 6e étoile (finir ou retarder)
@@ -680,7 +683,7 @@ export default function App(){
           const dispHexes=[...new Set(displaced.map(w=>w.hexId))];
           n[oi]={...n[oi],workers:n[oi].workers.map(w=>botHexes.has(w.hexId)&&!defended(w.hexId)?{...w,hexId:ohbHex.id}:w)};
           // Bot loses pop for displacing workers
-          n[cp]={...n[cp],pop:Math.max(0,(n[cp].pop||0)-displaced.length)};
+          n[cp]={...n[cp],pop:Math.max(0,(n[cp].pop||0)-displaced.length),scaredWorkers:(n[cp].scaredWorkers||0)+displaced.length};
           // Pillage : le magot des hexes pris passe au nouvel occupant
           const deepResB=(pl)=>{const r={};Object.entries(pl.resources).forEach(([k,v])=>{r[k]={...v};});return r;};
           const loserB={...n[oi],resources:deepResB(n[oi])};
@@ -1666,6 +1669,7 @@ export default function App(){
         if(displaced>0){
           // Lose 1 pop per displaced worker
           p.pop=Math.max(0,p.pop-displaced);
+          p.scaredWorkers=(p.scaredWorkers||0)+displaced; // objectif « L'Intimidation » (deck original)
           addLog(`♥ -${displaced} Pop (ouvriers déplacés)`);
           // Servitude (Confédération) : la capture est un CHOIX du joueur
           // (-2 Pop, max 2) — proposée après le déplacement, plus d'office
@@ -2709,7 +2713,7 @@ export default function App(){
             // « ! » : un objectif secret / de faction est PRÊT à être révélé
             // (condition remplie, pas encore révélé) — notification demandée
             // en partie réelle, la condition passait inaperçue
-            const ready=(s.key==="obj"&&!me.objectiveRevealed&&(me.objectives||[]).some(o=>o.check(me)))
+            const ready=(s.key==="obj"&&!me.objectiveRevealed&&(me.objectives||[]).some(o=>o.check(me,{players})))
               ||(s.key==="fobj"&&!me.fObjRevealed&&myFaction.fObj&&myFaction.fObj.check(me));
             return(
             <button key={s.key} onClick={()=>setStarDetail(d=>d===s.key?null:s.key)} title={`${s.name} — ${s.prog}${ready?" — prêt à révéler en fin de tour !":""}`}
@@ -4347,7 +4351,7 @@ export default function App(){
               avant de passer aux bots — c'est ICI que se révèlent les objectifs
               (mission secrète / objectif de faction), et révéler termine le tour ═══ */}
           {isMyTurn&&!combat&&!encounter&&!rougeRiver&&endOfTurn&&(()=>{
-            const revealables=(!me.objectiveRevealed?(me.objectives||[]).map((o,idx)=>({o,idx})).filter(({o})=>o.check(me)):[]);
+            const revealables=(!me.objectiveRevealed?(me.objectives||[]).map((o,idx)=>({o,idx})).filter(({o})=>o.check(me,{players})):[]);
             const fObjReady=!me.fObjRevealed&&myFaction.fObj&&myFaction.fObj.check(me);
             return(
               <div style={{padding:"12px 16px",borderTop:"1px solid var(--gold-dim)",animation:"slideUp 0.25s ease",background:"rgba(212,178,84,0.05)"}}>
@@ -4613,7 +4617,7 @@ export default function App(){
               {starDetail==="obj"&&me.objectives&&(<div>
                 <div style={{fontSize:14,fontWeight:700,color:"var(--brass)",marginBottom:6,fontFamily:"var(--font-title)"}}>Vos missions secrètes</div>
                 <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:8}}>{me.objectiveRevealed?"1 mission révélée (⭐ obtenue).":"Révélez-en une dès que sa condition est remplie."}</div>
-                {me.objectives.map((obj,idx)=>{const isRev=me.objectiveRevealed&&me.revealedObjectiveIdx===idx;const canRev=!me.objectiveRevealed&&obj.check(me);const met=obj.check(me);return(
+                {me.objectives.map((obj,idx)=>{const isRev=me.objectiveRevealed&&me.revealedObjectiveIdx===idx;const met=obj.check(me,{players});const canRev=!me.objectiveRevealed&&met;return(
                   <div key={obj.id||idx} style={{padding:"8px 10px",borderRadius:6,marginBottom:6,background:isRev?"rgba(122,170,85,0.12)":"rgba(0,0,0,0.25)",border:`1px solid ${isRev?"rgba(122,170,85,0.4)":met?"var(--gold-dim)":"var(--border)"}`,opacity:me.objectiveRevealed&&!isRev?0.45:1}}>
                     <div style={{fontSize:15,fontWeight:700,color:isRev?"#8fbf6a":met?"var(--gold)":"var(--text)"}}>{isRev?"✅":"🎯"} {obj.name}</div>
                     <div style={{fontSize:14,color:"var(--text-dim)",marginTop:2}}>{obj.desc}</div>

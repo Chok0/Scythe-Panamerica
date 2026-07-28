@@ -257,7 +257,8 @@ const playGame = (gameIdx, log) => {
       });
       const result = botTurn(players[cp], empire, enemyHexes, rails, { attackable, hexLoot, hexThreat, hexWorkers, forbidden: new Set(), encounterHexes: encounterTokens,
         endgame: players.some((op, oi) => oi !== cp && (op.stars || 0) >= 5),
-        bestOppScore: Math.max(...players.filter((_, oi) => oi !== cp).map(op => estimateScore(op))) });
+        bestOppScore: Math.max(...players.filter((_, oi) => oi !== cp).map(op => estimateScore(op))),
+        allPlayers: players }); // objectifs relatifs aux adversaires
       let p = result.player;
       if (log) result.logs.forEach(l => log(`  ${l}`));
 
@@ -307,7 +308,8 @@ const playGame = (gameIdx, log) => {
           const ohb = hbHexOf(players[oi].faction);
           const dispHexes = [...new Set(displaced.map(w => w.hexId))];
           players[oi] = { ...players[oi], workers: players[oi].workers.map(w => botHexes.has(w.hexId) && !defended(w.hexId) ? { ...w, hexId: ohb.id } : w) };
-          players[cp] = { ...players[cp], pop: Math.max(0, (players[cp].pop || 0) - displaced.length) };
+          players[cp] = { ...players[cp], pop: Math.max(0, (players[cp].pop || 0) - displaced.length),
+            scaredWorkers: (players[cp].scaredWorkers || 0) + displaced.length }; // objectif « L'Intimidation »
           // Pillage : les ressources des hexes pris passent au nouvel occupant
           const deepRes = (pl) => { const r = {}; Object.entries(pl.resources).forEach(([k, v]) => { r[k] = { ...v }; }); return r; };
           const loserC = { ...players[oi], resources: deepRes(players[oi]) };

@@ -34,7 +34,7 @@ export const RULES = [
       },
       {
         title: "Fin de tour & révélation d'objectifs",
-        content: "Chaque tour se conclut par une étape de validation (« Terminer le tour »). C'est à ce moment — et seulement là — que se révèlent la Mission secrète et l'Objectif de faction dont la condition est remplie : révéler pose l'étoile et termine le tour au passage. Un « ! » sur la barre des triomphes signale qu'un objectif est prêt."
+        content: "Chaque tour se conclut par une étape de validation (« Terminer le tour »). C'est à ce moment — et seulement là — que se révèlent la Mission secrète et l'Objectif de faction dont la condition est remplie : révéler pose l'étoile et termine le tour au passage. Un « ! » sur la barre des triomphes signale qu'un objectif est prêt. Les missions secrètes combinent 2-3 conditions, souvent avec une contrainte (plafond de pièces, zéro mecha…) : l'étoile se construit, elle ne tombe pas toute seule. Le deck de missions du Scythe original existe en réserve — déblocage prévu dans le mode campagne."
       }
     ]
   },

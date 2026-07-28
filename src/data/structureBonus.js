@@ -77,7 +77,8 @@ const nearFactory = (hid) => (ADJ[hid] || []).some(a => hMap[a]?.t === "factory"
 
 // Base ADVERSE : base d'une faction EN JEU différente de la mienne (players
 // fourni) — repli sur « toute base d'une autre faction » sinon (surlignage).
-const nearEnemyBase = (hid, p, players) => {
+// Exporté : aussi utilisé par les objectifs secrets (data/objectives.js).
+export const nearEnemyBase = (hid, p, players) => {
   const enemies = players ? new Set(players.map(pl => pl.faction).filter(fc => fc !== p?.faction)) : null;
   return (ADJ[hid] || []).some(a => {
     const h = hMap[a];
@@ -89,6 +90,7 @@ const nearEnemyBase = (hid, p, players) => {
 
 // Distance de marche (BFS) d'un hex vers la base du joueur : lacs et bases
 // adverses infranchissables — « le chemin le plus direct pour rentrer ».
+// Exportée sous walkDistToBase (objectifs secrets, IA de pose à venir).
 const distToBase = (fromHid, p) => {
   const base = homeBaseHex(p.faction);
   if (!base || fromHid === base.id) return 0;
@@ -182,6 +184,8 @@ export const STRUCTURE_BONUSES = [
     score: (n) => n,
     check: (hid, p) => !!p && distToBase(hid, p) >= 4 }, // surligne les terres à 4+ hex de VOTRE base
 ];
+
+export const walkDistToBase = distToBase;
 
 export const pickStructureBonus = () =>
   STRUCTURE_BONUSES[Math.floor(Math.random() * STRUCTURE_BONUSES.length)];
