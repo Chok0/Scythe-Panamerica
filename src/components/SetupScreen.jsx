@@ -9,7 +9,7 @@ const RES_EMOJI = { petrole: "🛢", metal: "⚙", bois: "🪵", nourriture: "�
 const BOTTOM_EMOJI = ["⬆", "⬡", "🏗", "🤝"]; // Upgrade, Deploy, Build, Enlist — rendus via Glyph (icônes SVG canoniques)
 // Emblème par plateau joueur — tient le rôle du blason de faction pour donner
 // aux cartes de plateau la même structure d'en-tête (emblème + nom doré).
-const MAT_ICONS = { 1: "🏭", 2: "🔧", 3: "🧭", 4: "⚒", 5: "🌾" };
+const MAT_ICONS = { 1: "🏭", 2: "🔧", 3: "🧭", 4: "⚒", 5: "🌾", 6: "🏡" };
 
 const DIFFICULTIES = [
   { key: "facile", label: "Facile", desc: "bots imprévisibles et sous-optimaux" },

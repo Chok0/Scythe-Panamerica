@@ -1,34 +1,46 @@
-// bottomCosts : chaque plateau a un profil de coûts DISTINCT (bases 2-4,
-// façon Scythe original) — avant v0.10, Atelier/Pionnier/Terroir partageaient
-// les mêmes bases [2,3,3,3] et seuls les bonus $ différaient.
-// bottomSlots (v0.11) : règle Scythe « un coût ne descend jamais sous
-// 1 ressource » — chaque colonne a au plus (base - 1) cases d'amélioration,
-// et le total par plateau reste 6 (l'étoile 6-Améliorations doit rester
-// atteignable : chaque amélioration pose un cube en bas).
+// ═══ PLATEAUX STANDARD — alignés (v0.14) sur la grammaire du jeu original ═══
+// L'ancien calibrage (v0.12) reposait sur des winrates bot-vs-bot : verdict de
+// playtest HUMAIN, ces mesures ne valident pas l'équilibre réel (les bots se
+// battent très en dessous d'un joueur). On adopte donc les INVARIANTS
+// STRUCTURELS du Scythe de base, vérifiés par tests :
+//   - Σ coûts de base = 13 ressources (bases 2-4) — le rythme du jeu original
+//   - Σ bonus $ du bas = 6$ pile, répartis différemment par plateau
+//   - cases du HAUT dictées par l'action : Move 2, Bolster 2, Trade 1, Produce 1
+//   - 6 cases d'amélioration en bas (l'étoile des 6 Améliorations), chaque
+//     colonne plafonnée à (base - 1) : un coût ne descend jamais sous 1
+// Les identités des plateaux sont conservées (colonne forte / colonne chère).
 export const MATS = [
+  // Fordisme : la chaîne — Construire 2 bois (l'usine sort de terre vite),
+  // mais Déployer/Enrôler chers (4) : la masse avant l'armée.
   { id: 1, name: "Fordisme", pop: 2, coins: 4, topRow: ["Move", "Bolster", "Produce", "Trade"],
-    topCubes: [1, 2, 1, 2], bottomSlots: [1, 2, 1, 2],
-    bottomCosts: [{ res: "petrole", base: 3, bonus: 0 }, { res: "metal", base: 3, bonus: 1 }, { res: "bois", base: 2, bonus: 2 }, { res: "nourriture", base: 3, bonus: 2 }] },
-  // Atelier : Déployer 4 métal sans bonus était le pire Deploy du jeu (16 métal
-  // pour l'étoile mechas) — mesuré 15 % de winrate. Ramené à 3+1$ (v0.12).
+    topCubes: [2, 2, 1, 1], bottomSlots: [1, 2, 1, 2],
+    bottomCosts: [{ res: "petrole", base: 3, bonus: 1 }, { res: "metal", base: 4, bonus: 0 }, { res: "bois", base: 2, bonus: 2 }, { res: "nourriture", base: 4, bonus: 3 }] },
+  // Atelier : fabrique de mechas — Déployer 3+1$ reste sa colonne signature,
+  // Construire devient son gros investissement (4 bois +3$).
   { id: 2, name: "Atelier", pop: 2, coins: 5, topRow: ["Trade", "Produce", "Bolster", "Move"],
-    topCubes: [2, 1, 2, 1], bottomSlots: [1, 2, 2, 1],
-    bottomCosts: [{ res: "petrole", base: 2, bonus: 1 }, { res: "metal", base: 3, bonus: 1 }, { res: "bois", base: 3, bonus: 3 }, { res: "nourriture", base: 2, bonus: 1 }] },
+    topCubes: [1, 1, 2, 2], bottomSlots: [1, 2, 2, 1],
+    bottomCosts: [{ res: "petrole", base: 3, bonus: 1 }, { res: "metal", base: 3, bonus: 1 }, { res: "bois", base: 4, bonus: 3 }, { res: "nourriture", base: 3, bonus: 1 }] },
+  // Pionnier : l'expansion — Enrôler paie (+3$), Construire loin et cher (4+0).
   { id: 3, name: "Pionnier", pop: 2, coins: 6, topRow: ["Move", "Trade", "Produce", "Bolster"],
     topCubes: [2, 1, 1, 2], bottomSlots: [2, 1, 1, 2],
-    bottomCosts: [{ res: "petrole", base: 3, bonus: 2 }, { res: "metal", base: 2, bonus: 1 }, { res: "bois", base: 4, bonus: 0 }, { res: "nourriture", base: 3, bonus: 3 }] },
-  // Forge : Améliorer à 4 pétrole gâchait l'appariement Commerce↔Améliorer
-  // (les autres plateaux financent leur bas de colonne via Commerce) et le
-  // Déployer 2 métal ne rapportait rien — mesuré 10 % de winrate. Améliorer
-  // 4→3 et Déployer +1$ (v0.12) : identité « fabrique de mechas » assumée.
+    bottomCosts: [{ res: "petrole", base: 3, bonus: 2 }, { res: "metal", base: 3, bonus: 1 }, { res: "bois", base: 4, bonus: 0 }, { res: "nourriture", base: 3, bonus: 3 }] },
+  // Forge : le métal roi — Déployer 2 métal (le moins cher du jeu),
+  // Améliorer rapporte gros (+3$) ; le reste se paie plein pot.
   { id: 4, name: "Forge", pop: 3, coins: 6, topRow: ["Trade", "Bolster", "Move", "Produce"],
     topCubes: [1, 2, 2, 1], bottomSlots: [2, 1, 2, 1],
-    bottomCosts: [{ res: "petrole", base: 3, bonus: 3 }, { res: "metal", base: 2, bonus: 1 }, { res: "bois", base: 3, bonus: 1 }, { res: "nourriture", base: 2, bonus: 2 }] },
-  // Terroir : dominait à 43 % constant (meilleur départ + meilleurs
-  // appariements) — v0.12 : 7$→6$ et pop 4→3 de départ, Déployer +2$→+1$
+    bottomCosts: [{ res: "petrole", base: 3, bonus: 3 }, { res: "metal", base: 2, bonus: 1 }, { res: "bois", base: 4, bonus: 0 }, { res: "nourriture", base: 4, bonus: 2 }] },
+  // Terroir : l'agrarien — Améliorer 2 pétrole NON réductible (façon
+  // Patriotisme/Agriculture du jeu de base), Enrôler nourrit la ferme (+3$).
   { id: 5, name: "Terroir", pop: 3, coins: 6, topRow: ["Move", "Trade", "Bolster", "Produce"],
-    topCubes: [2, 1, 2, 1], bottomSlots: [1, 2, 2, 1],
-    bottomCosts: [{ res: "petrole", base: 2, bonus: 0 }, { res: "metal", base: 3, bonus: 1 }, { res: "bois", base: 4, bonus: 2 }, { res: "nourriture", base: 2, bonus: 1 }] },
+    topCubes: [2, 1, 2, 1], bottomSlots: [0, 2, 2, 2],
+    bottomCosts: [{ res: "petrole", base: 2, bonus: 0 }, { res: "metal", base: 4, bonus: 1 }, { res: "bois", base: 4, bonus: 2 }, { res: "nourriture", base: 3, bonus: 3 }] },
+  // Hacienda (v0.14, 6e plateau) : le domaine opulent du sud — départ le plus
+  // riche du jeu (4♥/7$, façon Agriculture du jeu de base) mais Déployer 4
+  // métal : l'armée attend que le domaine paie (+3$ au Déployer). Comble
+  // aussi le manque : 6 factions pour 5 plateaux dupliquait un plateau à 6.
+  { id: 6, name: "Hacienda", pop: 4, coins: 7, topRow: ["Bolster", "Move", "Trade", "Produce"],
+    topCubes: [2, 2, 1, 1], bottomSlots: [1, 2, 2, 1],
+    bottomCosts: [{ res: "petrole", base: 3, bonus: 2 }, { res: "metal", base: 4, bonus: 3 }, { res: "bois", base: 3, bonus: 1 }, { res: "nourriture", base: 3, bonus: 0 }] },
 ];
 
 export const BOTTOM = ["Upgrade", "Deploy", "Build", "Enlist"];
@@ -37,13 +49,11 @@ export const BOTTOM = ["Upgrade", "Deploy", "Build", "Enlist"];
 // Les 7 plateaux du Scythe de base, transcrits depuis leurs valeurs
 // officielles. HORS ROTATION STANDARD (SetupScreen/startGame n'utilisent que
 // MATS) : ils seront débloqués par le mode campagne, comme PLANS_ORIGINAL et
-// OBJECTIVES_ORIGINAL. Invariants du jeu original, tous vérifiés par tests :
-//   - Σ coûts de base        = 13 ressources (Panamerica : 10-12, plus rapide)
-//   - Σ bonus $ du bas       = 6$ pile        (Panamerica : 4-7, hétérogène)
-//   - Σ cases d'amélioration = 6 en bas ET 6 en haut (étoile des 6 Améliorations)
-//   - cases du HAUT dictées par l'action : Move 2, Bolster 2, Trade 1, Produce 1
-//   - départ échelonné pauvre→riche : 2♥/4$ (Industrie) → 4♥/7$ (Agriculture) —
-//     dans le jeu de base l'ordre du tour compensait ; ici, à surveiller.
+// OBJECTIVES_ORIGINAL. Mêmes invariants que les plateaux standard depuis
+// v0.14 (Σ13 / Σ6$ / 6 cases / cases du haut par action — voir en tête de
+// fichier), plus le départ échelonné pauvre→riche : 2♥/4$ (Industrie) →
+// 4♥/7$ (Agriculture) — dans le jeu de base l'ordre du tour compensait le
+// départ pauvre ; mécanique absente ici, à équilibrer en mission.
 // NOTE transcription : le Militant affichait Améliorer « réductible à 2 »
 // (5 cases au total) — corrigé à 1 (2 cases), l'invariant des 6 cases et
 // l'étoile des 6 Améliorations l'exigent.

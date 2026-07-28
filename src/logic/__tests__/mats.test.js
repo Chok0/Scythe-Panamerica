@@ -26,23 +26,29 @@ describe('plateaux joueur', () => {
   });
 });
 
+// Depuis v0.14, TOUS les plateaux (standard + originaux) suivent la grammaire
+// du jeu de base : Σ coûts = 13, Σ bonus = 6$, cases du haut par action.
+describe('grammaire du jeu original (tous plateaux)', () => {
+  it.each(ALL_MATS.map(m => [m.name, m]))('%s : Σcoûts=13, Σbonus=6$', (_, mat) => {
+    expect(mat.bottomCosts.reduce((a, bc) => a + bc.base, 0)).toBe(13);
+    expect(mat.bottomCosts.reduce((a, bc) => a + (bc.bonus || 0), 0)).toBe(6);
+  });
+
+  it.each(ALL_MATS.map(m => [m.name, m]))('%s : cases du haut dictées par l\'action (Move 2, Bolster 2, Trade 1, Produce 1)', (_, mat) => {
+    const expected = { Move: 2, Bolster: 2, Trade: 1, Produce: 1 };
+    mat.topRow.forEach((a, i) => expect(mat.topCubes[i], `${mat.name} col ${a}`).toBe(expected[a]));
+  });
+});
+
 describe('plateaux du jeu original (réserve campagne)', () => {
   it('7 plateaux, ids 101+, hors rotation standard, sans collision', () => {
     expect(MATS_ORIGINAL.length).toBe(7);
     MATS_ORIGINAL.forEach(m => { expect(m.id).toBeGreaterThanOrEqual(101); expect(m.original).toBe(true); });
     expect(new Set(ALL_MATS.map(m => m.id)).size).toBe(ALL_MATS.length);
-    // la rotation standard (SetupScreen/startGame) n'en contient aucun
+    // la rotation standard (SetupScreen/startGame) n'en contient aucun,
+    // et compte désormais 6 plateaux (un par faction — plus de doublon à 6)
+    expect(MATS.length).toBe(6);
     MATS.forEach(m => expect(m.original).toBeUndefined());
-  });
-
-  it.each(MATS_ORIGINAL.map(m => [m.name, m]))('%s : invariants du jeu de base (Σcoûts=13, Σbonus=6$)', (_, mat) => {
-    expect(mat.bottomCosts.reduce((a, bc) => a + bc.base, 0)).toBe(13);
-    expect(mat.bottomCosts.reduce((a, bc) => a + (bc.bonus || 0), 0)).toBe(6);
-  });
-
-  it.each(MATS_ORIGINAL.map(m => [m.name, m]))('%s : cases du haut dictées par l\'action (Move 2, Bolster 2, Trade 1, Produce 1)', (_, mat) => {
-    const expected = { Move: 2, Bolster: 2, Trade: 1, Produce: 1 };
-    mat.topRow.forEach((a, i) => expect(mat.topCubes[i], `${mat.name} col ${a}`).toBe(expected[a]));
   });
 
   it('un joueur créé sur un plateau original fonctionne (matById partout)', () => {
