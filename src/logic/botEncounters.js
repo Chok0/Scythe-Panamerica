@@ -6,6 +6,8 @@ import { ENCOUNTERS } from '../data/encounters.js';
 import { FACTIONS } from '../data/factions.js';
 import { BUILDING_TYPES, ENLIST_IMMEDIATE, matById, maxBottomCubes } from '../data/mats.js';
 import { BOT_PROFILES } from './botProfiles.js';
+import { TESLA_FRAGMENTS_REQUIRED } from '../data/plans.js';
+import { losingTrigger } from './bot.js';
 
 /**
  * Résout une rencontre pour un bot dont le héros est sur un jeton.
@@ -15,7 +17,7 @@ import { BOT_PROFILES } from './botProfiles.js';
  * retenue que si elle laisse le bot au-dessus du palier visé par son profil.
  * @returns {{player, log}}
  */
-export const resolveBotEncounter = (player, deck) => {
+export const resolveBotEncounter = (player, deck, ctx) => {
   const card = deck && deck.length > 0
     ? deck.shift()
     : ENCOUNTERS[Math.floor(Math.random() * ENCOUNTERS.length)];
@@ -27,7 +29,26 @@ export const resolveBotEncounter = (player, deck) => {
   const pool = popSafe.length > 0 ? popSafe
     : eligible.length > 0 ? eligible
     : card.choices.filter(c => !c.available);
-  const choice = pool[Math.floor(Math.random() * pool.length)] || card.choices[0];
+  // ── Quête Tesla (P6) : un profil « chasseur » prend l'option 🔬 quand elle
+  // existe, tant qu'il n'a pas ses fragments — c'est le carburant du
+  // prototype (2 fragments consommés à la prise, cf. data/plans.js).
+  const hunting = (BOT_PROFILES[player.botProfile] || {}).teslaHunter
+    && !player.visitedRR && (player.fragments || 0) < TESLA_FRAGMENTS_REQUIRED;
+  const fragChoices = hunting ? pool.filter(c => /Fragment/.test(c.desc || "")) : [];
+  // P4 : à 5 étoiles et derrière au score, une récompense STRUCTURANTE
+  // (recrue, bâtiment, mecha, amélioration) peut poser la 6e étoile et
+  // terminer la partie en perdant — on préfère alors une option « inerte ».
+  const endsBadly = (c) => losingTrigger(player, ctx,
+    (c.grantsRecruit && (player.recruits || 0) === 3 && !player.starRecruits)
+    || (c.grantsBuilding && (player.buildings || []).length === 3 && !player.starBuildings)
+    || (c.grantsMech && player.mechs.length === 3 && !player.starMechs)
+    || (c.grantsUpgrade && (player.upgrades || 0) === 5 && !player.starUpgrades));
+  const safePool = pool.filter(c => !endsBadly(c));
+  const finalPool = safePool.length > 0 ? safePool : pool;
+  const safeFrag = fragChoices.filter(c => !endsBadly(c));
+  const choice = safeFrag.length > 0
+    ? safeFrag[Math.floor(Math.random() * safeFrag.length)]
+    : finalPool[Math.floor(Math.random() * finalPool.length)] || card.choices[0];
   const p = {
     ...player,
     workers: [...player.workers],

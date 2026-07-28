@@ -34,6 +34,7 @@ import { getCombatBonus } from '../src/data/combat.js';
 import { OBJECTIVES } from '../src/data/objectives.js';
 import { shuffleArray } from '../src/logic/hexMath.js';
 import { claimFactoryCard } from '../src/logic/factory.js';
+import { pickStructureBonus, structureBonusDetail } from '../src/data/structureBonus.js';
 import { BOT_PROFILES, assignBotProfile, BOT_NOISE, MAP_META_THREAT, playerStanding } from '../src/logic/botProfiles.js';
 
 // ── CLI ──
@@ -102,7 +103,8 @@ const hbHexOf = (factionId) => {
 };
 
 // Scoring — réplique du calcul de fin de partie d'App.jsx
-const scorePlayer = (p) => {
+// `sb` : tuile « bonus de pose » de la partie (barème 2/4/6/9$)
+const scorePlayer = (p, sb, players) => {
   const popTier = p.pop <= 6 ? 0 : p.pop <= 12 ? 1 : 2;
   const starMult = [3, 4, 5][popTier];
   const terMult = [2, 3, 4][popTier];
@@ -133,7 +135,12 @@ const scorePlayer = (p) => {
   const resScore = resPairs * resMult;
   // Comptoirs Acadiane : +2$ chacun au scoring (postes de commerce, v0.12)
   const flagCoins = (p.flagTokens || []).length * 2;
-  return { total: starScore + terScore + resScore + p.coins + flagCoins, starScore, terScore, resScore, coins: p.coins, territories, totalRes, popTier, flagBonus, flagBonusPts: flagBonus * terMult + flagCoins };
+  // Bonus de pose (barème 2/4/6/9$) — les bots choisissent désormais leur hex
+  // de construction en fonction de la tuile (P6), il faut donc le scorer
+  const sbD = sb ? structureBonusDetail(p, sb, players) : { count: 0, coins: 0 };
+  return { total: starScore + terScore + resScore + p.coins + flagCoins + sbD.coins,
+    starScore, terScore, resScore, coins: p.coins, territories, totalRes, popTier, flagBonus,
+    flagBonusPts: flagBonus * terMult + flagCoins, sbCount: sbD.count, sbCoins: sbD.coins };
 };
 
 // Types d'étoiles pour l'analyse
@@ -205,6 +212,9 @@ const playGame = (gameIdx, log) => {
   // départ, chaque visiteur en retire une ; prototypes Tesla à côté (fragment)
   let factoryOffer = shuffleArray(PLANS_FORD).slice(0, players.length + 1);
   let teslaOffer = shuffleArray(PLANS_TESLA).slice(0, TESLA_OFFER_SIZE);
+  // Tuile « bonus de pose » de la partie (comme App.jsx) : elle oriente le
+  // choix de l'hex de construction des bots et compte au scoring final
+  const structureBonus = pickStructureBonus();
   const issues = [];
   const combatStats = { pveAttacks: 0, pveWins: 0, defenses: 0, defWins: 0, pvp: 0, encounters: 0 };
   let round = 0, endedBy = 'cap';
@@ -257,8 +267,10 @@ const playGame = (gameIdx, log) => {
       });
       const result = botTurn(players[cp], empire, enemyHexes, rails, { attackable, hexLoot, hexThreat, hexWorkers, forbidden: new Set(), encounterHexes: encounterTokens,
         endgame: players.some((op, oi) => oi !== cp && (op.stars || 0) >= 5),
-        bestOppScore: Math.max(...players.filter((_, oi) => oi !== cp).map(op => estimateScore(op))),
-        allPlayers: players }); // objectifs relatifs aux adversaires
+        bestOppScore: Math.max(...players.filter((_, oi) => oi !== cp).map(op => estimateScore(op, { structureBonus, allPlayers: players }))),
+        allPlayers: players,            // objectifs relatifs aux adversaires
+        structureBonus,                 // P6 : choix de l'hex de construction
+        teslaAvailable: teslaOffer.length > 0 }); // P6 : quête des fragments
       let p = result.player;
       if (log) result.logs.forEach(l => log(`  ${l}`));
 
@@ -349,7 +361,9 @@ const playGame = (gameIdx, log) => {
         combatStats.encounters++;
         encounterTokens.delete(players[cp].hero);
         if (encounterDeck.length === 0) encounterDeck.push(...shuffleArray(ENCOUNTERS));
-        const er = resolveBotEncounter(players[cp], encounterDeck);
+        const er = resolveBotEncounter(players[cp], encounterDeck, {
+          allPlayers: players,
+          bestOppScore: Math.max(...players.filter((_, oi) => oi !== cp).map(op => estimateScore(op, { structureBonus, allPlayers: players }))) });
         players[cp] = er.player;
         if (log) log(`  ${er.log}`);
       }
@@ -446,7 +460,8 @@ const playGame = (gameIdx, log) => {
     traps: (p.trapTokens || []).length, flags: (p.flagTokens || []).length,
     imperialCoins: p.imperialCoins || 0, chimere: !!p.chimereUsed, capturedWorkers: p.capturedWorkers || 0,
     encounters: p.encounters || 0,
-    ...scorePlayer(p),
+    fragments: p.fragments || 0, teslaCard: p.factoryCard?.deck === "tesla",
+    ...scorePlayer(p, structureBonus, players),
   })).sort((a, b) => b.total - a.total);
 
   return { gameIdx, nPlayers, rounds: Math.min(round, MAX_ROUNDS), endedBy, scored, issues, combatStats, empireLeft: Object.keys(empire).length, railsBuilt: combatStats.railsBuilt || 0 };

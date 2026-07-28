@@ -102,3 +102,70 @@ Scythe (finir à petit palier de pop, c'est offrir la partie).
 Chaque étape se mesure avec les mêmes outils (`analyzeLosers` + `botBehavior`,
 mêmes seeds) — on valide sur les MÉTRIQUES DE COMPORTEMENT, pas sur les
 winrates bot-vs-bot.
+
+---
+
+## Résultats après implémentation (v0.15) — mêmes 300 parties, seed 101
+
+| Métrique | Avant | Après | Cible |
+|---|---|---|---|
+| **Tours morts « +1$ » / partie (derniers)** | 4,1 | **0,0** | < 1 ✅ |
+| Score du dernier | 40,6 | **50,2** | ↑ ✅ |
+| Étoiles du dernier | 2,4 | **3,0** | ↑ ✅ |
+| Écart gagnant−dernier | 48,9 | **43,6** | ↓ ✅ |
+| Derniers au palier ×1 (pop ≤ 6) | 32,3 % | **20,7 %** | < 20 % ≈ ✅ |
+| Gagnants au palier ×1 | 14,3 % | **6,0 %** | ↓ ✅ |
+| Étoile Recrues (derniers) | 29 % | **46 %** | ↑ ✅ |
+| Étoile Bâtiments (derniers) | 22 % | **27 %** | ↑ ✅ |
+| Dernière place — pire profil | bâtisseur 40 % | **33 %** | resserré ✅ |
+| « Déclencheur perd » | 41,1 % | 37,8 % | < 25 % ❌ |
+
+**Ce qui a été implémenté** (P1→P5 + deux découvertes) :
+
+- **P1** — Le « +1$ » n'est plus joué qu'en blocage économique réel (fauché,
+  Produire impossible, aucun bas payable) ; Produire est fortement valorisé
+  quand la trésorerie est vide ; on n'achète plus de pop avec son dernier
+  dollar. Résultat : les tours morts disparaissent complètement.
+- **P2** — `scoreColumn` crédite désormais la **préparation à 1 coup** (le
+  haut de la colonne rend son propre bas payable au tour suivant) et pondère
+  chaque action du bas par sa **rentabilité sur CE plateau**
+  (`matValueOf` : bonus $ imprimé contre surcoût).
+- **P3** — **Sprint de palier** : franchir 6→7 ou 12→13 pop en fin de partie
+  vaut +22 au score de la colonne (tout le décompte est multiplié).
+- **P4** — Veto de fin de partie porté de −18 à **−70** (il ne pesait rien
+  face au +25/+15 de la colonne), étendu aux **étoiles automatiques**
+  (16 puissance, 18 pop, 8 ouvriers), à la **révélation d'objectif**, et —
+  découverte de l'analyse — aux **gains gratuits** des cartes d'usine et des
+  rencontres, qui contournaient totalement le garde-fou (« 6 Améliorations »
+  et « 4 Recrues » étaient les déclencheurs perdants les plus fréquents).
+  Nouveau mode **capitalisation** : à 5 étoiles et distancé, le bot bascule
+  sur ressources + palier de pop au lieu de conclure.
+- **P5** — Bâtisseur : palier visé 13→10, boost d'achat 7→4, production +1.
+  Thésauriseur : garde ses 8 ouvriers (son identité) mais soumis à P7.
+- **P6** — Les bots **choisissent enfin leur hex de construction selon la
+  tuile bonus** (`pickBuildHex`, gain marginal réel simulé, préférence pour un
+  hex défendu) ; le simulateur tire désormais une tuile et la score. Quête
+  **Tesla** : les profils patients (bâtisseur, thésauriseur) retardent leur
+  visite de l'Usine, privilégient les rencontres 🔬 et prennent le fragment
+  en récompense de combat PvE.
+- **P7 (découverte)** — **Produire coûte 1♥ dès 6 ouvriers** : un bot qui
+  produisait 13 fois se saignait de 13 popularité, d'où les derniers à pop 0.
+  Le bot refuse désormais de retomber sous un palier pour 2 ressources, et ne
+  sort le 6ᵉ ouvrier que s'il a un moteur de pop (Mémorial, palier confortable)
+  ou vise l'étoile des 8.
+- **Précision de l'estimateur** — `estimateScore` divergeait du vrai décompte
+  (il comptait les ressources hors territoires contrôlés, ignorait les pièges
+  Frente et la tuile bonus) : le bot « croyait mener » dans 75 % des
+  déclenchements perdants. Aligné sur le barème réel.
+
+**Sur le « déclencheur perd » à 37,8 %** : la ventilation par taille de partie
+montre que ce n'est pas (principalement) un défaut d'IA — **22 % à 2 joueurs,
+33 % à 3, 46 % à 4, 49 % à 5**. Avec quatre adversaires, la probabilité qu'au
+moins un dépasse le déclencheur est mécaniquement élevée ; c'est le
+comportement du scoring de Scythe, pas une erreur de décision. Les garde-fous
+fonctionnent (jusqu'à 11 renoncements observés sur une seule partie).
+
+**Verrouillé par les tests** (`src/logic/__tests__/botDecisions.test.js`) :
+absence de tours morts, sémantique de `losingTrigger`, refus/acceptation de
+conclure selon le score, fidélité de `estimateScore` au décompte, et refus de
+brader un palier de popularité pour produire.

@@ -61,7 +61,15 @@ Plus aucun chantier en attente. Les deux derniers ont été livrés :
 - Icônes Scythe officielles (PNG) à la place des emoji.
 - Visualisation du tour du bot : surligner le hex qu'il choisit / tracer son déplacement (le scoreboard pulse déjà le bot actif).
 
-### 🏦 Bots : stratégie de pose des bâtiments (à développer)
+### ✅ Bots : réflexion revue (v0.15 — voir analyse_bots_perdants.md)
+Chantiers P1→P7 livrés : fin des tours morts « +1$ », préparation à 1 coup,
+rentabilité par plateau, sprint de palier de pop, veto de fin de partie
+(étendu aux gains gratuits d'usine/rencontres), production consciente du coût
+en popularité, pose de bâtiments selon la tuile bonus, quête Tesla des profils
+patients, estimateur de score aligné sur le vrai décompte.
+Reste ouvert : visualisation du tour du bot, cartes valuées côté bots.
+
+### 🏦 Bots : stratégie de pose des bâtiments (FAIT en v0.15 — historique)
 Les bots ignorent totalement la tuile « bonus de pose » tirée en début de
 partie (`pickBuilding` choisit le TYPE selon la phase/profil, l'hex est
 simplement le hex ouvrier le plus proche du centre) — l'écart humain/bot au
@@ -80,7 +88,7 @@ scoring se creuse avec les tuiles à forte identité (Avant-Postes : 10$+).
 - Passer la tuile active à `botTurn` via `ctx` (elle vit dans App.jsx).
 - Mesurer en simulation : le gain moyen 🏦 par tuile et par bot avant/après.
 
-### 🔬 Bot « stratégie Tesla » (à développer)
+### 🔬 Bot « stratégie Tesla » (FAIT en v0.15 — historique)
 Aujourd'hui tous les bots foncent à la Rouge River dès que possible
 (`pickMoveTarget`, aimant RR) et prennent une carte Ford — les prototypes
 Tesla (2 fragments consommés à la prise) restent de fait réservés au joueur

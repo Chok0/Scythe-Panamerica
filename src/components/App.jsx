@@ -616,10 +616,15 @@ export default function App(){
         // Liste des joueurs en partie : objectifs relatifs aux adversaires
         // (plus grande puissance, bases adverses…)
         allPlayers:players,
+        // Tuile « bonus de pose » active : oriente le choix de l'hex de
+        // construction des bots (P6) — jusqu'ici ils l'ignoraient totalement
+        structureBonus,
+        // Reste-t-il un prototype Tesla en vitrine ? (quête des fragments)
+        teslaAvailable:teslaOffer.length>0,
         // Fin imminente : un autre joueur (humain compris) est à 5+ étoiles
         endgame:players.some((op,oi)=>oi!==cp&&(op.stars||0)>=5),
         // Meilleur score adverse estimé — gestion de la 6e étoile (finir ou retarder)
-        bestOppScore:Math.max(...players.filter((_,oi)=>oi!==cp).map(op=>estimateScore(op)))};
+        bestOppScore:Math.max(...players.filter((_,oi)=>oi!==cp).map(op=>estimateScore(op,{structureBonus,allPlayers:players})))};
       let result=botTurn(players[cp],empire,botEnemyHexes,rails,botCtx);
       let p=result.player;const logs=[...result.logs];
       // ── BOT COMBAT: check if bot moved onto Empire mecha ──
@@ -641,9 +646,13 @@ export default function App(){
           // Remove empire mecha
           setEmpire(prev=>{const n={...prev};delete n[empireOnHero[0]];return n;});
           p.empireKills=(p.empireKills||0)+1;
-          // Bot picks random reward
+          // Récompense : un bot en quête Tesla prend le FRAGMENT (les bots
+          // n'y touchaient jamais — la quête leur était inaccessible)
+          const hunting=BOT_PROFILES[p.botProfile]?.teslaHunter&&!p.visitedRR
+            &&(p.fragments||0)<TESLA_FRAGMENTS_REQUIRED&&teslaOffer.length>0;
           const rw=Math.random();
-          if(rw<0.4){p.pop=Math.min(p.pop+2,18);logs.push(`🤖 ${bf.name}: +2 Pop`);}
+          if(hunting){p.fragments=(p.fragments||0)+1;logs.push(`🤖🔬 ${bf.name}: +1 Fragment Tesla (${p.fragments}/${TESLA_FRAGMENTS_REQUIRED})`);}
+          else if(rw<0.4){p.pop=Math.min(p.pop+2,18);logs.push(`🤖 ${bf.name}: +2 Pop`);}
           else{
             const hid=String(botHeroHex);if(!p.resources[hid])p.resources[hid]={};
             p.resources[hid].metal=(p.resources[hid].metal||0)+2;
@@ -744,7 +753,7 @@ export default function App(){
       if(encounterTokens.has(n[cp].hero)){
         const encHex=n[cp].hero;
         if(encounterDeckRef.current.length===0)encounterDeckRef.current=shuffleArray(ENCOUNTERS);
-        const er=resolveBotEncounter(n[cp],encounterDeckRef.current);
+        const er=resolveBotEncounter(n[cp],encounterDeckRef.current,botCtx);
         n[cp]=er.player;logs.push(er.log);
         setEncounterTokens(prev=>{const s=new Set(prev);s.delete(encHex);return s;});
       }

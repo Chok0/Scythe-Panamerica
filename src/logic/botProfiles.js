@@ -23,20 +23,27 @@ export const BOT_PROFILES = {
     enlistPriority: [0, 1, 2, 3],   // puissance, pièces, pop, cartes
     buildPriority: null,            // ordre par phase (défaut de bot.js)
   },
+  // v0.15 : le bâtisseur perdait structurellement (40 % de dernières places,
+  // 21 % de victoires) — il achetait de la pop au goutte-à-goutte jusqu'à
+  // s'assécher, sans jamais construire son moteur d'étoiles. Palier visé
+  // ramené à 10 (le palier ×2 commence à 7 ; 13 se joue en sprint de fin,
+  // cf. P3 dans bot.js) et boost d'achat réduit : la pop se prend sur les
+  // rencontres et le Mémorial, pas en brûlant sa trésorerie.
   batisseur: {
     key: "batisseur", name: "Bâtisseur", icon: "🏛",
-    desc: "Moteur de popularité : enlist pop, Mémorial+Bolster, course aux rencontres, palier 13+",
-    popTarget: 13,
-    tradePopBoost: 7,
+    desc: "Moteur de popularité : enlist pop, Mémorial+Bolster, course aux rencontres, sprint de palier",
+    popTarget: 10,
+    tradePopBoost: 4,
     chasePopStar: true,  // pousse jusqu'à l'étoile 18 pop
     aggroMargin: 4,      // évite les combats (mauvais pour l'image)
     attackReward: 6,
     earlyAttack: false,
     encounterPull: 12,   // fonce sur les jetons rencontre (gains de pop)
     bolsterBoost: 2,     // Bolster nourrit le Mémorial (+1 pop)
-    produceBoost: 0,
+    produceBoost: 1,     // v0.15 : il lui manquait des ressources pour bâtir
     maxWorkersEarly: 5,
     starRush: 0,
+    teslaHunter: true,   // patient par nature : bon candidat à la quête Tesla
     enlistPriority: [2, 1, 0, 3],   // pop d'abord
     buildPriority: ["memorial", "moulin", "gare", "arsenal"],
   },
@@ -58,6 +65,10 @@ export const BOT_PROFILES = {
     enlistPriority: [0, 3, 1, 2],   // puissance puis cartes de combat
     buildPriority: ["gare", "arsenal", "moulin", "memorial"],
   },
+  // v0.15 : le thésauriseur perdait aussi (37 % de dernières places) — sortir
+  // 8 ouvriers tout de suite coûte 1 pop par Produce dès le 5e (règle Scythe)
+  // et sature le plateau sans débouché : régime ramené à 6 ouvriers en early,
+  // production légèrement calmée au profit du tempo (actions du bas).
   thesauriseur: {
     key: "thesauriseur", name: "Thésauriseur", icon: "📦",
     desc: "Produire, empiler, éviter les coups — les ressources et le palier de pop font le score",
@@ -70,8 +81,12 @@ export const BOT_PROFILES = {
     encounterPull: 7,
     bolsterBoost: 0,
     produceBoost: 5,     // produit dès que possible
-    maxWorkersEarly: 8,  // tous les ouvriers, tout de suite
+    // 8 ouvriers reste son identité — mais la production est désormais
+    // « consciente du palier » (P7 dans bot.js) : le 6e ouvrier n'est sorti
+    // que s'il existe un moteur de pop, sinon on plafonne à 5.
+    maxWorkersEarly: 8,
     starRush: 0,
+    teslaHunter: true,   // il thésaurise… y compris les fragments
     enlistPriority: [1, 2, 0, 3],   // pièces puis pop
     buildPriority: ["moulin", "memorial", "gare", "arsenal"],
   },

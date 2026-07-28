@@ -1,0 +1,111 @@
+// Garde-fous de RÉFLEXION des bots (v0.15) — chaque test verrouille une
+// pathologie mesurée en simulation (voir docs/design/analyse_bots_perdants.md).
+import { describe, it, expect } from 'vitest';
+import { botTurn, estimateScore, losingTrigger } from '../bot.js';
+import { createPlayer } from '../player.js';
+import { hMap, HEXES } from '../../data/hexes.js';
+import { TERRAINS } from '../../data/terrains.js';
+
+const mkBot = (mat = 1) => {
+  const p = createPlayer('confederation', mat, true);
+  p.botProfile = 'equilibre'; p.botNoise = 0;
+  return p;
+};
+const run = (p, ctx = {}) => botTurn(p, {}, new Set(), [], { forbidden: new Set(), ...ctx });
+
+describe('P1 — plus de tour mort « +1$ »', () => {
+  it('un bot fauché ne gagne 1$ que s\'il ne peut NI produire NI payer une action du bas', () => {
+    // Fauché mais des ouvriers sur des hex productifs → il doit produire/agir,
+    // jamais brûler son tour pour 1 pièce (mesuré 4,1 tours morts/partie).
+    const p = mkBot();
+    p.coins = 0;
+    const logs = [];
+    for (let i = 0; i < 12; i++) {
+      const r = run({ ...p, lastCol: i % 4, workers: p.workers.map(w => ({ ...w })), mechs: [], resources: {} });
+      logs.push(...r.logs);
+    }
+    const dead = logs.filter(l => /\+\d+\$ \(Déplacer/.test(l)).length;
+    expect(dead, `tours morts : ${dead}`).toBeLessThanOrEqual(2);
+  });
+});
+
+describe('P4 — ne pas terminer la partie en étant derrière', () => {
+  it('losingTrigger : vrai seulement à 5 étoiles, action finissante ET score inférieur', () => {
+    const p = mkBot(); p.stars = 5;
+    expect(losingTrigger(p, { bestOppScore: 9999 }, true)).toBe(true);
+    expect(losingTrigger(p, { bestOppScore: 0 }, true)).toBe(false);   // on mène
+    expect(losingTrigger(p, { bestOppScore: 9999 }, false)).toBe(false); // n'achève pas
+    p.stars = 4;
+    expect(losingTrigger(p, { bestOppScore: 9999 }, true)).toBe(false); // pas la 6e
+    expect(losingTrigger(p, {}, true)).toBe(false);                    // sans contexte
+  });
+
+  it('à 5 étoiles et distancé, le bot ne joue pas l\'action du bas qui poserait la 6e', () => {
+    // 3 recrues + ressources en poche : Enrôler donnerait la 4e recrue = 6e étoile
+    const p = mkBot();
+    p.stars = 5; p.recruits = 3; p.enlistMap = [0, 1, 2, null];
+    const hex = p.workers[0].hexId;
+    p.resources = { [hex]: { nourriture: 9, petrole: 9, metal: 9, bois: 9 } };
+    let enlisted = 0;
+    for (let i = 0; i < 8; i++) {
+      const r = run({ ...p, lastCol: i % 4, workers: p.workers.map(w => ({ ...w })), mechs: [] },
+        { bestOppScore: 9999 }); // très loin devant : finir = perdre
+      if (r.player.recruits > 3) enlisted++;
+    }
+    expect(enlisted, 'le bot a déclenché la fin en perdant').toBe(0);
+  });
+
+  it('en tête au score, le même bot conclut sans hésiter', () => {
+    const p = mkBot();
+    p.stars = 5; p.recruits = 3; p.enlistMap = [0, 1, 2, null];
+    const hex = p.workers[0].hexId;
+    p.resources = { [hex]: { nourriture: 9, petrole: 9, metal: 9, bois: 9 } };
+    let enlisted = 0;
+    for (let i = 0; i < 8; i++) {
+      const r = run({ ...p, lastCol: i % 4, workers: p.workers.map(w => ({ ...w })), mechs: [] },
+        { bestOppScore: 0 });
+      if (r.player.recruits > 3) enlisted++;
+    }
+    expect(enlisted).toBeGreaterThan(0);
+  });
+});
+
+describe('estimateScore — même barème que le décompte final', () => {
+  it('ne compte que les ressources sur des territoires CONTRÔLÉS', () => {
+    const p = mkBot();
+    const held = p.workers[0].hexId;
+    const foreign = HEXES.find(h => !h.base && h.id !== held
+      && !p.workers.some(w => w.hexId === h.id) && h.id !== p.hero).id;
+    const base = estimateScore({ ...p, resources: {} });
+    const onHeld = estimateScore({ ...p, resources: { [held]: { metal: 4 } } });
+    const onForeign = estimateScore({ ...p, resources: { [foreign]: { metal: 4 } } });
+    expect(onHeld).toBeGreaterThan(base);
+    expect(onForeign).toBe(base); // un magot hors contrôle ne vaut rien au score
+  });
+
+  it('intègre la tuile « bonus de pose » quand le contexte la fournit', () => {
+    const p = mkBot();
+    const spot = HEXES.find(h => h.t === 'champs' && !h.base);
+    p.buildings = [{ type: 'moulin', hexId: spot.id }];
+    const tile = { count: () => 1, score: (n) => n * 9, check: () => true };
+    expect(estimateScore(p, { structureBonus: tile })).toBe(estimateScore(p) + 9);
+  });
+});
+
+describe('P7 — Produire ne se paie pas au prix d\'un palier de popularité', () => {
+  it('à 6 ouvriers et pop 7, le bot évite le Produire qui le ferait retomber au palier ×1', () => {
+    // 6 ouvriers → Produire coûte 1⚡ ET 1♥ (règle Scythe). À pop 7, produire
+    // fait retomber sous le palier : tout le score final serait amputé.
+    const p = mkBot();
+    p.pop = 7; p.power = 6; p.coins = 4;
+    const prod = HEXES.filter(h => !h.base && TERRAINS[h.t]?.res && TERRAINS[h.t].res !== 'ouvriers').slice(0, 3);
+    p.workers = prod.flatMap((h, i) => [0, 1].map(k => ({ id: `w${i}${k}`, hexId: h.id })));
+    expect(p.workers.length).toBe(6);
+    let produced = 0;
+    for (let i = 0; i < 8; i++) {
+      const r = run({ ...p, lastCol: i % 4, workers: p.workers.map(w => ({ ...w })), mechs: [], resources: {} });
+      if (r.logs.some(l => /: Produire$/.test(l))) produced++;
+    }
+    expect(produced, 'le bot brade son palier de popularité').toBeLessThanOrEqual(2);
+  });
+});
