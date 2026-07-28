@@ -72,6 +72,42 @@ export const BOT_PROFILES = {
   // 8 ouvriers tout de suite coûte 1 pop par Produce dès le 5e (règle Scythe)
   // et sature le plateau sans débouché : régime ramené à 6 ouvriers en early,
   // production légèrement calmée au profit du tempo (actions du bas).
+  // v0.15 — Profil HARCELEUR, écrit pour la Confédération (l'équivalent
+  // Saxonie de Panamerica) : faction violente et MOBILE dont le plan n'est pas
+  // de bâtir mais de vivre sur le dos des autres. Elle prend les ouvriers
+  // adverses (Servitude), pille leurs tas de ressources, rafle les rencontres
+  // très vite, et — le point clé — empêche les autres de se déployer
+  // naturellement en chassant leurs ouvriers de leurs hubs de production.
+  // Son score vient des TERRITOIRES et des ressources VOLÉES, pas de la
+  // popularité. Elle exige une expertise en déplacement et en gestion de la
+  // puissance : ses atouts sont Cavaliers (+2 puissance en attaque) et le
+  // riverwalk plaine/village, qui la mène droit sur les hubs d'ouvriers.
+  harceleur: {
+    key: "harceleur", name: "Harceleur", icon: "🐎",
+    desc: "Razzia permanente : voler les ouvriers et les ressources, rafler les rencontres, étouffer le développement adverse",
+    // Son score vient des territoires et du butin, tous deux MULTIPLIÉS par le
+    // palier de popularité : elle doit donc racheter la pop que ses razzias
+    // lui coûtent (mesuré sans ça : pop finale 4-5, tout son score en ×1).
+    popTarget: 8,
+    tradePopBoost: 5,
+    chasePopStar: false,
+    aggroMargin: -1,     // attaque même à parité : Cavaliers lui donne +2 en attaque
+    attackReward: 14,    // le combat EST son moteur de score
+    earlyAttack: true,   // harcèle dès le premier tour
+    encounterPull: 14,   // rafle les rencontres avant tout le monde
+    bolsterBoost: 3,     // la puissance est son carburant : à gérer en continu
+    produceBoost: -1,    // elle vole plus qu'elle ne produit
+    maxWorkersEarly: 4,  // peu d'ouvriers : mobilité maximale, pop préservée
+    starRush: 4,
+    moveBoost: 7,        // la faction la plus mobile du jeu
+    disruption: 9,       // valeur d'un hub d'ouvriers adverse chassé (déni de Deploy/Produce)
+    lootPull: 8,         // valeur d'un magot à piller
+    enlistPriority: [0, 2, 3, 1],   // puissance, puis POPULARITÉ (razzias à payer)
+    // Elle joue Soutien en permanence (puissance = carburant) : l'Arsenal
+    // (+1 puissance) et le Mémorial (+1 pop) transforment chaque Soutien en
+    // moteur double — c'est SA combinaison, avant la Gare et le Moulin.
+    buildPriority: ["arsenal", "memorial", "gare", "moulin"],
+  },
   thesauriseur: {
     key: "thesauriseur", name: "Thésauriseur", icon: "📦",
     desc: "Produire, empiler, éviter les coups — les ressources et le palier de pop font le score",
@@ -99,7 +135,11 @@ export const BOT_PROFILES = {
 // tire un profil au sort → d'une partie à l'autre, la même faction ne joue
 // pas pareil.
 export const FACTION_PROFILE_WEIGHTS = {
-  confederation: { blitz: 2, batisseur: 2, equilibre: 1 },
+  // Confédération : v0.15 — le profil « bâtisseur » (pacifiste, moteur de
+  // popularité) était l'exact contraire de son identité et lui était attribué
+  // dans ~40 % de ses parties : mesurée 41 % de dernières places. Elle joue
+  // désormais son plan — harcèlement mobile, razzia, déni de développement.
+  confederation: { harceleur: 3, blitz: 2, equilibre: 1 },
   frente: { equilibre: 2, blitz: 1, thesauriseur: 1 },
   nations: { equilibre: 2, batisseur: 1, blitz: 1 },
   acadiane: { thesauriseur: 2, batisseur: 1, equilibre: 1 },
@@ -114,7 +154,10 @@ export const FACTION_PROFILE_WEIGHTS = {
 // leader dynamique (étoiles/pop/pièces en cours de partie) dans le ciblage.
 export const MAP_META_THREAT = {
   acadiane: 3, frente: 2, nations: 2,
-  bayou: 0, confederation: 0, dominion: 0,
+  // Confédération : voisine dangereuse qu'on ne laisse pas prospérer — les
+  // autres factions la traitent comme une menace (elle vit de leurs ouvriers)
+  confederation: 3,
+  bayou: 0, dominion: 0,
 };
 
 /** Standing dynamique d'un joueur (détection du leader à harceler). */

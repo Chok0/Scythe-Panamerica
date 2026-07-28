@@ -10,6 +10,7 @@ import { BOT_PROFILES } from './botProfiles.js';
 import { BALANCE } from '../data/balance.js';
 import { getMechAbilities } from '../data/mechAbilities.js';
 import { FACTORY_COL, TESLA_FRAGMENTS_REQUIRED, factoryCostLabel, factoryEffectLabel } from '../data/plans.js';
+import { COMBAT_ABILITIES } from '../data/combat.js';
 import { canPayFactoryCost, payFactoryCost, factoryEffectPossible, factoryResourceHex } from './factory.js';
 
 // ══════════════════════════════════════════════════════
@@ -406,7 +407,11 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
   // (corpus : « attack when you can put together enough power to GUARANTEE a
   // win » ; mesuré en partie réelle : Nations a perdu 8 v 10 puis 8 v 12,
   // offrant les 2 étoiles de combat du défenseur humain)
-  const myStrength = Math.min(Math.floor(p.power * 0.7) + 1, 7, p.power) + Math.min(p.combatCards || 0, 2) * 2;
+  // v0.15 : le bonus de combat de la FACTION en attaque était ignoré dans
+  // l'estimation — la Confédération (Cavaliers, +2 en attaque) sous-évaluait
+  // systématiquement ses propres charges, alors que c'est tout son plan de jeu.
+  const atkBonus = (COMBAT_ABILITIES[p.faction]?.apply(p, null, true)?.powerBonus) || 0;
+  const myStrength = Math.min(Math.floor(p.power * 0.7) + 1, 7, p.power) + Math.min(p.combatCards || 0, 2) * 2 + atkBonus;
   const wantCombatStar = (p.combatWins || 0) < 2;
   // Planification : les ouvriers convergent vers les ressources manquantes des bottoms
   const need = neededResources(p);
@@ -472,7 +477,11 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
         if (wantCombatStar && losingTrigger(p, ctx, true)) s -= 40;
         // Un gros magot (≥4) justifie le combat même sans étoile à la clé
         if (!overextended && myStrength >= defStrength + prof.aggroMargin && (wantCombatStar || prof.earlyAttack || loot >= 4 || factoryPrize) && (prof.earlyAttack || getPhase(p) !== "early" || nearHome))
-          s += (wantCombatStar ? prof.attackReward : Math.floor(prof.attackReward / 2)) + Math.min(4, myStrength - defStrength) + loot + threat + (nearHome ? 6 : 0) + factoryPrize - popLoss - popAfford;
+          s += (wantCombatStar ? prof.attackReward : Math.floor(prof.attackReward / 2)) + Math.min(4, myStrength - defStrength) + loot + threat + (nearHome ? 6 : 0) + factoryPrize - popLoss - popAfford
+            // Harceleur : le butin est sa monnaie, et déloger une garnison
+            // adverse la renvoie à sa base — déni de développement durable
+            + (prof.lootPull ? Math.min(prof.lootPull, loot * 2) : 0)
+            + (prof.disruption ? Math.min(prof.disruption, popLoss * 3) : 0);
         else s -= 12;
       } else if (enemyHexes && enemyHexes.has(hexId)) {
         // Hex avec seulement des ouvriers ennemis : déplacement possible mais coûte de la pop
@@ -481,12 +490,22 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
         if (p.faction === "confederation" && (p.capturedWorkers || 0) < 2 && p.pop >= 4) s += 6;
         else s -= 4;
         s -= popTierPenalty(p, wCost); // P8 : ne pas brader un palier pour un raid
+        // ── RAZZIA (profil harceleur) ────────────────────────────────────
+        // Chasser les ouvriers d'un hub adverse ne fait pas que coûter de la
+        // pop : ça ÉTOUFFE son développement (plus de Produire ni de Déployer
+        // sur ce hex, ses ouvriers repartent de la base). Plus le hub est
+        // peuplé, plus le déni fait mal — c'est le plan de la Confédération.
+        if (prof.disruption && p.pop >= 4) s += Math.min(prof.disruption, 3 + wCost * 3);
         // Raid : un gros tas de ressources sur un hex d'ouvriers vaut le coût en
         // pop pour les profils agressifs — prendre le hex neutralise le magot
         // du thésauriseur au scoring ; ralentir l'économie du leader compte aussi
         const wLoot = ctx && ctx.hexLoot ? (ctx.hexLoot.get(hexId) || 0) : 0;
         const wThreat = ctx && ctx.hexThreat ? (ctx.hexThreat.get(hexId) || 0) : 0;
-        if (wLoot >= 3 && prof.aggroMargin <= 2 && p.pop >= 3) s += Math.min(12, wLoot);
+        // Le harceleur pille dès le premier tas ; les autres attendent 3+
+        const lootFloor = prof.lootPull ? 1 : 3;
+        if (wLoot >= lootFloor && (prof.lootPull || prof.aggroMargin <= 2) && p.pop >= 3) {
+          s += Math.min(12, wLoot) + (prof.lootPull ? Math.min(prof.lootPull, wLoot * 2) : 0);
+        }
         if (wThreat >= 3 && prof.aggroMargin <= 2 && p.pop >= 3) s += Math.floor(wThreat / 2);
       }
     }

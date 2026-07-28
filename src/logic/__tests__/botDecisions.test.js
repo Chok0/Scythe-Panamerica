@@ -115,6 +115,47 @@ describe('P8 — un bot agressif ne se vide pas de sa popularité', () => {
   });
 });
 
+describe('Identité de la Confédération — profil harceleur', () => {
+  it('le profil harceleur porte bien un plan de razzia mobile', async () => {
+    const { BOT_PROFILES } = await import('../botProfiles.js');
+    const h = BOT_PROFILES.harceleur;
+    expect(h).toBeDefined();
+    expect(h.earlyAttack).toBe(true);              // harcèle dès le début
+    expect(h.aggroMargin).toBeLessThanOrEqual(0);  // attaque à parité (Cavaliers +2)
+    expect(h.moveBoost).toBeGreaterThanOrEqual(6); // la plus mobile du jeu
+    expect(h.disruption).toBeGreaterThan(0);       // déni de développement adverse
+    expect(h.lootPull).toBeGreaterThan(0);         // pillage des tas de ressources
+    expect(h.encounterPull).toBeGreaterThanOrEqual(12); // rafle les rencontres
+    // Son score passe par les multiplicateurs : elle rachète la pop des razzias
+    expect(h.popTarget).toBeGreaterThanOrEqual(7);
+    // Soutien permanent → Arsenal (puissance) et Mémorial (pop) en priorité
+    expect(h.buildPriority.slice(0, 2).sort()).toEqual(['arsenal', 'memorial']);
+  });
+
+  it('la Confédération ne joue plus le plan pacifiste du bâtisseur', async () => {
+    const { FACTION_PROFILE_WEIGHTS, assignBotProfile } = await import('../botProfiles.js');
+    const w = FACTION_PROFILE_WEIGHTS.confederation;
+    expect(w.harceleur).toBeGreaterThan(0);
+    expect(w.batisseur).toBeUndefined();
+    // en difficile, elle prend son meilleur plan : le harcèlement
+    expect(assignBotProfile('confederation', 'difficile')).toBe('harceleur');
+  });
+
+  it('l\'estimation de force en attaque intègre le bonus de faction (Cavaliers +2)', () => {
+    // Deux bots identiques sauf la faction : la Confédération doit s'estimer
+    // plus forte EN ATTAQUE que le Bayou (pas de bonus offensif).
+    const conf = createPlayer('confederation', 1, true);
+    const bayou = createPlayer('bayou', 1, true);
+    conf.power = bayou.power = 6; conf.combatCards = bayou.combatCards = 2;
+    const strength = (p) => {
+      const { COMBAT_ABILITIES } = require('../../data/combat.js');
+      const b = COMBAT_ABILITIES[p.faction]?.apply(p, null, true)?.powerBonus || 0;
+      return Math.min(Math.floor(p.power * 0.7) + 1, 7, p.power) + Math.min(p.combatCards, 2) * 2 + b;
+    };
+    expect(strength(conf)).toBeGreaterThan(strength(bayou));
+  });
+});
+
 describe('P7 — Produire ne se paie pas au prix d\'un palier de popularité', () => {
   it('à 6 ouvriers et pop 7, le bot évite le Produire qui le ferait retomber au palier ×1', () => {
     // 6 ouvriers → Produire coûte 1⚡ ET 1♥ (règle Scythe). À pop 7, produire

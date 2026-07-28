@@ -197,10 +197,66 @@ le reliquat est structurel — **22 % à 2 joueurs contre 49 % à 5** : avec qua
 adversaires, la probabilité qu'au moins un dépasse le déclencheur est
 mécaniquement élevée ; c'est le scoring de Scythe, pas une erreur de décision.
 
-**Piste ouverte** : la Confédération reste la faction la plus souvent dernière
-(41 %). Son ability (capture) et son objectif de faction la poussent vers des
-actions coûteuses en popularité ; à examiner en playtest humain avant tout
-nouvel ajustement automatique.
+---
+
+## Confédération : une faction qui ne jouait pas son plan (v0.15)
+
+La Confédération restait la plus souvent dernière (41 %). La cause n'était pas
+un réglage de valeurs mais une **erreur d'identité** : le profil « bâtisseur »
+(pacifiste, moteur de popularité, `aggroMargin` 4 donc évite le combat) lui
+était attribué dans ~40 % de ses parties — l'exact contraire de son plan.
+
+Son identité de design est celle d'une **Saxonie** : faction violente et
+MOBILE qui ne bâtit pas mais vit sur le dos des autres — voler les ouvriers
+(Servitude), piller les ressources, rafler les rencontres très vite, et
+surtout **empêcher les adversaires de se déployer naturellement** en chassant
+leurs ouvriers de leurs hubs. Son score vient des TERRITOIRES et du butin. Le
+matériel le confirme : **Cavaliers (+2 puissance en attaque)** et riverwalk
+*plaine/village* — qui mène droit sur les hubs d'ouvriers.
+
+**Profil `harceleur`** (`botProfiles.js`) : `earlyAttack`, `aggroMargin: -1`
+(attaque à parité — le +2 des Cavaliers fait la différence), `moveBoost: 7`
+(la plus mobile), `encounterPull: 14`, `maxWorkersEarly: 4` (mobilité, pop
+préservée), plus deux leviers inédits câblés dans `pickMoveTarget` :
+- `disruption` — valeur du **déni** : chasser les ouvriers d'un hub adverse
+  lui interdit Produire ET Déployer sur ce hex ; plus le hub est peuplé, plus
+  le coup fait mal ;
+- `lootPull` — pillage dès le premier tas de ressources (les autres profils
+  attendent 3+).
+
+Deux corrections structurelles ont suivi : l'estimation de force en attaque
+**intègre enfin le bonus de combat de la faction** (la Confédération
+sous-évaluait systématiquement ses propres charges), et le harceleur **rachète
+la popularité** que ses razzias lui coûtent (Arsenal + Mémorial en tête de sa
+liste de construction : il joue Soutien en permanence, chaque Soutien devient
++1 puissance ET +1 popularité). Sans ça, il finissait à pop 4-5, tout son
+score en ×1.
+
+**Mesures (600 parties)** — le profil se comporte exactement comme le design
+l'annonce, « efficace à peu de joueurs » :
+
+| Joueurs | Victoire (harceleur) | Score moyen | Pop finale |
+|---|---|---|---|
+| 2 | 63 % *(n=30, à confirmer)* | 86 | 11,0 |
+| 3 | **43 %** | 67 | 9,9 |
+| 4 | 32 % | 70 | 9,6 |
+| 5 | 37 % | 65 | 8,3 |
+| *référence (autres profils)* | *27 %* | *70* | — |
+
+Vérification croisée (graines 303/404) : à **3 joueurs le résultat est stable**
+— 43 / 50 / 45 % de victoires, nettement au-dessus des 27-29 % de référence.
+À **2 joueurs l'échantillon est trop faible** (6 à 30 sièges selon la graine,
+résultats de 17 % à 70 %) : la supériorité à deux reste à confirmer, mais rien
+ne la contredit.
+
+Confédération : victoires **19 % → 31,1 %**, dernières places **41 % → 35 %**,
+combats PvP du jeu **2,4 → 4,0 par partie**, et c'est désormais elle qui rafle
+le plus de rencontres (2,7/partie, record du jeu). Équilibre général des
+factions conservé : 19 % (Bayou) à 35 % (Dominion) de victoires pour une
+espérance de ~26 %.
+
+**Piste ouverte** : le Bayou est désormais la faction la plus faible (19 %) —
+à examiner en playtest humain avant tout ajustement automatique.
 
 **Verrouillé par les tests** (`src/logic/__tests__/botDecisions.test.js`) :
 absence de tours morts, sémantique de `losingTrigger`, refus/acceptation de
