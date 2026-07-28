@@ -98,6 +98,7 @@ export default function App(){
   const[encounterBuild,setEncounterBuild]=useState(false); // rencontre → choisir le type de bâtiment (posé sur le hex du héros)
   const[encounterEnlist,setEncounterEnlist]=useState(null); // rencontre → enrôler : {col:null} puis {col}
   const[encounterUpgrade,setEncounterUpgrade]=useState(null); // rencontre → amélioration : {from:null} puis {from} (cube haut→bas)
+  const[encounterResources,setEncounterResources]=useState(null); // rencontre → ressources AU CHOIX : {remaining} (posées sur le hex du héros)
   const[rougeRiver,setRougeRiver]=useState(null); // {cards:[]}
   const[encounterTokens,setEncounterTokens]=useState(new Set(CURRENT_MAP.encounterHexes));
   // Deck de rencontres SANS remise (partagé joueur/bots) : mélangé au départ,
@@ -1298,7 +1299,7 @@ export default function App(){
     // contexte d'action capturé (selAction/preActionSnapshot) du snapshot
     setSelAction(snap.selAction??null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(snap.preActionSnapshot??null);setTradePicks([]);
     setPendingBottom(null);setBottomPick(null);setCombat(null);setEncounter(null);setRougeRiver(null);
-    setEncounterBuild(false);setEncounterEnlist(null);setEncounterUpgrade(null);setFactoryFlow(null);setFactoryPreview(false);
+    setEncounterBuild(false);setEncounterEnlist(null);setEncounterUpgrade(null);setEncounterResources(null);setFactoryFlow(null);setFactoryPreview(false);
     setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);setEndOfTurn(false);
   },[cloneVal]);
   const pushHistory=useCallback(()=>{ setUndoStack(s=>[...s.slice(-40),snapshotGame()]); setRedoStack([]); },[snapshotGame]);
@@ -2251,9 +2252,27 @@ export default function App(){
     if(choice.grantsBuilding){ setEncounterBuild(true); return; }
     if(choice.grantsRecruit){ setEncounterEnlist({col:null}); return; }
     if(choice.grantsUpgrade&&(me.upgrades||0)<6){ setEncounterUpgrade({from:null}); return; }
+    if(choice.grantsResources>0){ setEncounterResources({remaining:choice.grantsResources}); return; }
     // Resume movement check
     resumeAfterEncounter();
   },[encounter,me,addLog,resumeAfterEncounter]);
+
+  // ── RÉCOMPENSE RENCONTRE : ressources AU CHOIX (posées sur le hex du héros) ──
+  const doEncounterResource=useCallback((resType)=>{
+    if(!encounterResources||!me)return;
+    setPlayers(prev=>{
+      const n=[...prev];const p={...n[0],resources:{...n[0].resources}};
+      Object.keys(n[0].resources).forEach(k=>{p.resources[k]={...n[0].resources[k]};});
+      const key=String(p.hero);
+      if(!p.resources[key])p.resources[key]={};
+      p.resources[key][resType]=(p.resources[key][resType]||0)+1;
+      n[0]=p;return n;
+    });
+    addLog(`📦 +1 ${resFR(resType)} sur #${me.hero} (rencontre)`);
+    const remaining=encounterResources.remaining-1;
+    if(remaining<=0){setEncounterResources(null);resumeAfterEncounter();}
+    else setEncounterResources({remaining});
+  },[encounterResources,me,addLog,resumeAfterEncounter]);
 
   // ── RÉCOMPENSE RENCONTRE : bâtiment gratuit (posé sur le hex du héros) ──
   const doEncounterBuild=useCallback((buildingType)=>{
@@ -3182,7 +3201,7 @@ export default function App(){
         )}
 
         {/* ═══ MODAL OVERLAYS (combat/encounter/RR/dépose en route/pouvoir optionnel) ═══ */}
-        {(combat||encounter||encounterBuild||encounterEnlist||encounterUpgrade||rougeRiver||factoryPreview||routeDrop||abilityOffer)&&(
+        {(combat||encounter||encounterBuild||encounterEnlist||encounterUpgrade||encounterResources||rougeRiver||factoryPreview||routeDrop||abilityOffer)&&(
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
             <div style={{maxWidth:460,width:"92%",maxHeight:"80vh",overflow:"auto",borderRadius:12,border:"1px solid var(--border-light)",boxShadow:"0 10px 50px rgba(0,0,0,0.8)"}}>
 
@@ -3414,6 +3433,24 @@ export default function App(){
                   </div>
                 );
               })()}
+
+              {/* RENCONTRE → RESSOURCES AU CHOIX (cartes du deck original) */}
+              {encounterResources&&(
+                <div style={{padding:"20px",background:"linear-gradient(180deg,#141410,var(--bg2))",borderRadius:10,border:"1px solid var(--gold-dim)",animation:"slideUp 0.35s ease"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+                    <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(201,168,76,0.12)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:25,border:"2px solid var(--gold)",flexShrink:0}}>📦</div>
+                    <div>
+                      <div style={{fontFamily:"var(--font-title)",color:"var(--gold)",fontSize:18,fontWeight:700}}>Ressources au choix</div>
+                      <div style={{fontSize:13,color:"var(--text-dim)"}}>Encore {encounterResources.remaining} à choisir — posées sur le hex de la rencontre (#{me.hero})</div>
+                    </div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:8}}>
+                    {[["metal","⚙"],["bois","🪵"],["nourriture","🌽"],["petrole","🛢"]].map(([rt,ico])=>(
+                      <button key={rt} onClick={()=>doEncounterResource(rt)} className="act-btn" style={{textAlign:"center",fontSize:15,fontWeight:700}}>{ico} {resFR(rt)}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* RENCONTRE → RECRUE GRATUITE (colonne puis recrue permanente) */}
               {encounterEnlist&&(

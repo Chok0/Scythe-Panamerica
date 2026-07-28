@@ -71,6 +71,17 @@ export const resolveBotEncounter = (player, deck) => {
       if (p.buildings.length >= 4 && !p.starBuildings) { p.stars++; p.starBuildings = true; }
     }
   }
+  // Ressources AU CHOIX (cartes du deck original) : tirées au hasard, posées
+  // sur le hex de la rencontre (même règle que les autres gains)
+  if (choice.grantsResources > 0) {
+    const types = ["metal", "bois", "nourriture", "petrole"];
+    const key = String(p.hero);
+    p.resources[key] = { ...(p.resources[key] || {}) };
+    for (let i = 0; i < choice.grantsResources; i++) {
+      const rt = types[Math.floor(Math.random() * types.length)];
+      p.resources[key][rt] = (p.resources[key][rt] || 0) + 1;
+    }
+  }
   // Recrue gratuite — colonne + recrue permanente tirées au hasard parmi les libres
   if (choice.grantsRecruit && (p.recruits || 0) < 4) {
     const enlistMap = [...(p.enlistMap || [null, null, null, null])];
