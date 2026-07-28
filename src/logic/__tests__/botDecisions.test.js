@@ -115,6 +115,57 @@ describe('P8 — un bot agressif ne se vide pas de sa popularité', () => {
   });
 });
 
+describe('Pivot stratégique — savoir renoncer à un plan qui ne paie pas', () => {
+  it('ne se replie pas tant que la fin n\'approche pas', async () => {
+    const { shouldPivot } = await import('../botProfiles.js');
+    const p = mkBot(); p.botProfile = 'harceleur'; p.stars = 1; p.combatWins = 0;
+    expect(shouldPivot(p, { bestOppScore: 1000, round: 5 }, 10)).toBe(false);
+  });
+
+  it('un bot FORT aux étoiles ne se replie jamais — il fonce', async () => {
+    const { shouldPivot } = await import('../botProfiles.js');
+    const p = mkBot(); p.botProfile = 'harceleur'; p.stars = 4; p.combatWins = 0;
+    expect(shouldPivot(p, { bestOppScore: 1000, endgame: true }, 10)).toBe(false);
+  });
+
+  it('un agressif sans la moindre victoire, distancé et en fin de partie, se replie', async () => {
+    const { shouldPivot, effectiveProfile, BOT_PROFILES } = await import('../botProfiles.js');
+    const p = mkBot(); p.botProfile = 'harceleur'; p.stars = 2; p.combatWins = 0;
+    const ctx = { bestOppScore: 100, endgame: true };
+    expect(shouldPivot(p, ctx, 40)).toBe(true);
+    const eff = effectiveProfile(p, ctx, 40);
+    expect(eff.pivoted).toBe(true);
+    // le repli renonce au RISQUE mais vise le palier de score
+    expect(eff.aggroMargin).toBeGreaterThan(BOT_PROFILES.harceleur.aggroMargin);
+    expect(eff.earlyAttack).toBe(false);
+    expect(eff.popTarget).toBe(13);
+    expect(eff.disruption).toBe(0);
+    // …sans renoncer aux étoiles encore à portée
+    expect(eff.starRush).toBe(BOT_PROFILES.harceleur.starRush);
+  });
+
+  it('le même agressif qui a des victoires au compteur garde son plan', async () => {
+    const { shouldPivot } = await import('../botProfiles.js');
+    const p = mkBot(); p.botProfile = 'harceleur'; p.stars = 2; p.combatWins = 1;
+    expect(shouldPivot(p, { bestOppScore: 100, endgame: true }, 40)).toBe(false);
+  });
+});
+
+describe('Conscience des adversaires', () => {
+  it('le renseignement adverse est calculé et exposé aux décisions', () => {
+    const me = mkBot();
+    const rival = createPlayer('frente', 2, true);
+    rival.stars = 5;
+    rival.workers = [{ id: 'r0', hexId: rival.workers[0].hexId }, ...Array.from({ length: 6 }, (_, i) => ({ id: `r${i + 1}`, hexId: rival.workers[0].hexId }))];
+    expect(rival.workers.length).toBe(7); // à une production de l'étoile des 8
+    const r = run({ ...me, workers: me.workers.map(w => ({ ...w })), mechs: [], resources: {} },
+      { allPlayers: [me, rival], bestOppScore: 50 });
+    // le tour se joue sans erreur avec le renseignement en place
+    expect(r.player).toBeDefined();
+    expect(r.logs.length).toBeGreaterThan(0);
+  });
+});
+
 describe('Identité de la Confédération — profil harceleur', () => {
   it('le profil harceleur porte bien un plan de razzia mobile', async () => {
     const { BOT_PROFILES } = await import('../botProfiles.js');

@@ -6,7 +6,7 @@ import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from './resource
 import { canPayProduce, payProduce, getProduceCost } from './production.js';
 import { getValidMoves, findPathWaypoints, marshToll } from './movement.js';
 import { transportUnits } from './transport.js';
-import { BOT_PROFILES } from './botProfiles.js';
+import { BOT_PROFILES, effectiveProfile } from './botProfiles.js';
 import { BALANCE } from '../data/balance.js';
 import { getMechAbilities } from '../data/mechAbilities.js';
 import { FACTORY_COL, TESLA_FRAGMENTS_REQUIRED, factoryCostLabel, factoryEffectLabel } from '../data/plans.js';
@@ -198,8 +198,12 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
 
   // Corpus stratégie : l'étoile Amélioration est un piège de tempo — 2 upgrades
   // suffisent (réduction de coût) ; en fin de course (4+ étoiles) l'étoile
-  // 6-upgrades redevient une source valable pour boucler la partie
-  const upgradeWorthIt = (p.upgrades || 0) < 2 || p.stars >= 4;
+  // 6-upgrades redevient une source valable pour boucler la partie.
+  // Conscience des adversaires : si quelqu'un est à UNE étoile de finir, les
+  // investissements de long terme (améliorations) n'auront jamais le temps de
+  // rapporter — on encaisse ce qui se compte tout de suite.
+  const raceIsOver = !!(ctx && ctx.oppOneStarFromEnd);
+  const upgradeWorthIt = (!raceIsOver || p.stars >= 4) && ((p.upgrades || 0) < 2 || p.stars >= 4);
   // HUGE bonus for being able to do a bottom action (it's the main way to get stars)
   if (canBottom && !bottomMaxed) {
     score += 25;
@@ -490,6 +494,19 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
         if (p.faction === "confederation" && (p.capturedWorkers || 0) < 2 && p.pop >= 4) s += 6;
         else s -= 4;
         s -= popTierPenalty(p, wCost); // P8 : ne pas brader un palier pour un raid
+        // ── DÉNI D'ÉTOILE ADVERSE (conscience des adversaires) ───────────
+        // Chasser les ouvriers de quelqu'un qui en a 7 lui coûte son étoile
+        // des 8 ouvriers : ses ouvriers repartent de la base. De même, gêner
+        // celui qui MÈNE vaut plus que gêner un traînard.
+        // Le déni reste soumis au plancher de palier (P8) : gêner l'adversaire
+        // ne vaut jamais de sacrifier son PROPRE multiplicateur de score.
+        if (ctx && ctx.oppIntel && popTierPenalty(p, wCost) === 0) {
+          for (const o of ctx.oppIntel) {
+            if (!o.workerHexes.has(hexId)) continue;
+            if (o.aboutToStar.workers) s += 10;         // lui refuser l'étoile des 8
+            if (ctx.topOpp && o.faction === ctx.topOpp.faction) s += 5; // freiner le leader
+          }
+        }
         // ── RAZZIA (profil harceleur) ────────────────────────────────────
         // Chasser les ouvriers d'un hub adverse ne fait pas que coûter de la
         // pop : ça ÉTOUFFE son développement (plus de Produire ni de Déployer
@@ -807,8 +824,44 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   };
 
   // ── Profil stratégique + bruit décisionnel (niveau de difficulté) ──
-  const prof = BOT_PROFILES[p.botProfile] || BOT_PROFILES.equilibre;
+  // PIVOT : le profil peut être « replié » si le plan de départ ne paie plus
+  // et que la fin approche (voir effectiveProfile) — un bot doit savoir
+  // renoncer, comme un humain qui voit que sa stratégie ne passera pas.
+  const prof = effectiveProfile(p, ctx, estimateScore(p, ctx));
+  if (prof.pivoted && !p._pivotLogged) {
+    p._pivotLogged = true;
+    logs.push(`🤖🔄 ${f.name}: son plan ne paie pas — repli sur la popularité, les territoires et les ressources`);
+  }
   const noise = p.botNoise || 0;
+
+  // ── CONSCIENCE DES ADVERSAIRES ────────────────────────────────────────
+  // Les bots raisonnaient en vase clos : leur propre plan, jamais celui des
+  // autres. On lit ici ce que chaque adversaire A DÉJÀ FAIT et ce à quoi il
+  // est ENGAGÉ (pistes à une action de leur étoile), pour pouvoir accélérer,
+  // ralentir ou lui couper l'herbe sous le pied.
+  const oppIntel = (ctx && ctx.allPlayers ? ctx.allPlayers : [])
+    .filter(op => op && op.faction !== p.faction)
+    .map(op => ({
+      faction: op.faction,
+      stars: op.stars || 0,
+      score: estimateScore(op, ctx),
+      // « À une action de » : ces pistes vont donner une étoile très bientôt
+      aboutToStar: {
+        workers: op.workers.length === 7 && !op.starWorkers,
+        mechs: op.mechs.length === 3 && !op.starMechs,
+        buildings: (op.buildings || []).length === 3 && !op.starBuildings,
+        recruits: (op.recruits || 0) === 3 && !op.starRecruits,
+        pop: op.pop >= 16 && !op.starPop,
+        power: op.power >= 14 && !op.starPower,
+      },
+      workerHexes: new Set(op.workers.map(w => w.hexId)),
+    }));
+  // Adversaire le plus avancé : c'est LUI qu'il faut gêner en priorité
+  const topOpp = oppIntel.length ? oppIntel.reduce((a, b) => (b.score > a.score ? b : a)) : null;
+  // Un adversaire est-il sur le point de conclure la partie ?
+  const oppOneStarFromEnd = oppIntel.some(o => o.stars >= 5);
+  // Toutes les décisions du tour voient désormais ce renseignement
+  ctx = { ...(ctx || {}), oppIntel, topOpp, oppOneStarFromEnd };
 
   // ── STRATEGIC COLUMN SELECTION ──
   // Dominion « Relentless » (test Rusviet) : peut rejouer la même colonne

@@ -270,7 +270,8 @@ const playGame = (gameIdx, log) => {
         bestOppScore: Math.max(...players.filter((_, oi) => oi !== cp).map(op => estimateScore(op, { structureBonus, allPlayers: players }))),
         allPlayers: players,            // objectifs relatifs aux adversaires
         structureBonus,                 // P6 : choix de l'hex de construction
-        teslaAvailable: teslaOffer.length > 0 }); // P6 : quête des fragments
+        teslaAvailable: teslaOffer.length > 0,   // P6 : quête des fragments
+        round });                       // pivot stratégique : la partie traîne-t-elle ?
       let p = result.player;
       if (log) result.logs.forEach(l => log(`  ${l}`));
 

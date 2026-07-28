@@ -621,6 +621,9 @@ export default function App(){
         structureBonus,
         // Reste-t-il un prototype Tesla en vitrine ? (quête des fragments)
         teslaAvailable:teslaOffer.length>0,
+        // Tour courant : sert au pivot stratégique (une partie qui traîne
+        // signale qu'il est temps de sécuriser son score plutôt que d'espérer)
+        round:turn,
         // Fin imminente : un autre joueur (humain compris) est à 5+ étoiles
         endgame:players.some((op,oi)=>oi!==cp&&(op.stars||0)>=5),
         // Meilleur score adverse estimé — gestion de la 6e étoile (finir ou retarder)

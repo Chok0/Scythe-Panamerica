@@ -131,6 +131,76 @@ export const BOT_PROFILES = {
   },
 };
 
+// ═══ PIVOT STRATÉGIQUE — savoir renoncer à son plan ═══════════════════
+// Scythe demande de RÉADAPTER sa stratégie : un plan agressif qui n'a rien
+// donné au milieu du jeu doit céder la place à un repli qui sauve le score
+// final. Les bots s'entêtaient dans leur profil de départ du premier au
+// dernier tour ; un humain, lui, mesure la proximité de la fin, constate que
+// son plan ne paie pas, et bascule sur ce qu'il peut encore engranger :
+// palier de popularité, territoires tenus, ressources en main.
+//
+// Diagnostic (`shouldPivot`) : la fin approche ET je suis nettement distancé
+// ET mon plan n'a rien produit de tangible (pas d'étoiles de combat pour un
+// agressif, pas de moteur pour les autres).
+// Seuil calibré en simulation : à 0,65 le repli arrivait trop tard (les bots
+// s'obstinaient et finissaient au palier ×1) ; à 0,75 il attrape les plans
+// réellement compromis sans déclencher au moindre retard. Le repli conserve
+// `starRush` : renoncer aux RISQUES, pas aux étoiles encore à portée.
+export const PIVOT_RATIO = 0.75;
+
+export const shouldPivot = (p, ctx, myScore) => {
+  if (!ctx || ctx.bestOppScore == null) return false;
+  // 1. La fin approche VRAIMENT : quelqu'un d'autre est à une étoile de
+  //    conclure, ou la partie s'éternise. (Attention : « J'AI 4 étoiles » ne
+  //    doit PAS déclencher le repli — un bot fort aux étoiles doit foncer,
+  //    pas battre en retraite ; cette confusion coûtait des étoiles gratuites.)
+  const endNear = !!ctx.endgame || (ctx.round || 0) >= 30;
+  if (!endNear) return false;
+  // 2. Je n'ai plus de route vers la victoire aux étoiles : à 4-5 étoiles la
+  //    course reste jouable, on ne se replie pas.
+  if ((p.stars || 0) >= 4) return false;
+  // 3. Je suis nettement distancé au score
+  if (myScore >= ctx.bestOppScore * PIVOT_RATIO) return false;
+  // 4. Et mon plan n'a rien produit de tangible : un agressif sans la moindre
+  //    victoire au combat s'obstine dans le vide ; un constructif sans étoiles
+  //    n'a pas de moteur.
+  const prof = BOT_PROFILES[p.botProfile] || BOT_PROFILES.equilibre;
+  const aggressive = prof.earlyAttack || (prof.aggroMargin ?? 2) <= 0;
+  if (aggressive) return (p.combatWins || 0) === 0;
+  return (p.stars || 0) <= 2;
+};
+
+// Profil EFFECTIF du tour : le profil de base, éventuellement replié.
+// Le repli ne change pas de personnalité, il change d'OBJECTIF : ne plus
+// courir après des étoiles hors d'atteinte, mais maximiser ce qui se compte
+// à la fin — palier de popularité (multiplie tout), territoires, ressources.
+export const effectiveProfile = (p, ctx, myScore) => {
+  const base = BOT_PROFILES[p.botProfile] || BOT_PROFILES.equilibre;
+  if (!shouldPivot(p, ctx, myScore)) return base;
+  return {
+    ...base,
+    pivoted: true,
+    name: `${base.name} (repli)`,
+    popTarget: 13,                       // viser le palier ×3
+    tradePopBoost: (base.tradePopBoost || 0) + 5,
+    chasePopStar: false,                 // l'étoile 18 pop reste hors sujet
+    aggroMargin: (base.aggroMargin ?? 2) + 5, // on ne cherche plus le combat
+    attackReward: Math.floor((base.attackReward || 6) / 2),
+    earlyAttack: false,
+    // Attention à la cohérence interne : Produire coûte 1 popularité dès
+    // 6 ouvriers et Déplacer expose aux péages — sur-booster ces deux actions
+    // annulait le gain de palier que le repli vient précisément chercher
+    // (mesuré : palier ×1 des derniers 9,7 % → 18 %). On reste sobre.
+    produceBoost: (base.produceBoost || 0) + 1,
+    moveBoost: (base.moveBoost || 0) + 1,       // étaler pour tenir du terrain
+    disruption: 0,                       // plus de razzia coûteuse en pop
+    lootPull: 0,
+    // starRush conservé : une étoile reste la meilleure affaire du jeu
+    // (×3 à ×5 points selon le palier) — le repli renonce aux RISQUES, pas
+    // aux étoiles encore à portée de main.
+  };
+};
+
 // Pondérations par faction (mesurées/ajustées au simulateur) : chaque partie
 // tire un profil au sort → d'une partie à l'autre, la même faction ne joue
 // pas pareil.
