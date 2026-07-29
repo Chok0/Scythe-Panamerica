@@ -363,7 +363,12 @@ export class HeadlessGame {
     }
 
     // ── choix d'action du haut ──
-    if (a.type === 'pass_turn') { this.log('info', '⏭ Tour passé'); this.pending = { kind: 'turn_end' }; return; }
+    // Passer ne joue aucune colonne : l'interdiction de répétition (lastCol)
+    // ne doit donc pas survivre au tour passé, sous peine de blocage permanent
+    // si un joueur tombe à 0$/0 popularité juste après avoir joué Move (les 3
+    // autres colonnes coûtent toutes ≥1$, et Move resterait interdit pour
+    // toujours puisque rien ne le rejoue jamais pour rafraîchir lastCol).
+    if (a.type === 'pass_turn') { p.lastCol = null; this.log('info', '⏭ Tour passé'); this.pending = { kind: 'turn_end' }; return; }
     if (a.type === 'move_coin') {
       const col = p.topRow.indexOf('Move');
       if (col === p.lastCol) return 'Déplacer joué au tour précédent (lastCol)';
@@ -843,8 +848,10 @@ export class HeadlessGame {
   bottomEnlist(a, col) {
     const p = this.me();
     if ((p.recruits || 0) >= 4) return 'recrues au maximum';
-    if ((p.enlistMap || [])[a.section] != null) return `section ${a.section} déjà pourvue`;
-    if ((p.enlistMap || []).includes(a.recruit)) return `recrue ${a.recruit} déjà posée`;
+    const freeCols = [0, 1, 2, 3].filter(c => (p.enlistMap || [])[c] == null);
+    const freeRecs = [0, 1, 2, 3].filter(r => !(p.enlistMap || []).includes(r));
+    if (!freeCols.includes(a.section)) return `section invalide (libres: ${freeCols.join(',')})`;
+    if (!freeRecs.includes(a.recruit)) return `recrue invalide (libres: ${freeRecs.join(',')})`;
     const err = this.paidBottom(p, col); if (err) return err;
     p.enlistMap = [...p.enlistMap]; p.enlistMap[a.section] = a.recruit;
     p.recruits = (p.recruits || 0) + 1;

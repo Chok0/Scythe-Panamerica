@@ -387,7 +387,19 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
       // rencontres, du Mémorial au Soutien, des immédiats d'enlist (+2♥) et
       // des recrues ♥ permanentes — voir les synergies dédiées.
       const popEngine = p.coins >= 2 || sprint;
-      if (popEngine && popGain >= 2 && p.pop < prof.popTarget && (p.stars >= 1 || p.workers.length >= 5)) score += prof.tradePopBoost;
+      // P11 (découverte lot 3, playtests API 29/07) : les profils agressifs
+      // (blitz/prédateur/harceleur) plafonnent leur popTarget à 6-8 par choix
+      // délibéré — rapides, pas suicidaires. Mais entre ce plafond et le
+      // palier ×3 (13), rien ne les pousse à continuer d'acheter de la pop :
+      // `nearTier` n'agit qu'à UNE action du seuil, donc un bot qui stagne à
+      // 9-11 (au-delà de son propre plafond, en-deçà de 13) n'a plus aucune
+      // raison de progresser — il reste englué au palier ×2 jusqu'à la fin
+      // (mesuré : 37 % des derniers y restent, contre 22 % pour le palier ×2
+      // des GAGNANTS eux-mêmes). En sprint de fin de partie, le plafond
+      // effectif remonte à 13 pour TOUS les profils, pas seulement pour ceux
+      // qui visent déjà ce palier par défaut.
+      const popCeiling = sprint ? Math.max(prof.popTarget, 13) : prof.popTarget;
+      if (popEngine && popGain >= 2 && p.pop < popCeiling && (p.stars >= 1 || p.workers.length >= 5)) score += prof.tradePopBoost;
       // Étoile 18 pop : même garde-fou P4 — à 5 étoiles et derrière au score,
       // franchir 18 de popularité termine la partie… en la perdant.
       if (prof.chasePopStar && p.pop >= 13 && !p.starPop && p.coins >= 3) {
@@ -521,6 +533,22 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
     if (t && t.res === "ouvriers" && p.workers.length < 5) s += 4;
     // Hex produisant une ressource dont un bottom a besoin : priorité forte pour les ouvriers
     if (purpose === "worker" && t && t.res && need[t.res]) s += 8;
+
+    // ── DÉFENSE DE STOCK (mecha) ───────────────────────────────────────
+    // Un magot laissé sans escorte est offert au premier pillard venu (mesuré
+    // en playtest 29/07 : le Frente Libre, thésauriseur, perd son stock de
+    // nourriture accumulé sur des dizaines de tours dès qu'un adversaire —
+    // même pas celui qui le visait — trouve une ouverture). Un mecha sans
+    // meilleure cible reste volontiers en garde d'un hex où l'on stocke déjà
+    // 6+ ressources, plutôt que de le laisser exposé pendant qu'il vagabonde.
+    if (purpose === "mech") {
+      const stash = p.resources?.[String(hexId)];
+      const qty = stash ? Object.values(stash).reduce((a, b) => a + b, 0) : 0;
+      if (qty >= 6) {
+        const alreadyGuarded = p.mechs.some(m => m.hexId === hexId) || p.hero === hexId;
+        s += alreadyGuarded ? 2 : Math.min(9, qty);
+      }
+    }
 
     // Avoid enemy hexes for workers (displacement risk)
     if (purpose === "worker" && enemyHexes && enemyHexes.has(hexId)) s -= 15;
@@ -1370,7 +1398,12 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     // v0.16 : et JAMAIS à +1 sec (« remonter la popu à coup de +1 c'est
     // absurde ») — la routine exige l'amélioration ♥ (+2) ; le +1 reste
     // permis uniquement pour franchir un palier (crossesTier).
-    const popRoutine = p.coins >= 2 && popGainT >= 2 && p.pop < prof.popTarget && (p.stars >= 1 || p.workers.length >= 5);
+    // P11 : même plafond relevé qu'en scoreColumn — en fin de partie, viser
+    // 13 (palier ×3) même pour les profils dont le popTarget par défaut (6-8)
+    // est plus bas, sous peine de rester englué au palier ×2 sans raison
+    // d'acheter davantage une fois ce plafond dépassé.
+    const popCeilingT = endNearT ? Math.max(prof.popTarget, 13) : prof.popTarget;
+    const popRoutine = p.coins >= 2 && popGainT >= 2 && p.pop < popCeilingT && (p.stars >= 1 || p.workers.length >= 5);
     const popStarPush = prof.chasePopStar && p.pop >= 13 && !p.starPop && p.coins >= 3
       && !losingTrigger(p, ctx, p.pop + popGainT >= 18);
     if (p.coins >= 1 && ((crossesTier && (endNearT || p.coins >= 2)) || popRoutine || popStarPush)) {
