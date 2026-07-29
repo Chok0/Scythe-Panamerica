@@ -69,3 +69,67 @@ revanche, c'est que **le mode API seul suffit à faire jouer un agent
 correctement** — la valeur ajoutée du skill devra se prouver sur la qualité
 stratégique (paliers de popularité, course à l'Usine, gestion de la
 puissance), pas sur la capacité à jouer tout court.
+
+## Lot 2 (29/07/2026) — contrer la stratégie gagnante du Frente Libre
+
+Le lot 1 avait identifié un pattern net : **le Frente Libre gagne 3 parties
+sur 4** par thésaurisation de paires de ressources converties en score au
+palier de popularité ×3 en fin de partie (jusqu'à 36 pts en un seul pillage
+tardif). Deux parties parallèles, `factionsBots` forçant le Frente Libre
+comme adversaire, testent chacune un contre différent.
+
+| Partie | Contre testé | Bots | Tours | Classement final |
+|---|---|---|---|---|
+| Dominion, seed 4611 | Harcèlement direct du stock Frente | Frente/Nations/Bayou | 37 | Bayou 103 · **Frente 87 (7 paires)** · Dominion 68 · Nations 66 |
+| Nations, seed 4612 | Sprint tempo (finir avant le snowball) | Frente/Acadiane/Dominion/Bayou (4 bots) | 37 | Acadiane 69 · Dominion 63 · Bayou 54 · **Frente 52 (2 paires)** · Nations 49 |
+
+**Dans les deux parties, le Frente Libre ne gagne plus**, et son butin final
+(7 et 2 paires) tombe très en dessous des ~15-26 paires observées lot 1. Mais
+dans aucun des deux cas ce n'est le contre visé qui l'a directement battu :
+
+- **Harcèlement (Dominion)** : géographiquement impossible en ouverture (coins
+  opposés de la carte) ; la frappe directe tentée au T28 a été perdue de
+  justesse (5v6) et a même offert une étoile de combat au Frente. C'est en
+  réalité **Bayou** qui a pillé le Frente au tour 37 (13→8 nourriture), combiné
+  à une fin de partie précoce et soudaine, qui a coupé court à la conversion.
+- **Sprint tempo (Nations)** : la pression collective des 4 bots (personne
+  n'a laissé de fenêtre de fin de partie tranquille) a suffi à empêcher le
+  snowball, sans qu'aucune action de la joueuse ne cible directement le
+  Frente. Mais le sprint aux étoiles bon marché sans expansion territoriale
+  s'est retourné contre elle : **dernière au score (49 pts) malgré 4 étoiles**,
+  battue par Acadiane qui n'en avait que 3 mais tenait 6 territoires.
+
+**Verdict provisoire** : la thésaurisation du Frente Libre est une stratégie
+à variance élevée plutôt qu'un problème d'équilibrage isolé à corriger seul —
+elle est vulnérable (a) à toute fin de partie précoce déclenchée par un tiers
+et (b) à un manque d'escorte militaire qui expose le stock au pillage, y
+compris par un bot autre que celui qui la cible. Piste de réglage : inciter
+les bots « thésauriseurs » à défendre proportionnellement leurs stocks
+(mecha en escorte) plutôt que de plafonner les paires. Piste symétrique côté
+score : **un rush d'étoiles bon marché sans territoire est une impasse** —
+territoire × B pèse au moins autant que étoiles × A dans ce mode de score, ce
+qui contredit la lecture « les étoiles sont la voie royale » que les fiches
+de faction peuvent suggérer.
+
+### Constats techniques relevés (à instruire, lot 2)
+
+1. **Bug confirmé par lecture de code** : `bottom_enlist` sans
+   `{section,recruit}` lève une exception (`Cannot read properties of
+   undefined (reading 'apply')`, `headlessGame.js` ~L851) mais **après** avoir
+   déjà débité les ressources et incrémenté `p.recruits` (~L848-850) — état
+   incohérent (ressources perdues, compteur avancé, `enlistMap` vide). Corriger
+   en validant `section`/`recruit` avant tout effet de bord.
+2. **Mécanique non documentée** : jouer `produce` sur un hex village où l'on a
+   déjà des ouvriers double leur nombre sur place (1→2→4→7→8) au lieu de la
+   production normale — permet l'étoile "8 ouvriers" en 3 tours sans la
+   moindre expansion territoriale. Trouvé en lisant `headlessGame.js`
+   (`produce()`, branche `hex.t === 'village'`), absent du résumé du pilote.
+   À documenter dans le résumé, ou à rééquilibrer (coût croissant/plafond par
+   hex) si ce n'est pas la mécanique voulue.
+3. Fin de partie en cascade (plusieurs étoiles déclenchées dans le même
+   `end_turn` d'un bot, ou combo de carte d'Usine) sans aucun signal
+   d'anticipation côté résumé — un joueur peut se retrouver à une action de
+   sa propre 6e étoile quand la partie se termine sous lui.
+4. Frictions déjà connues confirmées : décalage d'affichage `✗`/`✓` sur les
+   missions révélées mais acquises ; nommage de champs d'action peu intuitif
+   (`trade.buy[].res` en toutes lettres, `encounter.option` et non `opt`).
