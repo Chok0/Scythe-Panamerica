@@ -363,7 +363,12 @@ export class HeadlessGame {
     }
 
     // ── choix d'action du haut ──
-    if (a.type === 'pass_turn') { this.log('info', '⏭ Tour passé'); this.pending = { kind: 'turn_end' }; return; }
+    // Passer ne joue aucune colonne : l'interdiction de répétition (lastCol)
+    // ne doit donc pas survivre au tour passé, sous peine de blocage permanent
+    // si un joueur tombe à 0$/0 popularité juste après avoir joué Move (les 3
+    // autres colonnes coûtent toutes ≥1$, et Move resterait interdit pour
+    // toujours puisque rien ne le rejoue jamais pour rafraîchir lastCol).
+    if (a.type === 'pass_turn') { p.lastCol = null; this.log('info', '⏭ Tour passé'); this.pending = { kind: 'turn_end' }; return; }
     if (a.type === 'move_coin') {
       const col = p.topRow.indexOf('Move');
       if (col === p.lastCol) return 'Déplacer joué au tour précédent (lastCol)';
