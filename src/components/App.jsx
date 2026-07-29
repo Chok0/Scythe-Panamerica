@@ -69,6 +69,14 @@ const TrackStar=({size=13,earned=false})=>(
   </svg>
 );
 
+// v0.16 — minuterie d'auto-fermeture de l'écran de révélation de combat :
+// 7 s pour lire le résultat, puis l'overlay s'efface seul (il restait sinon
+// indéfiniment à intercepter les clics — constaté au playtest du 28/07).
+const CombatRevealAutoClose=({onClose})=>{
+  useEffect(()=>{const t=setTimeout(onClose,7000);return()=>clearTimeout(t);},[onClose]);
+  return null;
+};
+
 export default function App(){
   const[phase,setPhase]=useState("setup");
   const[selFaction,setSelFaction]=useState(null);
@@ -2422,19 +2430,26 @@ export default function App(){
     // Check building effects: Arsenal (+1 Pui) and Mémorial (+1 Pop)
     const hasArsenal=(me.buildings||[]).some(b=>b.type==="arsenal");
     const hasMemorial=(me.buildings||[]).some(b=>b.type==="memorial");
+    // v0.16 : gains et logs précalculés HORS de l'updater (StrictMode
+    // double-invoque les updaters en dev → logs ×2 constatés au playtest).
+    // L'updater est pur : il ne fait qu'appliquer des quantités connues.
+    let powerGain=0,ccGain=0;const logs=[];
+    if(type==="power"){
+      const upg=topUpgradeCount(me,"Bolster","power");
+      powerGain=2+(hasArsenal?1:0)+upg;
+      logs.push(`💪 -1$ → +${powerGain} Pui${upg?" (Amélioration +1)":""}${hasArsenal?" (Arsenal +1)":""}`);
+    }else{
+      const upg=topUpgradeCount(me,"Bolster","combatCards");
+      ccGain=1+upg;
+      logs.push(`🃏 -1$ → +${ccGain} CC${upg?" (Amélioration +1)":""}`);
+    }
+    if(hasMemorial)logs.push(`🪦 Mémorial: +1 Pop`);
     setPlayers(prev=>{const n=[...prev];const p={...n[0]};p.coins--;
-      if(type==="power"){
-        // +1 si le cube d'amélioration de l'option ⚡ a été retiré (2 → 3)
-        const upg=topUpgradeCount(p,"Bolster","power");
-        const bonus=(hasArsenal?1:0)+upg;
-        p.power=Math.min(p.power+2+bonus,16);
-        addLog(`💪 -1$ → +${2+bonus} Pui${upg?" (Amélioration +1)":""}${hasArsenal?" (Arsenal +1)":""}`);}
-      else{
-        // +1 si le cube d'amélioration de l'option 🃏 a été retiré (1 → 2)
-        const upg=topUpgradeCount(p,"Bolster","combatCards");
-        p.combatCards+=1+upg;addLog(`🃏 -1$ → +${1+upg} CC${upg?" (Amélioration +1)":""}`);}
-      if(hasMemorial){p.pop=Math.min(p.pop+1,18);addLog(`🪦 Mémorial: +1 Pop`);}
+      if(powerGain)p.power=Math.min(p.power+powerGain,16);
+      if(ccGain)p.combatCards+=ccGain;
+      if(hasMemorial)p.pop=Math.min(p.pop+1,18);
       n[0]=p;return n;});
+    logs.forEach(addLog);
     endHumanTurn(myMat.topRow.indexOf("Bolster"));
   };
 
@@ -2453,17 +2468,30 @@ export default function App(){
     const hexIds=[...new Set(producePicks)].filter(h=>workersByHex[String(h)]||h===moulinHex).map(String);
     if(hexIds.length===0){addLog("⚠ Sélectionnez vos hex de production (clic sur la carte)");return;}
     const costLabel=produceCostLabel(me.workers.length);
+    // ── v0.16 : updater PUR ────────────────────────────────────────────
+    // L'ancienne version mutait p.resources[hid] EN PLACE (référence partagée
+    // avec prev) et appelait addLog DANS l'updater : en dev, le double-invoke
+    // StrictMode doublait les gains ET les logs (constaté au playtest du
+    // 28/07 : Fe 1→5 pour +2 attendus, lignes ×2 au journal). Les gains sont
+    // désormais précalculés ici (déterministes depuis `me`), l'updater ne
+    // fait que les appliquer sur des COPIES, et les logs partent après.
+    const gains=[];
+    hexIds.forEach(hidStr=>{
+      const hid=parseInt(hidStr);const hex=hMap[hid];const t=TERRAINS[hex?.t];if(!t)return;
+      let wCount=(workersByHex[hidStr]||[]).length;
+      const hasMoulin=(me.buildings||[]).some(b=>b.type==="moulin"&&b.hexId===hid);
+      if(hasMoulin)wCount++;
+      if(hex.t==="village")gains.push({kind:"workers",hid,qty:wCount,log:`👷 +ouv. #${hid}${hasMoulin?" (Moulin +1)":""}`});
+      else if(t.res&&t.res!=="ouvriers")gains.push({kind:"res",hid,res:t.res,qty:wCount,log:`🏭 +${wCount} ${resFR(t.res)} #${hid}${hasMoulin?" (Moulin +1)":""}`});
+    });
     setPlayers(prev=>{
       const n=[...prev];const p={...n[0],resources:{...n[0].resources},workers:[...n[0].workers]};
       payProduce(p);
-      hexIds.forEach(hidStr=>{
-        const hid=parseInt(hidStr);const hex=hMap[hid];const t=TERRAINS[hex?.t];if(!t)return;let wCount=(workersByHex[hidStr]||[]).length;
-        // Moulin building: +1 production on this hex (as if +1 worker)
-        const hasMoulin=(p.buildings||[]).some(b=>b.type==="moulin"&&b.hexId===hid);
-        if(hasMoulin)wCount++;
-        if(hex.t==="village"){if(p.workers.length<8){for(let i=0;i<wCount&&p.workers.length<8;i++)p.workers.push({id:`${p.faction}_w${p.workers.length}`,hexId:hid});addLog(`👷 +ouv. #${hid}${hasMoulin?" (Moulin +1)":""}`);}}
-        else if(t.res&&t.res!=="ouvriers"){if(!p.resources[hidStr])p.resources[hidStr]={};p.resources[hidStr][t.res]=(p.resources[hidStr][t.res]||0)+wCount;addLog(`🏭 +${wCount} ${resFR(t.res)} #${hid}${hasMoulin?" (Moulin +1)":""}`);}
+      gains.forEach(g=>{
+        if(g.kind==="workers"){for(let i=0;i<g.qty&&p.workers.length<8;i++)p.workers.push({id:`${p.faction}_w${p.workers.length}`,hexId:g.hid});}
+        else{const k=String(g.hid);p.resources[k]={...(p.resources[k]||{})};p.resources[k][g.res]=(p.resources[k][g.res]||0)+g.qty;}
       });n[0]=p;return n;});
+    gains.forEach(g=>addLog(g.log));
     if(costLabel!=="Gratuit")addLog(`💳 ${costLabel}`);
     setProducePicks([]);
     endHumanTurn(myMat.topRow.indexOf("Produce"));
@@ -4477,9 +4505,15 @@ export default function App(){
                     </button>
                   )}
                 </div>}
+                {/* v0.16 — quand une étoile est révélable, le bouton le DIT :
+                    au playtest du 28/07, « La Diagonale » remplie est restée
+                    8 tours sur la table, le Terminer générique passant devant
+                    les boutons de révélation sans prévenir. Garder l'étoile
+                    cachée reste un choix (sandbagging) — mais un choix VU. */}
                 <button onClick={actuallyEndTurn} className="act-btn"
-                  style={{width:"100%",fontWeight:800,fontSize:15,background:"#3a6a3a",color:"#fff",border:"none",padding:"10px"}}>
-                  ✔ Terminer le tour
+                  style={{width:"100%",fontWeight:800,fontSize:15,padding:"10px",border:"none",
+                    background:(revealables.length>0||fObjReady)?"#8a5a20":"#3a6a3a",color:"#fff"}}>
+                  {(revealables.length>0||fObjReady)?"⚠ Terminer SANS révéler (l'étoile attendra)":"✔ Terminer le tour"}
                 </button>
               </div>
             );
@@ -4798,7 +4832,11 @@ export default function App(){
         </div>
       )}
 
-      {/* ── RÉVÉLATION DE COMBAT : les deux engagements face à face ── */}
+      {/* ── RÉVÉLATION DE COMBAT : les deux engagements face à face ──
+          v0.16 : auto-fermeture (CombatRevealAutoClose) — l'écran « cliquez
+          pour continuer » restait indéfiniment et interceptait les clics de
+          fin de tour sans feedback (constaté au playtest du 28/07, T27). */}
+      {combatReveal&&<CombatRevealAutoClose onClose={()=>setCombatReveal(null)}/>}
       {combatReveal&&(
         <div onClick={()=>setCombatReveal(null)} style={{position:"fixed",inset:0,zIndex:300,background:"rgba(6,4,2,0.84)",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
           <div style={{fontFamily:"var(--font-title)",fontSize:15,letterSpacing:5,textTransform:"uppercase",color:"var(--text-dim)",marginBottom:24}}>{combatReveal.title}</div>

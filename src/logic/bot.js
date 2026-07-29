@@ -1580,6 +1580,9 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
 
   // ── AUTOMATIC STARS ──
   if (p.pop >= 18 && !p.starPop) { p.stars++; p.starPop = true; logs.push(`⭐ ${f.name}: Popularité max !`); }
+  // v0.16 : même filet pour la puissance — les gains passifs (recrues ⚡ des
+  // voisins, bonus d'usine) pouvaient laisser un bot camper à 16 sans étoile
+  if (p.power >= 16 && !p.starPower) { p.stars++; p.starPower = true; logs.push(`⭐ ${f.name}: Puissance max !`); }
 
   // ── OBJECTIVE CHECK ──
   // P4 : révéler est un CHOIX (comme pour le joueur humain). Un bot à 5 étoiles

@@ -3,7 +3,7 @@
 // reste 1 pas pour en sortir. Monter à bord en cours de route n'ouvre pas le
 // réseau ce tour-ci.
 import { describe, it, expect } from 'vitest';
-import { getValidMoves, getRailNetwork, marshToll, findPathWaypoints } from '../movement.js';
+import { getValidMoves, getValidMoves1Step, getRailNetwork, marshToll, findPathWaypoints } from '../movement.js';
 import { hMap, ADJ, hasR, HEXES } from '../../data/hexes.js';
 import { FACTIONS } from '../../data/factions.js';
 import { islandOf, riverwalkValue } from '../../../scripts/riverwalkAudit.mjs';
@@ -144,5 +144,24 @@ describe('Vitesse ne s\'applique pas aux ouvriers', () => {
     const moves = new Set(getValidMoves(11, 'dominion', [0], stubW, RAILS_W, 'worker', new Set()));
     expect(moves.has(9)).toBe(true);   // bout du réseau : 1 pas
     expect(moves.has(16)).toBe(false); // sortie du réseau : exigerait la Vitesse
+  });
+});
+
+// ── Convoi (Confédération, slot 3) — bond village ↔ Rouge River ──
+// Vérifié après le playtest du 28/07 (le bond avait semblé refusé pendant
+// une continuation de déplacement décomposé) : le MOTEUR le propose bien,
+// en 1 pas comme en déplacement complet. La cause en jeu était ailleurs
+// (clic hors cible pendant le pilotage automatisé).
+describe('Convoi : bond village ↔ Rouge River', () => {
+  const conf = { faction: 'confederation', hero: 36, workers: [], mechs: [{ id: 'm3', hexId: 36 }] };
+
+  it('depuis un village contrôlé, la Rouge River est à 1 pas', () => {
+    const moves = getValidMoves1Step(36, 'confederation', [0, 1, 2, 3], conf, []);
+    expect(moves).toContain(22);
+  });
+
+  it('sans Convoi (slot 3 verrouillé), pas de bond', () => {
+    const moves = getValidMoves1Step(36, 'confederation', [0, 1, 2], conf, []);
+    expect(moves).not.toContain(22);
   });
 });
