@@ -497,3 +497,61 @@ offert.
   jouable (marais et Portage).
 - Le Dominion n'a toujours **aucune capacité de position** (slot 3 de mecha)
   codée, contrairement aux cinq autres factions.
+
+---
+
+## P11 — Palier de pop ×2 : les profils agressifs restent englués (29/07/2026)
+
+Découverte lors des playtests API du 29/07 (`docs/design/parties_api/`,
+lot 2/3) : même après P3/P8 (sprint de palier, plancher de pop), la
+simulation (300 parties, seed 101) montrait encore un déséquilibre net sur
+le palier ×2 (7-12) vs ×3 (13+) :
+
+| | tier0 (≤6) | tier1 (7-12) | tier2 (13+) |
+|---|---|---|---|
+| Gagnants | 1,3 % | 22,7 % | 76,0 % |
+| Derniers | 22,0 % | 37,0 % | 41,0 % |
+
+Cause identifiée dans `bot.js` : les profils agressifs (blitz, prédateur,
+harceleur) plafonnent volontairement leur `popTarget` à 6-8 (« rapide, pas
+suicidaire », décision P5/v0.15 assumée). Mais entre ce plafond et le palier
+×3 (13), rien ne les pousse à continuer d'acheter de la pop : le boost
+« sprint de palier » (P3, `nearTier`) n'agit qu'à UNE action du seuil — un
+bot qui stagne à 9-11 pop (au-delà de son plafond, en-deçà de 13) n'a plus
+aucune raison de progresser et reste englué au palier ×2 jusqu'à la fin.
+
+**Correctif** : en fin de partie (`sprint`/`endNearT` — même détection que
+P3), le plafond effectif d'achat de popularité remonte à `max(popTarget, 13)`
+pour TOUS les profils, dans les deux endroits qui en dépendaient
+(`scoreColumn`, pour le choix de colonne, et l'exécuteur `Trade`, pour la
+dépense réelle). Hors sprint, les profils agressifs gardent leur plafond bas
+inchangé — seul le comportement de fin de partie change.
+
+**Mesure (300 parties, seed 101, avant/après)** :
+
+| | Avant | Après |
+|---|---|---|
+| Derniers tier0 (≤6) | 22,0 % | **15,0 %** |
+| Derniers tier1 (7-12) | 37,0 % | 37,0 % |
+| Derniers tier2 (13+) | 41,0 % | **48,0 %** |
+| Prédateur — dernier / gagnant | 43,4 % / 19,2 % | **40,9 % / 25,8 %** |
+| Blitz — dernier / gagnant | 38,4 % / 22,0 % | 38,5 % / 22,6 % |
+| Harceleur — dernier / gagnant | 37,3 % / 26,5 % | 38,6 % / 24,1 % |
+| Équilibré — dernier / gagnant | 25,3 % / 28,5 % | 23,2 % / 30,4 % |
+| Bâtisseur — dernier / gagnant | 17,4 % / 34,3 % | 22,5 % / 32,5 % |
+| Thésauriseur — dernier / gagnant | 21,7 % / 34,8 % | 20,5 % / 29,0 % |
+
+Amélioration nette et cohérente sur la mesure globale (tier0 en baisse,
+tier2 en hausse chez les derniers) et sur le prédateur (le plus mauvais
+profil du jeu, cf. section dédiée plus haut). Signal mixte/dans le bruit sur
+harceleur et bâtisseur — **une seule graine, pas encore revérifié sur
+plusieurs** (contrairement à la méthodologie P8-P10 qui croise 2-3 graines
+avant de conclure) : à confirmer avant d'aller plus loin, notamment si un
+futur ajustement cible spécifiquement le harceleur ou le bâtisseur.
+
+Vérifié sur une deuxième graine (202) pour la distribution globale : tier0
+derniers 17,7 %, tier2 derniers 49,0 % — cohérent avec la graine 101,
+confirme que le nouveau plafond ne dépend pas d'un tirage particulier.
+
+Tests bot existants (24) et 20 parties simulées : pas de régression de
+stabilité.
