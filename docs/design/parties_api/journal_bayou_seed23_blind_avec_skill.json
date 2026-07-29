@@ -1,0 +1,4027 @@
+{
+ "jeu": "Scythe Panamerica",
+ "date": "2026-07-29T08:35:26.210Z",
+ "carte": "panamerica-v3",
+ "tours": 31,
+ "difficulte": "normal",
+ "mode": "api",
+ "classement": [
+  {
+   "rang": 1,
+   "faction": "frente",
+   "nom": "Frente Libre",
+   "bot": true,
+   "total": 84,
+   "etoiles": 4,
+   "pop": 13,
+   "palier_pop": "13-18",
+   "territoires": 6,
+   "bonus_usine": 2,
+   "comptoirs": 0,
+   "ressources": 10,
+   "paires": 5,
+   "argent": 15,
+   "bonus_pose": 2,
+   "detail": {
+    "etoiles": 20,
+    "territoires": 32,
+    "ressources": 15
+   }
+  },
+  {
+   "rang": 2,
+   "faction": "bayou",
+   "nom": "Bayou",
+   "bot": false,
+   "total": 72,
+   "etoiles": 6,
+   "pop": 7,
+   "palier_pop": "7-12",
+   "territoires": 9,
+   "bonus_usine": 0,
+   "comptoirs": 0,
+   "ressources": 5,
+   "paires": 2,
+   "argent": 13,
+   "bonus_pose": 4,
+   "detail": {
+    "etoiles": 24,
+    "territoires": 27,
+    "ressources": 4
+   }
+  },
+  {
+   "rang": 3,
+   "faction": "nations",
+   "nom": "Nations Souv.",
+   "bot": true,
+   "total": 70,
+   "etoiles": 3,
+   "pop": 13,
+   "palier_pop": "13-18",
+   "territoires": 5,
+   "bonus_usine": 0,
+   "comptoirs": 0,
+   "ressources": 9,
+   "paires": 4,
+   "argent": 21,
+   "bonus_pose": 2,
+   "detail": {
+    "etoiles": 15,
+    "territoires": 20,
+    "ressources": 12
+   }
+  },
+  {
+   "rang": 4,
+   "faction": "acadiane",
+   "nom": "Acadiane",
+   "bot": true,
+   "total": 64,
+   "etoiles": 4,
+   "pop": 18,
+   "palier_pop": "13-18",
+   "territoires": 3,
+   "bonus_usine": 0,
+   "comptoirs": 2,
+   "ressources": 1,
+   "paires": 0,
+   "argent": 22,
+   "bonus_pose": 2,
+   "detail": {
+    "etoiles": 20,
+    "territoires": 16,
+    "ressources": 0
+   }
+  }
+ ],
+ "journal": [
+  {
+   "tour": 1,
+   "etape": 1,
+   "cat": "info",
+   "ts": 1785312160561,
+   "msg": "🏦 Bonus de pose : ⛰ Monts & Forêts — 1→2$ · 2→4$ · 3→6$ · 4→9$ par bâtiment posé sur une montagne, une sierra ou une forêt"
+  },
+  {
+   "tour": 1,
+   "etape": 2,
+   "cat": "combat",
+   "ts": 1785312160561,
+   "msg": "⚔ 4 joueurs"
+  },
+  {
+   "tour": 1,
+   "etape": 3,
+   "cat": "warn",
+   "ts": 1785312160561,
+   "msg": "👤 Bayou (Atelier)  ⚡2 🃏3 ♥2 💰5"
+  },
+  {
+   "tour": 1,
+   "etape": 4,
+   "cat": "bot",
+   "ts": 1785312160561,
+   "msg": "🤖 Nations Souv. (Fordisme) ⚔ Blitzkrieg  ⚡3 🃏2 ♥2 💰4"
+  },
+  {
+   "tour": 1,
+   "etape": 5,
+   "cat": "bot",
+   "ts": 1785312160561,
+   "msg": "🤖 Acadiane (Terroir) 📦 Thésauriseur  ⚡2 🃏3 ♥3 💰6"
+  },
+  {
+   "tour": 1,
+   "etape": 6,
+   "cat": "bot",
+   "ts": 1785312160561,
+   "msg": "🤖 Frente Libre (Forge) 🏛 Bâtisseur  ⚡2 🃏3 ♥3 💰6"
+  },
+  {
+   "tour": 1,
+   "etape": 7,
+   "cat": "snap",
+   "ts": 1785312160561,
+   "msg": "[Début] ⚡2 🃏3 ♥2 💰5 ⭐0 W2 M0 Fe0 Bo0 No0 Pe0 Ab[]"
+  },
+  {
+   "tour": 1,
+   "etape": 8,
+   "cat": "snap",
+   "ts": 1785312160561,
+   "msg": "[Début 🤖 Nations Souv.] ⚡3 🃏2 ♥2 💰4 ⭐0 W2 M0 Fe0 Bo0 No0 Pe0 Ab[]"
+  },
+  {
+   "tour": 1,
+   "etape": 9,
+   "cat": "snap",
+   "ts": 1785312160561,
+   "msg": "[Début 🤖 Acadiane] ⚡2 🃏3 ♥3 💰6 ⭐0 W2 M0 Fe0 Bo0 No0 Pe0 Ab[]"
+  },
+  {
+   "tour": 1,
+   "etape": 10,
+   "cat": "snap",
+   "ts": 1785312160561,
+   "msg": "[Début 🤖 Frente Libre] ⚡2 🃏3 ♥3 💰6 ⭐0 W2 M0 Fe0 Bo0 No0 Pe0 Ab[]"
+  },
+  {
+   "tour": 1,
+   "etape": 11,
+   "cat": "note",
+   "ts": 1785312222099,
+   "msg": "📝 PLAN: Bayou/Atelier. Étoiles visées: 8 ouvriers (village 35), 2 victoires combat + fObj Prédateur (mechas Flibuste), mission Gardien Usine (course Usine + mecha), 4 recrues si food. Éco: métal via montagne 31 pour Deploy 3mé, pose bâtiments monts/forêts (28/31/34/37 = 9$). Pop ≥7 via enlist col Deploy et rencontres 31/30/29."
+  },
+  {
+   "tour": 1,
+   "etape": 12,
+   "cat": "info",
+   "ts": 1785312222110,
+   "msg": "👷 +1 ouv. #35"
+  },
+  {
+   "tour": 1,
+   "etape": 13,
+   "cat": "info",
+   "ts": 1785312222110,
+   "msg": "🏭 +1 bois #28"
+  },
+  {
+   "tour": 1,
+   "etape": 14,
+   "cat": "bot",
+   "ts": 1785312222120,
+   "msg": "🤖 Nations Souv.: Produire"
+  },
+  {
+   "tour": 1,
+   "etape": 15,
+   "cat": "bot",
+   "ts": 1785312222120,
+   "msg": "🤖 Acadiane: +1 ouv. #6"
+  },
+  {
+   "tour": 1,
+   "etape": 16,
+   "cat": "bot",
+   "ts": 1785312222120,
+   "msg": "🤖 Acadiane: Produire"
+  },
+  {
+   "tour": 1,
+   "etape": 17,
+   "cat": "bot",
+   "ts": 1785312222121,
+   "msg": "🤖 Frente Libre: Produire"
+  },
+  {
+   "tour": 2,
+   "etape": 18,
+   "cat": "turn",
+   "ts": 1785312222121,
+   "msg": "── Tour 2 ──"
+  },
+  {
+   "tour": 2,
+   "etape": 19,
+   "cat": "snap",
+   "ts": 1785312222121,
+   "msg": "[Début] ⚡2 🃏3 ♥2 💰5 ⭐0 W3 M0 Fe0 Bo1 No0 Pe0 Ab[]"
+  },
+  {
+   "tour": 2,
+   "etape": 20,
+   "cat": "snap",
+   "ts": 1785312222121,
+   "msg": "[Début 🤖 Nations Souv.] ⚡3 🃏2 ♥2 💰4 ⭐0 W2 M0 Fe0 Bo1 No1 Pe0 Ab[]"
+  },
+  {
+   "tour": 2,
+   "etape": 21,
+   "cat": "snap",
+   "ts": 1785312222121,
+   "msg": "[Début 🤖 Acadiane] ⚡2 🃏3 ♥3 💰6 ⭐0 W3 M0 Fe0 Bo0 No0 Pe1 Ab[]"
+  },
+  {
+   "tour": 2,
+   "etape": 22,
+   "cat": "snap",
+   "ts": 1785312222121,
+   "msg": "[Début 🤖 Frente Libre] ⚡2 🃏3 ♥3 💰6 ⭐0 W2 M0 Fe1 Bo0 No1 Pe0 Ab[]"
+  },
+  {
+   "tour": 2,
+   "etape": 23,
+   "cat": "move",
+   "ts": 1785312262347,
+   "msg": "🚶 bayou_w0 → #31"
+  },
+  {
+   "tour": 2,
+   "etape": 24,
+   "cat": "move",
+   "ts": 1785312262357,
+   "msg": "🚶 Cap. Zeke → #35"
+  },
+  {
+   "tour": 2,
+   "etape": 25,
+   "cat": "move",
+   "ts": 1785312262357,
+   "msg": "✅ Mouvement terminé (2/2)"
+  },
+  {
+   "tour": 2,
+   "etape": 26,
+   "cat": "bot",
+   "ts": 1785312267128,
+   "msg": "🤖 Nations Souv.: +2 nourriture"
+  },
+  {
+   "tour": 2,
+   "etape": 27,
+   "cat": "bot",
+   "ts": 1785312267128,
+   "msg": "🤖 Acadiane: +2 pétrole"
+  },
+  {
+   "tour": 2,
+   "etape": 28,
+   "cat": "bot",
+   "ts": 1785312267128,
+   "msg": "🤖 Frente Libre: +2 métal"
+  },
+  {
+   "tour": 3,
+   "etape": 29,
+   "cat": "turn",
+   "ts": 1785312267128,
+   "msg": "── Tour 3 ──"
+  },
+  {
+   "tour": 3,
+   "etape": 30,
+   "cat": "snap",
+   "ts": 1785312267128,
+   "msg": "[Début] ⚡2 🃏3 ♥2 💰5 ⭐0 W3 M0 Fe0 Bo1 No0 Pe0 Ab[]"
+  },
+  {
+   "tour": 3,
+   "etape": 31,
+   "cat": "snap",
+   "ts": 1785312267128,
+   "msg": "[Début 🤖 Nations Souv.] ⚡3 🃏2 ♥2 💰3 ⭐0 W2 M0 Fe0 Bo1 No3 Pe0 Ab[]"
+  },
+  {
+   "tour": 3,
+   "etape": 32,
+   "cat": "snap",
+   "ts": 1785312267128,
+   "msg": "[Début 🤖 Acadiane] ⚡2 🃏3 ♥3 💰5 ⭐0 W3 M0 Fe0 Bo0 No0 Pe3 Ab[]"
+  },
+  {
+   "tour": 3,
+   "etape": 33,
+   "cat": "snap",
+   "ts": 1785312267128,
+   "msg": "[Début 🤖 Frente Libre] ⚡2 🃏3 ♥3 💰5 ⭐0 W2 M0 Fe3 Bo0 No1 Pe0 Ab[]"
+  },
+  {
+   "tour": 3,
+   "etape": 34,
+   "cat": "info",
+   "ts": 1785312274594,
+   "msg": "👷 +1 ouv. #35"
+  },
+  {
+   "tour": 3,
+   "etape": 35,
+   "cat": "info",
+   "ts": 1785312274594,
+   "msg": "🏭 +1 métal #31"
+  },
+  {
+   "tour": 3,
+   "etape": 36,
+   "cat": "bot",
+   "ts": 1785312274608,
+   "msg": "🤖 Nations Souv.: Produire"
+  },
+  {
+   "tour": 3,
+   "etape": 37,
+   "cat": "bot",
+   "ts": 1785312274608,
+   "msg": "🤖 Nations Souv.: Construire Gare #10"
+  },
+  {
+   "tour": 3,
+   "etape": 38,
+   "cat": "bot",
+   "ts": 1785312274608,
+   "msg": "🤖🛤 Nations Souv.: Rail #10↔#7"
+  },
+  {
+   "tour": 3,
+   "etape": 39,
+   "cat": "bot",
+   "ts": 1785312274608,
+   "msg": "🤖🛤 Nations Souv.: Rail #7↔#11"
+  },
+  {
+   "tour": 3,
+   "etape": 40,
+   "cat": "bot",
+   "ts": 1785312274608,
+   "msg": "🤖🛤 Nations Souv.: Rail #11↔#4"
+  },
+  {
+   "tour": 3,
+   "etape": 41,
+   "cat": "bot",
+   "ts": 1785312274608,
+   "msg": "🤖💰 Nations Souv.: +2$ (Construire)"
+  },
+  {
+   "tour": 3,
+   "etape": 42,
+   "cat": "bot",
+   "ts": 1785312274608,
+   "msg": "🤖🛤 Rail #10↔#7"
+  },
+  {
+   "tour": 3,
+   "etape": 43,
+   "cat": "bot",
+   "ts": 1785312274608,
+   "msg": "🤖🛤 Rail #7↔#11"
+  },
+  {
+   "tour": 3,
+   "etape": 44,
+   "cat": "bot",
+   "ts": 1785312274608,
+   "msg": "🤖🛤 Rail #11↔#4"
+  },
+  {
+   "tour": 3,
+   "etape": 45,
+   "cat": "bot",
+   "ts": 1785312274610,
+   "msg": "🤖 Acadiane: M. Thibodeau → #6"
+  },
+  {
+   "tour": 3,
+   "etape": 46,
+   "cat": "bot",
+   "ts": 1785312274610,
+   "msg": "🤖🏴 Acadiane: Comptoir #6 (1/4)"
+  },
+  {
+   "tour": 3,
+   "etape": 47,
+   "cat": "bot",
+   "ts": 1785312274610,
+   "msg": "🤖 Acadiane: Ouv. → #9"
+  },
+  {
+   "tour": 3,
+   "etape": 48,
+   "cat": "bot",
+   "ts": 1785312274610,
+   "msg": "🤖 Acadiane: Améliorer 1/6"
+  },
+  {
+   "tour": 3,
+   "etape": 49,
+   "cat": "bot",
+   "ts": 1785312274610,
+   "msg": "⭐ Acadiane: objectif !"
+  },
+  {
+   "tour": 3,
+   "etape": 50,
+   "cat": "bot",
+   "ts": 1785312274611,
+   "msg": "🤖 Frente Libre: +2 pui"
+  },
+  {
+   "tour": 3,
+   "etape": 51,
+   "cat": "bot",
+   "ts": 1785312274611,
+   "msg": "🤖 Frente Libre: Déployer #41 → 🔓 Vitesse"
+  },
+  {
+   "tour": 3,
+   "etape": 52,
+   "cat": "bot",
+   "ts": 1785312274611,
+   "msg": "🤖💰 Frente Libre: +1$ (Déployer)"
+  },
+  {
+   "tour": 4,
+   "etape": 53,
+   "cat": "turn",
+   "ts": 1785312274611,
+   "msg": "── Tour 4 ──"
+  },
+  {
+   "tour": 4,
+   "etape": 54,
+   "cat": "snap",
+   "ts": 1785312274611,
+   "msg": "[Début] ⚡2 🃏3 ♥2 💰5 ⭐0 W4 M0 Fe1 Bo1 No0 Pe0 Ab[]"
+  },
+  {
+   "tour": 4,
+   "etape": 55,
+   "cat": "snap",
+   "ts": 1785312274611,
+   "msg": "[Début 🤖 Nations Souv.] ⚡3 🃏2 ♥2 💰5 ⭐0 W2 M0 Fe0 Bo0 No4 Pe0 Ab[]"
+  },
+  {
+   "tour": 4,
+   "etape": 56,
+   "cat": "snap",
+   "ts": 1785312274611,
+   "msg": "[Début 🤖 Acadiane] ⚡2 🃏3 ♥3 💰8 ⭐1 W3 M0 Fe0 Bo0 No0 Pe1 Ab[]"
+  },
+  {
+   "tour": 4,
+   "etape": 57,
+   "cat": "snap",
+   "ts": 1785312274611,
+   "msg": "[Début 🤖 Frente Libre] ⚡4 🃏3 ♥3 💰5 ⭐0 W2 M1 Fe1 Bo0 No1 Pe0 Ab[0]"
+  },
+  {
+   "tour": 4,
+   "etape": 58,
+   "cat": "note",
+   "ts": 1785312290381,
+   "msg": "📝 MENACE: Frente (voisin SE) a déployé mecha Vitesse T3 et stocke du métal (Forge deploy 2mé). Il peut riverwalk montagne 41→37→34→31. Mon métal sur 31 est exposé tant que je nai pas de mecha."
+  },
+  {
+   "tour": 4,
+   "etape": 59,
+   "cat": "move",
+   "ts": 1785312290392,
+   "msg": "🚶 Cap. Zeke → #31"
+  },
+  {
+   "tour": 4,
+   "etape": 60,
+   "cat": "encounter",
+   "ts": 1785312290393,
+   "msg": "📜 Rencontre: \"Le Poste Frontière\""
+  },
+  {
+   "tour": 4,
+   "etape": 61,
+   "cat": "encounter",
+   "ts": 1785312319786,
+   "msg": "📜 Le Poste Frontière: Payer le passage → +1 pop, +2 pétrole"
+  },
+  {
+   "tour": 4,
+   "etape": 62,
+   "cat": "move",
+   "ts": 1785312319797,
+   "msg": "🚶 bayou_w2 → #31"
+  },
+  {
+   "tour": 4,
+   "etape": 63,
+   "cat": "move",
+   "ts": 1785312319797,
+   "msg": "✅ Mouvement terminé (2/2)"
+  },
+  {
+   "tour": 4,
+   "etape": 64,
+   "cat": "bot",
+   "ts": 1785312324001,
+   "msg": "🤖 Nations Souv.: +2 pétrole"
+  },
+  {
+   "tour": 4,
+   "etape": 65,
+   "cat": "bot",
+   "ts": 1785312324001,
+   "msg": "🤖 Nations Souv.: Enrôler Déployer → immédiat ♥+2 Popularité, recrue ⚡ permanent"
+  },
+  {
+   "tour": 4,
+   "etape": 66,
+   "cat": "bot",
+   "ts": 1785312324001,
+   "msg": "🤖💰 Nations Souv.: +3$ (Enrôler)"
+  },
+  {
+   "tour": 4,
+   "etape": 67,
+   "cat": "bot",
+   "ts": 1785312324001,
+   "msg": "🤖 Acadiane: Produire"
+  },
+  {
+   "tour": 4,
+   "etape": 68,
+   "cat": "bot",
+   "ts": 1785312324001,
+   "msg": "🤖 Frente Libre: Produire"
+  },
+  {
+   "tour": 5,
+   "etape": 69,
+   "cat": "turn",
+   "ts": 1785312324001,
+   "msg": "── Tour 5 ──"
+  },
+  {
+   "tour": 5,
+   "etape": 70,
+   "cat": "snap",
+   "ts": 1785312324001,
+   "msg": "[Début] ⚡2 🃏3 ♥3 💰5 ⭐0 W4 M0 Fe1 Bo1 No0 Pe2 Ab[]"
+  },
+  {
+   "tour": 5,
+   "etape": 71,
+   "cat": "snap",
+   "ts": 1785312324001,
+   "msg": "[Début 🤖 Nations Souv.] ⚡3 🃏2 ♥4 💰7 ⭐0 W2 M0 Fe0 Bo0 No0 Pe2 Ab[]"
+  },
+  {
+   "tour": 5,
+   "etape": 72,
+   "cat": "snap",
+   "ts": 1785312324001,
+   "msg": "[Début 🤖 Acadiane] ⚡2 🃏3 ♥3 💰8 ⭐1 W3 M0 Fe0 Bo1 No0 Pe2 Ab[]"
+  },
+  {
+   "tour": 5,
+   "etape": 73,
+   "cat": "snap",
+   "ts": 1785312324001,
+   "msg": "[Début 🤖 Frente Libre] ⚡4 🃏3 ♥3 💰5 ⭐0 W2 M1 Fe2 Bo0 No2 Pe0 Ab[0]"
+  },
+  {
+   "tour": 5,
+   "etape": 74,
+   "cat": "resource",
+   "ts": 1785312334163,
+   "msg": "💳 1 Pui"
+  },
+  {
+   "tour": 5,
+   "etape": 75,
+   "cat": "info",
+   "ts": 1785312334163,
+   "msg": "👷 +1 ouv. #35"
+  },
+  {
+   "tour": 5,
+   "etape": 76,
+   "cat": "info",
+   "ts": 1785312334163,
+   "msg": "🏭 +2 métal #31"
+  },
+  {
+   "tour": 5,
+   "etape": 77,
+   "cat": "deploy",
+   "ts": 1785312334173,
+   "msg": "⬡ Mecha déployé sur #31"
+  },
+  {
+   "tour": 5,
+   "etape": 78,
+   "cat": "ability",
+   "ts": 1785312334173,
+   "msg": "🔓 Ability débloquée : slot 0"
+  },
+  {
+   "tour": 5,
+   "etape": 79,
+   "cat": "resource",
+   "ts": 1785312334173,
+   "msg": "💰 +1$ (Déployer)"
+  },
+  {
+   "tour": 5,
+   "etape": 80,
+   "cat": "enlist",
+   "ts": 1785312334173,
+   "msg": "🤝 Nations Souv.: ⚡+1 Puissance (voisin Bayou → Deploy)"
+  },
+  {
+   "tour": 5,
+   "etape": 81,
+   "cat": "bot",
+   "ts": 1785312334177,
+   "msg": "🤖 Nations Souv.: Produire"
+  },
+  {
+   "tour": 5,
+   "etape": 82,
+   "cat": "bot",
+   "ts": 1785312334177,
+   "msg": "🤖 Acadiane: M. Thibodeau → #9"
+  },
+  {
+   "tour": 5,
+   "etape": 83,
+   "cat": "bot",
+   "ts": 1785312334177,
+   "msg": "🤖🏴 Acadiane: comptoir gardé (#9 colle au réseau)"
+  },
+  {
+   "tour": 5,
+   "etape": 84,
+   "cat": "bot",
+   "ts": 1785312334177,
+   "msg": "🤖 Acadiane: Ouv. → #6"
+  },
+  {
+   "tour": 5,
+   "etape": 85,
+   "cat": "bot",
+   "ts": 1785312334177,
+   "msg": "🤖 Acadiane: Améliorer 2/6"
+  },
+  {
+   "tour": 5,
+   "etape": 86,
+   "cat": "bot",
+   "ts": 1785312334178,
+   "msg": "🤖📜 Acadiane: \"Le Cimetière de Mechas\" → Fouiller les prototypes"
+  },
+  {
+   "tour": 5,
+   "etape": 87,
+   "cat": "bot",
+   "ts": 1785312334178,
+   "msg": "🤖 Frente Libre: +2 pui"
+  },
+  {
+   "tour": 5,
+   "etape": 88,
+   "cat": "bot",
+   "ts": 1785312334178,
+   "msg": "🤖 Frente Libre: Déployer #41 → 🔓 Sentier"
+  },
+  {
+   "tour": 5,
+   "etape": 89,
+   "cat": "bot",
+   "ts": 1785312334178,
+   "msg": "🤖💰 Frente Libre: +1$ (Déployer)"
+  },
+  {
+   "tour": 6,
+   "etape": 90,
+   "cat": "turn",
+   "ts": 1785312334178,
+   "msg": "── Tour 6 ──"
+  },
+  {
+   "tour": 6,
+   "etape": 91,
+   "cat": "snap",
+   "ts": 1785312334178,
+   "msg": "[Début] ⚡1 🃏3 ♥3 💰6 ⭐0 W5 M1 Fe0 Bo1 No0 Pe2 Ab[0]"
+  },
+  {
+   "tour": 6,
+   "etape": 92,
+   "cat": "snap",
+   "ts": 1785312334178,
+   "msg": "[Début 🤖 Nations Souv.] ⚡4 🃏2 ♥4 💰7 ⭐0 W2 M0 Fe0 Bo1 No1 Pe2 Ab[]"
+  },
+  {
+   "tour": 6,
+   "etape": 93,
+   "cat": "snap",
+   "ts": 1785312334178,
+   "msg": "[Début 🤖 Acadiane] ⚡2 🃏3 ♥3 💰9 ⭐1 W3 M0 Fe0 Bo1 No0 Pe0 Ab[]"
+  },
+  {
+   "tour": 6,
+   "etape": 94,
+   "cat": "snap",
+   "ts": 1785312334178,
+   "msg": "[Début 🤖 Frente Libre] ⚡6 🃏3 ♥3 💰5 ⭐0 W2 M2 Fe0 Bo0 No2 Pe0 Ab[0,1]"
+  },
+  {
+   "tour": 6,
+   "etape": 95,
+   "cat": "resource",
+   "ts": 1785312374090,
+   "msg": "💰 -1$ → +1 pétrole (#31), +1 nourriture (#35)"
+  },
+  {
+   "tour": 6,
+   "etape": 96,
+   "cat": "upgrade",
+   "ts": 1785312374102,
+   "msg": "⬆ Améliorer 1/6: Produce↑ → Deploy↓"
+  },
+  {
+   "tour": 6,
+   "etape": 97,
+   "cat": "resource",
+   "ts": 1785312374102,
+   "msg": "💰 +1$ (Améliorer)"
+  },
+  {
+   "tour": 6,
+   "etape": 98,
+   "cat": "bot",
+   "ts": 1785312374105,
+   "msg": "🤖 Nations Souv.: +2 pétrole"
+  },
+  {
+   "tour": 6,
+   "etape": 99,
+   "cat": "bot",
+   "ts": 1785312374105,
+   "msg": "🤖 Acadiane: +2 ouv. #6"
+  },
+  {
+   "tour": 6,
+   "etape": 100,
+   "cat": "bot",
+   "ts": 1785312374105,
+   "msg": "🤖 Acadiane: Produire"
+  },
+  {
+   "tour": 6,
+   "etape": 101,
+   "cat": "bot",
+   "ts": 1785312374106,
+   "msg": "🤖 Frente Libre: Produire"
+  },
+  {
+   "tour": 7,
+   "etape": 102,
+   "cat": "turn",
+   "ts": 1785312374106,
+   "msg": "── Tour 7 ──"
+  },
+  {
+   "tour": 7,
+   "etape": 103,
+   "cat": "snap",
+   "ts": 1785312374106,
+   "msg": "[Début] ⚡1 🃏3 ♥3 💰7 ⭐0 W5 M1 Fe0 Bo1 No1 Pe0 Ab[0]"
+  },
+  {
+   "tour": 7,
+   "etape": 104,
+   "cat": "snap",
+   "ts": 1785312374106,
+   "msg": "[Début 🤖 Nations Souv.] ⚡4 🃏2 ♥4 💰6 ⭐0 W2 M0 Fe0 Bo1 No1 Pe4 Ab[]"
+  },
+  {
+   "tour": 7,
+   "etape": 105,
+   "cat": "snap",
+   "ts": 1785312374106,
+   "msg": "[Début 🤖 Acadiane] ⚡2 🃏3 ♥3 💰9 ⭐1 W5 M0 Fe0 Bo1 No0 Pe1 Ab[]"
+  },
+  {
+   "tour": 7,
+   "etape": 106,
+   "cat": "snap",
+   "ts": 1785312374106,
+   "msg": "[Début 🤖 Frente Libre] ⚡6 🃏3 ♥3 💰5 ⭐0 W2 M2 Fe1 Bo0 No3 Pe0 Ab[0,1]"
+  },
+  {
+   "tour": 7,
+   "etape": 107,
+   "cat": "resource",
+   "ts": 1785312412906,
+   "msg": "💳 1 Pui"
+  },
+  {
+   "tour": 7,
+   "etape": 108,
+   "cat": "info",
+   "ts": 1785312412906,
+   "msg": "👷 +2 ouv. #35"
+  },
+  {
+   "tour": 7,
+   "etape": 109,
+   "cat": "info",
+   "ts": 1785312412906,
+   "msg": "🏭 +2 métal #31"
+  },
+  {
+   "tour": 7,
+   "etape": 110,
+   "cat": "info",
+   "ts": 1785312412906,
+   "msg": "🏭 +1 bois #28"
+  },
+  {
+   "tour": 7,
+   "etape": 111,
+   "cat": "deploy",
+   "ts": 1785312412916,
+   "msg": "⬡ Mecha déployé sur #31"
+  },
+  {
+   "tour": 7,
+   "etape": 112,
+   "cat": "ability",
+   "ts": 1785312412916,
+   "msg": "🔓 Ability débloquée : slot 2"
+  },
+  {
+   "tour": 7,
+   "etape": 113,
+   "cat": "resource",
+   "ts": 1785312412916,
+   "msg": "💰 +1$ (Déployer)"
+  },
+  {
+   "tour": 7,
+   "etape": 114,
+   "cat": "enlist",
+   "ts": 1785312412916,
+   "msg": "🤝 Nations Souv.: ⚡+1 Puissance (voisin Bayou → Deploy)"
+  },
+  {
+   "tour": 7,
+   "etape": 115,
+   "cat": "bot",
+   "ts": 1785312412919,
+   "msg": "🤖 Nations Souv.: Produire"
+  },
+  {
+   "tour": 7,
+   "etape": 116,
+   "cat": "bot",
+   "ts": 1785312412919,
+   "msg": "🤖 Nations Souv.: Construire Arsenal #17"
+  },
+  {
+   "tour": 7,
+   "etape": 117,
+   "cat": "bot",
+   "ts": 1785312412919,
+   "msg": "🤖💰 Nations Souv.: +2$ (Construire)"
+  },
+  {
+   "tour": 7,
+   "etape": 118,
+   "cat": "bot",
+   "ts": 1785312412919,
+   "msg": "🤖 Acadiane: +2 Pop"
+  },
+  {
+   "tour": 7,
+   "etape": 119,
+   "cat": "bot",
+   "ts": 1785312412919,
+   "msg": "🤖 Frente Libre: +2 métal"
+  },
+  {
+   "tour": 8,
+   "etape": 120,
+   "cat": "turn",
+   "ts": 1785312412919,
+   "msg": "── Tour 8 ──"
+  },
+  {
+   "tour": 8,
+   "etape": 121,
+   "cat": "snap",
+   "ts": 1785312412919,
+   "msg": "[Début] ⚡0 🃏3 ♥3 💰8 ⭐0 W7 M2 Fe0 Bo2 No1 Pe0 Ab[0,2]"
+  },
+  {
+   "tour": 8,
+   "etape": 122,
+   "cat": "snap",
+   "ts": 1785312412919,
+   "msg": "[Début 🤖 Nations Souv.] ⚡5 🃏2 ♥4 💰8 ⭐0 W2 M0 Fe0 Bo0 No2 Pe4 Ab[]"
+  },
+  {
+   "tour": 8,
+   "etape": 123,
+   "cat": "snap",
+   "ts": 1785312412919,
+   "msg": "[Début 🤖 Acadiane] ⚡2 🃏3 ♥5 💰8 ⭐1 W5 M0 Fe0 Bo1 No0 Pe1 Ab[]"
+  },
+  {
+   "tour": 8,
+   "etape": 124,
+   "cat": "snap",
+   "ts": 1785312412919,
+   "msg": "[Début 🤖 Frente Libre] ⚡6 🃏3 ♥3 💰4 ⭐0 W2 M2 Fe3 Bo0 No3 Pe0 Ab[0,1]"
+  },
+  {
+   "tour": 8,
+   "etape": 125,
+   "cat": "note",
+   "ts": 1785312497421,
+   "msg": "📝 DÉCISION: je fonce à l Usine T8 (héros Vitesse + riverwalk village 31→27→22), premier arrivé = meilleur choix de carte. Je saute la rencontre 30 pour l instant. Risque assumé: héros seul ⚡0, Frente à 2 tours — j évacuerai si ses mechas approchent."
+  },
+  {
+   "tour": 8,
+   "etape": 126,
+   "cat": "note",
+   "ts": 1785312542094,
+   "msg": "📝 LEÇON: le riverwalk champs+village est réservé aux mechas (slot 1) — le héros ne franchit pas les rivières. Route héros vers Usine = marécages gratuits Bayou: 31→28→20 puis 20→23→27→22. Le mecha slot 1 pourra lui faire 31→27→22 d un coup."
+  },
+  {
+   "tour": 8,
+   "etape": 127,
+   "cat": "move",
+   "ts": 1785312542105,
+   "msg": "🚶 Cap. Zeke → #20"
+  },
+  {
+   "tour": 8,
+   "etape": 128,
+   "cat": "info",
+   "ts": 1785312542105,
+   "msg": "≋ Sang du Marais : traversée du marécage #20 sans péage"
+  },
+  {
+   "tour": 8,
+   "etape": 129,
+   "cat": "move",
+   "ts": 1785312542107,
+   "msg": "🚶 bayou_w3 → #31 📦1nourriture"
+  },
+  {
+   "tour": 8,
+   "etape": 130,
+   "cat": "move",
+   "ts": 1785312542107,
+   "msg": "✅ Mouvement terminé (2/2)"
+  },
+  {
+   "tour": 8,
+   "etape": 131,
+   "cat": "bot",
+   "ts": 1785312546271,
+   "msg": "🤖 Nations Souv.: Aiyana → #10"
+  },
+  {
+   "tour": 8,
+   "etape": 132,
+   "cat": "bot",
+   "ts": 1785312546271,
+   "msg": "🤖 Nations Souv.: Ouv. → #7"
+  },
+  {
+   "tour": 8,
+   "etape": 133,
+   "cat": "bot",
+   "ts": 1785312546271,
+   "msg": "🤖 Nations Souv.: Améliorer 1/6"
+  },
+  {
+   "tour": 8,
+   "etape": 134,
+   "cat": "bot",
+   "ts": 1785312546271,
+   "msg": "🤖 Acadiane: Produire"
+  },
+  {
+   "tour": 8,
+   "etape": 135,
+   "cat": "bot",
+   "ts": 1785312546272,
+   "msg": "🤖 Frente Libre: +2 pui"
+  },
+  {
+   "tour": 8,
+   "etape": 136,
+   "cat": "bot",
+   "ts": 1785312546272,
+   "msg": "🤖 Frente Libre: Déployer #41 → 🔓 Peuple Armé"
+  },
+  {
+   "tour": 8,
+   "etape": 137,
+   "cat": "bot",
+   "ts": 1785312546272,
+   "msg": "🤖💰 Frente Libre: +1$ (Déployer)"
+  },
+  {
+   "tour": 9,
+   "etape": 138,
+   "cat": "turn",
+   "ts": 1785312546272,
+   "msg": "── Tour 9 ──"
+  },
+  {
+   "tour": 9,
+   "etape": 139,
+   "cat": "snap",
+   "ts": 1785312546272,
+   "msg": "[Début] ⚡0 🃏3 ♥3 💰8 ⭐0 W7 M2 Fe0 Bo2 No1 Pe0 Ab[0,2]"
+  },
+  {
+   "tour": 9,
+   "etape": 140,
+   "cat": "snap",
+   "ts": 1785312546272,
+   "msg": "[Début 🤖 Nations Souv.] ⚡5 🃏2 ♥4 💰11 ⭐0 W2 M0 Fe0 Bo0 No2 Pe1 Ab[]"
+  },
+  {
+   "tour": 9,
+   "etape": 141,
+   "cat": "snap",
+   "ts": 1785312546272,
+   "msg": "[Début 🤖 Acadiane] ⚡1 🃏3 ♥5 💰8 ⭐1 W5 M0 Fe0 Bo1 No0 Pe2 Ab[]"
+  },
+  {
+   "tour": 9,
+   "etape": 142,
+   "cat": "snap",
+   "ts": 1785312546272,
+   "msg": "[Début 🤖 Frente Libre] ⚡8 🃏3 ♥3 💰4 ⭐0 W2 M3 Fe1 Bo0 No3 Pe0 Ab[0,1,2]"
+  },
+  {
+   "tour": 9,
+   "etape": 143,
+   "cat": "resource",
+   "ts": 1785312551348,
+   "msg": "💪 -1$ → +2 Pui"
+  },
+  {
+   "tour": 9,
+   "etape": 144,
+   "cat": "bot",
+   "ts": 1785312551361,
+   "msg": "🤖 Nations Souv.: +2 nourriture"
+  },
+  {
+   "tour": 9,
+   "etape": 145,
+   "cat": "bot",
+   "ts": 1785312551361,
+   "msg": "🤖 Nations Souv.: Enrôler Améliorer → immédiat 💰+2 Pièces, recrue 🃏 permanent"
+  },
+  {
+   "tour": 9,
+   "etape": 146,
+   "cat": "bot",
+   "ts": 1785312551361,
+   "msg": "🤖💰 Nations Souv.: +3$ (Enrôler)"
+  },
+  {
+   "tour": 9,
+   "etape": 147,
+   "cat": "bot",
+   "ts": 1785312551361,
+   "msg": "🤖 Acadiane: +2 Pop (palier ×2 franchi !)"
+  },
+  {
+   "tour": 9,
+   "etape": 148,
+   "cat": "bot",
+   "ts": 1785312551361,
+   "msg": "🤖 Frente Libre: Produire"
+  },
+  {
+   "tour": 9,
+   "etape": 149,
+   "cat": "bot",
+   "ts": 1785312551361,
+   "msg": "🤖 Frente Libre: Enrôler Déployer → immédiat ♥+2 Popularité, recrue ♥ permanent"
+  },
+  {
+   "tour": 9,
+   "etape": 150,
+   "cat": "bot",
+   "ts": 1785312551361,
+   "msg": "🤖💰 Frente Libre: +2$ (Enrôler)"
+  },
+  {
+   "tour": 10,
+   "etape": 151,
+   "cat": "turn",
+   "ts": 1785312551361,
+   "msg": "── Tour 10 ──"
+  },
+  {
+   "tour": 10,
+   "etape": 152,
+   "cat": "snap",
+   "ts": 1785312551361,
+   "msg": "[Début] ⚡2 🃏3 ♥3 💰7 ⭐0 W7 M2 Fe0 Bo2 No1 Pe0 Ab[0,2]"
+  },
+  {
+   "tour": 10,
+   "etape": 153,
+   "cat": "snap",
+   "ts": 1785312551361,
+   "msg": "[Début 🤖 Nations Souv.] ⚡5 🃏2 ♥4 💰15 ⭐0 W2 M0 Fe0 Bo0 No1 Pe1 Ab[]"
+  },
+  {
+   "tour": 10,
+   "etape": 154,
+   "cat": "snap",
+   "ts": 1785312551361,
+   "msg": "[Début 🤖 Acadiane] ⚡1 🃏3 ♥7 💰7 ⭐1 W5 M0 Fe0 Bo1 No0 Pe2 Ab[]"
+  },
+  {
+   "tour": 10,
+   "etape": 155,
+   "cat": "snap",
+   "ts": 1785312551361,
+   "msg": "[Début 🤖 Frente Libre] ⚡8 🃏3 ♥5 💰6 ⭐0 W2 M3 Fe2 Bo0 No0 Pe0 Ab[0,1,2]"
+  },
+  {
+   "tour": 10,
+   "etape": 156,
+   "cat": "move",
+   "ts": 1785312623674,
+   "msg": "🚶 Cap. Zeke → #23"
+  },
+  {
+   "tour": 10,
+   "etape": 157,
+   "cat": "move",
+   "ts": 1785312623684,
+   "msg": "🚶 bayou_w4 → #28"
+  },
+  {
+   "tour": 10,
+   "etape": 158,
+   "cat": "move",
+   "ts": 1785312623684,
+   "msg": "✅ Mouvement terminé (2/2)"
+  },
+  {
+   "tour": 10,
+   "etape": 159,
+   "cat": "bot",
+   "ts": 1785312627435,
+   "msg": "🤖 Nations Souv.: Produire"
+  },
+  {
+   "tour": 10,
+   "etape": 160,
+   "cat": "bot",
+   "ts": 1785312627436,
+   "msg": "🤖 Acadiane: M. Thibodeau → #2 📦1bois"
+  },
+  {
+   "tour": 10,
+   "etape": 161,
+   "cat": "bot",
+   "ts": 1785312627436,
+   "msg": "🤖🏴 Acadiane: comptoir gardé (#2 colle au réseau)"
+  },
+  {
+   "tour": 10,
+   "etape": 162,
+   "cat": "bot",
+   "ts": 1785312627436,
+   "msg": "🤖 Acadiane: Ouv. → #9"
+  },
+  {
+   "tour": 10,
+   "etape": 163,
+   "cat": "bot",
+   "ts": 1785312627436,
+   "msg": "🤖 Frente Libre: +1 CC"
+  },
+  {
+   "tour": 10,
+   "etape": 164,
+   "cat": "bot",
+   "ts": 1785312627436,
+   "msg": "🤖 Frente Libre: Déployer #41 → 🔓 Guérilla"
+  },
+  {
+   "tour": 10,
+   "etape": 165,
+   "cat": "bot",
+   "ts": 1785312627436,
+   "msg": "⭐ Frente Libre: 4 mechas !"
+  },
+  {
+   "tour": 10,
+   "etape": 166,
+   "cat": "bot",
+   "ts": 1785312627436,
+   "msg": "🤖💰 Frente Libre: +1$ (Déployer)"
+  },
+  {
+   "tour": 10,
+   "etape": 167,
+   "cat": "enlist",
+   "ts": 1785312627436,
+   "msg": "🤝 Frente Libre: ♥+1 Popularité (propre Deploy)"
+  },
+  {
+   "tour": 11,
+   "etape": 168,
+   "cat": "turn",
+   "ts": 1785312627436,
+   "msg": "── Tour 11 ──"
+  },
+  {
+   "tour": 11,
+   "etape": 169,
+   "cat": "snap",
+   "ts": 1785312627436,
+   "msg": "[Début] ⚡2 🃏3 ♥3 💰7 ⭐0 W7 M2 Fe0 Bo2 No1 Pe0 Ab[0,2]"
+  },
+  {
+   "tour": 11,
+   "etape": 170,
+   "cat": "snap",
+   "ts": 1785312627436,
+   "msg": "[Début 🤖 Nations Souv.] ⚡5 🃏2 ♥4 💰15 ⭐0 W2 M0 Fe0 Bo0 No3 Pe1 Ab[]"
+  },
+  {
+   "tour": 11,
+   "etape": 171,
+   "cat": "snap",
+   "ts": 1785312627436,
+   "msg": "[Début 🤖 Acadiane] ⚡1 🃏3 ♥7 💰7 ⭐1 W5 M0 Fe0 Bo1 No0 Pe2 Ab[]"
+  },
+  {
+   "tour": 11,
+   "etape": 172,
+   "cat": "snap",
+   "ts": 1785312627436,
+   "msg": "[Début 🤖 Frente Libre] ⚡8 🃏4 ♥6 💰6 ⭐1 W2 M4 Fe0 Bo0 No0 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 11,
+   "etape": 173,
+   "cat": "resource",
+   "ts": 1785312641431,
+   "msg": "💳 1 Pui + 1 Pop"
+  },
+  {
+   "tour": 11,
+   "etape": 174,
+   "cat": "info",
+   "ts": 1785312641431,
+   "msg": "👷 +1 ouv. #35"
+  },
+  {
+   "tour": 11,
+   "etape": 175,
+   "cat": "info",
+   "ts": 1785312641431,
+   "msg": "🏭 +3 métal #31"
+  },
+  {
+   "tour": 11,
+   "etape": 176,
+   "cat": "info",
+   "ts": 1785312641431,
+   "msg": "🏭 +2 bois #28"
+  },
+  {
+   "tour": 11,
+   "etape": 177,
+   "cat": "star",
+   "ts": 1785312641431,
+   "msg": "⭐👷 8 ouvriers !"
+  },
+  {
+   "tour": 11,
+   "etape": 178,
+   "cat": "deploy",
+   "ts": 1785312641441,
+   "msg": "⬡ Mecha déployé sur #31"
+  },
+  {
+   "tour": 11,
+   "etape": 179,
+   "cat": "ability",
+   "ts": 1785312641441,
+   "msg": "🔓 Ability débloquée : slot 1"
+  },
+  {
+   "tour": 11,
+   "etape": 180,
+   "cat": "resource",
+   "ts": 1785312641441,
+   "msg": "💰 +1$ (Déployer)"
+  },
+  {
+   "tour": 11,
+   "etape": 181,
+   "cat": "enlist",
+   "ts": 1785312641441,
+   "msg": "🤝 Frente Libre: ♥+1 Popularité (voisin Bayou → Deploy)"
+  },
+  {
+   "tour": 11,
+   "etape": 182,
+   "cat": "enlist",
+   "ts": 1785312641441,
+   "msg": "🤝 Nations Souv.: ⚡+1 Puissance (voisin Bayou → Deploy)"
+  },
+  {
+   "tour": 11,
+   "etape": 183,
+   "cat": "bot",
+   "ts": 1785312641444,
+   "msg": "🤖 Nations Souv.: +2 pétrole"
+  },
+  {
+   "tour": 11,
+   "etape": 184,
+   "cat": "bot",
+   "ts": 1785312641444,
+   "msg": "🤖 Nations Souv.: Enrôler Enrôler → immédiat ⚡+2 Puissance, recrue 💰 permanent"
+  },
+  {
+   "tour": 11,
+   "etape": 185,
+   "cat": "bot",
+   "ts": 1785312641444,
+   "msg": "🤖💰 Nations Souv.: +3$ (Enrôler)"
+  },
+  {
+   "tour": 11,
+   "etape": 186,
+   "cat": "enlist",
+   "ts": 1785312641445,
+   "msg": "🤝 Nations Souv.: 💰+1 Pièce (propre Enlist)"
+  },
+  {
+   "tour": 11,
+   "etape": 187,
+   "cat": "bot",
+   "ts": 1785312641445,
+   "msg": "🤖 Acadiane: +2 Pop"
+  },
+  {
+   "tour": 11,
+   "etape": 188,
+   "cat": "bot",
+   "ts": 1785312641445,
+   "msg": "🤖 Frente Libre: Produire"
+  },
+  {
+   "tour": 12,
+   "etape": 189,
+   "cat": "turn",
+   "ts": 1785312641445,
+   "msg": "── Tour 12 ──"
+  },
+  {
+   "tour": 12,
+   "etape": 190,
+   "cat": "snap",
+   "ts": 1785312641445,
+   "msg": "[Début] ⚡1 🃏3 ♥2 💰8 ⭐1 W8 M3 Fe1 Bo4 No1 Pe0 Ab[0,2,1]"
+  },
+  {
+   "tour": 12,
+   "etape": 191,
+   "cat": "snap",
+   "ts": 1785312641445,
+   "msg": "[Début 🤖 Nations Souv.] ⚡8 🃏2 ♥4 💰18 ⭐0 W2 M0 Fe0 Bo0 No0 Pe3 Ab[]"
+  },
+  {
+   "tour": 12,
+   "etape": 192,
+   "cat": "snap",
+   "ts": 1785312641445,
+   "msg": "[Début 🤖 Acadiane] ⚡1 🃏3 ♥9 💰6 ⭐1 W5 M0 Fe0 Bo1 No0 Pe2 Ab[]"
+  },
+  {
+   "tour": 12,
+   "etape": 193,
+   "cat": "snap",
+   "ts": 1785312641445,
+   "msg": "[Début 🤖 Frente Libre] ⚡8 🃏4 ♥7 💰6 ⭐1 W2 M4 Fe1 Bo0 No1 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 12,
+   "etape": 194,
+   "cat": "move",
+   "ts": 1785312661418,
+   "msg": "🚶 Cap. Zeke → #22"
+  },
+  {
+   "tour": 12,
+   "etape": 195,
+   "cat": "rr",
+   "ts": 1785312661419,
+   "msg": "⚙ Rouge River ! Offre : Parade Motorisée · Plan Directeur · Prototype de Série · Heures Supplémentaires · Tournée des Comtés"
+  },
+  {
+   "tour": 12,
+   "etape": 196,
+   "cat": "rr",
+   "ts": 1785312687766,
+   "msg": "⚙ Carte d'usine choisie: Plan Directeur"
+  },
+  {
+   "tour": 12,
+   "etape": 197,
+   "cat": "move",
+   "ts": 1785312687777,
+   "msg": "🚶 bayou_m2 → #22 👷×3 📦1nourriture,1metal"
+  },
+  {
+   "tour": 12,
+   "etape": 198,
+   "cat": "move",
+   "ts": 1785312687777,
+   "msg": "✅ Mouvement terminé (2/2)"
+  },
+  {
+   "tour": 12,
+   "etape": 199,
+   "cat": "note",
+   "ts": 1785312715044,
+   "msg": "📝 LEÇON: le mecha embarque automatiquement TOUS les ouvriers+ressources de son hex au départ (transport implicite) — mes 3 ouvriers métal de 31 sont partis à l Usine. À surveiller pour ne pas casser son moteur de prod. Usine choisie: F10 Plan Directeur (1 pop → enlist/upgrade +1$) = moteur d étoiles sans nourriture."
+  },
+  {
+   "tour": 12,
+   "etape": 200,
+   "cat": "star",
+   "ts": 1785312715047,
+   "msg": "⭐ \"Le Gardien de l'Usine\" révélé !"
+  },
+  {
+   "tour": 12,
+   "etape": 201,
+   "cat": "bot",
+   "ts": 1785312715050,
+   "msg": "🤖 Nations Souv.: Aiyana → #4 📦1petrole"
+  },
+  {
+   "tour": 12,
+   "etape": 202,
+   "cat": "bot",
+   "ts": 1785312715050,
+   "msg": "🤖 Nations Souv.: Ouv. → #10 📦2petrole"
+  },
+  {
+   "tour": 12,
+   "etape": 203,
+   "cat": "bot",
+   "ts": 1785312715050,
+   "msg": "🤖 Nations Souv.: Améliorer 2/6"
+  },
+  {
+   "tour": 12,
+   "etape": 204,
+   "cat": "bot",
+   "ts": 1785312715050,
+   "msg": "🤖📜 Nations Souv.: \"Le Dépôt de Trains\" → Acheter la cargaison"
+  },
+  {
+   "tour": 12,
+   "etape": 205,
+   "cat": "enlist",
+   "ts": 1785312715050,
+   "msg": "🤝 Nations Souv.: 🃏+1 Carte Combat (propre Upgrade)"
+  },
+  {
+   "tour": 12,
+   "etape": 206,
+   "cat": "bot",
+   "ts": 1785312715050,
+   "msg": "🤖 Acadiane: M. Thibodeau → #6 📦2petrole, 1bois"
+  },
+  {
+   "tour": 12,
+   "etape": 207,
+   "cat": "bot",
+   "ts": 1785312715050,
+   "msg": "🤖 Acadiane: Ouv. → #9"
+  },
+  {
+   "tour": 12,
+   "etape": 208,
+   "cat": "bot",
+   "ts": 1785312715051,
+   "msg": "🤖 Frente Libre: +2 pétrole"
+  },
+  {
+   "tour": 13,
+   "etape": 209,
+   "cat": "turn",
+   "ts": 1785312715051,
+   "msg": "── Tour 13 ──"
+  },
+  {
+   "tour": 13,
+   "etape": 210,
+   "cat": "snap",
+   "ts": 1785312715051,
+   "msg": "[Début] ⚡1 🃏3 ♥2 💰8 ⭐2 W8 M3 Fe1 Bo4 No1 Pe0 Ab[0,2,1]"
+  },
+  {
+   "tour": 13,
+   "etape": 211,
+   "cat": "snap",
+   "ts": 1785312715051,
+   "msg": "[Début 🤖 Nations Souv.] ⚡8 🃏3 ♥4 💰19 ⭐0 W2 M0 Fe0 Bo0 No0 Pe0 Ab[]"
+  },
+  {
+   "tour": 13,
+   "etape": 212,
+   "cat": "snap",
+   "ts": 1785312715051,
+   "msg": "[Début 🤖 Acadiane] ⚡1 🃏3 ♥9 💰6 ⭐1 W5 M0 Fe0 Bo1 No0 Pe2 Ab[]"
+  },
+  {
+   "tour": 13,
+   "etape": 213,
+   "cat": "snap",
+   "ts": 1785312715051,
+   "msg": "[Début 🤖 Frente Libre] ⚡8 🃏4 ♥7 💰5 ⭐1 W2 M4 Fe1 Bo0 No1 Pe2 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 13,
+   "etape": 214,
+   "cat": "rr",
+   "ts": 1785312772214,
+   "msg": "⚙ Plan Directeur — coût payé"
+  },
+  {
+   "tour": 13,
+   "etape": 215,
+   "cat": "rr",
+   "ts": 1785312772214,
+   "msg": "⚙ +1$"
+  },
+  {
+   "tour": 13,
+   "etape": 216,
+   "cat": "note",
+   "ts": 1785312788069,
+   "msg": "📝 BUG?/LEÇON: factory_top Plan Directeur avec {choice:enlist,section:1,recruit:1} a encaissé le coût (1 pop) et donné +1$, mais AUCUN enlist/upgrade appliqué (rec0, amé1 inchangés). Et pas de factory_move ensuite (turn_end direct). À re-tester avec une autre syntaxe; sinon la carte est un piège."
+  },
+  {
+   "tour": 13,
+   "etape": 217,
+   "cat": "bot",
+   "ts": 1785312788079,
+   "msg": "🤖 Nations Souv.: Produire"
+  },
+  {
+   "tour": 13,
+   "etape": 218,
+   "cat": "bot",
+   "ts": 1785312788079,
+   "msg": "🤖 Acadiane: +2 nourriture"
+  },
+  {
+   "tour": 13,
+   "etape": 219,
+   "cat": "bot",
+   "ts": 1785312788079,
+   "msg": "🤖 Frente Libre: Produire"
+  },
+  {
+   "tour": 14,
+   "etape": 220,
+   "cat": "turn",
+   "ts": 1785312788079,
+   "msg": "── Tour 14 ──"
+  },
+  {
+   "tour": 14,
+   "etape": 221,
+   "cat": "snap",
+   "ts": 1785312788079,
+   "msg": "[Début] ⚡1 🃏3 ♥1 💰9 ⭐2 W8 M3 Fe1 Bo4 No1 Pe0 Ab[0,2,1]"
+  },
+  {
+   "tour": 14,
+   "etape": 222,
+   "cat": "snap",
+   "ts": 1785312788079,
+   "msg": "[Début 🤖 Nations Souv.] ⚡8 🃏3 ♥4 💰19 ⭐0 W2 M0 Fe0 Bo1 No1 Pe0 Ab[]"
+  },
+  {
+   "tour": 14,
+   "etape": 223,
+   "cat": "snap",
+   "ts": 1785312788079,
+   "msg": "[Début 🤖 Acadiane] ⚡1 🃏3 ♥9 💰5 ⭐1 W5 M0 Fe0 Bo1 No2 Pe2 Ab[]"
+  },
+  {
+   "tour": 14,
+   "etape": 224,
+   "cat": "snap",
+   "ts": 1785312788079,
+   "msg": "[Début 🤖 Frente Libre] ⚡8 🃏4 ♥7 💰5 ⭐1 W2 M4 Fe2 Bo0 No2 Pe2 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 14,
+   "etape": 225,
+   "cat": "move",
+   "ts": 1785312838929,
+   "msg": "🚶 Cap. Zeke → #30 📦1nourriture,1metal"
+  },
+  {
+   "tour": 14,
+   "etape": 226,
+   "cat": "encounter",
+   "ts": 1785312838929,
+   "msg": "📜 Rencontre: \"Le Marché aux Grains\""
+  },
+  {
+   "tour": 14,
+   "etape": 227,
+   "cat": "encounter",
+   "ts": 1785312853650,
+   "msg": "📜 Le Marché aux Grains: Salarier un courtier → -3$, +1 recrue"
+  },
+  {
+   "tour": 14,
+   "etape": 228,
+   "cat": "move",
+   "ts": 1785312853662,
+   "msg": "🚶 bayou_w6 → #28"
+  },
+  {
+   "tour": 14,
+   "etape": 229,
+   "cat": "move",
+   "ts": 1785312853662,
+   "msg": "✅ Mouvement terminé (2/2)"
+  },
+  {
+   "tour": 14,
+   "etape": 230,
+   "cat": "bot",
+   "ts": 1785312859648,
+   "msg": "🤖 Nations Souv.: +2 nourriture"
+  },
+  {
+   "tour": 14,
+   "etape": 231,
+   "cat": "bot",
+   "ts": 1785312859648,
+   "msg": "🤖 Nations Souv.: Enrôler Construire → immédiat 🃏+2 Cartes, recrue ♥ permanent"
+  },
+  {
+   "tour": 14,
+   "etape": 232,
+   "cat": "bot",
+   "ts": 1785312859648,
+   "msg": "⭐ Nations Souv.: 4 recrues !"
+  },
+  {
+   "tour": 14,
+   "etape": 233,
+   "cat": "bot",
+   "ts": 1785312859648,
+   "msg": "🤖💰 Nations Souv.: +3$ (Enrôler)"
+  },
+  {
+   "tour": 14,
+   "etape": 234,
+   "cat": "enlist",
+   "ts": 1785312859648,
+   "msg": "🤝 Nations Souv.: 💰+1 Pièce (propre Enlist)"
+  },
+  {
+   "tour": 14,
+   "etape": 235,
+   "cat": "enlist",
+   "ts": 1785312859648,
+   "msg": "🤝 Bayou: ⚡+1 Puissance (voisin Nations Souv. → Enlist)"
+  },
+  {
+   "tour": 14,
+   "etape": 236,
+   "cat": "bot",
+   "ts": 1785312859649,
+   "msg": "🤖 Acadiane: +2 ouv. #6"
+  },
+  {
+   "tour": 14,
+   "etape": 237,
+   "cat": "bot",
+   "ts": 1785312859649,
+   "msg": "🤖 Acadiane: Produire"
+  },
+  {
+   "tour": 14,
+   "etape": 238,
+   "cat": "bot",
+   "ts": 1785312859649,
+   "msg": "🤖 Acadiane: Enrôler Déployer → immédiat ♥+2 Popularité, recrue 💰 permanent"
+  },
+  {
+   "tour": 14,
+   "etape": 239,
+   "cat": "bot",
+   "ts": 1785312859649,
+   "msg": "🤖💰 Acadiane: +3$ (Enrôler)"
+  },
+  {
+   "tour": 14,
+   "etape": 240,
+   "cat": "enlist",
+   "ts": 1785312859649,
+   "msg": "🤝 Nations Souv.: 💰+1 Pièce (voisin Acadiane → Enlist)"
+  },
+  {
+   "tour": 14,
+   "etape": 241,
+   "cat": "bot",
+   "ts": 1785312859649,
+   "msg": "🤖 Frente Libre: +2 pétrole"
+  },
+  {
+   "tour": 14,
+   "etape": 242,
+   "cat": "bot",
+   "ts": 1785312859649,
+   "msg": "🤖 Frente Libre: Améliorer 1/6"
+  },
+  {
+   "tour": 15,
+   "etape": 243,
+   "cat": "turn",
+   "ts": 1785312859649,
+   "msg": "── Tour 15 ──"
+  },
+  {
+   "tour": 15,
+   "etape": 244,
+   "cat": "snap",
+   "ts": 1785312859649,
+   "msg": "[Début] ⚡4 🃏3 ♥1 💰6 ⭐2 W8 M3 Fe1 Bo4 No1 Pe0 Ab[0,2,1]"
+  },
+  {
+   "tour": 15,
+   "etape": 245,
+   "cat": "snap",
+   "ts": 1785312859649,
+   "msg": "[Début 🤖 Nations Souv.] ⚡8 🃏5 ♥4 💰23 ⭐1 W2 M0 Fe0 Bo1 No1 Pe0 Ab[]"
+  },
+  {
+   "tour": 15,
+   "etape": 246,
+   "cat": "snap",
+   "ts": 1785312859649,
+   "msg": "[Début 🤖 Acadiane] ⚡0 🃏3 ♥11 💰8 ⭐1 W7 M0 Fe0 Bo3 No1 Pe3 Ab[]"
+  },
+  {
+   "tour": 15,
+   "etape": 247,
+   "cat": "snap",
+   "ts": 1785312859649,
+   "msg": "[Début 🤖 Frente Libre] ⚡8 🃏4 ♥7 💰6 ⭐1 W2 M4 Fe2 Bo0 No2 Pe1 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 15,
+   "etape": 248,
+   "cat": "resource",
+   "ts": 1785312871709,
+   "msg": "💪 -1$ → +2 Pui"
+  },
+  {
+   "tour": 15,
+   "etape": 249,
+   "cat": "build",
+   "ts": 1785312871720,
+   "msg": "🏗 memorial construit sur #28"
+  },
+  {
+   "tour": 15,
+   "etape": 250,
+   "cat": "resource",
+   "ts": 1785312871720,
+   "msg": "💰 +3$ (Construire)"
+  },
+  {
+   "tour": 15,
+   "etape": 251,
+   "cat": "enlist",
+   "ts": 1785312871720,
+   "msg": "🤝 Nations Souv.: ♥+1 Popularité (voisin Bayou → Build)"
+  },
+  {
+   "tour": 15,
+   "etape": 252,
+   "cat": "bot",
+   "ts": 1785312871723,
+   "msg": "🤖 Nations Souv.: Produire"
+  },
+  {
+   "tour": 15,
+   "etape": 253,
+   "cat": "bot",
+   "ts": 1785312871723,
+   "msg": "🤖 Acadiane: +2 Pop (palier ×3 franchi !)"
+  },
+  {
+   "tour": 15,
+   "etape": 254,
+   "cat": "bot",
+   "ts": 1785312871724,
+   "msg": "🤖🔄 Frente Libre: son plan ne paie pas — repli sur la popularité, les territoires et les ressources"
+  },
+  {
+   "tour": 15,
+   "etape": 255,
+   "cat": "bot",
+   "ts": 1785312871724,
+   "msg": "🤖 Frente Libre: Produire"
+  },
+  {
+   "tour": 15,
+   "etape": 256,
+   "cat": "bot",
+   "ts": 1785312871724,
+   "msg": "🤖 Frente Libre: Enrôler Construire → immédiat 🃏+2 Cartes, recrue 💰 permanent"
+  },
+  {
+   "tour": 15,
+   "etape": 257,
+   "cat": "bot",
+   "ts": 1785312871724,
+   "msg": "🤖💰 Frente Libre: +2$ (Enrôler)"
+  },
+  {
+   "tour": 15,
+   "etape": 258,
+   "cat": "enlist",
+   "ts": 1785312871724,
+   "msg": "🤝 Bayou: ⚡+1 Puissance (voisin Frente Libre → Enlist)"
+  },
+  {
+   "tour": 16,
+   "etape": 259,
+   "cat": "turn",
+   "ts": 1785312871724,
+   "msg": "── Tour 16 ──"
+  },
+  {
+   "tour": 16,
+   "etape": 260,
+   "cat": "snap",
+   "ts": 1785312871724,
+   "msg": "[Début] ⚡7 🃏3 ♥1 💰8 ⭐2 W8 M3 Fe1 Bo0 No1 Pe0 Ab[0,2,1]"
+  },
+  {
+   "tour": 16,
+   "etape": 261,
+   "cat": "snap",
+   "ts": 1785312871724,
+   "msg": "[Début 🤖 Nations Souv.] ⚡8 🃏5 ♥5 💰23 ⭐1 W2 M0 Fe0 Bo2 No2 Pe0 Ab[]"
+  },
+  {
+   "tour": 16,
+   "etape": 262,
+   "cat": "snap",
+   "ts": 1785312871724,
+   "msg": "[Début 🤖 Acadiane] ⚡0 🃏3 ♥13 💰7 ⭐1 W7 M0 Fe0 Bo3 No1 Pe3 Ab[]"
+  },
+  {
+   "tour": 16,
+   "etape": 263,
+   "cat": "snap",
+   "ts": 1785312871724,
+   "msg": "[Début 🤖 Frente Libre] ⚡8 🃏6 ♥7 💰8 ⭐1 W2 M4 Fe3 Bo0 No0 Pe1 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 16,
+   "etape": 264,
+   "cat": "resource",
+   "ts": 1785312907265,
+   "msg": "💰 -1$ → +1 métal (#22), +1 métal (#22)"
+  },
+  {
+   "tour": 16,
+   "etape": 265,
+   "cat": "bot",
+   "ts": 1785312907278,
+   "msg": "🤖 Nations Souv.: +2 Pop (palier ×2 franchi !)"
+  },
+  {
+   "tour": 16,
+   "etape": 266,
+   "cat": "bot",
+   "ts": 1785312907278,
+   "msg": "🤖 Acadiane: (coût prod.)"
+  },
+  {
+   "tour": 16,
+   "etape": 267,
+   "cat": "bot",
+   "ts": 1785312907278,
+   "msg": "🤖 Acadiane: Enrôler Construire → immédiat 🃏+2 Cartes, recrue ♥ permanent"
+  },
+  {
+   "tour": 16,
+   "etape": 268,
+   "cat": "bot",
+   "ts": 1785312907278,
+   "msg": "🤖💰 Acadiane: +3$ (Enrôler)"
+  },
+  {
+   "tour": 16,
+   "etape": 269,
+   "cat": "enlist",
+   "ts": 1785312907278,
+   "msg": "🤝 Nations Souv.: 💰+1 Pièce (voisin Acadiane → Enlist)"
+  },
+  {
+   "tour": 16,
+   "etape": 270,
+   "cat": "bot",
+   "ts": 1785312907279,
+   "msg": "🤖 Frente Libre: +2 pétrole"
+  },
+  {
+   "tour": 16,
+   "etape": 271,
+   "cat": "bot",
+   "ts": 1785312907279,
+   "msg": "🤖 Frente Libre: Améliorer 2/6"
+  },
+  {
+   "tour": 17,
+   "etape": 272,
+   "cat": "turn",
+   "ts": 1785312907279,
+   "msg": "── Tour 17 ──"
+  },
+  {
+   "tour": 17,
+   "etape": 273,
+   "cat": "snap",
+   "ts": 1785312907279,
+   "msg": "[Début] ⚡7 🃏3 ♥1 💰7 ⭐2 W8 M3 Fe3 Bo0 No1 Pe0 Ab[0,2,1]"
+  },
+  {
+   "tour": 17,
+   "etape": 274,
+   "cat": "snap",
+   "ts": 1785312907279,
+   "msg": "[Début 🤖 Nations Souv.] ⚡8 🃏5 ♥7 💰23 ⭐1 W2 M0 Fe0 Bo2 No2 Pe0 Ab[]"
+  },
+  {
+   "tour": 17,
+   "etape": 275,
+   "cat": "snap",
+   "ts": 1785312907279,
+   "msg": "[Début 🤖 Acadiane] ⚡0 🃏5 ♥13 💰10 ⭐1 W7 M0 Fe0 Bo3 No0 Pe3 Ab[]"
+  },
+  {
+   "tour": 17,
+   "etape": 276,
+   "cat": "snap",
+   "ts": 1785312907279,
+   "msg": "[Début 🤖 Frente Libre] ⚡8 🃏6 ♥7 💰8 ⭐1 W2 M4 Fe3 Bo0 No0 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 17,
+   "etape": 277,
+   "cat": "resource",
+   "ts": 1785312921312,
+   "msg": "💳 1 Pui + 1 Pop + 1$"
+  },
+  {
+   "tour": 17,
+   "etape": 278,
+   "cat": "info",
+   "ts": 1785312921312,
+   "msg": "🏭 +3 bois #28"
+  },
+  {
+   "tour": 17,
+   "etape": 279,
+   "cat": "deploy",
+   "ts": 1785312921322,
+   "msg": "⬡ Mecha déployé sur #22"
+  },
+  {
+   "tour": 17,
+   "etape": 280,
+   "cat": "ability",
+   "ts": 1785312921322,
+   "msg": "🔓 Ability débloquée : slot 3"
+  },
+  {
+   "tour": 17,
+   "etape": 281,
+   "cat": "star",
+   "ts": 1785312921322,
+   "msg": "⭐ 4 Mechas déployés !"
+  },
+  {
+   "tour": 17,
+   "etape": 282,
+   "cat": "resource",
+   "ts": 1785312921322,
+   "msg": "💰 +1$ (Déployer)"
+  },
+  {
+   "tour": 17,
+   "etape": 283,
+   "cat": "enlist",
+   "ts": 1785312921322,
+   "msg": "🤝 Frente Libre: ♥+1 Popularité (voisin Bayou → Deploy)"
+  },
+  {
+   "tour": 17,
+   "etape": 284,
+   "cat": "enlist",
+   "ts": 1785312921322,
+   "msg": "🤝 Nations Souv.: ⚡+1 Puissance (voisin Bayou → Deploy)"
+  },
+  {
+   "tour": 17,
+   "etape": 285,
+   "cat": "bot",
+   "ts": 1785312921325,
+   "msg": "🤖 Nations Souv.: Produire"
+  },
+  {
+   "tour": 17,
+   "etape": 286,
+   "cat": "bot",
+   "ts": 1785312921325,
+   "msg": "🤖 Acadiane: +2 bois"
+  },
+  {
+   "tour": 17,
+   "etape": 287,
+   "cat": "bot",
+   "ts": 1785312921325,
+   "msg": "🤖 Frente Libre: Produire"
+  },
+  {
+   "tour": 18,
+   "etape": 288,
+   "cat": "turn",
+   "ts": 1785312921325,
+   "msg": "── Tour 18 ──"
+  },
+  {
+   "tour": 18,
+   "etape": 289,
+   "cat": "snap",
+   "ts": 1785312921325,
+   "msg": "[Début] ⚡6 🃏3 ♥0 💰7 ⭐3 W8 M4 Fe1 Bo3 No1 Pe0 Ab[0,2,1,3]"
+  },
+  {
+   "tour": 18,
+   "etape": 290,
+   "cat": "snap",
+   "ts": 1785312921325,
+   "msg": "[Début 🤖 Nations Souv.] ⚡9 🃏5 ♥7 💰23 ⭐1 W2 M0 Fe0 Bo3 No3 Pe0 Ab[]"
+  },
+  {
+   "tour": 18,
+   "etape": 291,
+   "cat": "snap",
+   "ts": 1785312921325,
+   "msg": "[Début 🤖 Acadiane] ⚡0 🃏5 ♥13 💰9 ⭐1 W7 M0 Fe0 Bo5 No0 Pe3 Ab[]"
+  },
+  {
+   "tour": 18,
+   "etape": 292,
+   "cat": "snap",
+   "ts": 1785312921325,
+   "msg": "[Début 🤖 Frente Libre] ⚡8 🃏6 ♥8 💰8 ⭐1 W2 M4 Fe4 Bo0 No1 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 18,
+   "etape": 293,
+   "cat": "move",
+   "ts": 1785312990494,
+   "msg": "🚶 Cap. Zeke → #40 📦1nourriture,1metal"
+  },
+  {
+   "tour": 18,
+   "etape": 294,
+   "cat": "encounter",
+   "ts": 1785312990494,
+   "msg": "📜 Rencontre: \"Le Bac à Vapeur\""
+  },
+  {
+   "tour": 18,
+   "etape": 295,
+   "cat": "encounter",
+   "ts": 1785313017975,
+   "msg": "📜 Le Bac à Vapeur: Aider au débarcadère → +1 pop, +2 bois"
+  },
+  {
+   "tour": 18,
+   "etape": 296,
+   "cat": "move",
+   "ts": 1785313017975,
+   "msg": "✅ Mouvement terminé (1/1)"
+  },
+  {
+   "tour": 18,
+   "etape": 297,
+   "cat": "bot",
+   "ts": 1785313017985,
+   "msg": "🤖 Nations Souv.: Aiyana → #11"
+  },
+  {
+   "tour": 18,
+   "etape": 298,
+   "cat": "bot",
+   "ts": 1785313017985,
+   "msg": "🤖 Nations Souv.: Ouv. → #14 📦3nourriture"
+  },
+  {
+   "tour": 18,
+   "etape": 299,
+   "cat": "bot",
+   "ts": 1785313017985,
+   "msg": "⭐ Nations Souv.: objectif !"
+  },
+  {
+   "tour": 18,
+   "etape": 300,
+   "cat": "bot",
+   "ts": 1785313017985,
+   "msg": "🤖 Acadiane: +2 pui"
+  },
+  {
+   "tour": 18,
+   "etape": 301,
+   "cat": "bot",
+   "ts": 1785313017985,
+   "msg": "🤖 Acadiane: Construire Moulin #9"
+  },
+  {
+   "tour": 18,
+   "etape": 302,
+   "cat": "bot",
+   "ts": 1785313017985,
+   "msg": "🤖💰 Acadiane: +2$ (Construire)"
+  },
+  {
+   "tour": 18,
+   "etape": 303,
+   "cat": "enlist",
+   "ts": 1785313017985,
+   "msg": "🤝 Acadiane: ♥+1 Popularité (propre Build)"
+  },
+  {
+   "tour": 18,
+   "etape": 304,
+   "cat": "enlist",
+   "ts": 1785313017985,
+   "msg": "🤝 Nations Souv.: ♥+1 Popularité (voisin Acadiane → Build)"
+  },
+  {
+   "tour": 18,
+   "etape": 305,
+   "cat": "enlist",
+   "ts": 1785313017985,
+   "msg": "🤝 Frente Libre: 💰+1 Pièce (voisin Acadiane → Build)"
+  },
+  {
+   "tour": 18,
+   "etape": 306,
+   "cat": "bot",
+   "ts": 1785313017986,
+   "msg": "🤖 Frente Libre: +2 bois"
+  },
+  {
+   "tour": 19,
+   "etape": 307,
+   "cat": "turn",
+   "ts": 1785313017986,
+   "msg": "── Tour 19 ──"
+  },
+  {
+   "tour": 19,
+   "etape": 308,
+   "cat": "snap",
+   "ts": 1785313017986,
+   "msg": "[Début] ⚡6 🃏3 ♥1 💰7 ⭐3 W8 M4 Fe1 Bo5 No1 Pe0 Ab[0,2,1,3]"
+  },
+  {
+   "tour": 19,
+   "etape": 309,
+   "cat": "snap",
+   "ts": 1785313017986,
+   "msg": "[Début 🤖 Nations Souv.] ⚡9 🃏5 ♥8 💰23 ⭐2 W2 M0 Fe0 Bo3 No3 Pe0 Ab[]"
+  },
+  {
+   "tour": 19,
+   "etape": 310,
+   "cat": "snap",
+   "ts": 1785313017986,
+   "msg": "[Début 🤖 Acadiane] ⚡2 🃏5 ♥14 💰10 ⭐1 W7 M0 Fe0 Bo1 No0 Pe3 Ab[]"
+  },
+  {
+   "tour": 19,
+   "etape": 311,
+   "cat": "snap",
+   "ts": 1785313017986,
+   "msg": "[Début 🤖 Frente Libre] ⚡8 🃏6 ♥8 💰8 ⭐1 W2 M4 Fe4 Bo2 No1 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 19,
+   "etape": 312,
+   "cat": "resource",
+   "ts": 1785313042949,
+   "msg": "💪 -1$ → +2 Pui"
+  },
+  {
+   "tour": 19,
+   "etape": 313,
+   "cat": "info",
+   "ts": 1785313042950,
+   "msg": "🪦 Mémorial: +1 Pop"
+  },
+  {
+   "tour": 19,
+   "etape": 314,
+   "cat": "build",
+   "ts": 1785313067401,
+   "msg": "🏗 arsenal construit sur #35"
+  },
+  {
+   "tour": 19,
+   "etape": 315,
+   "cat": "resource",
+   "ts": 1785313067401,
+   "msg": "💰 +3$ (Construire)"
+  },
+  {
+   "tour": 19,
+   "etape": 316,
+   "cat": "enlist",
+   "ts": 1785313067401,
+   "msg": "🤝 Frente Libre: 💰+1 Pièce (voisin Bayou → Build)"
+  },
+  {
+   "tour": 19,
+   "etape": 317,
+   "cat": "enlist",
+   "ts": 1785313067401,
+   "msg": "🤝 Nations Souv.: ♥+1 Popularité (voisin Bayou → Build)"
+  },
+  {
+   "tour": 19,
+   "etape": 318,
+   "cat": "bot",
+   "ts": 1785313067412,
+   "msg": "🤖 Nations Souv.: +1 ouv. #14"
+  },
+  {
+   "tour": 19,
+   "etape": 319,
+   "cat": "bot",
+   "ts": 1785313067412,
+   "msg": "🤖 Nations Souv.: Produire"
+  },
+  {
+   "tour": 19,
+   "etape": 320,
+   "cat": "bot",
+   "ts": 1785313067412,
+   "msg": "🤖 Nations Souv.: Construire Moulin #14"
+  },
+  {
+   "tour": 19,
+   "etape": 321,
+   "cat": "bot",
+   "ts": 1785313067412,
+   "msg": "🤖💰 Nations Souv.: +2$ (Construire)"
+  },
+  {
+   "tour": 19,
+   "etape": 322,
+   "cat": "enlist",
+   "ts": 1785313067412,
+   "msg": "🤝 Nations Souv.: ♥+1 Popularité (propre Build)"
+  },
+  {
+   "tour": 19,
+   "etape": 323,
+   "cat": "enlist",
+   "ts": 1785313067412,
+   "msg": "🤝 Acadiane: ♥+1 Popularité (voisin Nations Souv. → Build)"
+  },
+  {
+   "tour": 19,
+   "etape": 324,
+   "cat": "bot",
+   "ts": 1785313067413,
+   "msg": "🤖 Acadiane: M. Thibodeau → #2 📦2petrole"
+  },
+  {
+   "tour": 19,
+   "etape": 325,
+   "cat": "bot",
+   "ts": 1785313067413,
+   "msg": "🤖🏴 Acadiane: comptoir gardé (#2 colle au réseau)"
+  },
+  {
+   "tour": 19,
+   "etape": 326,
+   "cat": "bot",
+   "ts": 1785313067413,
+   "msg": "🤖 Acadiane: Ouv. → #9"
+  },
+  {
+   "tour": 19,
+   "etape": 327,
+   "cat": "bot",
+   "ts": 1785313067413,
+   "msg": "🤖 Frente Libre: Produire"
+  },
+  {
+   "tour": 20,
+   "etape": 328,
+   "cat": "turn",
+   "ts": 1785313067413,
+   "msg": "── Tour 20 ──"
+  },
+  {
+   "tour": 20,
+   "etape": 329,
+   "cat": "snap",
+   "ts": 1785313067413,
+   "msg": "[Début] ⚡8 🃏3 ♥2 💰9 ⭐3 W8 M4 Fe1 Bo1 No1 Pe0 Ab[0,2,1,3]"
+  },
+  {
+   "tour": 20,
+   "etape": 330,
+   "cat": "snap",
+   "ts": 1785313067413,
+   "msg": "[Début 🤖 Nations Souv.] ⚡9 🃏5 ♥10 💰25 ⭐2 W3 M0 Fe0 Bo2 No3 Pe0 Ab[]"
+  },
+  {
+   "tour": 20,
+   "etape": 331,
+   "cat": "snap",
+   "ts": 1785313067413,
+   "msg": "[Début 🤖 Acadiane] ⚡2 🃏5 ♥15 💰10 ⭐1 W7 M0 Fe0 Bo1 No0 Pe3 Ab[]"
+  },
+  {
+   "tour": 20,
+   "etape": 332,
+   "cat": "snap",
+   "ts": 1785313067413,
+   "msg": "[Début 🤖 Frente Libre] ⚡8 🃏6 ♥8 💰9 ⭐1 W2 M4 Fe5 Bo2 No2 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 20,
+   "etape": 333,
+   "cat": "rr",
+   "ts": 1785313148561,
+   "msg": "⚙ Plan Directeur — coût payé"
+  },
+  {
+   "tour": 20,
+   "etape": 334,
+   "cat": "rr",
+   "ts": 1785313148561,
+   "msg": "⚙ Enrôler Déployer (gratuit) → immédiat ♥+2 Popularité"
+  },
+  {
+   "tour": 20,
+   "etape": 335,
+   "cat": "rr",
+   "ts": 1785313148561,
+   "msg": "⚙ +1$"
+  },
+  {
+   "tour": 20,
+   "etape": 336,
+   "cat": "note",
+   "ts": 1785313148570,
+   "msg": "📝 LEÇON/BUG confirmé (code lu après coup): factory_top paie le coût PUIS ignore silencieusement un champ choice invalide (string au lieu d index) — aucun message d erreur. Syntaxe correcte: choice:1 + enlist:{section,recruit}. Suggestion: valider l action AVANT d encaisser le coût."
+  },
+  {
+   "tour": 20,
+   "etape": 337,
+   "cat": "bot",
+   "ts": 1785313148573,
+   "msg": "🤖 Nations Souv.: Aiyana → #15"
+  },
+  {
+   "tour": 20,
+   "etape": 338,
+   "cat": "bot",
+   "ts": 1785313148573,
+   "msg": "🤖 Nations Souv.: Ouv. → #17"
+  },
+  {
+   "tour": 20,
+   "etape": 339,
+   "cat": "bot",
+   "ts": 1785313148573,
+   "msg": "🤖📜 Nations Souv.: \"Le Pont Coupé\" → Aider à traverser"
+  },
+  {
+   "tour": 20,
+   "etape": 340,
+   "cat": "bot",
+   "ts": 1785313148574,
+   "msg": "🤖 Acadiane: +2 nourriture"
+  },
+  {
+   "tour": 20,
+   "etape": 341,
+   "cat": "bot",
+   "ts": 1785313148574,
+   "msg": "🤖 Frente Libre: +2 bois"
+  },
+  {
+   "tour": 21,
+   "etape": 342,
+   "cat": "turn",
+   "ts": 1785313148574,
+   "msg": "── Tour 21 ──"
+  },
+  {
+   "tour": 21,
+   "etape": 343,
+   "cat": "snap",
+   "ts": 1785313148574,
+   "msg": "[Début] ⚡8 🃏3 ♥3 💰10 ⭐3 W8 M4 Fe1 Bo1 No1 Pe0 Ab[0,2,1,3]"
+  },
+  {
+   "tour": 21,
+   "etape": 344,
+   "cat": "snap",
+   "ts": 1785313148574,
+   "msg": "[Début 🤖 Nations Souv.] ⚡9 🃏5 ♥11 💰25 ⭐2 W3 M0 Fe0 Bo4 No3 Pe0 Ab[]"
+  },
+  {
+   "tour": 21,
+   "etape": 345,
+   "cat": "snap",
+   "ts": 1785313148574,
+   "msg": "[Début 🤖 Acadiane] ⚡2 🃏5 ♥15 💰9 ⭐1 W7 M0 Fe0 Bo1 No2 Pe3 Ab[]"
+  },
+  {
+   "tour": 21,
+   "etape": 346,
+   "cat": "snap",
+   "ts": 1785313148574,
+   "msg": "[Début 🤖 Frente Libre] ⚡8 🃏6 ♥8 💰8 ⭐1 W2 M4 Fe5 Bo4 No2 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 21,
+   "etape": 347,
+   "cat": "move",
+   "ts": 1785313188381,
+   "msg": "🚶 bayou_w5 → #31"
+  },
+  {
+   "tour": 21,
+   "etape": 348,
+   "cat": "move",
+   "ts": 1785313188390,
+   "msg": "🚶 bayou_w7 → #31"
+  },
+  {
+   "tour": 21,
+   "etape": 349,
+   "cat": "move",
+   "ts": 1785313188390,
+   "msg": "✅ Mouvement terminé (2/2)"
+  },
+  {
+   "tour": 21,
+   "etape": 350,
+   "cat": "bot",
+   "ts": 1785313191565,
+   "msg": "🤖 Nations Souv.: +2 ouv. #14"
+  },
+  {
+   "tour": 21,
+   "etape": 351,
+   "cat": "bot",
+   "ts": 1785313191565,
+   "msg": "🤖 Nations Souv.: Produire"
+  },
+  {
+   "tour": 21,
+   "etape": 352,
+   "cat": "bot",
+   "ts": 1785313191566,
+   "msg": "🤖 Acadiane: +1 ouv. #6"
+  },
+  {
+   "tour": 21,
+   "etape": 353,
+   "cat": "bot",
+   "ts": 1785313191566,
+   "msg": "⭐ Acadiane: 8 ouvriers !"
+  },
+  {
+   "tour": 21,
+   "etape": 354,
+   "cat": "bot",
+   "ts": 1785313191566,
+   "msg": "🤖 Acadiane: Produire"
+  },
+  {
+   "tour": 21,
+   "etape": 355,
+   "cat": "bot",
+   "ts": 1785313191566,
+   "msg": "🤖 Acadiane: Enrôler Améliorer → immédiat 💰+2 Pièces, recrue ⚡ permanent"
+  },
+  {
+   "tour": 21,
+   "etape": 356,
+   "cat": "bot",
+   "ts": 1785313191566,
+   "msg": "🤖💰 Acadiane: +3$ (Enrôler)"
+  },
+  {
+   "tour": 21,
+   "etape": 357,
+   "cat": "enlist",
+   "ts": 1785313191566,
+   "msg": "🤝 Nations Souv.: 💰+1 Pièce (voisin Acadiane → Enlist)"
+  },
+  {
+   "tour": 21,
+   "etape": 358,
+   "cat": "bot",
+   "ts": 1785313191567,
+   "msg": "🤖 Frente Libre: E. Rojas → #41"
+  },
+  {
+   "tour": 21,
+   "etape": 359,
+   "cat": "bot",
+   "ts": 1785313191567,
+   "msg": "🤖🪤 Frente Libre: Trap #41 (1/4)"
+  },
+  {
+   "tour": 21,
+   "etape": 360,
+   "cat": "bot",
+   "ts": 1785313191567,
+   "msg": "🤖 Frente Libre: Mech → #46 📦2nourriture, 4bois"
+  },
+  {
+   "tour": 21,
+   "etape": 361,
+   "cat": "bot",
+   "ts": 1785313191567,
+   "msg": "🤖 Frente Libre: Construire Mémorial #45"
+  },
+  {
+   "tour": 21,
+   "etape": 362,
+   "cat": "bot",
+   "ts": 1785313191567,
+   "msg": "🤖📜 Frente Libre: \"Le Barrage\" → Rétablir le courant"
+  },
+  {
+   "tour": 21,
+   "etape": 363,
+   "cat": "enlist",
+   "ts": 1785313191567,
+   "msg": "🤝 Frente Libre: 💰+1 Pièce (propre Build)"
+  },
+  {
+   "tour": 21,
+   "etape": 364,
+   "cat": "enlist",
+   "ts": 1785313191567,
+   "msg": "🤝 Acadiane: ♥+1 Popularité (voisin Frente Libre → Build)"
+  },
+  {
+   "tour": 22,
+   "etape": 365,
+   "cat": "turn",
+   "ts": 1785313191567,
+   "msg": "── Tour 22 ──"
+  },
+  {
+   "tour": 22,
+   "etape": 366,
+   "cat": "snap",
+   "ts": 1785313191567,
+   "msg": "[Début] ⚡8 🃏3 ♥3 💰10 ⭐3 W8 M4 Fe1 Bo1 No1 Pe0 Ab[0,2,1,3]"
+  },
+  {
+   "tour": 22,
+   "etape": 367,
+   "cat": "snap",
+   "ts": 1785313191567,
+   "msg": "[Début 🤖 Nations Souv.] ⚡9 🃏5 ♥11 💰26 ⭐2 W5 M0 Fe0 Bo5 No4 Pe0 Ab[]"
+  },
+  {
+   "tour": 22,
+   "etape": 368,
+   "cat": "snap",
+   "ts": 1785313191567,
+   "msg": "[Début 🤖 Acadiane] ⚡1 🃏5 ♥15 💰14 ⭐2 W8 M0 Fe0 Bo5 No1 Pe4 Ab[]"
+  },
+  {
+   "tour": 22,
+   "etape": 369,
+   "cat": "snap",
+   "ts": 1785313191567,
+   "msg": "[Début 🤖 Frente Libre] ⚡10 🃏6 ♥9 💰9 ⭐1 W2 M4 Fe5 Bo0 No2 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 22,
+   "etape": 370,
+   "cat": "note",
+   "ts": 1785313245201,
+   "msg": "📝 Frente a enfin dispersé: mecha seul sur village 46 (accessible via mon riverwalk champs+village). PLAN combat: paire de mechas 22→30→37 au T23, assaut 2v1 sur 46 au T24 avec mise max 7⚡+cartes 3+2=12 — l égalité va à l attaquant donc imbattable. Vise: victoire n°1 + CAPTURE Flibuste (fObj Prédateur)."
+  },
+  {
+   "tour": 22,
+   "etape": 371,
+   "cat": "rr",
+   "ts": 1785313245211,
+   "msg": "⚙ Plan Directeur — coût payé"
+  },
+  {
+   "tour": 22,
+   "etape": 372,
+   "cat": "rr",
+   "ts": 1785313245211,
+   "msg": "⚙ Enrôler Construire (gratuit) → immédiat 🃏+2 Cartes"
+  },
+  {
+   "tour": 22,
+   "etape": 373,
+   "cat": "rr",
+   "ts": 1785313245211,
+   "msg": "⚙ +1$"
+  },
+  {
+   "tour": 22,
+   "etape": 374,
+   "cat": "bot",
+   "ts": 1785313245214,
+   "msg": "🤖 Nations Souv.: +1 CC"
+  },
+  {
+   "tour": 22,
+   "etape": 375,
+   "cat": "bot",
+   "ts": 1785313245214,
+   "msg": "🤖 Nations Souv.: Déployer #14 → 🔓 Vitesse"
+  },
+  {
+   "tour": 22,
+   "etape": 376,
+   "cat": "enlist",
+   "ts": 1785313245214,
+   "msg": "🤝 Nations Souv.: ⚡+1 Puissance (propre Deploy)"
+  },
+  {
+   "tour": 22,
+   "etape": 377,
+   "cat": "enlist",
+   "ts": 1785313245214,
+   "msg": "🤝 Bayou: 💰+1 Pièce (voisin Nations Souv. → Deploy)"
+  },
+  {
+   "tour": 22,
+   "etape": 378,
+   "cat": "enlist",
+   "ts": 1785313245214,
+   "msg": "🤝 Acadiane: 💰+1 Pièce (voisin Nations Souv. → Deploy)"
+  },
+  {
+   "tour": 22,
+   "etape": 379,
+   "cat": "bot",
+   "ts": 1785313245215,
+   "msg": "🤖 Acadiane: +2 métal"
+  },
+  {
+   "tour": 22,
+   "etape": 380,
+   "cat": "bot",
+   "ts": 1785313245215,
+   "msg": "🤖 Acadiane: Déployer #9 → 🔓 Vitesse"
+  },
+  {
+   "tour": 22,
+   "etape": 381,
+   "cat": "bot",
+   "ts": 1785313245215,
+   "msg": "🤖💰 Acadiane: +1$ (Déployer)"
+  },
+  {
+   "tour": 22,
+   "etape": 382,
+   "cat": "enlist",
+   "ts": 1785313245215,
+   "msg": "🤝 Acadiane: 💰+1 Pièce (propre Deploy)"
+  },
+  {
+   "tour": 22,
+   "etape": 383,
+   "cat": "enlist",
+   "ts": 1785313245215,
+   "msg": "🤝 Nations Souv.: ⚡+1 Puissance (voisin Acadiane → Deploy)"
+  },
+  {
+   "tour": 22,
+   "etape": 384,
+   "cat": "enlist",
+   "ts": 1785313245215,
+   "msg": "🤝 Frente Libre: ♥+1 Popularité (voisin Acadiane → Deploy)"
+  },
+  {
+   "tour": 22,
+   "etape": 385,
+   "cat": "bot",
+   "ts": 1785313245215,
+   "msg": "🤖 Frente Libre: Produire"
+  },
+  {
+   "tour": 22,
+   "etape": 386,
+   "cat": "bot",
+   "ts": 1785313245215,
+   "msg": "🤖 Frente Libre: Enrôler Améliorer → immédiat 💰+2 Pièces, recrue ⚡ permanent"
+  },
+  {
+   "tour": 22,
+   "etape": 387,
+   "cat": "bot",
+   "ts": 1785313245215,
+   "msg": "🤖💰 Frente Libre: +2$ (Enrôler)"
+  },
+  {
+   "tour": 22,
+   "etape": 388,
+   "cat": "enlist",
+   "ts": 1785313245215,
+   "msg": "🤝 Bayou: ⚡+1 Puissance (voisin Frente Libre → Enlist)"
+  },
+  {
+   "tour": 23,
+   "etape": 389,
+   "cat": "turn",
+   "ts": 1785313245215,
+   "msg": "── Tour 23 ──"
+  },
+  {
+   "tour": 23,
+   "etape": 390,
+   "cat": "snap",
+   "ts": 1785313245215,
+   "msg": "[Début] ⚡9 🃏5 ♥2 💰12 ⭐3 W8 M4 Fe1 Bo1 No1 Pe0 Ab[0,2,1,3]"
+  },
+  {
+   "tour": 23,
+   "etape": 391,
+   "cat": "snap",
+   "ts": 1785313245215,
+   "msg": "[Début 🤖 Nations Souv.] ⚡11 🃏6 ♥11 💰25 ⭐2 W5 M1 Fe0 Bo1 No4 Pe0 Ab[0]"
+  },
+  {
+   "tour": 23,
+   "etape": 392,
+   "cat": "snap",
+   "ts": 1785313245215,
+   "msg": "[Début 🤖 Acadiane] ⚡1 🃏5 ♥15 💰16 ⭐2 W8 M1 Fe2 Bo5 No1 Pe0 Ab[0]"
+  },
+  {
+   "tour": 23,
+   "etape": 393,
+   "cat": "snap",
+   "ts": 1785313245215,
+   "msg": "[Début 🤖 Frente Libre] ⚡10 🃏6 ♥10 💰13 ⭐1 W2 M4 Fe6 Bo0 No0 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 23,
+   "etape": 394,
+   "cat": "note",
+   "ts": 1785313442596,
+   "msg": "📝 PLAN v2: pas d attaque 1v1 (1 seule carte max en attaque, défense frente peut monter à 12). Route déterministe vers 6⭐: T24 F10 rec4 ⭐4, T25 produce bois, T26 F10 upgrade Trade→Build (débloque trade_pop+2, build à 3bo), T27 bolster+build moulin 31 = Magnat ⭐5, puis ⚡16 = ⭐6 vers T29-30 — en vérifiant pop≥7 et le score AVANT de poser la 6e. Le combat reste opportuniste si frente isole un mecha à portée de paire."
+  },
+  {
+   "tour": 23,
+   "etape": 395,
+   "cat": "resource",
+   "ts": 1785313442606,
+   "msg": "💪 -1$ → +3 Pui (Arsenal +1)"
+  },
+  {
+   "tour": 23,
+   "etape": 396,
+   "cat": "info",
+   "ts": 1785313442606,
+   "msg": "🪦 Mémorial: +1 Pop"
+  },
+  {
+   "tour": 23,
+   "etape": 397,
+   "cat": "bot",
+   "ts": 1785313442611,
+   "msg": "🤖 Nations Souv.: +2 Pop (palier ×3 franchi !)"
+  },
+  {
+   "tour": 23,
+   "etape": 398,
+   "cat": "bot",
+   "ts": 1785313442612,
+   "msg": "🤖 Acadiane: Produire"
+  },
+  {
+   "tour": 23,
+   "etape": 399,
+   "cat": "bot",
+   "ts": 1785313442612,
+   "msg": "🤖 Acadiane: Enrôler Enrôler → immédiat ⚡+2 Puissance, recrue 🃏 permanent"
+  },
+  {
+   "tour": 23,
+   "etape": 400,
+   "cat": "bot",
+   "ts": 1785313442612,
+   "msg": "⭐ Acadiane: 4 recrues !"
+  },
+  {
+   "tour": 23,
+   "etape": 401,
+   "cat": "bot",
+   "ts": 1785313442612,
+   "msg": "🤖💰 Acadiane: +3$ (Enrôler)"
+  },
+  {
+   "tour": 23,
+   "etape": 402,
+   "cat": "enlist",
+   "ts": 1785313442612,
+   "msg": "🤝 Acadiane: 🃏+1 Carte Combat (propre Enlist)"
+  },
+  {
+   "tour": 23,
+   "etape": 403,
+   "cat": "enlist",
+   "ts": 1785313442612,
+   "msg": "🤝 Nations Souv.: 💰+1 Pièce (voisin Acadiane → Enlist)"
+  },
+  {
+   "tour": 23,
+   "etape": 404,
+   "cat": "bot",
+   "ts": 1785313442612,
+   "msg": "🤖 Frente Libre: +2 bois"
+  },
+  {
+   "tour": 24,
+   "etape": 405,
+   "cat": "turn",
+   "ts": 1785313442612,
+   "msg": "── Tour 24 ──"
+  },
+  {
+   "tour": 24,
+   "etape": 406,
+   "cat": "snap",
+   "ts": 1785313442612,
+   "msg": "[Début] ⚡12 🃏5 ♥3 💰11 ⭐3 W8 M4 Fe1 Bo1 No1 Pe0 Ab[0,2,1,3]"
+  },
+  {
+   "tour": 24,
+   "etape": 407,
+   "cat": "snap",
+   "ts": 1785313442612,
+   "msg": "[Début 🤖 Nations Souv.] ⚡11 🃏6 ♥13 💰25 ⭐2 W5 M1 Fe0 Bo1 No4 Pe0 Ab[0]"
+  },
+  {
+   "tour": 24,
+   "etape": 408,
+   "cat": "snap",
+   "ts": 1785313442612,
+   "msg": "[Début 🤖 Acadiane] ⚡2 🃏6 ♥14 💰18 ⭐3 W8 M1 Fe2 Bo9 No0 Pe1 Ab[0]"
+  },
+  {
+   "tour": 24,
+   "etape": 409,
+   "cat": "snap",
+   "ts": 1785313442612,
+   "msg": "[Début 🤖 Frente Libre] ⚡10 🃏6 ♥10 💰12 ⭐1 W2 M4 Fe6 Bo2 No0 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 24,
+   "etape": 410,
+   "cat": "rr",
+   "ts": 1785313461519,
+   "msg": "⚙ Plan Directeur — coût payé"
+  },
+  {
+   "tour": 24,
+   "etape": 411,
+   "cat": "rr",
+   "ts": 1785313461519,
+   "msg": "⚙ Enrôler Améliorer (gratuit) → immédiat 💰+2 Pièces"
+  },
+  {
+   "tour": 24,
+   "etape": 412,
+   "cat": "star",
+   "ts": 1785313461519,
+   "msg": "⭐ 4 Recrues !"
+  },
+  {
+   "tour": 24,
+   "etape": 413,
+   "cat": "rr",
+   "ts": 1785313461519,
+   "msg": "⚙ +1$"
+  },
+  {
+   "tour": 24,
+   "etape": 414,
+   "cat": "bot",
+   "ts": 1785313461529,
+   "msg": "🤖 Nations Souv.: +3 ouv. #14"
+  },
+  {
+   "tour": 24,
+   "etape": 415,
+   "cat": "bot",
+   "ts": 1785313461529,
+   "msg": "⭐ Nations Souv.: 8 ouvriers !"
+  },
+  {
+   "tour": 24,
+   "etape": 416,
+   "cat": "bot",
+   "ts": 1785313461529,
+   "msg": "🤖 Nations Souv.: Produire"
+  },
+  {
+   "tour": 24,
+   "etape": 417,
+   "cat": "bot",
+   "ts": 1785313461529,
+   "msg": "🤖 Acadiane: +2 pui"
+  },
+  {
+   "tour": 24,
+   "etape": 418,
+   "cat": "bot",
+   "ts": 1785313461529,
+   "msg": "🤖 Acadiane: Construire Mémorial #2"
+  },
+  {
+   "tour": 24,
+   "etape": 419,
+   "cat": "bot",
+   "ts": 1785313461529,
+   "msg": "🤖💰 Acadiane: +2$ (Construire)"
+  },
+  {
+   "tour": 24,
+   "etape": 420,
+   "cat": "enlist",
+   "ts": 1785313461530,
+   "msg": "🤝 Acadiane: ♥+1 Popularité (propre Build)"
+  },
+  {
+   "tour": 24,
+   "etape": 421,
+   "cat": "enlist",
+   "ts": 1785313461530,
+   "msg": "🤝 Nations Souv.: ♥+1 Popularité (voisin Acadiane → Build)"
+  },
+  {
+   "tour": 24,
+   "etape": 422,
+   "cat": "enlist",
+   "ts": 1785313461530,
+   "msg": "🤝 Frente Libre: 💰+1 Pièce (voisin Acadiane → Build)"
+  },
+  {
+   "tour": 24,
+   "etape": 423,
+   "cat": "bot",
+   "ts": 1785313461530,
+   "msg": "🤖 Frente Libre: Produire"
+  },
+  {
+   "tour": 25,
+   "etape": 424,
+   "cat": "turn",
+   "ts": 1785313461530,
+   "msg": "── Tour 25 ──"
+  },
+  {
+   "tour": 25,
+   "etape": 425,
+   "cat": "snap",
+   "ts": 1785313461530,
+   "msg": "[Début] ⚡12 🃏5 ♥2 💰14 ⭐4 W8 M4 Fe1 Bo1 No1 Pe0 Ab[0,2,1,3]"
+  },
+  {
+   "tour": 25,
+   "etape": 426,
+   "cat": "snap",
+   "ts": 1785313461530,
+   "msg": "[Début 🤖 Nations Souv.] ⚡10 🃏6 ♥14 💰25 ⭐3 W8 M1 Fe0 Bo2 No5 Pe0 Ab[0]"
+  },
+  {
+   "tour": 25,
+   "etape": 427,
+   "cat": "snap",
+   "ts": 1785313461530,
+   "msg": "[Début 🤖 Acadiane] ⚡4 🃏6 ♥15 💰19 ⭐3 W8 M1 Fe2 Bo5 No0 Pe1 Ab[0]"
+  },
+  {
+   "tour": 25,
+   "etape": 428,
+   "cat": "snap",
+   "ts": 1785313461530,
+   "msg": "[Début 🤖 Frente Libre] ⚡10 🃏6 ♥10 💰13 ⭐1 W2 M4 Fe7 Bo2 No1 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 25,
+   "etape": 429,
+   "cat": "note",
+   "ts": 1785313591370,
+   "msg": "📝 DÉCISION: pas d assaut sur 46 — 1 carte max en attaque et un échec offre une étoile à Frente. Le goulot est ma POPULARITÉ (tier ≥7 = +15-20 pts), pas les étoiles. Script T25-T32: produce, trade_pop ×3, bolster+build Moulin 31 (Magnat prêt NON révélé), 2 tours de Move pour étaler mes unités (+4 territoires), puis T32 bolster ⚡16 (auto-⭐5) + reveal Magnat = ⭐6 et fin — en vérifiant le score avant de révéler."
+  },
+  {
+   "tour": 25,
+   "etape": 430,
+   "cat": "resource",
+   "ts": 1785313591381,
+   "msg": "💳 1 Pui + 1 Pop + 1$"
+  },
+  {
+   "tour": 25,
+   "etape": 431,
+   "cat": "info",
+   "ts": 1785313591381,
+   "msg": "🏭 +3 bois #28"
+  },
+  {
+   "tour": 25,
+   "etape": 432,
+   "cat": "info",
+   "ts": 1785313591381,
+   "msg": "🏭 +2 métal #31"
+  },
+  {
+   "tour": 25,
+   "etape": 433,
+   "cat": "bot",
+   "ts": 1785313591388,
+   "msg": "🤖 Nations Souv.: Aiyana → #12 📦1bois"
+  },
+  {
+   "tour": 25,
+   "etape": 434,
+   "cat": "bot",
+   "ts": 1785313591388,
+   "msg": "🤖 Nations Souv.: Mech → #10 📦3nourriture"
+  },
+  {
+   "tour": 25,
+   "etape": 435,
+   "cat": "bot",
+   "ts": 1785313591389,
+   "msg": "🤖 Acadiane: +2 métal"
+  },
+  {
+   "tour": 25,
+   "etape": 436,
+   "cat": "bot",
+   "ts": 1785313591389,
+   "msg": "🤖 Acadiane: Déployer #9 → 🔓 Portage"
+  },
+  {
+   "tour": 25,
+   "etape": 437,
+   "cat": "bot",
+   "ts": 1785313591389,
+   "msg": "🤖💰 Acadiane: +1$ (Déployer)"
+  },
+  {
+   "tour": 25,
+   "etape": 438,
+   "cat": "enlist",
+   "ts": 1785313591389,
+   "msg": "🤝 Acadiane: 💰+1 Pièce (propre Deploy)"
+  },
+  {
+   "tour": 25,
+   "etape": 439,
+   "cat": "enlist",
+   "ts": 1785313591389,
+   "msg": "🤝 Nations Souv.: ⚡+1 Puissance (voisin Acadiane → Deploy)"
+  },
+  {
+   "tour": 25,
+   "etape": 440,
+   "cat": "enlist",
+   "ts": 1785313591389,
+   "msg": "🤝 Frente Libre: ♥+1 Popularité (voisin Acadiane → Deploy)"
+  },
+  {
+   "tour": 25,
+   "etape": 441,
+   "cat": "bot",
+   "ts": 1785313591390,
+   "msg": "🤖 Frente Libre: +2 bois"
+  },
+  {
+   "tour": 26,
+   "etape": 442,
+   "cat": "turn",
+   "ts": 1785313591390,
+   "msg": "── Tour 26 ──"
+  },
+  {
+   "tour": 26,
+   "etape": 443,
+   "cat": "snap",
+   "ts": 1785313591390,
+   "msg": "[Début] ⚡11 🃏5 ♥1 💰13 ⭐4 W8 M4 Fe3 Bo4 No1 Pe0 Ab[0,2,1,3]"
+  },
+  {
+   "tour": 26,
+   "etape": 444,
+   "cat": "snap",
+   "ts": 1785313591390,
+   "msg": "[Début 🤖 Nations Souv.] ⚡11 🃏6 ♥14 💰25 ⭐3 W8 M1 Fe0 Bo2 No5 Pe0 Ab[0]"
+  },
+  {
+   "tour": 26,
+   "etape": 445,
+   "cat": "snap",
+   "ts": 1785313591390,
+   "msg": "[Début 🤖 Acadiane] ⚡4 🃏6 ♥15 💰20 ⭐3 W8 M2 Fe0 Bo5 No0 Pe1 Ab[0,1]"
+  },
+  {
+   "tour": 26,
+   "etape": 446,
+   "cat": "snap",
+   "ts": 1785313591390,
+   "msg": "[Début 🤖 Frente Libre] ⚡10 🃏6 ♥11 💰12 ⭐1 W2 M4 Fe7 Bo4 No1 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 26,
+   "etape": 447,
+   "cat": "resource",
+   "ts": 1785313599463,
+   "msg": "💰 -1$ → +1 Pop"
+  },
+  {
+   "tour": 26,
+   "etape": 448,
+   "cat": "bot",
+   "ts": 1785313599476,
+   "msg": "🤖 Nations Souv.: Produire"
+  },
+  {
+   "tour": 26,
+   "etape": 449,
+   "cat": "bot",
+   "ts": 1785313599477,
+   "msg": "🤖 Acadiane: +2 pui"
+  },
+  {
+   "tour": 26,
+   "etape": 450,
+   "cat": "bot",
+   "ts": 1785313599477,
+   "msg": "🤖🪦 Acadiane: +1 Pop (Mémorial)"
+  },
+  {
+   "tour": 26,
+   "etape": 451,
+   "cat": "bot",
+   "ts": 1785313599477,
+   "msg": "🤖 Acadiane: Construire Gare #6"
+  },
+  {
+   "tour": 26,
+   "etape": 452,
+   "cat": "bot",
+   "ts": 1785313599477,
+   "msg": "🤖🛤 Acadiane: Rail #6↔#2"
+  },
+  {
+   "tour": 26,
+   "etape": 453,
+   "cat": "bot",
+   "ts": 1785313599477,
+   "msg": "🤖🛤 Acadiane: Rail #2↔#9"
+  },
+  {
+   "tour": 26,
+   "etape": 454,
+   "cat": "bot",
+   "ts": 1785313599477,
+   "msg": "🤖🛤 Acadiane: Rail #9↔#16"
+  },
+  {
+   "tour": 26,
+   "etape": 455,
+   "cat": "bot",
+   "ts": 1785313599477,
+   "msg": "🤖💰 Acadiane: +2$ (Construire)"
+  },
+  {
+   "tour": 26,
+   "etape": 456,
+   "cat": "enlist",
+   "ts": 1785313599477,
+   "msg": "🤝 Acadiane: ♥+1 Popularité (propre Build)"
+  },
+  {
+   "tour": 26,
+   "etape": 457,
+   "cat": "enlist",
+   "ts": 1785313599477,
+   "msg": "🤝 Nations Souv.: ♥+1 Popularité (voisin Acadiane → Build)"
+  },
+  {
+   "tour": 26,
+   "etape": 458,
+   "cat": "enlist",
+   "ts": 1785313599477,
+   "msg": "🤝 Frente Libre: 💰+1 Pièce (voisin Acadiane → Build)"
+  },
+  {
+   "tour": 26,
+   "etape": 459,
+   "cat": "bot",
+   "ts": 1785313599477,
+   "msg": "🤖🛤 Rail #6↔#2"
+  },
+  {
+   "tour": 26,
+   "etape": 460,
+   "cat": "bot",
+   "ts": 1785313599477,
+   "msg": "🤖🛤 Rail #2↔#9"
+  },
+  {
+   "tour": 26,
+   "etape": 461,
+   "cat": "bot",
+   "ts": 1785313599477,
+   "msg": "🤖🛤 Rail #9↔#16"
+  },
+  {
+   "tour": 26,
+   "etape": 462,
+   "cat": "bot",
+   "ts": 1785313599478,
+   "msg": "🤖 Frente Libre: E. Rojas → #37 📦4bois, 1nourriture"
+  },
+  {
+   "tour": 26,
+   "etape": 463,
+   "cat": "bot",
+   "ts": 1785313599478,
+   "msg": "🤖🪤 Frente Libre: Trap #37 (2/4)"
+  },
+  {
+   "tour": 26,
+   "etape": 464,
+   "cat": "bot",
+   "ts": 1785313599478,
+   "msg": "🤖 Frente Libre: Mech → #30"
+  },
+  {
+   "tour": 26,
+   "etape": 465,
+   "cat": "bot",
+   "ts": 1785313599478,
+   "msg": "🤖 Frente Libre: Construire Moulin #41"
+  },
+  {
+   "tour": 26,
+   "etape": 466,
+   "cat": "enlist",
+   "ts": 1785313599478,
+   "msg": "🤝 Frente Libre: 💰+1 Pièce (propre Build)"
+  },
+  {
+   "tour": 26,
+   "etape": 467,
+   "cat": "enlist",
+   "ts": 1785313599478,
+   "msg": "🤝 Acadiane: ♥+1 Popularité (voisin Frente Libre → Build)"
+  },
+  {
+   "tour": 26,
+   "etape": 468,
+   "cat": "enlist",
+   "ts": 1785313599478,
+   "msg": "⭐♥ Acadiane: Popularité maximale (18) !"
+  },
+  {
+   "tour": 26,
+   "etape": 469,
+   "cat": "enlist",
+   "ts": 1785313599478,
+   "msg": "🤝 Bayou: ♥+1 Popularité (voisin Frente Libre → Build)"
+  },
+  {
+   "tour": 27,
+   "etape": 470,
+   "cat": "turn",
+   "ts": 1785313599478,
+   "msg": "── Tour 27 ──"
+  },
+  {
+   "tour": 27,
+   "etape": 471,
+   "cat": "snap",
+   "ts": 1785313599478,
+   "msg": "[Début] ⚡11 🃏5 ♥3 💰12 ⭐4 W8 M4 Fe3 Bo4 No1 Pe0 Ab[0,2,1,3]"
+  },
+  {
+   "tour": 27,
+   "etape": 472,
+   "cat": "snap",
+   "ts": 1785313599478,
+   "msg": "[Début 🤖 Nations Souv.] ⚡10 🃏6 ♥14 💰24 ⭐3 W8 M1 Fe0 Bo3 No6 Pe0 Ab[0]"
+  },
+  {
+   "tour": 27,
+   "etape": 473,
+   "cat": "snap",
+   "ts": 1785313599478,
+   "msg": "[Début 🤖 Acadiane] ⚡6 🃏6 ♥18 💰21 ⭐4 W8 M2 Fe0 Bo1 No0 Pe1 Ab[0,1]"
+  },
+  {
+   "tour": 27,
+   "etape": 474,
+   "cat": "snap",
+   "ts": 1785313599478,
+   "msg": "[Début 🤖 Frente Libre] ⚡10 🃏6 ♥11 💰14 ⭐1 W2 M4 Fe7 Bo0 No1 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 27,
+   "etape": 475,
+   "cat": "note",
+   "ts": 1785313681284,
+   "msg": "📝 MENACE: héros Frente à 37 (piège posé, mon héros 40 acculé — seule sortie 37 piégée −3⚡−2♥) + mecha frente à 30. Je garde ⚡ haut: en défense 1v1 je mise 7+carte4=11, battable seulement par 7+carte5. Une victoire DÉFENSIVE me donnerait l étoile combat. Pas d attaque préventive: le piège tuerait ma pop."
+  },
+  {
+   "tour": 27,
+   "etape": 476,
+   "cat": "resource",
+   "ts": 1785313681294,
+   "msg": "💪 -1$ → +3 Pui (Arsenal +1)"
+  },
+  {
+   "tour": 27,
+   "etape": 477,
+   "cat": "info",
+   "ts": 1785313681294,
+   "msg": "🪦 Mémorial: +1 Pop"
+  },
+  {
+   "tour": 27,
+   "etape": 478,
+   "cat": "build",
+   "ts": 1785313681297,
+   "msg": "🏗 moulin construit sur #31"
+  },
+  {
+   "tour": 27,
+   "etape": 479,
+   "cat": "resource",
+   "ts": 1785313681297,
+   "msg": "💰 +3$ (Construire)"
+  },
+  {
+   "tour": 27,
+   "etape": 480,
+   "cat": "enlist",
+   "ts": 1785313681297,
+   "msg": "🤝 Bayou: ♥+1 Popularité (propre Build)"
+  },
+  {
+   "tour": 27,
+   "etape": 481,
+   "cat": "enlist",
+   "ts": 1785313681297,
+   "msg": "🤝 Frente Libre: 💰+1 Pièce (voisin Bayou → Build)"
+  },
+  {
+   "tour": 27,
+   "etape": 482,
+   "cat": "enlist",
+   "ts": 1785313681297,
+   "msg": "🤝 Nations Souv.: ♥+1 Popularité (voisin Bayou → Build)"
+  },
+  {
+   "tour": 27,
+   "etape": 483,
+   "cat": "bot",
+   "ts": 1785313681300,
+   "msg": "🤖 Nations Souv.: Aiyana → #23 📦1bois"
+  },
+  {
+   "tour": 27,
+   "etape": 484,
+   "cat": "bot",
+   "ts": 1785313681300,
+   "msg": "🤖 Nations Souv.: Mech → #1 📦2bois, 3nourriture"
+  },
+  {
+   "tour": 27,
+   "etape": 485,
+   "cat": "bot",
+   "ts": 1785313681301,
+   "msg": "🤖 Acadiane: M. Thibodeau → #16 📦1petrole"
+  },
+  {
+   "tour": 27,
+   "etape": 486,
+   "cat": "bot",
+   "ts": 1785313681301,
+   "msg": "🤖🏴 Acadiane: Comptoir #16 (2/4)"
+  },
+  {
+   "tour": 27,
+   "etape": 487,
+   "cat": "bot",
+   "ts": 1785313681301,
+   "msg": "🤖 Acadiane: Mech → #12 📦1bois"
+  },
+  {
+   "tour": 27,
+   "etape": 488,
+   "cat": "bot",
+   "ts": 1785313681301,
+   "msg": "🤖 Frente Libre: Produire"
+  },
+  {
+   "tour": 27,
+   "etape": 489,
+   "cat": "bot",
+   "ts": 1785313681301,
+   "msg": "🤖 Frente Libre: Enrôler Enrôler → immédiat ⚡+2 Puissance, recrue 🃏 permanent"
+  },
+  {
+   "tour": 27,
+   "etape": 490,
+   "cat": "bot",
+   "ts": 1785313681301,
+   "msg": "⭐ Frente Libre: 4 recrues !"
+  },
+  {
+   "tour": 27,
+   "etape": 491,
+   "cat": "bot",
+   "ts": 1785313681301,
+   "msg": "🤖💰 Frente Libre: +2$ (Enrôler)"
+  },
+  {
+   "tour": 27,
+   "etape": 492,
+   "cat": "enlist",
+   "ts": 1785313681301,
+   "msg": "🤝 Frente Libre: 🃏+1 Carte Combat (propre Enlist)"
+  },
+  {
+   "tour": 27,
+   "etape": 493,
+   "cat": "enlist",
+   "ts": 1785313681301,
+   "msg": "🤝 Acadiane: 🃏+1 Carte Combat (voisin Frente Libre → Enlist)"
+  },
+  {
+   "tour": 27,
+   "etape": 494,
+   "cat": "enlist",
+   "ts": 1785313681301,
+   "msg": "🤝 Bayou: ⚡+1 Puissance (voisin Frente Libre → Enlist)"
+  },
+  {
+   "tour": 28,
+   "etape": 495,
+   "cat": "turn",
+   "ts": 1785313681301,
+   "msg": "── Tour 28 ──"
+  },
+  {
+   "tour": 28,
+   "etape": 496,
+   "cat": "snap",
+   "ts": 1785313681301,
+   "msg": "[Début] ⚡15 🃏5 ♥5 💰14 ⭐4 W8 M4 Fe3 Bo0 No1 Pe0 Ab[0,2,1,3]"
+  },
+  {
+   "tour": 28,
+   "etape": 497,
+   "cat": "snap",
+   "ts": 1785313681301,
+   "msg": "[Début 🤖 Nations Souv.] ⚡10 🃏6 ♥15 💰24 ⭐3 W8 M1 Fe0 Bo3 No6 Pe0 Ab[0]"
+  },
+  {
+   "tour": 28,
+   "etape": 498,
+   "cat": "snap",
+   "ts": 1785313681301,
+   "msg": "[Début 🤖 Acadiane] ⚡6 🃏7 ♥18 💰21 ⭐4 W8 M2 Fe0 Bo1 No0 Pe1 Ab[0,1]"
+  },
+  {
+   "tour": 28,
+   "etape": 499,
+   "cat": "snap",
+   "ts": 1785313681301,
+   "msg": "[Début 🤖 Frente Libre] ⚡12 🃏7 ♥11 💰17 ⭐2 W2 M4 Fe8 Bo0 No0 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 28,
+   "etape": 500,
+   "cat": "note",
+   "ts": 1785313833949,
+   "msg": "📝 DÉCISION CLÉ: assaut garanti sur le mecha acadien isolé à 12 (leader au score): mise 7⚡+carte4=11 ≥ leur max absolu 6+5=11, égalité=attaquant. White Flag non débloqué chez eux. Gain: ⭐combat + capture Flibuste + 2$ pris au leader. Je garde Magnat NON révélé: la 6e étoile n arrivera qu à pop≥7 (tier 2), sinon je fige une défaite."
+  },
+  {
+   "tour": 28,
+   "etape": 501,
+   "cat": "move",
+   "ts": 1785313833960,
+   "msg": "🚶 bayou_m2 → #12"
+  },
+  {
+   "tour": 28,
+   "etape": 502,
+   "cat": "combat",
+   "ts": 1785313833960,
+   "msg": "⚔ Combat PvP vs Acadiane sur #12 !"
+  },
+  {
+   "tour": 28,
+   "etape": 503,
+   "cat": "combat",
+   "ts": 1785313833963,
+   "msg": "⚔ Vous: 11 vs 5 — VICTOIRE"
+  },
+  {
+   "tour": 28,
+   "etape": 504,
+   "cat": "star",
+   "ts": 1785313833964,
+   "msg": "⭐⚔ Vous: étoile de combat 1/2 !"
+  },
+  {
+   "tour": 28,
+   "etape": 505,
+   "cat": "move",
+   "ts": 1785313851001,
+   "msg": "🚶 bayou_w1 → #20"
+  },
+  {
+   "tour": 28,
+   "etape": 506,
+   "cat": "info",
+   "ts": 1785313851002,
+   "msg": "≋ Sang du Marais : traversée du marécage #20 sans péage"
+  },
+  {
+   "tour": 28,
+   "etape": 507,
+   "cat": "move",
+   "ts": 1785313851002,
+   "msg": "✅ Mouvement terminé (2/2)"
+  },
+  {
+   "tour": 28,
+   "etape": 508,
+   "cat": "bot",
+   "ts": 1785313856684,
+   "msg": "🤖 Nations Souv.: Produire"
+  },
+  {
+   "tour": 28,
+   "etape": 509,
+   "cat": "bot",
+   "ts": 1785313856684,
+   "msg": "🤖 Acadiane: +2 métal"
+  },
+  {
+   "tour": 28,
+   "etape": 510,
+   "cat": "bot",
+   "ts": 1785313856684,
+   "msg": "🤖 Frente Libre: +2 bois"
+  },
+  {
+   "tour": 28,
+   "etape": 511,
+   "cat": "bot",
+   "ts": 1785313856684,
+   "msg": "⭐ Frente Libre: objectif !"
+  },
+  {
+   "tour": 29,
+   "etape": 512,
+   "cat": "turn",
+   "ts": 1785313856684,
+   "msg": "── Tour 29 ──"
+  },
+  {
+   "tour": 29,
+   "etape": 513,
+   "cat": "snap",
+   "ts": 1785313856684,
+   "msg": "[Début] ⚡8 🃏4 ♥5 💰14 ⭐5 W8 M4 Fe3 Bo1 No1 Pe0 Ab[0,2,1,3]"
+  },
+  {
+   "tour": 29,
+   "etape": 514,
+   "cat": "snap",
+   "ts": 1785313856684,
+   "msg": "[Début 🤖 Nations Souv.] ⚡9 🃏6 ♥14 💰23 ⭐3 W8 M1 Fe0 Bo4 No7 Pe0 Ab[0]"
+  },
+  {
+   "tour": 29,
+   "etape": 515,
+   "cat": "snap",
+   "ts": 1785313856684,
+   "msg": "[Début 🤖 Acadiane] ⚡3 🃏7 ♥18 💰20 ⭐4 W8 M2 Fe2 Bo0 No0 Pe1 Ab[0,1]"
+  },
+  {
+   "tour": 29,
+   "etape": 516,
+   "cat": "snap",
+   "ts": 1785313856684,
+   "msg": "[Début 🤖 Frente Libre] ⚡12 🃏7 ♥11 💰16 ⭐3 W2 M4 Fe8 Bo2 No0 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 29,
+   "etape": 517,
+   "cat": "note",
+   "ts": 1785313933200,
+   "msg": "📝 ATTENTION piège d auto-étoile: une victoire DÉFENSIVE = 2e étoile combat = 6e étoile = fin immédiate en tier 1 (~65 pts, défaite). Tant que pop<7: si Frente attaque, je mise 0 et je PERDS volontairement. Script final: T29 trade_pop (6♥), T30 Move m3→15 + m1→38 (+6 pts terr), T31 bolster/trade_pop (7♥) + vérif score + reveal Magnat = ⭐6."
+  },
+  {
+   "tour": 29,
+   "etape": 518,
+   "cat": "resource",
+   "ts": 1785313933211,
+   "msg": "💰 -1$ → +1 Pop"
+  },
+  {
+   "tour": 29,
+   "etape": 519,
+   "cat": "bot",
+   "ts": 1785313933216,
+   "msg": "🤖 Nations Souv.: +1 CC"
+  },
+  {
+   "tour": 29,
+   "etape": 520,
+   "cat": "bot",
+   "ts": 1785313933216,
+   "msg": "🤖 Nations Souv.: Déployer #14 → 🔓 Piste"
+  },
+  {
+   "tour": 29,
+   "etape": 521,
+   "cat": "enlist",
+   "ts": 1785313933216,
+   "msg": "🤝 Nations Souv.: ⚡+1 Puissance (propre Deploy)"
+  },
+  {
+   "tour": 29,
+   "etape": 522,
+   "cat": "enlist",
+   "ts": 1785313933216,
+   "msg": "🤝 Bayou: 💰+1 Pièce (voisin Nations Souv. → Deploy)"
+  },
+  {
+   "tour": 29,
+   "etape": 523,
+   "cat": "enlist",
+   "ts": 1785313933216,
+   "msg": "🤝 Acadiane: 💰+1 Pièce (voisin Nations Souv. → Deploy)"
+  },
+  {
+   "tour": 29,
+   "etape": 524,
+   "cat": "bot",
+   "ts": 1785313933216,
+   "msg": "🤖 Acadiane: M. Thibodeau → #9 📦1petrole"
+  },
+  {
+   "tour": 29,
+   "etape": 525,
+   "cat": "bot",
+   "ts": 1785313933216,
+   "msg": "🤖🏴 Acadiane: comptoir gardé (#9 colle au réseau)"
+  },
+  {
+   "tour": 29,
+   "etape": 526,
+   "cat": "bot",
+   "ts": 1785313933216,
+   "msg": "🤖 Acadiane: Mech → #2"
+  },
+  {
+   "tour": 29,
+   "etape": 527,
+   "cat": "bot",
+   "ts": 1785313933217,
+   "msg": "🤖 Frente Libre: E. Rojas → #22"
+  },
+  {
+   "tour": 29,
+   "etape": 528,
+   "cat": "bot",
+   "ts": 1785313933217,
+   "msg": "🤖🪤 Frente Libre: Trap #22 (3/4)"
+  },
+  {
+   "tour": 29,
+   "etape": 529,
+   "cat": "bot",
+   "ts": 1785313933217,
+   "msg": "🤖 Frente Libre: Mech → #37 📦2bois"
+  },
+  {
+   "tour": 29,
+   "etape": 530,
+   "cat": "combat",
+   "ts": 1785313933217,
+   "msg": "⚔ Frente Libre vous attaque sur #22 ! Défendez-vous."
+  },
+  {
+   "tour": 29,
+   "etape": 531,
+   "cat": "note",
+   "ts": 1785314000913,
+   "msg": "📝 DÉCISION amère: je JETTE la défense de 22 (mise 0). Gagner = 2e étoile combat auto = fin à 6♥ tier 1 ≈ 56 pts = défaite certaine. Perdre coûte l Usine (3 territoires) + m3 + 3 ouvriers renvoyés, mais garde la partie ouverte. LEÇON design: l étoile de combat automatique en DÉFENSE peut forcer un joueur à saboter sa propre défense — un reveal optionnel (comme les missions) éviterait ça."
+  },
+  {
+   "tour": 29,
+   "etape": 532,
+   "cat": "combat",
+   "ts": 1785314000924,
+   "msg": "⚔ Frente Libre: 9 vs 0 — défaite"
+  },
+  {
+   "tour": 29,
+   "etape": 533,
+   "cat": "star",
+   "ts": 1785314000924,
+   "msg": "⭐⚔ Frente Libre: étoile de combat 1/2 !"
+  },
+  {
+   "tour": 30,
+   "etape": 534,
+   "cat": "turn",
+   "ts": 1785314000924,
+   "msg": "── Tour 30 ──"
+  },
+  {
+   "tour": 30,
+   "etape": 535,
+   "cat": "snap",
+   "ts": 1785314000924,
+   "msg": "[Début] ⚡8 🃏4 ♥6 💰14 ⭐5 W8 M4 Fe3 Bo1 No1 Pe0 Ab[0,2,1,3]"
+  },
+  {
+   "tour": 30,
+   "etape": 536,
+   "cat": "snap",
+   "ts": 1785314000924,
+   "msg": "[Début 🤖 Nations Souv.] ⚡10 🃏7 ♥14 💰22 ⭐3 W8 M2 Fe0 Bo0 No7 Pe0 Ab[0,1]"
+  },
+  {
+   "tour": 30,
+   "etape": 537,
+   "cat": "snap",
+   "ts": 1785314000924,
+   "msg": "[Début 🤖 Acadiane] ⚡3 🃏7 ♥18 💰21 ⭐4 W8 M2 Fe2 Bo0 No0 Pe1 Ab[0,1]"
+  },
+  {
+   "tour": 30,
+   "etape": 538,
+   "cat": "snap",
+   "ts": 1785314000924,
+   "msg": "[Début 🤖 Frente Libre] ⚡5 🃏6 ♥11 💰16 ⭐4 W2 M4 Fe8 Bo2 No0 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 30,
+   "etape": 539,
+   "cat": "resource",
+   "ts": 1785314060731,
+   "msg": "💪 -1$ → +3 Pui (Arsenal +1)"
+  },
+  {
+   "tour": 30,
+   "etape": 540,
+   "cat": "info",
+   "ts": 1785314060731,
+   "msg": "🪦 Mémorial: +1 Pop"
+  },
+  {
+   "tour": 30,
+   "etape": 541,
+   "cat": "bot",
+   "ts": 1785314060744,
+   "msg": "🤖 Nations Souv.: Produire"
+  },
+  {
+   "tour": 30,
+   "etape": 542,
+   "cat": "bot",
+   "ts": 1785314060744,
+   "msg": "🤖 Acadiane: +2 métal"
+  },
+  {
+   "tour": 30,
+   "etape": 543,
+   "cat": "bot",
+   "ts": 1785314060744,
+   "msg": "🤖 Acadiane: Déployer #9 → 🔓 Batelier"
+  },
+  {
+   "tour": 30,
+   "etape": 544,
+   "cat": "bot",
+   "ts": 1785314060744,
+   "msg": "🤖💰 Acadiane: +1$ (Déployer)"
+  },
+  {
+   "tour": 30,
+   "etape": 545,
+   "cat": "enlist",
+   "ts": 1785314060744,
+   "msg": "🤝 Acadiane: 💰+1 Pièce (propre Deploy)"
+  },
+  {
+   "tour": 30,
+   "etape": 546,
+   "cat": "enlist",
+   "ts": 1785314060744,
+   "msg": "🤝 Nations Souv.: ⚡+1 Puissance (voisin Acadiane → Deploy)"
+  },
+  {
+   "tour": 30,
+   "etape": 547,
+   "cat": "enlist",
+   "ts": 1785314060744,
+   "msg": "🤝 Frente Libre: ♥+1 Popularité (voisin Acadiane → Deploy)"
+  },
+  {
+   "tour": 30,
+   "etape": 548,
+   "cat": "bot",
+   "ts": 1785314060745,
+   "msg": "🤖 Frente Libre: +1 Pop (palier ×3 franchi !)"
+  },
+  {
+   "tour": 30,
+   "etape": 549,
+   "cat": "rr",
+   "ts": 1785314060745,
+   "msg": "⚙ Frente Libre visite la Rouge River → « Parade Motorisée »"
+  },
+  {
+   "tour": 31,
+   "etape": 550,
+   "cat": "turn",
+   "ts": 1785314060745,
+   "msg": "── Tour 31 ──"
+  },
+  {
+   "tour": 31,
+   "etape": 551,
+   "cat": "snap",
+   "ts": 1785314060745,
+   "msg": "[Début] ⚡11 🃏4 ♥7 💰13 ⭐5 W8 M4 Fe3 Bo1 No1 Pe0 Ab[0,2,1,3]"
+  },
+  {
+   "tour": 31,
+   "etape": 552,
+   "cat": "snap",
+   "ts": 1785314060745,
+   "msg": "[Début 🤖 Nations Souv.] ⚡10 🃏7 ♥13 💰21 ⭐3 W8 M2 Fe0 Bo1 No8 Pe0 Ab[0,1]"
+  },
+  {
+   "tour": 31,
+   "etape": 553,
+   "cat": "snap",
+   "ts": 1785314060745,
+   "msg": "[Début 🤖 Acadiane] ⚡3 🃏7 ♥18 💰22 ⭐4 W8 M3 Fe0 Bo0 No0 Pe1 Ab[0,1,3]"
+  },
+  {
+   "tour": 31,
+   "etape": 554,
+   "cat": "snap",
+   "ts": 1785314060745,
+   "msg": "[Début 🤖 Frente Libre] ⚡5 🃏6 ♥13 💰15 ⭐4 W2 M4 Fe8 Bo2 No0 Pe0 Ab[0,1,2,3]"
+  },
+  {
+   "tour": 31,
+   "etape": 555,
+   "cat": "note",
+   "ts": 1785314087335,
+   "msg": "📝 FINALE: ♥7 acquis (tier 2). Score projeté ~71 vs Nations ~68, Acadiane ~70±5, Frente ~61. J attaque le mecha frente à 30: mise 7+carte3=10 ≥ leur max absolu 5+5=10, égalité=attaquant → victoire garantie = 2e étoile combat = ⭐6, fin de partie en tête (probable). m1 s étale sur 27 avant l assaut (+3 territoire)."
+  },
+  {
+   "tour": 31,
+   "etape": 556,
+   "cat": "move",
+   "ts": 1785314087345,
+   "msg": "🚶 bayou_m1 → #27 📦2metal"
+  },
+  {
+   "tour": 31,
+   "etape": 557,
+   "cat": "move",
+   "ts": 1785314087348,
+   "msg": "🚶 bayou_m0 → #30"
+  },
+  {
+   "tour": 31,
+   "etape": 558,
+   "cat": "combat",
+   "ts": 1785314087348,
+   "msg": "⚔ Combat PvP vs Frente Libre sur #30 !"
+  },
+  {
+   "tour": 31,
+   "etape": 559,
+   "cat": "combat",
+   "ts": 1785314087351,
+   "msg": "⚔ Vous: 10 vs 5 — VICTOIRE"
+  },
+  {
+   "tour": 31,
+   "etape": 560,
+   "cat": "star",
+   "ts": 1785314087351,
+   "msg": "⭐⚔ Vous: étoile de combat 2/2 !"
+  },
+  {
+   "tour": 31,
+   "etape": 561,
+   "cat": "star",
+   "ts": 1785314087351,
+   "msg": "🏆🏆🏆 Bayou atteint 6 étoiles ! FIN DE PARTIE IMMÉDIATE !"
+  }
+ ]
+}
