@@ -205,6 +205,18 @@ export const applyEnlistOngoing = (playersArr, actorIdx, bottomCol, FACTIONS) =>
         const receiver = FACTIONS[p.faction]?.name || "?";
         if (pi === actorIdx) logs.push(`🤝 ${receiver}: ${bonus.icon}${bonus.label} (propre ${BOTTOM[bottomCol]})`);
         else logs.push(`🤝 ${receiver}: ${bonus.icon}${bonus.label} (voisin ${actor} → ${BOTTOM[bottomCol]})`);
+        // v0.16 — étoiles automatiques sur gains PASSIFS : le Frente du
+        // playtest du 28/07 est resté plusieurs tours à ⚡16 sans étoile,
+        // ses +1⚡ de recrues n'étant jamais passés par un check (Soutien
+        // seul le faisait). Vérifié ici pour TOUT joueur, humain ou bot.
+        if (p.power >= 16 && !p.starPower) {
+          p.stars = (p.stars || 0) + 1; p.starPower = true;
+          logs.push(`⭐⚡ ${receiver}: Puissance maximale (16) !`);
+        }
+        if (p.pop >= 18 && !p.starPop) {
+          p.stars = (p.stars || 0) + 1; p.starPop = true;
+          logs.push(`⭐♥ ${receiver}: Popularité maximale (18) !`);
+        }
       }
     }
   });

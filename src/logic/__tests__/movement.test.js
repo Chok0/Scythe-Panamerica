@@ -3,7 +3,7 @@
 // reste 1 pas pour en sortir. Monter à bord en cours de route n'ouvre pas le
 // réseau ce tour-ci.
 import { describe, it, expect } from 'vitest';
-import { getValidMoves, getRailNetwork, marshToll, findPathWaypoints } from '../movement.js';
+import { getValidMoves, getValidMoves1Step, getRailNetwork, marshToll, findPathWaypoints } from '../movement.js';
 import { hMap, ADJ, hasR, HEXES } from '../../data/hexes.js';
 import { FACTIONS } from '../../data/factions.js';
 import { islandOf, riverwalkValue } from '../../../scripts/riverwalkAudit.mjs';
@@ -120,5 +120,48 @@ describe('riverwalks : aucune capacité morte', () => {
       if (fid === 'bayou') expect(n).toBeGreaterThan(20);
       else expect(n).toBeLessThan(bayou);
     }
+  });
+});
+
+// ── Vitesse et ouvriers (v0.16) — bug constaté en partie le 28/07 ──
+// Vitesse (slot 0) ne concerne que le héros et les mechas : un ouvrier reste
+// à 1 pas. Avant le correctif, un ouvrier sur rail profitait de la Vitesse du
+// joueur pour enchaîner réseau + 1 pas de sortie dans le même déplacement.
+describe('Vitesse ne s\'applique pas aux ouvriers', () => {
+  const stubW = { workers: [], mechs: [], hero: 11 };
+
+  it('à pied : la portée d\'un ouvrier est identique avec ou sans Vitesse', () => {
+    const sans = [...getValidMoves(11, 'dominion', [], stubW, [], 'worker', new Set())].sort((a, b) => a - b);
+    const avec = [...getValidMoves(11, 'dominion', [0], stubW, [], 'worker', new Set())].sort((a, b) => a - b);
+    expect(avec).toEqual(sans);
+    // …alors qu'un mech, lui, va bien plus loin avec Vitesse
+    const mech = getValidMoves(11, 'dominion', [0], stubW, [], 'mech', new Set());
+    expect(mech.length).toBeGreaterThan(avec.length);
+  });
+
+  it('sur le réseau de rails : l\'ouvrier roule (1 pas) mais n\'en sort pas', () => {
+    const RAILS_W = [[11, 8], [8, 12], [12, 9]];
+    const moves = new Set(getValidMoves(11, 'dominion', [0], stubW, RAILS_W, 'worker', new Set()));
+    expect(moves.has(9)).toBe(true);   // bout du réseau : 1 pas
+    expect(moves.has(16)).toBe(false); // sortie du réseau : exigerait la Vitesse
+  });
+});
+
+// ── Convoi (Confédération, slot 3) — bond village ↔ Rouge River ──
+// Vérifié après le playtest du 28/07 (le bond avait semblé refusé pendant
+// une continuation de déplacement décomposé) : le MOTEUR le propose bien,
+// en 1 pas comme en déplacement complet. La cause en jeu était ailleurs
+// (clic hors cible pendant le pilotage automatisé).
+describe('Convoi : bond village ↔ Rouge River', () => {
+  const conf = { faction: 'confederation', hero: 36, workers: [], mechs: [{ id: 'm3', hexId: 36 }] };
+
+  it('depuis un village contrôlé, la Rouge River est à 1 pas', () => {
+    const moves = getValidMoves1Step(36, 'confederation', [0, 1, 2, 3], conf, []);
+    expect(moves).toContain(22);
+  });
+
+  it('sans Convoi (slot 3 verrouillé), pas de bond', () => {
+    const moves = getValidMoves1Step(36, 'confederation', [0, 1, 2], conf, []);
+    expect(moves).not.toContain(22);
   });
 });

@@ -96,7 +96,10 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) 
 // le déplacement de l'unité). Constaté en partie réelle : saut par-dessus le
 // héros Frente via le réseau de rails, avec dépose d'ouvrier au passage.
 export const getValidMoves = (fromId, factionId, abilities, player, rails, unitType, blockedHexes, bonusSteps = 0) => {
-  const hasSpeed = abilities && abilities.includes(0);
+  // Vitesse (slot 0) ne concerne que le héros et les mechas (règle Scythe) :
+  // un ouvrier reste à 1 pas. Constaté en partie (28/07) : un ouvrier sur
+  // rail enchaînait réseau + 1 pas de sortie grâce à la Vitesse du joueur.
+  const hasSpeed = unitType !== "worker" && abilities && abilities.includes(0);
   const steps = (hasSpeed ? 2 : 1) + bonusSteps;
 
   const all = new Set();

@@ -1,0 +1,31 @@
+{
+  "skill_name": "jouer-scythe",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Joue une partie complète de Scythe Panamerica contre 3 bots via le mode API du repo (sans navigateur). Config : faction confederation, plateau 5 (Terroir), 3 bots, seed 11, difficulté normale. Si tu lances le serveur API, utilise le port indiqué dans les consignes. Joue pour gagner, consigne tes réflexions importantes en cours de partie, et à la fin sauvegarde le journal complet de la partie (JSON) et écris un compte rendu markdown (résultat, moments clés, verdict sur les bots). Ne committe rien.",
+      "expected_output": "Journal JSON complet (partie finie, classement à 4) avec des notes de réflexion consignées, plus un compte rendu markdown avec le score final.",
+      "assertions": [
+        "partie-terminee: journal.json valide, classement à 4, > 100 entrées de journal",
+        "notes-de-reflexion: >= 3 entrées cat=note dans le journal",
+        "conventions-journal: au moins une note PLAN:/DECISION:/MENACE:/LECON:",
+        "rapport-avec-score: rapport.md présent et cite le score final du joueur",
+        "jeu-engage: le siège API finit 1er ou 2e, ou score >= 45"
+      ],
+      "files": []
+    },
+    {
+      "id": 1,
+      "prompt": "Joue une partie de Scythe Panamerica à l'aveugle (blind:true — sans informations internes sur les bots) via le mode API du repo. Config : faction bayou, plateau 2 (Atelier), 3 bots, seed 23. Si tu lances le serveur API, utilise le port indiqué dans les consignes. Joue sérieusement pour gagner, note tes réflexions importantes pendant la partie, puis livre le journal JSON de la partie et un compte rendu markdown. Ne committe rien.",
+      "expected_output": "Journal JSON complet d'une partie blind terminée avec notes de réflexion, plus compte rendu markdown.",
+      "assertions": [
+        "partie-terminee: journal.json valide, classement à 4, > 100 entrées de journal",
+        "notes-de-reflexion: >= 3 entrées cat=note dans le journal",
+        "conventions-journal: au moins une note PLAN:/DECISION:/MENACE:/LECON:",
+        "rapport-avec-score: rapport.md présent et cite le score final du joueur",
+        "jeu-engage: le siège API finit 1er ou 2e, ou score >= 45"
+      ],
+      "files": []
+    }
+  ]
+}

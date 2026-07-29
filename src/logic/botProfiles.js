@@ -187,20 +187,28 @@ export const BOT_PROFILES = {
 // réellement compromis sans déclencher au moindre retard. Le repli conserve
 // `starRush` : renoncer aux RISQUES, pas aux étoiles encore à portée.
 export const PIVOT_RATIO = 0.75;
+// v0.16 — le pivot n'arrivait qu'avec `endgame` (un adversaire à 5 étoiles) :
+// partie du 28/07, les 3 bots se replient au tour 24… sur 25. Un humain
+// constate dès la MI-PARTIE que son plan ne paie pas. Le repli de mi-partie
+// exige un décrochage plus net (0,55) pour ne pas paniquer au premier retard.
+export const PIVOT_MID_RATIO = 0.55;
 
 export const shouldPivot = (p, ctx, myScore) => {
   if (!ctx || ctx.bestOppScore == null) return false;
-  // 1. La fin approche VRAIMENT : quelqu'un d'autre est à une étoile de
-  //    conclure, ou la partie s'éternise. (Attention : « J'AI 4 étoiles » ne
+  // 1. Le repli se justifie : fin imminente (quelqu'un est à une étoile de
+  //    conclure, ou la partie s'éternise), OU mi-partie constatée (tour 12+,
+  //    ou un joueur déjà à 3 étoiles). (Attention : « J'AI 4 étoiles » ne
   //    doit PAS déclencher le repli — un bot fort aux étoiles doit foncer,
   //    pas battre en retraite ; cette confusion coûtait des étoiles gratuites.)
   const endNear = !!ctx.endgame || (ctx.round || 0) >= 30;
-  if (!endNear) return false;
+  const tableStars = Math.max(0, ...((ctx.allPlayers || []).map(op => (op && op.stars) || 0)));
+  const midGame = (ctx.round || 0) >= 12 || tableStars >= 3;
+  if (!endNear && !midGame) return false;
   // 2. Je n'ai plus de route vers la victoire aux étoiles : à 4-5 étoiles la
   //    course reste jouable, on ne se replie pas.
   if ((p.stars || 0) >= 4) return false;
-  // 3. Je suis nettement distancé au score
-  if (myScore >= ctx.bestOppScore * PIVOT_RATIO) return false;
+  // 3. Je suis nettement distancé au score (seuil plus dur en mi-partie)
+  if (myScore >= ctx.bestOppScore * (endNear ? PIVOT_RATIO : PIVOT_MID_RATIO)) return false;
   // 4. Et mon plan n'a rien produit de tangible : un agressif sans la moindre
   //    victoire au combat s'obstine dans le vide ; un constructif sans étoiles
   //    n'a pas de moteur.

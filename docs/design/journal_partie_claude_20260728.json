@@ -1,0 +1,4313 @@
+{
+  "jeu": "Scythe Panamerica",
+  "date": "2026-07-28T23:46:59.831Z",
+  "carte": "panamerica-v3",
+  "tours": 29,
+  "difficulte": "normal",
+  "classement": [
+    {
+      "rang": 1,
+      "faction": "confederation",
+      "nom": "Confédération",
+      "bot": false,
+      "total": 78,
+      "etoiles": 6,
+      "pop": 18,
+      "palier_pop": "13-18",
+      "territoires": 5,
+      "bonus_usine": 0,
+      "comptoirs": 0,
+      "ressources": 9,
+      "paires": 4,
+      "argent": 12,
+      "bonus_pose": 4,
+      "detail": {
+        "etoiles": 30,
+        "territoires": 20,
+        "ressources": 12
+      }
+    },
+    {
+      "rang": 2,
+      "faction": "frente",
+      "nom": "Frente Libre",
+      "bot": true,
+      "total": 57,
+      "etoiles": 5,
+      "pop": 12,
+      "palier_pop": "7-12",
+      "territoires": 5,
+      "bonus_usine": 2,
+      "comptoirs": 0,
+      "ressources": 6,
+      "paires": 3,
+      "argent": 8,
+      "bonus_pose": 2,
+      "detail": {
+        "etoiles": 20,
+        "territoires": 21,
+        "ressources": 6
+      }
+    },
+    {
+      "rang": 3,
+      "faction": "dominion",
+      "nom": "Dominion",
+      "bot": true,
+      "total": 55,
+      "etoiles": 5,
+      "pop": 8,
+      "palier_pop": "7-12",
+      "territoires": 7,
+      "bonus_usine": 0,
+      "comptoirs": 0,
+      "ressources": 5,
+      "paires": 2,
+      "argent": 8,
+      "bonus_pose": 2,
+      "detail": {
+        "etoiles": 20,
+        "territoires": 21,
+        "ressources": 4
+      }
+    },
+    {
+      "rang": 4,
+      "faction": "bayou",
+      "nom": "Bayou",
+      "bot": true,
+      "total": 41,
+      "etoiles": 1,
+      "pop": 11,
+      "palier_pop": "7-12",
+      "territoires": 7,
+      "bonus_usine": 0,
+      "comptoirs": 0,
+      "ressources": 0,
+      "paires": 0,
+      "argent": 14,
+      "bonus_pose": 2,
+      "detail": {
+        "etoiles": 4,
+        "territoires": 21,
+        "ressources": 0
+      }
+    }
+  ],
+  "journal": [
+    {
+      "tour": 1,
+      "etape": 2,
+      "cat": "info",
+      "ts": 1785276972817,
+      "msg": "🏦 Bonus de pose : 🌊 Bord des Lacs — 1→2$ · 2-3→4$ · 4-5→6$ · 6-7→9$ selon le nombre de lacs adjacents à vos bâtiments"
+    },
+    {
+      "tour": 1,
+      "etape": 4,
+      "cat": "rr",
+      "ts": 1785276972817,
+      "msg": "⚙ Usine Rouge River : 5 plans Ford face cachée (joueurs + 1) — seuls les prototypes Tesla sont en vitrine (clic sur l'Usine)"
+    },
+    {
+      "tour": 1,
+      "etape": 6,
+      "cat": "combat",
+      "ts": 1785276972862,
+      "msg": "⚔ 4 joueurs"
+    },
+    {
+      "tour": 1,
+      "etape": 8,
+      "cat": "warn",
+      "ts": 1785276972862,
+      "msg": "👤 Confédération (Terroir)  ⚡4 🃏1 ♥3 💰6"
+    },
+    {
+      "tour": 1,
+      "etape": 10,
+      "cat": "bot",
+      "ts": 1785276972862,
+      "msg": "🤖 Dominion (Pionnier) ⚖ Équilibré  ⚡3 🃏2 ♥2 💰6"
+    },
+    {
+      "tour": 1,
+      "etape": 12,
+      "cat": "bot",
+      "ts": 1785276972862,
+      "msg": "🤖 Frente Libre (Fordisme) ⚖ Équilibré  ⚡2 🃏3 ♥2 💰4"
+    },
+    {
+      "tour": 1,
+      "etape": 14,
+      "cat": "bot",
+      "ts": 1785276972862,
+      "msg": "🤖 Bayou (Atelier) 🐊 Prédateur  ⚡2 🃏3 ♥2 💰5"
+    },
+    {
+      "tour": 1,
+      "etape": 16,
+      "cat": "info",
+      "ts": 1785277035669,
+      "msg": "👷 +ouv. #36"
+    },
+    {
+      "tour": 1,
+      "etape": 18,
+      "cat": "info",
+      "ts": 1785277035669,
+      "msg": "🏭 +1 métal #32"
+    },
+    {
+      "tour": 1,
+      "etape": 20,
+      "cat": "info",
+      "ts": 1785277035669,
+      "msg": "👷 +ouv. #36"
+    },
+    {
+      "tour": 1,
+      "etape": 22,
+      "cat": "info",
+      "ts": 1785277035669,
+      "msg": "🏭 +1 métal #32"
+    },
+    {
+      "tour": 1,
+      "etape": 26,
+      "cat": "bot",
+      "ts": 1785277131651,
+      "msg": "🤖 Dominion: +1 ouv. #4"
+    },
+    {
+      "tour": 1,
+      "etape": 27,
+      "cat": "bot",
+      "ts": 1785277131651,
+      "msg": "🤖 Dominion: Produire"
+    },
+    {
+      "tour": 1,
+      "etape": 28,
+      "cat": "bot",
+      "ts": 1785277131651,
+      "msg": "🤖🏛 Dominion: Import -2$→+1petrole"
+    },
+    {
+      "tour": 1,
+      "etape": 30,
+      "cat": "bot",
+      "ts": 1785277132181,
+      "msg": "🤖 Frente Libre: Produire"
+    },
+    {
+      "tour": 1,
+      "etape": 33,
+      "cat": "bot",
+      "ts": 1785277132706,
+      "msg": "🤖 Bayou: +1 ouv. #35"
+    },
+    {
+      "tour": 1,
+      "etape": 34,
+      "cat": "bot",
+      "ts": 1785277132706,
+      "msg": "🤖 Bayou: Produire"
+    },
+    {
+      "tour": 2,
+      "etape": 36,
+      "cat": "turn",
+      "ts": 1785277132883,
+      "msg": "── Tour 2 ──"
+    },
+    {
+      "tour": 2,
+      "etape": 38,
+      "cat": "snap",
+      "ts": 1785277132883,
+      "msg": "[Début] ⚡4 🃏1 ♥3 💰6 ⭐0 W3 M0 Fe1 Bo0 No0 Pe0 Ab[]"
+    },
+    {
+      "tour": 2,
+      "etape": 40,
+      "cat": "snap",
+      "ts": 1785277132883,
+      "msg": "[Début 🤖 Dominion] ⚡3 🃏2 ♥2 💰4 ⭐0 W3 M0 Fe0 Bo0 No0 Pe2 Ab[]"
+    },
+    {
+      "tour": 2,
+      "etape": 42,
+      "cat": "snap",
+      "ts": 1785277132883,
+      "msg": "[Début 🤖 Frente Libre] ⚡2 🃏3 ♥2 💰4 ⭐0 W2 M0 Fe1 Bo0 No1 Pe0 Ab[]"
+    },
+    {
+      "tour": 2,
+      "etape": 44,
+      "cat": "snap",
+      "ts": 1785277132883,
+      "msg": "[Début 🤖 Bayou] ⚡2 🃏3 ♥2 💰5 ⭐0 W3 M0 Fe0 Bo1 No0 Pe0 Ab[]"
+    },
+    {
+      "tour": 2,
+      "etape": 46,
+      "cat": "move",
+      "ts": 1785277367175,
+      "msg": "🚶 J. Cole → #32"
+    },
+    {
+      "tour": 2,
+      "etape": 48,
+      "cat": "move",
+      "ts": 1785277412390,
+      "msg": "🚶 confederation_w2 → #32"
+    },
+    {
+      "tour": 2,
+      "etape": 50,
+      "cat": "move",
+      "ts": 1785277412390,
+      "msg": "✅ Mouvement terminé (2/2)"
+    },
+    {
+      "tour": 2,
+      "etape": 53,
+      "cat": "bot",
+      "ts": 1785277455255,
+      "msg": "🤖 Dominion: +2 pétrole"
+    },
+    {
+      "tour": 2,
+      "etape": 54,
+      "cat": "bot",
+      "ts": 1785277455255,
+      "msg": "🤖🏛 Dominion: Commerce -1petrole→+1$"
+    },
+    {
+      "tour": 2,
+      "etape": 56,
+      "cat": "bot",
+      "ts": 1785277455808,
+      "msg": "🤖 Frente Libre: +2 nourriture"
+    },
+    {
+      "tour": 2,
+      "etape": 59,
+      "cat": "bot",
+      "ts": 1785277456365,
+      "msg": "🤖 Bayou: Cap. Zeke → #35"
+    },
+    {
+      "tour": 2,
+      "etape": 60,
+      "cat": "bot",
+      "ts": 1785277456365,
+      "msg": "🤖 Bayou: Ouv. → #31"
+    },
+    {
+      "tour": 3,
+      "etape": 62,
+      "cat": "turn",
+      "ts": 1785277456567,
+      "msg": "── Tour 3 ──"
+    },
+    {
+      "tour": 3,
+      "etape": 64,
+      "cat": "snap",
+      "ts": 1785277456567,
+      "msg": "[Début] ⚡4 🃏1 ♥3 💰6 ⭐0 W3 M0 Fe1 Bo0 No0 Pe0 Ab[]"
+    },
+    {
+      "tour": 3,
+      "etape": 66,
+      "cat": "snap",
+      "ts": 1785277456567,
+      "msg": "[Début 🤖 Dominion] ⚡3 🃏2 ♥2 💰4 ⭐0 W3 M0 Fe0 Bo0 No0 Pe3 Ab[]"
+    },
+    {
+      "tour": 3,
+      "etape": 68,
+      "cat": "snap",
+      "ts": 1785277456567,
+      "msg": "[Début 🤖 Frente Libre] ⚡2 🃏3 ♥2 💰3 ⭐0 W2 M0 Fe1 Bo0 No3 Pe0 Ab[]"
+    },
+    {
+      "tour": 3,
+      "etape": 70,
+      "cat": "snap",
+      "ts": 1785277456567,
+      "msg": "[Début 🤖 Bayou] ⚡2 🃏3 ♥2 💰5 ⭐0 W3 M0 Fe0 Bo1 No0 Pe0 Ab[]"
+    },
+    {
+      "tour": 3,
+      "etape": 72,
+      "cat": "info",
+      "ts": 1785277489248,
+      "msg": "👷 +ouv. #36"
+    },
+    {
+      "tour": 3,
+      "etape": 74,
+      "cat": "info",
+      "ts": 1785277489249,
+      "msg": "🏭 +2 métal #32"
+    },
+    {
+      "tour": 3,
+      "etape": 76,
+      "cat": "info",
+      "ts": 1785277489249,
+      "msg": "👷 +ouv. #36"
+    },
+    {
+      "tour": 3,
+      "etape": 78,
+      "cat": "info",
+      "ts": 1785277489249,
+      "msg": "🏭 +2 métal #32"
+    },
+    {
+      "tour": 3,
+      "etape": 84,
+      "cat": "bot",
+      "ts": 1785277492629,
+      "msg": "🤖 Dominion: Col. Whitfield → #4"
+    },
+    {
+      "tour": 3,
+      "etape": 85,
+      "cat": "bot",
+      "ts": 1785277492629,
+      "msg": "🤖 Dominion: Ouv. → #1"
+    },
+    {
+      "tour": 3,
+      "etape": 86,
+      "cat": "bot",
+      "ts": 1785277492629,
+      "msg": "🤖 Dominion: Améliorer 1/6"
+    },
+    {
+      "tour": 3,
+      "etape": 87,
+      "cat": "bot",
+      "ts": 1785277492629,
+      "msg": "🤖🏛 Dominion: Import -2$→+1nourriture"
+    },
+    {
+      "tour": 3,
+      "etape": 88,
+      "cat": "bot",
+      "ts": 1785277492629,
+      "msg": "🤖📜 Dominion: \"Le Garage du Désert\" → Racheter le châssis"
+    },
+    {
+      "tour": 3,
+      "etape": 90,
+      "cat": "bot",
+      "ts": 1785277493180,
+      "msg": "🤖 Frente Libre: Produire"
+    },
+    {
+      "tour": 3,
+      "etape": 92,
+      "cat": "bot",
+      "ts": 1785277493730,
+      "msg": "🤖 Bayou: Produire"
+    },
+    {
+      "tour": 4,
+      "etape": 94,
+      "cat": "turn",
+      "ts": 1785277493928,
+      "msg": "── Tour 4 ──"
+    },
+    {
+      "tour": 4,
+      "etape": 96,
+      "cat": "snap",
+      "ts": 1785277493929,
+      "msg": "[Début] ⚡4 🃏1 ♥3 💰6 ⭐0 W4 M0 Fe5 Bo0 No0 Pe0 Ab[]"
+    },
+    {
+      "tour": 4,
+      "etape": 98,
+      "cat": "snap",
+      "ts": 1785277493929,
+      "msg": "[Début 🤖 Dominion] ⚡3 🃏2 ♥2 💰1 ⭐0 W3 M1 Fe0 Bo0 No1 Pe0 Ab[0]"
+    },
+    {
+      "tour": 4,
+      "etape": 100,
+      "cat": "snap",
+      "ts": 1785277493929,
+      "msg": "[Début 🤖 Frente Libre] ⚡2 🃏3 ♥2 💰3 ⭐0 W2 M0 Fe2 Bo0 No4 Pe0 Ab[]"
+    },
+    {
+      "tour": 4,
+      "etape": 102,
+      "cat": "snap",
+      "ts": 1785277493929,
+      "msg": "[Début 🤖 Bayou] ⚡2 🃏3 ♥2 💰5 ⭐0 W3 M0 Fe1 Bo2 No0 Pe0 Ab[]"
+    },
+    {
+      "tour": 4,
+      "etape": 104,
+      "cat": "note",
+      "ts": 1785277570415,
+      "msg": "📝 Produire semble s'executer en double: log x2 au T1, et Fe passe de 1 a 5 au T3 (2 ouvriers sierra = +2 attendu, +4 constate)"
+    },
+    {
+      "tour": 4,
+      "etape": 106,
+      "cat": "resource",
+      "ts": 1785277638067,
+      "msg": "💰 -1$ → +2 nourriture (#36)"
+    },
+    {
+      "tour": 4,
+      "etape": 108,
+      "cat": "deploy",
+      "ts": 1785277695612,
+      "msg": "⬡ Mecha déployé sur #32 (-4 métal, +1$)"
+    },
+    {
+      "tour": 4,
+      "etape": 110,
+      "cat": "ability",
+      "ts": 1785277724830,
+      "msg": "🔓 Ability débloquée : 🏃 Vitesse"
+    },
+    {
+      "tour": 4,
+      "etape": 112,
+      "cat": "bot",
+      "ts": 1785277736103,
+      "msg": "🤖 Dominion: Produire"
+    },
+    {
+      "tour": 4,
+      "etape": 116,
+      "cat": "bot",
+      "ts": 1785277736659,
+      "msg": "🤖 Frente Libre: +2 métal"
+    },
+    {
+      "tour": 4,
+      "etape": 117,
+      "cat": "bot",
+      "ts": 1785277736659,
+      "msg": "🤖 Frente Libre: Enrôler Déployer → immédiat ♥+2 Popularité, recrue ⚡ permanent"
+    },
+    {
+      "tour": 4,
+      "etape": 118,
+      "cat": "bot",
+      "ts": 1785277736659,
+      "msg": "🤖💰 Frente Libre: +3$ (Enrôler)"
+    },
+    {
+      "tour": 4,
+      "etape": 122,
+      "cat": "bot",
+      "ts": 1785277737225,
+      "msg": "🤖 Bayou: Cap. Zeke → #31"
+    },
+    {
+      "tour": 4,
+      "etape": 123,
+      "cat": "bot",
+      "ts": 1785277737225,
+      "msg": "🤖 Bayou: Ouv. → #31 📦2bois"
+    },
+    {
+      "tour": 4,
+      "etape": 124,
+      "cat": "bot",
+      "ts": 1785277737225,
+      "msg": "🤖📜 Bayou: \"Les Enfants du Mecha\" → Les nourrir"
+    },
+    {
+      "tour": 5,
+      "etape": 126,
+      "cat": "turn",
+      "ts": 1785277737462,
+      "msg": "── Tour 5 ──"
+    },
+    {
+      "tour": 5,
+      "etape": 128,
+      "cat": "snap",
+      "ts": 1785277737462,
+      "msg": "[Début] ⚡4 🃏1 ♥3 💰6 ⭐0 W4 M1 Fe1 Bo0 No2 Pe0 Ab[0]"
+    },
+    {
+      "tour": 5,
+      "etape": 130,
+      "cat": "snap",
+      "ts": 1785277737462,
+      "msg": "[Début 🤖 Dominion] ⚡3 🃏2 ♥2 💰1 ⭐0 W3 M1 Fe1 Bo0 No1 Pe1 Ab[0]"
+    },
+    {
+      "tour": 5,
+      "etape": 132,
+      "cat": "snap",
+      "ts": 1785277737462,
+      "msg": "[Début 🤖 Frente Libre] ⚡2 🃏3 ♥4 💰5 ⭐0 W2 M0 Fe4 Bo0 No0 Pe0 Ab[]"
+    },
+    {
+      "tour": 5,
+      "etape": 134,
+      "cat": "snap",
+      "ts": 1785277737462,
+      "msg": "[Début 🤖 Bayou] ⚡2 🃏3 ♥3 💰5 ⭐0 W3 M0 Fe1 Bo2 No2 Pe0 Ab[]"
+    },
+    {
+      "tour": 5,
+      "etape": 136,
+      "cat": "move",
+      "ts": 1785277877863,
+      "msg": "🚶 confederation_m0 → #29 👷×2 📦1metal"
+    },
+    {
+      "tour": 5,
+      "etape": 138,
+      "cat": "move",
+      "ts": 1785277951254,
+      "msg": "🚶 confederation_w3 → #32 📦2nourriture"
+    },
+    {
+      "tour": 5,
+      "etape": 140,
+      "cat": "move",
+      "ts": 1785277951254,
+      "msg": "✅ Mouvement terminé (2/2)"
+    },
+    {
+      "tour": 5,
+      "etape": 143,
+      "cat": "bot",
+      "ts": 1785277954649,
+      "msg": "🤖 Dominion: +2 nourriture"
+    },
+    {
+      "tour": 5,
+      "etape": 144,
+      "cat": "bot",
+      "ts": 1785277954649,
+      "msg": "🤖🏛 Dominion: Commerce -1nourriture→+1$"
+    },
+    {
+      "tour": 5,
+      "etape": 148,
+      "cat": "bot",
+      "ts": 1785277955212,
+      "msg": "🤖 Frente Libre: +2 pui"
+    },
+    {
+      "tour": 5,
+      "etape": 149,
+      "cat": "bot",
+      "ts": 1785277955212,
+      "msg": "🤖 Frente Libre: Déployer #41 → 🔓 Vitesse"
+    },
+    {
+      "tour": 5,
+      "etape": 150,
+      "cat": "deploy",
+      "ts": 1785277955212,
+      "msg": "🤝 Frente Libre: ⚡+1 Puissance (propre Deploy)"
+    },
+    {
+      "tour": 5,
+      "etape": 156,
+      "cat": "bot",
+      "ts": 1785277955778,
+      "msg": "🤖 Bayou: +1 ouv. #35"
+    },
+    {
+      "tour": 5,
+      "etape": 157,
+      "cat": "bot",
+      "ts": 1785277955778,
+      "msg": "🤖 Bayou: Produire"
+    },
+    {
+      "tour": 5,
+      "etape": 158,
+      "cat": "bot",
+      "ts": 1785277955778,
+      "msg": "🤖 Bayou: Déployer #31 → 🔓 Vitesse"
+    },
+    {
+      "tour": 5,
+      "etape": 159,
+      "cat": "bot",
+      "ts": 1785277955778,
+      "msg": "🤖💰 Bayou: +1$ (Déployer)"
+    },
+    {
+      "tour": 5,
+      "etape": 160,
+      "cat": "deploy",
+      "ts": 1785277955778,
+      "msg": "🤝 Frente Libre: ⚡+1 Puissance (voisin Bayou → Deploy)"
+    },
+    {
+      "tour": 6,
+      "etape": 162,
+      "cat": "turn",
+      "ts": 1785277956000,
+      "msg": "── Tour 6 ──"
+    },
+    {
+      "tour": 6,
+      "etape": 164,
+      "cat": "snap",
+      "ts": 1785277956000,
+      "msg": "[Début] ⚡4 🃏1 ♥3 💰6 ⭐0 W4 M1 Fe1 Bo0 No2 Pe0 Ab[0]"
+    },
+    {
+      "tour": 6,
+      "etape": 166,
+      "cat": "snap",
+      "ts": 1785277956000,
+      "msg": "[Début 🤖 Dominion] ⚡3 🃏2 ♥2 💰1 ⭐0 W3 M1 Fe1 Bo0 No2 Pe1 Ab[0]"
+    },
+    {
+      "tour": 6,
+      "etape": 168,
+      "cat": "snap",
+      "ts": 1785277956000,
+      "msg": "[Début 🤖 Frente Libre] ⚡6 🃏3 ♥4 💰4 ⭐0 W2 M1 Fe0 Bo0 No0 Pe0 Ab[0]"
+    },
+    {
+      "tour": 6,
+      "etape": 170,
+      "cat": "snap",
+      "ts": 1785277956000,
+      "msg": "[Début 🤖 Bayou] ⚡2 🃏3 ♥3 💰6 ⭐0 W4 M1 Fe0 Bo2 No2 Pe0 Ab[0]"
+    },
+    {
+      "tour": 6,
+      "etape": 172,
+      "cat": "resource",
+      "ts": 1785278022448,
+      "msg": "💳 1 Pui"
+    },
+    {
+      "tour": 6,
+      "etape": 174,
+      "cat": "info",
+      "ts": 1785278022448,
+      "msg": "🏭 +2 bois #29"
+    },
+    {
+      "tour": 6,
+      "etape": 176,
+      "cat": "info",
+      "ts": 1785278022448,
+      "msg": "🏭 +1 métal #32"
+    },
+    {
+      "tour": 6,
+      "etape": 178,
+      "cat": "info",
+      "ts": 1785278022449,
+      "msg": "🏭 +2 bois #29"
+    },
+    {
+      "tour": 6,
+      "etape": 180,
+      "cat": "info",
+      "ts": 1785278022449,
+      "msg": "🏭 +1 métal #32"
+    },
+    {
+      "tour": 6,
+      "etape": 184,
+      "cat": "bot",
+      "ts": 1785278046466,
+      "msg": "🤖 Dominion: +2 pui"
+    },
+    {
+      "tour": 6,
+      "etape": 185,
+      "cat": "bot",
+      "ts": 1785278046466,
+      "msg": "🤖 Dominion: Enrôler Déployer → immédiat ♥+2 Popularité, recrue ⚡ permanent"
+    },
+    {
+      "tour": 6,
+      "etape": 186,
+      "cat": "bot",
+      "ts": 1785278046466,
+      "msg": "🤖💰 Dominion: +3$ (Enrôler)"
+    },
+    {
+      "tour": 6,
+      "etape": 188,
+      "cat": "bot",
+      "ts": 1785278047022,
+      "msg": "🤖 Frente Libre: Produire"
+    },
+    {
+      "tour": 6,
+      "etape": 190,
+      "cat": "bot",
+      "ts": 1785278047579,
+      "msg": "🤖 Bayou: +2 pui"
+    },
+    {
+      "tour": 7,
+      "etape": 192,
+      "cat": "turn",
+      "ts": 1785278047800,
+      "msg": "── Tour 7 ──"
+    },
+    {
+      "tour": 7,
+      "etape": 194,
+      "cat": "snap",
+      "ts": 1785278047800,
+      "msg": "[Début] ⚡3 🃏1 ♥3 💰6 ⭐0 W4 M1 Fe3 Bo4 No2 Pe0 Ab[0]"
+    },
+    {
+      "tour": 7,
+      "etape": 196,
+      "cat": "snap",
+      "ts": 1785278047800,
+      "msg": "[Début 🤖 Dominion] ⚡5 🃏2 ♥4 💰3 ⭐0 W3 M1 Fe1 Bo0 No0 Pe1 Ab[0]"
+    },
+    {
+      "tour": 7,
+      "etape": 198,
+      "cat": "snap",
+      "ts": 1785278047800,
+      "msg": "[Début 🤖 Frente Libre] ⚡6 🃏3 ♥4 💰4 ⭐0 W2 M1 Fe1 Bo0 No1 Pe0 Ab[0]"
+    },
+    {
+      "tour": 7,
+      "etape": 200,
+      "cat": "snap",
+      "ts": 1785278047800,
+      "msg": "[Début 🤖 Bayou] ⚡4 🃏3 ♥3 💰5 ⭐0 W4 M1 Fe0 Bo2 No2 Pe0 Ab[0]"
+    },
+    {
+      "tour": 7,
+      "etape": 202,
+      "cat": "resource",
+      "ts": 1785278114493,
+      "msg": "💪 -1$ → +2 Pui"
+    },
+    {
+      "tour": 7,
+      "etape": 204,
+      "cat": "resource",
+      "ts": 1785278114493,
+      "msg": "💪 -1$ → +2 Pui"
+    },
+    {
+      "tour": 7,
+      "etape": 206,
+      "cat": "build",
+      "ts": 1785278172943,
+      "msg": "🏗 Moulin construit sur #29 (-4 bois, +2$)"
+    },
+    {
+      "tour": 7,
+      "etape": 212,
+      "cat": "bot",
+      "ts": 1785278200026,
+      "msg": "🤖 Dominion: +2 métal"
+    },
+    {
+      "tour": 7,
+      "etape": 213,
+      "cat": "bot",
+      "ts": 1785278200026,
+      "msg": "🤖 Dominion: Déployer #4 → 🔓 Queen's Road"
+    },
+    {
+      "tour": 7,
+      "etape": 214,
+      "cat": "bot",
+      "ts": 1785278200026,
+      "msg": "🤖💰 Dominion: +1$ (Déployer)"
+    },
+    {
+      "tour": 7,
+      "etape": 215,
+      "cat": "deploy",
+      "ts": 1785278200026,
+      "msg": "🤝 Dominion: ⚡+1 Puissance (propre Deploy)"
+    },
+    {
+      "tour": 7,
+      "etape": 216,
+      "cat": "deploy",
+      "ts": 1785278200026,
+      "msg": "🤝 Frente Libre: ⚡+1 Puissance (voisin Dominion → Deploy)"
+    },
+    {
+      "tour": 7,
+      "etape": 218,
+      "cat": "bot",
+      "ts": 1785278200589,
+      "msg": "🤖 Frente Libre: +2 nourriture"
+    },
+    {
+      "tour": 7,
+      "etape": 221,
+      "cat": "bot",
+      "ts": 1785278201165,
+      "msg": "🤖 Bayou: +1 ouv. #35"
+    },
+    {
+      "tour": 7,
+      "etape": 222,
+      "cat": "bot",
+      "ts": 1785278201165,
+      "msg": "🤖 Bayou: Produire"
+    },
+    {
+      "tour": 8,
+      "etape": 224,
+      "cat": "turn",
+      "ts": 1785278201383,
+      "msg": "── Tour 8 ──"
+    },
+    {
+      "tour": 8,
+      "etape": 226,
+      "cat": "snap",
+      "ts": 1785278201383,
+      "msg": "[Début] ⚡5 🃏1 ♥3 💰7 ⭐0 W4 M1 Fe3 Bo0 No2 Pe0 Ab[0]"
+    },
+    {
+      "tour": 8,
+      "etape": 228,
+      "cat": "snap",
+      "ts": 1785278201383,
+      "msg": "[Début 🤖 Dominion] ⚡6 🃏2 ♥4 💰3 ⭐0 W3 M2 Fe0 Bo0 No0 Pe1 Ab[0,1]"
+    },
+    {
+      "tour": 8,
+      "etape": 230,
+      "cat": "snap",
+      "ts": 1785278201383,
+      "msg": "[Début 🤖 Frente Libre] ⚡7 🃏3 ♥4 💰3 ⭐0 W2 M1 Fe1 Bo0 No3 Pe0 Ab[0]"
+    },
+    {
+      "tour": 8,
+      "etape": 232,
+      "cat": "snap",
+      "ts": 1785278201383,
+      "msg": "[Début 🤖 Bayou] ⚡3 🃏3 ♥3 💰5 ⭐0 W5 M1 Fe2 Bo2 No2 Pe0 Ab[0]"
+    },
+    {
+      "tour": 8,
+      "etape": 234,
+      "cat": "resource",
+      "ts": 1785278273621,
+      "msg": "💰 -1$ → +1 metal (#32), +1 nourriture (#36)"
+    },
+    {
+      "tour": 8,
+      "etape": 236,
+      "cat": "deploy",
+      "ts": 1785278286440,
+      "msg": "⬡ Mecha déployé sur #29 (-4 métal, +1$)"
+    },
+    {
+      "tour": 8,
+      "etape": 238,
+      "cat": "ability",
+      "ts": 1785278287758,
+      "msg": "🔓 Ability débloquée : 🌊 Gué"
+    },
+    {
+      "tour": 8,
+      "etape": 240,
+      "cat": "deploy",
+      "ts": 1785278287758,
+      "msg": "🤝 Dominion: ⚡+1 Puissance (voisin Confédération → Deploy)"
+    },
+    {
+      "tour": 8,
+      "etape": 242,
+      "cat": "deploy",
+      "ts": 1785278287758,
+      "msg": "🤝 Dominion: ⚡+1 Puissance (voisin Confédération → Deploy)"
+    },
+    {
+      "tour": 8,
+      "etape": 244,
+      "cat": "bot",
+      "ts": 1785278307798,
+      "msg": "🤖 Dominion: Produire"
+    },
+    {
+      "tour": 8,
+      "etape": 246,
+      "cat": "bot",
+      "ts": 1785278308385,
+      "msg": "🤖 Frente Libre: Produire"
+    },
+    {
+      "tour": 8,
+      "etape": 248,
+      "cat": "bot",
+      "ts": 1785278308960,
+      "msg": "🤖 Bayou: +2 pui"
+    },
+    {
+      "tour": 9,
+      "etape": 250,
+      "cat": "turn",
+      "ts": 1785278309179,
+      "msg": "── Tour 9 ──"
+    },
+    {
+      "tour": 9,
+      "etape": 252,
+      "cat": "snap",
+      "ts": 1785278309179,
+      "msg": "[Début] ⚡5 🃏1 ♥3 💰7 ⭐0 W4 M2 Fe0 Bo0 No3 Pe0 Ab[0,1]"
+    },
+    {
+      "tour": 9,
+      "etape": 254,
+      "cat": "snap",
+      "ts": 1785278309179,
+      "msg": "[Début 🤖 Dominion] ⚡7 🃏2 ♥4 💰3 ⭐0 W3 M2 Fe1 Bo0 No0 Pe2 Ab[0,1]"
+    },
+    {
+      "tour": 9,
+      "etape": 256,
+      "cat": "snap",
+      "ts": 1785278309179,
+      "msg": "[Début 🤖 Frente Libre] ⚡7 🃏3 ♥4 💰3 ⭐0 W2 M1 Fe2 Bo0 No4 Pe0 Ab[0]"
+    },
+    {
+      "tour": 9,
+      "etape": 258,
+      "cat": "snap",
+      "ts": 1785278309179,
+      "msg": "[Début 🤖 Bayou] ⚡5 🃏3 ♥3 💰4 ⭐0 W5 M1 Fe2 Bo2 No2 Pe0 Ab[0]"
+    },
+    {
+      "tour": 9,
+      "etape": 260,
+      "cat": "resource",
+      "ts": 1785278520582,
+      "msg": "💳 1 Pui"
+    },
+    {
+      "tour": 9,
+      "etape": 262,
+      "cat": "info",
+      "ts": 1785278520582,
+      "msg": "👷 +ouv. #36"
+    },
+    {
+      "tour": 9,
+      "etape": 264,
+      "cat": "info",
+      "ts": 1785278520582,
+      "msg": "🏭 +3 bois #29 (Moulin +1)"
+    },
+    {
+      "tour": 9,
+      "etape": 266,
+      "cat": "info",
+      "ts": 1785278520582,
+      "msg": "🏭 +1 métal #32"
+    },
+    {
+      "tour": 9,
+      "etape": 268,
+      "cat": "info",
+      "ts": 1785278520582,
+      "msg": "👷 +ouv. #36"
+    },
+    {
+      "tour": 9,
+      "etape": 270,
+      "cat": "info",
+      "ts": 1785278520582,
+      "msg": "🏭 +3 bois #29 (Moulin +1)"
+    },
+    {
+      "tour": 9,
+      "etape": 272,
+      "cat": "info",
+      "ts": 1785278520582,
+      "msg": "🏭 +1 métal #32"
+    },
+    {
+      "tour": 9,
+      "etape": 274,
+      "cat": "enlist",
+      "ts": 1785278565821,
+      "msg": "🤝 Recrue 1/4 sur Déployer (-3 nourriture, +3$) — immédiat +2 Popularité"
+    },
+    {
+      "tour": 9,
+      "etape": 276,
+      "cat": "deploy",
+      "ts": 1785278565821,
+      "msg": "   Permanent ♥ +1 Popularité quand vous/voisins faites Deploy"
+    },
+    {
+      "tour": 9,
+      "etape": 279,
+      "cat": "bot",
+      "ts": 1785278596093,
+      "msg": "🤖 Dominion: +2 pétrole"
+    },
+    {
+      "tour": 9,
+      "etape": 280,
+      "cat": "bot",
+      "ts": 1785278596093,
+      "msg": "🤖🏛 Dominion: Commerce -1petrole→+1$"
+    },
+    {
+      "tour": 9,
+      "etape": 284,
+      "cat": "bot",
+      "ts": 1785278596655,
+      "msg": "🤖 Frente Libre: +2 métal"
+    },
+    {
+      "tour": 9,
+      "etape": 285,
+      "cat": "bot",
+      "ts": 1785278596655,
+      "msg": "🤖 Frente Libre: Enrôler Améliorer → immédiat 💰+2 Pièces, recrue 💰 permanent"
+    },
+    {
+      "tour": 9,
+      "etape": 286,
+      "cat": "bot",
+      "ts": 1785278596655,
+      "msg": "🤖💰 Frente Libre: +3$ (Enrôler)"
+    },
+    {
+      "tour": 9,
+      "etape": 292,
+      "cat": "bot",
+      "ts": 1785278597223,
+      "msg": "🤖 Bayou: Produire"
+    },
+    {
+      "tour": 9,
+      "etape": 293,
+      "cat": "bot",
+      "ts": 1785278597223,
+      "msg": "🤖 Bayou: Déployer #31 → 🔓 Flibuste"
+    },
+    {
+      "tour": 9,
+      "etape": 294,
+      "cat": "bot",
+      "ts": 1785278597223,
+      "msg": "🤖💰 Bayou: +1$ (Déployer)"
+    },
+    {
+      "tour": 9,
+      "etape": 295,
+      "cat": "deploy",
+      "ts": 1785278597223,
+      "msg": "🤝 Frente Libre: ⚡+1 Puissance (voisin Bayou → Deploy)"
+    },
+    {
+      "tour": 9,
+      "etape": 296,
+      "cat": "deploy",
+      "ts": 1785278597223,
+      "msg": "🤝 Confédération: ♥+1 Popularité (voisin Bayou → Deploy)"
+    },
+    {
+      "tour": 10,
+      "etape": 298,
+      "cat": "turn",
+      "ts": 1785278597444,
+      "msg": "── Tour 10 ──"
+    },
+    {
+      "tour": 10,
+      "etape": 300,
+      "cat": "snap",
+      "ts": 1785278597444,
+      "msg": "[Début] ⚡4 🃏1 ♥6 💰10 ⭐0 W5 M2 Fe2 Bo3 No0 Pe0 Ab[0,1]"
+    },
+    {
+      "tour": 10,
+      "etape": 302,
+      "cat": "snap",
+      "ts": 1785278597444,
+      "msg": "[Début 🤖 Dominion] ⚡7 🃏2 ♥4 💰3 ⭐0 W3 M2 Fe1 Bo0 No0 Pe3 Ab[0,1]"
+    },
+    {
+      "tour": 10,
+      "etape": 304,
+      "cat": "snap",
+      "ts": 1785278597444,
+      "msg": "[Début 🤖 Frente Libre] ⚡8 🃏3 ♥4 💰7 ⭐0 W2 M1 Fe4 Bo0 No0 Pe0 Ab[0]"
+    },
+    {
+      "tour": 10,
+      "etape": 306,
+      "cat": "snap",
+      "ts": 1785278597444,
+      "msg": "[Début 🤖 Bayou] ⚡4 🃏3 ♥3 💰5 ⭐0 W5 M2 Fe1 Bo2 No2 Pe0 Ab[0,2]"
+    },
+    {
+      "tour": 10,
+      "etape": 308,
+      "cat": "move",
+      "ts": 1785278762722,
+      "msg": "🚶 J. Cole → #29 📦2metal"
+    },
+    {
+      "tour": 10,
+      "etape": 310,
+      "cat": "encounter",
+      "ts": 1785278762722,
+      "msg": "📜 Rencontre: \"L'Épave Fumante\""
+    },
+    {
+      "tour": 10,
+      "etape": 312,
+      "cat": "encounter",
+      "ts": 1785278793031,
+      "msg": "📜 L'Épave Fumante: Prévenir le hameau → +1 pop, +2 métal"
+    },
+    {
+      "tour": 10,
+      "etape": 314,
+      "cat": "move",
+      "ts": 1785278866436,
+      "msg": "🚶 confederation_m1 → #26 👷×1"
+    },
+    {
+      "tour": 10,
+      "etape": 316,
+      "cat": "move",
+      "ts": 1785278884101,
+      "msg": "✅ Mouvement terminé (2/2)"
+    },
+    {
+      "tour": 10,
+      "etape": 323,
+      "cat": "bot",
+      "ts": 1785278887490,
+      "msg": "🤖 Dominion: Col. Whitfield → #15 📦2petrole"
+    },
+    {
+      "tour": 10,
+      "etape": 324,
+      "cat": "bot",
+      "ts": 1785278887490,
+      "msg": "🤖 Dominion: Ouv. → #7"
+    },
+    {
+      "tour": 10,
+      "etape": 325,
+      "cat": "bot",
+      "ts": 1785278887490,
+      "msg": "🤖 Dominion: Améliorer 2/6"
+    },
+    {
+      "tour": 10,
+      "etape": 326,
+      "cat": "bot",
+      "ts": 1785278887490,
+      "msg": "🤖🏛 Dominion: Import -2$→+1metal"
+    },
+    {
+      "tour": 10,
+      "etape": 327,
+      "cat": "bot",
+      "ts": 1785278887490,
+      "msg": "🤖📜 Dominion: \"Le Cimetière de Mechas\" → Fouiller les prototypes"
+    },
+    {
+      "tour": 10,
+      "etape": 328,
+      "cat": "enlist",
+      "ts": 1785278887490,
+      "msg": "🤝 Frente Libre: 💰+1 Pièce (voisin Dominion → Upgrade)"
+    },
+    {
+      "tour": 10,
+      "etape": 333,
+      "cat": "bot",
+      "ts": 1785278888078,
+      "msg": "🤖 Frente Libre: +1 CC"
+    },
+    {
+      "tour": 10,
+      "etape": 334,
+      "cat": "bot",
+      "ts": 1785278888078,
+      "msg": "🤖 Frente Libre: Déployer #41 → 🔓 Sentier"
+    },
+    {
+      "tour": 10,
+      "etape": 335,
+      "cat": "deploy",
+      "ts": 1785278888078,
+      "msg": "🤝 Frente Libre: ⚡+1 Puissance (propre Deploy)"
+    },
+    {
+      "tour": 10,
+      "etape": 336,
+      "cat": "deploy",
+      "ts": 1785278888078,
+      "msg": "🤝 Dominion: ⚡+1 Puissance (voisin Frente Libre → Deploy)"
+    },
+    {
+      "tour": 10,
+      "etape": 338,
+      "cat": "bot",
+      "ts": 1785278888659,
+      "msg": "🤖 Bayou: +2 nourriture"
+    },
+    {
+      "tour": 11,
+      "etape": 340,
+      "cat": "turn",
+      "ts": 1785278888880,
+      "msg": "── Tour 11 ──"
+    },
+    {
+      "tour": 11,
+      "etape": 342,
+      "cat": "snap",
+      "ts": 1785278888880,
+      "msg": "[Début] ⚡4 🃏1 ♥7 💰10 ⭐0 W5 M2 Fe4 Bo3 No0 Pe0 Ab[0,1]"
+    },
+    {
+      "tour": 11,
+      "etape": 344,
+      "cat": "snap",
+      "ts": 1785278888880,
+      "msg": "[Début 🤖 Dominion] ⚡8 🃏2 ♥4 💰2 ⭐0 W3 M2 Fe2 Bo0 No0 Pe0 Ab[0,1]"
+    },
+    {
+      "tour": 11,
+      "etape": 346,
+      "cat": "snap",
+      "ts": 1785278888880,
+      "msg": "[Début 🤖 Frente Libre] ⚡9 🃏4 ♥4 💰7 ⭐0 W2 M2 Fe0 Bo0 No0 Pe0 Ab[0,1]"
+    },
+    {
+      "tour": 11,
+      "etape": 348,
+      "cat": "snap",
+      "ts": 1785278888880,
+      "msg": "[Début 🤖 Bayou] ⚡4 🃏3 ♥3 💰4 ⭐0 W5 M2 Fe1 Bo2 No4 Pe0 Ab[0,2]"
+    },
+    {
+      "tour": 11,
+      "etape": 350,
+      "cat": "resource",
+      "ts": 1785278995177,
+      "msg": "💰 -1$ → +2 bois (#29)"
+    },
+    {
+      "tour": 11,
+      "etape": 352,
+      "cat": "deploy",
+      "ts": 1785279010037,
+      "msg": "⬡ Mecha déployé sur #26 (-4 métal, +1$)"
+    },
+    {
+      "tour": 11,
+      "etape": 354,
+      "cat": "combat",
+      "ts": 1785279011341,
+      "msg": "🔓 Ability débloquée : ⚔ Cavaliers"
+    },
+    {
+      "tour": 11,
+      "etape": 356,
+      "cat": "deploy",
+      "ts": 1785279011341,
+      "msg": "🤝 Confédération: ♥+1 Popularité (propre Deploy)"
+    },
+    {
+      "tour": 11,
+      "etape": 358,
+      "cat": "deploy",
+      "ts": 1785279011341,
+      "msg": "🤝 Dominion: ⚡+1 Puissance (voisin Confédération → Deploy)"
+    },
+    {
+      "tour": 11,
+      "etape": 360,
+      "cat": "deploy",
+      "ts": 1785279011341,
+      "msg": "🤝 Confédération: ♥+1 Popularité (propre Deploy)"
+    },
+    {
+      "tour": 11,
+      "etape": 362,
+      "cat": "deploy",
+      "ts": 1785279011341,
+      "msg": "🤝 Dominion: ⚡+1 Puissance (voisin Confédération → Deploy)"
+    },
+    {
+      "tour": 11,
+      "etape": 365,
+      "cat": "bot",
+      "ts": 1785279024203,
+      "msg": "🤖 Dominion: +2 nourriture"
+    },
+    {
+      "tour": 11,
+      "etape": 366,
+      "cat": "bot",
+      "ts": 1785279024203,
+      "msg": "🤖🏛 Dominion: Commerce -1nourriture→+1$"
+    },
+    {
+      "tour": 11,
+      "etape": 368,
+      "cat": "bot",
+      "ts": 1785279024770,
+      "msg": "🤖 Frente Libre: +2 bois"
+    },
+    {
+      "tour": 11,
+      "etape": 373,
+      "cat": "bot",
+      "ts": 1785279025334,
+      "msg": "🤖 Bayou: Cap. Zeke → #28 📦2bois, 4nourriture, 1metal"
+    },
+    {
+      "tour": 11,
+      "etape": 374,
+      "cat": "bot",
+      "ts": 1785279025334,
+      "msg": "🤖 Bayou: Ouv. → #28"
+    },
+    {
+      "tour": 11,
+      "etape": 375,
+      "cat": "bot",
+      "ts": 1785279025334,
+      "msg": "🤖 Bayou: Enrôler Déployer → immédiat ♥+2 Popularité, recrue 🃏 permanent"
+    },
+    {
+      "tour": 11,
+      "etape": 376,
+      "cat": "bot",
+      "ts": 1785279025334,
+      "msg": "🤖💰 Bayou: +1$ (Enrôler)"
+    },
+    {
+      "tour": 12,
+      "etape": 378,
+      "cat": "turn",
+      "ts": 1785279025553,
+      "msg": "── Tour 12 ──"
+    },
+    {
+      "tour": 12,
+      "etape": 380,
+      "cat": "snap",
+      "ts": 1785279025553,
+      "msg": "[Début] ⚡4 🃏1 ♥8 💰10 ⭐0 W5 M3 Fe0 Bo5 No0 Pe0 Ab[0,1,2]"
+    },
+    {
+      "tour": 12,
+      "etape": 382,
+      "cat": "snap",
+      "ts": 1785279025553,
+      "msg": "[Début 🤖 Dominion] ⚡9 🃏2 ♥4 💰2 ⭐0 W3 M2 Fe2 Bo0 No1 Pe0 Ab[0,1]"
+    },
+    {
+      "tour": 12,
+      "etape": 384,
+      "cat": "snap",
+      "ts": 1785279025553,
+      "msg": "[Début 🤖 Frente Libre] ⚡9 🃏4 ♥4 💰6 ⭐0 W2 M2 Fe0 Bo2 No0 Pe0 Ab[0,1]"
+    },
+    {
+      "tour": 12,
+      "etape": 386,
+      "cat": "snap",
+      "ts": 1785279025553,
+      "msg": "[Début 🤖 Bayou] ⚡4 🃏3 ♥5 💰5 ⭐0 W5 M2 Fe1 Bo2 No1 Pe0 Ab[0,2]"
+    },
+    {
+      "tour": 12,
+      "etape": 388,
+      "cat": "resource",
+      "ts": 1785279049174,
+      "msg": "💪 -1$ → +2 Pui"
+    },
+    {
+      "tour": 12,
+      "etape": 390,
+      "cat": "resource",
+      "ts": 1785279049174,
+      "msg": "💪 -1$ → +2 Pui"
+    },
+    {
+      "tour": 12,
+      "etape": 392,
+      "cat": "build",
+      "ts": 1785279089847,
+      "msg": "🏗 Mémorial construit sur #26 (-4 bois, +2$)"
+    },
+    {
+      "tour": 12,
+      "etape": 398,
+      "cat": "bot",
+      "ts": 1785279116499,
+      "msg": "🤖🔄 Dominion: son plan ne paie pas — repli sur la popularité, les territoires et les ressources"
+    },
+    {
+      "tour": 12,
+      "etape": 399,
+      "cat": "bot",
+      "ts": 1785279116499,
+      "msg": "🤖 Dominion: +1 CC"
+    },
+    {
+      "tour": 12,
+      "etape": 400,
+      "cat": "bot",
+      "ts": 1785279116499,
+      "msg": "🤖 Dominion: Enrôler Améliorer → immédiat 💰+2 Pièces, recrue 💰 permanent"
+    },
+    {
+      "tour": 12,
+      "etape": 401,
+      "cat": "bot",
+      "ts": 1785279116499,
+      "msg": "🤖💰 Dominion: +3$ (Enrôler)"
+    },
+    {
+      "tour": 12,
+      "etape": 402,
+      "cat": "bot",
+      "ts": 1785279116499,
+      "msg": "🤖🏛 Dominion: Import -2$→+1metal"
+    },
+    {
+      "tour": 12,
+      "etape": 410,
+      "cat": "bot",
+      "ts": 1785279117089,
+      "msg": "🤖🔄 Frente Libre: son plan ne paie pas — repli sur la popularité, les territoires et les ressources"
+    },
+    {
+      "tour": 12,
+      "etape": 411,
+      "cat": "bot",
+      "ts": 1785279117089,
+      "msg": "🤖 Frente Libre: Produire"
+    },
+    {
+      "tour": 12,
+      "etape": 412,
+      "cat": "bot",
+      "ts": 1785279117089,
+      "msg": "🤖 Frente Libre: Construire Gare #45"
+    },
+    {
+      "tour": 12,
+      "etape": 413,
+      "cat": "bot",
+      "ts": 1785279117089,
+      "msg": "🤖🛤 Frente Libre: Rail #45↔#41"
+    },
+    {
+      "tour": 12,
+      "etape": 414,
+      "cat": "bot",
+      "ts": 1785279117089,
+      "msg": "🤖🛤 Frente Libre: Rail #41↔#37"
+    },
+    {
+      "tour": 12,
+      "etape": 415,
+      "cat": "bot",
+      "ts": 1785279117089,
+      "msg": "🤖🛤 Frente Libre: Rail #37↔#30"
+    },
+    {
+      "tour": 12,
+      "etape": 416,
+      "cat": "bot",
+      "ts": 1785279117089,
+      "msg": "🤖💰 Frente Libre: +2$ (Construire)"
+    },
+    {
+      "tour": 12,
+      "etape": 424,
+      "cat": "bot",
+      "ts": 1785279117654,
+      "msg": "🤖🔄 Bayou: son plan ne paie pas — repli sur la popularité, les territoires et les ressources"
+    },
+    {
+      "tour": 12,
+      "etape": 425,
+      "cat": "bot",
+      "ts": 1785279117654,
+      "msg": "🤖 Bayou: Produire"
+    },
+    {
+      "tour": 12,
+      "etape": 426,
+      "cat": "bot",
+      "ts": 1785279117654,
+      "msg": "🤖 Bayou: Déployer #31 → 🔓 Mangrove"
+    },
+    {
+      "tour": 12,
+      "etape": 427,
+      "cat": "bot",
+      "ts": 1785279117654,
+      "msg": "🤖💰 Bayou: +1$ (Déployer)"
+    },
+    {
+      "tour": 12,
+      "etape": 428,
+      "cat": "combat",
+      "ts": 1785279117654,
+      "msg": "🤝 Bayou: 🃏+1 Carte Combat (propre Deploy)"
+    },
+    {
+      "tour": 12,
+      "etape": 429,
+      "cat": "deploy",
+      "ts": 1785279117654,
+      "msg": "🤝 Frente Libre: ⚡+1 Puissance (voisin Bayou → Deploy)"
+    },
+    {
+      "tour": 12,
+      "etape": 430,
+      "cat": "deploy",
+      "ts": 1785279117654,
+      "msg": "🤝 Confédération: ♥+1 Popularité (voisin Bayou → Deploy)"
+    },
+    {
+      "tour": 13,
+      "etape": 432,
+      "cat": "turn",
+      "ts": 1785279117873,
+      "msg": "── Tour 13 ──"
+    },
+    {
+      "tour": 13,
+      "etape": 434,
+      "cat": "snap",
+      "ts": 1785279117873,
+      "msg": "[Début] ⚡6 🃏1 ♥9 💰11 ⭐0 W5 M3 Fe0 Bo1 No0 Pe0 Ab[0,1,2]"
+    },
+    {
+      "tour": 13,
+      "etape": 436,
+      "cat": "snap",
+      "ts": 1785279117873,
+      "msg": "[Début 🤖 Dominion] ⚡9 🃏3 ♥4 💰4 ⭐0 W3 M2 Fe3 Bo0 No0 Pe0 Ab[0,1]"
+    },
+    {
+      "tour": 13,
+      "etape": 438,
+      "cat": "snap",
+      "ts": 1785279117873,
+      "msg": "[Début 🤖 Frente Libre] ⚡10 🃏4 ♥4 💰8 ⭐0 W2 M2 Fe1 Bo0 No1 Pe0 Ab[0,1]"
+    },
+    {
+      "tour": 13,
+      "etape": 440,
+      "cat": "snap",
+      "ts": 1785279117873,
+      "msg": "[Début 🤖 Bayou] ⚡3 🃏4 ♥5 💰6 ⭐0 W5 M3 Fe0 Bo3 No1 Pe0 Ab[0,2,1]"
+    },
+    {
+      "tour": 13,
+      "etape": 442,
+      "cat": "move",
+      "ts": 1785279168592,
+      "msg": "🚶 J. Cole → #22 📦1bois"
+    },
+    {
+      "tour": 13,
+      "etape": 444,
+      "cat": "warn",
+      "ts": 1785279168592,
+      "msg": "⚙ Rouge River ! Offre découverte : 5 plans Ford (Tesla verrouillé — 2🔬 requis)"
+    },
+    {
+      "tour": 13,
+      "etape": 446,
+      "cat": "rr",
+      "ts": 1785279200994,
+      "msg": "⚙ Carte d'usine choisie: Hangar Préfabriqué — HAUT 2💰 → 1 Bâtiment (hex ouvrier) + +1⚡ · BAS Déplacer 1 unité de 2 hex (+1 si Vitesse)"
+    },
+    {
+      "tour": 13,
+      "etape": 448,
+      "cat": "move",
+      "ts": 1785279267535,
+      "msg": "🚶 confederation_w3 → #29"
+    },
+    {
+      "tour": 13,
+      "etape": 450,
+      "cat": "move",
+      "ts": 1785279267535,
+      "msg": "✅ Mouvement terminé (2/2)"
+    },
+    {
+      "tour": 13,
+      "etape": 457,
+      "cat": "bot",
+      "ts": 1785279283826,
+      "msg": "🤖 Dominion: +2 bois"
+    },
+    {
+      "tour": 13,
+      "etape": 458,
+      "cat": "bot",
+      "ts": 1785279283826,
+      "msg": "🤖 Dominion: Déployer #7 → 🔓 Discipline"
+    },
+    {
+      "tour": 13,
+      "etape": 459,
+      "cat": "bot",
+      "ts": 1785279283826,
+      "msg": "🤖💰 Dominion: +1$ (Déployer)"
+    },
+    {
+      "tour": 13,
+      "etape": 460,
+      "cat": "deploy",
+      "ts": 1785279283826,
+      "msg": "🤝 Dominion: ⚡+1 Puissance (propre Deploy)"
+    },
+    {
+      "tour": 13,
+      "etape": 461,
+      "cat": "deploy",
+      "ts": 1785279283826,
+      "msg": "🤝 Confédération: ♥+1 Popularité (voisin Dominion → Deploy)"
+    },
+    {
+      "tour": 13,
+      "etape": 462,
+      "cat": "deploy",
+      "ts": 1785279283826,
+      "msg": "🤝 Frente Libre: ⚡+1 Puissance (voisin Dominion → Deploy)"
+    },
+    {
+      "tour": 13,
+      "etape": 464,
+      "cat": "bot",
+      "ts": 1785279284391,
+      "msg": "🤖 Frente Libre: +2 nourriture"
+    },
+    {
+      "tour": 13,
+      "etape": 466,
+      "cat": "bot",
+      "ts": 1785279284965,
+      "msg": "🤖 Bayou: +2 bois"
+    },
+    {
+      "tour": 14,
+      "etape": 468,
+      "cat": "turn",
+      "ts": 1785279285202,
+      "msg": "── Tour 14 ──"
+    },
+    {
+      "tour": 14,
+      "etape": 470,
+      "cat": "snap",
+      "ts": 1785279285202,
+      "msg": "[Début] ⚡6 🃏1 ♥10 💰11 ⭐0 W5 M3 Fe0 Bo1 No0 Pe0 Ab[0,1,2]"
+    },
+    {
+      "tour": 14,
+      "etape": 472,
+      "cat": "snap",
+      "ts": 1785279285202,
+      "msg": "[Début 🤖 Dominion] ⚡10 🃏3 ♥4 💰4 ⭐0 W3 M3 Fe0 Bo2 No0 Pe0 Ab[0,1,2]"
+    },
+    {
+      "tour": 14,
+      "etape": 474,
+      "cat": "snap",
+      "ts": 1785279285202,
+      "msg": "[Début 🤖 Frente Libre] ⚡11 🃏4 ♥4 💰7 ⭐0 W2 M2 Fe1 Bo0 No3 Pe0 Ab[0,1]"
+    },
+    {
+      "tour": 14,
+      "etape": 476,
+      "cat": "snap",
+      "ts": 1785279285202,
+      "msg": "[Début 🤖 Bayou] ⚡3 🃏4 ♥5 💰5 ⭐0 W5 M3 Fe0 Bo5 No1 Pe0 Ab[0,2,1]"
+    },
+    {
+      "tour": 14,
+      "etape": 478,
+      "cat": "rr",
+      "ts": 1785279354614,
+      "msg": "⚙ Hangar Préfabriqué: coût payé (2💰)"
+    },
+    {
+      "tour": 14,
+      "etape": 480,
+      "cat": "build",
+      "ts": 1785279381486,
+      "msg": "🏗 Hangar Préfabriqué: Gare gratuit sur #36"
+    },
+    {
+      "tour": 14,
+      "etape": 482,
+      "cat": "resource",
+      "ts": 1785279381486,
+      "msg": "🚂 Posez 3 segments de rail depuis la Gare ou un rail existant (pas sur lac/marécage)"
+    },
+    {
+      "tour": 14,
+      "etape": 484,
+      "cat": "warn",
+      "ts": 1785279416726,
+      "msg": "⚠ Le rail doit partir de la Gare (#36) ou d'un rail existant"
+    },
+    {
+      "tour": 14,
+      "etape": 486,
+      "cat": "resource",
+      "ts": 1785279471649,
+      "msg": "🚂 Rail depuis #36 — cliquez un hex adjacent"
+    },
+    {
+      "tour": 14,
+      "etape": 488,
+      "cat": "info",
+      "ts": 1785279472605,
+      "msg": "🛤 Rail posé #36↔#40 (2 restants)"
+    },
+    {
+      "tour": 14,
+      "etape": 490,
+      "cat": "resource",
+      "ts": 1785279507665,
+      "msg": "🚂 Rail depuis #40 — cliquez un hex adjacent"
+    },
+    {
+      "tour": 14,
+      "etape": 492,
+      "cat": "info",
+      "ts": 1785279508632,
+      "msg": "🛤 Rail posé #40↔#37 (1 restant)"
+    },
+    {
+      "tour": 14,
+      "etape": 494,
+      "cat": "resource",
+      "ts": 1785279536827,
+      "msg": "🚂 Rail depuis #36 — cliquez un hex adjacent"
+    },
+    {
+      "tour": 14,
+      "etape": 496,
+      "cat": "info",
+      "ts": 1785279537772,
+      "msg": "🛤 Rail posé #36↔#32 (0 restant)"
+    },
+    {
+      "tour": 14,
+      "etape": 498,
+      "cat": "info",
+      "ts": 1785279537772,
+      "msg": "✅ 3 rails posés !"
+    },
+    {
+      "tour": 14,
+      "etape": 500,
+      "cat": "rr",
+      "ts": 1785279537772,
+      "msg": "⚙ Hangar Préfabriqué: +1⚡"
+    },
+    {
+      "tour": 14,
+      "etape": 502,
+      "cat": "move",
+      "ts": 1785279593295,
+      "msg": "🚶 confederation_w0 → #40"
+    },
+    {
+      "tour": 14,
+      "etape": 504,
+      "cat": "move",
+      "ts": 1785279593295,
+      "msg": "✅ Déplacement d'usine terminé"
+    },
+    {
+      "tour": 14,
+      "etape": 506,
+      "cat": "bot",
+      "ts": 1785279608831,
+      "msg": "🤖 Dominion: Produire"
+    },
+    {
+      "tour": 14,
+      "etape": 508,
+      "cat": "bot",
+      "ts": 1785279609429,
+      "msg": "🤖 Frente Libre: Produire"
+    },
+    {
+      "tour": 14,
+      "etape": 515,
+      "cat": "bot",
+      "ts": 1785279610012,
+      "msg": "🤖 Bayou: +2 pui"
+    },
+    {
+      "tour": 14,
+      "etape": 516,
+      "cat": "bot",
+      "ts": 1785279610012,
+      "msg": "🤖 Bayou: Construire Gare #35"
+    },
+    {
+      "tour": 14,
+      "etape": 517,
+      "cat": "bot",
+      "ts": 1785279610012,
+      "msg": "🤖🛤 Bayou: Rail #35↔#31"
+    },
+    {
+      "tour": 14,
+      "etape": 518,
+      "cat": "bot",
+      "ts": 1785279610012,
+      "msg": "🤖🛤 Bayou: Rail #31↔#27"
+    },
+    {
+      "tour": 14,
+      "etape": 519,
+      "cat": "bot",
+      "ts": 1785279610012,
+      "msg": "🤖🛤 Bayou: Rail #27↔#34"
+    },
+    {
+      "tour": 14,
+      "etape": 520,
+      "cat": "bot",
+      "ts": 1785279610012,
+      "msg": "🤖💰 Bayou: +3$ (Construire)"
+    },
+    {
+      "tour": 15,
+      "etape": 522,
+      "cat": "turn",
+      "ts": 1785279610238,
+      "msg": "── Tour 15 ──"
+    },
+    {
+      "tour": 15,
+      "etape": 524,
+      "cat": "snap",
+      "ts": 1785279610238,
+      "msg": "[Début] ⚡7 🃏1 ♥10 💰9 ⭐0 W5 M3 Fe0 Bo1 No0 Pe0 Ab[0,1,2]"
+    },
+    {
+      "tour": 15,
+      "etape": 526,
+      "cat": "snap",
+      "ts": 1785279610238,
+      "msg": "[Début 🤖 Dominion] ⚡10 🃏3 ♥4 💰4 ⭐0 W3 M3 Fe1 Bo2 No1 Pe1 Ab[0,1,2]"
+    },
+    {
+      "tour": 15,
+      "etape": 528,
+      "cat": "snap",
+      "ts": 1785279610238,
+      "msg": "[Début 🤖 Frente Libre] ⚡11 🃏4 ♥4 💰7 ⭐0 W2 M2 Fe2 Bo0 No4 Pe0 Ab[0,1]"
+    },
+    {
+      "tour": 15,
+      "etape": 530,
+      "cat": "snap",
+      "ts": 1785279610238,
+      "msg": "[Début 🤖 Bayou] ⚡5 🃏4 ♥5 💰7 ⭐0 W5 M3 Fe0 Bo1 No1 Pe0 Ab[0,2,1]"
+    },
+    {
+      "tour": 15,
+      "etape": 532,
+      "cat": "resource",
+      "ts": 1785279658700,
+      "msg": "💳 1 Pui"
+    },
+    {
+      "tour": 15,
+      "etape": 534,
+      "cat": "info",
+      "ts": 1785279658700,
+      "msg": "🏭 +1 nourriture #26"
+    },
+    {
+      "tour": 15,
+      "etape": 536,
+      "cat": "info",
+      "ts": 1785279658700,
+      "msg": "🏭 +1 pétrole #40"
+    },
+    {
+      "tour": 15,
+      "etape": 538,
+      "cat": "info",
+      "ts": 1785279658700,
+      "msg": "🏭 +3 bois #29 (Moulin +1)"
+    },
+    {
+      "tour": 15,
+      "etape": 540,
+      "cat": "info",
+      "ts": 1785279658700,
+      "msg": "🏭 +1 nourriture #26"
+    },
+    {
+      "tour": 15,
+      "etape": 542,
+      "cat": "info",
+      "ts": 1785279658700,
+      "msg": "🏭 +1 pétrole #40"
+    },
+    {
+      "tour": 15,
+      "etape": 544,
+      "cat": "info",
+      "ts": 1785279658700,
+      "msg": "🏭 +3 bois #29 (Moulin +1)"
+    },
+    {
+      "tour": 15,
+      "etape": 549,
+      "cat": "bot",
+      "ts": 1785279662209,
+      "msg": "🤖 Dominion: +1 CC"
+    },
+    {
+      "tour": 15,
+      "etape": 550,
+      "cat": "bot",
+      "ts": 1785279662209,
+      "msg": "🤖 Dominion: Enrôler Construire → immédiat 🃏+2 Cartes, recrue ♥ permanent"
+    },
+    {
+      "tour": 15,
+      "etape": 551,
+      "cat": "bot",
+      "ts": 1785279662209,
+      "msg": "🤖💰 Dominion: +3$ (Enrôler)"
+    },
+    {
+      "tour": 15,
+      "etape": 552,
+      "cat": "bot",
+      "ts": 1785279662209,
+      "msg": "🤖🏛 Dominion: Import -2$→+1petrole"
+    },
+    {
+      "tour": 15,
+      "etape": 556,
+      "cat": "bot",
+      "ts": 1785279662784,
+      "msg": "🤖 Frente Libre: +2 métal"
+    },
+    {
+      "tour": 15,
+      "etape": 557,
+      "cat": "bot",
+      "ts": 1785279662784,
+      "msg": "🤖 Frente Libre: Enrôler Construire → immédiat 🃏+2 Cartes, recrue ♥ permanent"
+    },
+    {
+      "tour": 15,
+      "etape": 558,
+      "cat": "bot",
+      "ts": 1785279662784,
+      "msg": "🤖💰 Frente Libre: +3$ (Enrôler)"
+    },
+    {
+      "tour": 15,
+      "etape": 560,
+      "cat": "bot",
+      "ts": 1785279663358,
+      "msg": "🤖 Bayou: Produire"
+    },
+    {
+      "tour": 16,
+      "etape": 562,
+      "cat": "turn",
+      "ts": 1785279663598,
+      "msg": "── Tour 16 ──"
+    },
+    {
+      "tour": 16,
+      "etape": 564,
+      "cat": "snap",
+      "ts": 1785279663598,
+      "msg": "[Début] ⚡6 🃏1 ♥10 💰9 ⭐0 W5 M3 Fe0 Bo4 No2 Pe1 Ab[0,1,2]"
+    },
+    {
+      "tour": 16,
+      "etape": 566,
+      "cat": "snap",
+      "ts": 1785279663598,
+      "msg": "[Début 🤖 Dominion] ⚡10 🃏6 ♥4 💰4 ⭐0 W3 M3 Fe1 Bo2 No0 Pe2 Ab[0,1,2]"
+    },
+    {
+      "tour": 16,
+      "etape": 568,
+      "cat": "snap",
+      "ts": 1785279663598,
+      "msg": "[Début 🤖 Frente Libre] ⚡11 🃏6 ♥4 💰9 ⭐0 W2 M2 Fe4 Bo0 No0 Pe0 Ab[0,1]"
+    },
+    {
+      "tour": 16,
+      "etape": 570,
+      "cat": "snap",
+      "ts": 1785279663598,
+      "msg": "[Début 🤖 Bayou] ⚡4 🃏4 ♥5 💰7 ⭐0 W5 M3 Fe2 Bo2 No1 Pe0 Ab[0,2,1]"
+    },
+    {
+      "tour": 16,
+      "etape": 572,
+      "cat": "rr",
+      "ts": 1785279692420,
+      "msg": "⚙ Hangar Préfabriqué: coût payé (2💰)"
+    },
+    {
+      "tour": 16,
+      "etape": 574,
+      "cat": "build",
+      "ts": 1785279706537,
+      "msg": "🏗 Hangar Préfabriqué: Arsenal gratuit sur #40"
+    },
+    {
+      "tour": 16,
+      "etape": 576,
+      "cat": "star",
+      "ts": 1785279706537,
+      "msg": "⭐ 4 Bâtiments construits !"
+    },
+    {
+      "tour": 16,
+      "etape": 578,
+      "cat": "rr",
+      "ts": 1785279706537,
+      "msg": "⚙ Hangar Préfabriqué: +1⚡"
+    },
+    {
+      "tour": 16,
+      "etape": 580,
+      "cat": "move",
+      "ts": 1785279735895,
+      "msg": "🚶 J. Cole → #30 📦1bois"
+    },
+    {
+      "tour": 16,
+      "etape": 582,
+      "cat": "encounter",
+      "ts": 1785279735896,
+      "msg": "📜 Rencontre: \"La Scierie du Fleuve\""
+    },
+    {
+      "tour": 16,
+      "etape": 584,
+      "cat": "encounter",
+      "ts": 1785279764094,
+      "msg": "📜 La Scierie du Fleuve: Enrôler les bûcherons → -2 pop, +1 recrue"
+    },
+    {
+      "tour": 16,
+      "etape": 586,
+      "cat": "encounter",
+      "ts": 1785279818727,
+      "msg": "🤝 Recrue 2/4 sur Upgrade (rencontre) — immédiat +2 Pièces"
+    },
+    {
+      "tour": 16,
+      "etape": 588,
+      "cat": "upgrade",
+      "ts": 1785279818727,
+      "msg": "   Permanent 💰 +1 Pièce quand vous/voisins faites Upgrade"
+    },
+    {
+      "tour": 16,
+      "etape": 590,
+      "cat": "move",
+      "ts": 1785279819203,
+      "msg": "✅ Déplacement d'usine terminé"
+    },
+    {
+      "tour": 16,
+      "etape": 598,
+      "cat": "bot",
+      "ts": 1785279820651,
+      "msg": "🤖 Dominion: +2 métal"
+    },
+    {
+      "tour": 16,
+      "etape": 599,
+      "cat": "bot",
+      "ts": 1785279820651,
+      "msg": "🤖 Dominion: Déployer #7 → 🔓 Position"
+    },
+    {
+      "tour": 16,
+      "etape": 600,
+      "cat": "star",
+      "ts": 1785279820651,
+      "msg": "⭐ Dominion: 4 mechas !"
+    },
+    {
+      "tour": 16,
+      "etape": 601,
+      "cat": "bot",
+      "ts": 1785279820651,
+      "msg": "🤖💰 Dominion: +1$ (Déployer)"
+    },
+    {
+      "tour": 16,
+      "etape": 602,
+      "cat": "deploy",
+      "ts": 1785279820651,
+      "msg": "🤝 Dominion: ⚡+1 Puissance (propre Deploy)"
+    },
+    {
+      "tour": 16,
+      "etape": 603,
+      "cat": "deploy",
+      "ts": 1785279820651,
+      "msg": "🤝 Confédération: ♥+1 Popularité (voisin Dominion → Deploy)"
+    },
+    {
+      "tour": 16,
+      "etape": 604,
+      "cat": "deploy",
+      "ts": 1785279820651,
+      "msg": "🤝 Frente Libre: ⚡+1 Puissance (voisin Dominion → Deploy)"
+    },
+    {
+      "tour": 16,
+      "etape": 610,
+      "cat": "bot",
+      "ts": 1785279821238,
+      "msg": "🤖 Frente Libre: +2 pui"
+    },
+    {
+      "tour": 16,
+      "etape": 611,
+      "cat": "bot",
+      "ts": 1785279821238,
+      "msg": "🤖 Frente Libre: Déployer #41 → 🔓 Peuple Armé"
+    },
+    {
+      "tour": 16,
+      "etape": 612,
+      "cat": "deploy",
+      "ts": 1785279821238,
+      "msg": "🤝 Frente Libre: ⚡+1 Puissance (propre Deploy)"
+    },
+    {
+      "tour": 16,
+      "etape": 613,
+      "cat": "deploy",
+      "ts": 1785279821238,
+      "msg": "🤝 Dominion: ⚡+1 Puissance (voisin Frente Libre → Deploy)"
+    },
+    {
+      "tour": 16,
+      "etape": 614,
+      "cat": "combat",
+      "ts": 1785279821238,
+      "msg": "🤝 Bayou: 🃏+1 Carte Combat (voisin Frente Libre → Deploy)"
+    },
+    {
+      "tour": 16,
+      "etape": 616,
+      "cat": "bot",
+      "ts": 1785279821838,
+      "msg": "🤖 Bayou: +2 nourriture"
+    },
+    {
+      "tour": 17,
+      "etape": 618,
+      "cat": "turn",
+      "ts": 1785279822090,
+      "msg": "── Tour 17 ──"
+    },
+    {
+      "tour": 17,
+      "etape": 620,
+      "cat": "snap",
+      "ts": 1785279822090,
+      "msg": "[Début] ⚡7 🃏1 ♥9 💰9 ⭐1 W5 M3 Fe0 Bo4 No2 Pe1 Ab[0,1,2]"
+    },
+    {
+      "tour": 17,
+      "etape": 622,
+      "cat": "snap",
+      "ts": 1785279822090,
+      "msg": "[Début 🤖 Dominion] ⚡12 🃏6 ♥4 💰4 ⭐1 W3 M4 Fe0 Bo2 No0 Pe2 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 17,
+      "etape": 624,
+      "cat": "snap",
+      "ts": 1785279822090,
+      "msg": "[Début 🤖 Frente Libre] ⚡15 🃏6 ♥4 💰8 ⭐0 W2 M3 Fe0 Bo0 No0 Pe0 Ab[0,1,2]"
+    },
+    {
+      "tour": 17,
+      "etape": 626,
+      "cat": "snap",
+      "ts": 1785279822090,
+      "msg": "[Début 🤖 Bayou] ⚡4 🃏5 ♥5 💰6 ⭐0 W5 M3 Fe2 Bo2 No3 Pe0 Ab[0,2,1]"
+    },
+    {
+      "tour": 17,
+      "etape": 628,
+      "cat": "move",
+      "ts": 1785280064344,
+      "msg": "🚶 confederation_w2 → #32 📦3bois"
+    },
+    {
+      "tour": 17,
+      "etape": 630,
+      "cat": "move",
+      "ts": 1785280083322,
+      "msg": "🚶 confederation_w4 → #32"
+    },
+    {
+      "tour": 17,
+      "etape": 632,
+      "cat": "move",
+      "ts": 1785280083322,
+      "msg": "✅ Mouvement terminé (2/2)"
+    },
+    {
+      "tour": 17,
+      "etape": 635,
+      "cat": "bot",
+      "ts": 1785280113121,
+      "msg": "🤖 Dominion: Produire"
+    },
+    {
+      "tour": 17,
+      "etape": 636,
+      "cat": "bot",
+      "ts": 1785280113121,
+      "msg": "🤖🏛 Dominion: Commerce -1metal→+1$"
+    },
+    {
+      "tour": 17,
+      "etape": 638,
+      "cat": "bot",
+      "ts": 1785280113711,
+      "msg": "🤖 Frente Libre: +2 bois"
+    },
+    {
+      "tour": 17,
+      "etape": 644,
+      "cat": "bot",
+      "ts": 1785280114294,
+      "msg": "🤖 Bayou: Cap. Zeke → #23 📦1nourriture, 1bois"
+    },
+    {
+      "tour": 17,
+      "etape": 645,
+      "cat": "bot",
+      "ts": 1785280114294,
+      "msg": "🤖 Bayou: Ouv. → #34"
+    },
+    {
+      "tour": 17,
+      "etape": 646,
+      "cat": "bot",
+      "ts": 1785280114294,
+      "msg": "🤖 Bayou: Enrôler Enrôler → immédiat ⚡+2 Puissance, recrue ♥ permanent"
+    },
+    {
+      "tour": 17,
+      "etape": 647,
+      "cat": "bot",
+      "ts": 1785280114294,
+      "msg": "🤖💰 Bayou: +1$ (Enrôler)"
+    },
+    {
+      "tour": 17,
+      "etape": 648,
+      "cat": "enlist",
+      "ts": 1785280114294,
+      "msg": "🤝 Bayou: ♥+1 Popularité (propre Enlist)"
+    },
+    {
+      "tour": 18,
+      "etape": 650,
+      "cat": "turn",
+      "ts": 1785280114540,
+      "msg": "── Tour 18 ──"
+    },
+    {
+      "tour": 18,
+      "etape": 652,
+      "cat": "snap",
+      "ts": 1785280114540,
+      "msg": "[Début] ⚡7 🃏1 ♥9 💰9 ⭐1 W5 M3 Fe0 Bo4 No2 Pe1 Ab[0,1,2]"
+    },
+    {
+      "tour": 18,
+      "etape": 654,
+      "cat": "snap",
+      "ts": 1785280114540,
+      "msg": "[Début 🤖 Dominion] ⚡12 🃏6 ♥4 💰5 ⭐1 W3 M4 Fe0 Bo2 No1 Pe3 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 18,
+      "etape": 656,
+      "cat": "snap",
+      "ts": 1785280114540,
+      "msg": "[Début 🤖 Frente Libre] ⚡15 🃏6 ♥4 💰7 ⭐0 W2 M3 Fe0 Bo2 No0 Pe0 Ab[0,1,2]"
+    },
+    {
+      "tour": 18,
+      "etape": 658,
+      "cat": "snap",
+      "ts": 1785280114540,
+      "msg": "[Début 🤖 Bayou] ⚡6 🃏5 ♥6 💰7 ⭐0 W5 M3 Fe2 Bo2 No0 Pe0 Ab[0,2,1]"
+    },
+    {
+      "tour": 18,
+      "etape": 660,
+      "cat": "resource",
+      "ts": 1785280163577,
+      "msg": "💳 1 Pui"
+    },
+    {
+      "tour": 18,
+      "etape": 662,
+      "cat": "info",
+      "ts": 1785280163577,
+      "msg": "🏭 +2 métal #32"
+    },
+    {
+      "tour": 18,
+      "etape": 664,
+      "cat": "info",
+      "ts": 1785280163577,
+      "msg": "🏭 +1 nourriture #26"
+    },
+    {
+      "tour": 18,
+      "etape": 666,
+      "cat": "info",
+      "ts": 1785280163577,
+      "msg": "🏭 +2 bois #29 (Moulin +1)"
+    },
+    {
+      "tour": 18,
+      "etape": 668,
+      "cat": "info",
+      "ts": 1785280163577,
+      "msg": "🏭 +2 métal #32"
+    },
+    {
+      "tour": 18,
+      "etape": 670,
+      "cat": "info",
+      "ts": 1785280163577,
+      "msg": "🏭 +1 nourriture #26"
+    },
+    {
+      "tour": 18,
+      "etape": 672,
+      "cat": "info",
+      "ts": 1785280163577,
+      "msg": "🏭 +2 bois #29 (Moulin +1)"
+    },
+    {
+      "tour": 18,
+      "etape": 674,
+      "cat": "enlist",
+      "ts": 1785280178772,
+      "msg": "🤝 Recrue 3/4 sur Construire (-3 nourriture, +3$) — immédiat +2 Cartes"
+    },
+    {
+      "tour": 18,
+      "etape": 676,
+      "cat": "build",
+      "ts": 1785280178772,
+      "msg": "   Permanent ⚡ +1 Puissance quand vous/voisins faites Build"
+    },
+    {
+      "tour": 18,
+      "etape": 678,
+      "cat": "enlist",
+      "ts": 1785280178772,
+      "msg": "🤝 Bayou: ♥+1 Popularité (voisin Confédération → Enlist)"
+    },
+    {
+      "tour": 18,
+      "etape": 680,
+      "cat": "enlist",
+      "ts": 1785280178772,
+      "msg": "🤝 Bayou: ♥+1 Popularité (voisin Confédération → Enlist)"
+    },
+    {
+      "tour": 18,
+      "etape": 687,
+      "cat": "bot",
+      "ts": 1785280197249,
+      "msg": "🤖 Dominion: +2 pui"
+    },
+    {
+      "tour": 18,
+      "etape": 688,
+      "cat": "bot",
+      "ts": 1785280197249,
+      "msg": "🤖 Dominion: Enrôler Enrôler → immédiat ⚡+2 Puissance, recrue 🃏 permanent"
+    },
+    {
+      "tour": 18,
+      "etape": 689,
+      "cat": "star",
+      "ts": 1785280197249,
+      "msg": "⭐ Dominion: 4 recrues !"
+    },
+    {
+      "tour": 18,
+      "etape": 690,
+      "cat": "bot",
+      "ts": 1785280197249,
+      "msg": "🤖💰 Dominion: +3$ (Enrôler)"
+    },
+    {
+      "tour": 18,
+      "etape": 691,
+      "cat": "bot",
+      "ts": 1785280197249,
+      "msg": "🤖🏛 Dominion: Import -2$→+1bois"
+    },
+    {
+      "tour": 18,
+      "etape": 692,
+      "cat": "combat",
+      "ts": 1785280197249,
+      "msg": "🤝 Dominion: 🃏+1 Carte Combat (propre Enlist)"
+    },
+    {
+      "tour": 18,
+      "etape": 698,
+      "cat": "bot",
+      "ts": 1785280197837,
+      "msg": "🤖 Frente Libre: Produire"
+    },
+    {
+      "tour": 18,
+      "etape": 699,
+      "cat": "bot",
+      "ts": 1785280197837,
+      "msg": "🤖 Frente Libre: Construire Mémorial #41"
+    },
+    {
+      "tour": 18,
+      "etape": 700,
+      "cat": "bot",
+      "ts": 1785280197837,
+      "msg": "🤖💰 Frente Libre: +2$ (Construire)"
+    },
+    {
+      "tour": 18,
+      "etape": 701,
+      "cat": "build",
+      "ts": 1785280197837,
+      "msg": "🤝 Frente Libre: ♥+1 Popularité (propre Build)"
+    },
+    {
+      "tour": 18,
+      "etape": 702,
+      "cat": "build",
+      "ts": 1785280197837,
+      "msg": "🤝 Dominion: ♥+1 Popularité (voisin Frente Libre → Build)"
+    },
+    {
+      "tour": 18,
+      "etape": 710,
+      "cat": "bot",
+      "ts": 1785280198432,
+      "msg": "🤖 Bayou: Produire"
+    },
+    {
+      "tour": 18,
+      "etape": 711,
+      "cat": "bot",
+      "ts": 1785280198432,
+      "msg": "🤖 Bayou: Déployer #34 → 🔓 Pirogue"
+    },
+    {
+      "tour": 18,
+      "etape": 712,
+      "cat": "star",
+      "ts": 1785280198432,
+      "msg": "⭐ Bayou: 4 mechas !"
+    },
+    {
+      "tour": 18,
+      "etape": 713,
+      "cat": "bot",
+      "ts": 1785280198432,
+      "msg": "🤖💰 Bayou: +1$ (Déployer)"
+    },
+    {
+      "tour": 18,
+      "etape": 714,
+      "cat": "combat",
+      "ts": 1785280198432,
+      "msg": "🤝 Bayou: 🃏+1 Carte Combat (propre Deploy)"
+    },
+    {
+      "tour": 18,
+      "etape": 715,
+      "cat": "deploy",
+      "ts": 1785280198432,
+      "msg": "🤝 Frente Libre: ⚡+1 Puissance (voisin Bayou → Deploy)"
+    },
+    {
+      "tour": 18,
+      "etape": 716,
+      "cat": "deploy",
+      "ts": 1785280198432,
+      "msg": "🤝 Confédération: ♥+1 Popularité (voisin Bayou → Deploy)"
+    },
+    {
+      "tour": 19,
+      "etape": 718,
+      "cat": "turn",
+      "ts": 1785280198684,
+      "msg": "── Tour 19 ──"
+    },
+    {
+      "tour": 19,
+      "etape": 720,
+      "cat": "snap",
+      "ts": 1785280198684,
+      "msg": "[Début] ⚡6 🃏3 ♥10 💰12 ⭐1 W5 M3 Fe4 Bo6 No1 Pe1 Ab[0,1,2]"
+    },
+    {
+      "tour": 19,
+      "etape": 722,
+      "cat": "snap",
+      "ts": 1785280198684,
+      "msg": "[Début 🤖 Dominion] ⚡16 🃏7 ♥5 💰5 ⭐2 W3 M4 Fe0 Bo3 No0 Pe3 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 19,
+      "etape": 724,
+      "cat": "snap",
+      "ts": 1785280198684,
+      "msg": "[Début 🤖 Frente Libre] ⚡16 🃏6 ♥5 💰9 ⭐0 W2 M3 Fe1 Bo0 No1 Pe0 Ab[0,1,2]"
+    },
+    {
+      "tour": 19,
+      "etape": 726,
+      "cat": "snap",
+      "ts": 1785280198684,
+      "msg": "[Début 🤖 Bayou] ⚡5 🃏6 ♥7 💰8 ⭐1 W5 M4 Fe0 Bo3 No0 Pe0 Ab[0,2,1,3]"
+    },
+    {
+      "tour": 19,
+      "etape": 728,
+      "cat": "resource",
+      "ts": 1785280278933,
+      "msg": "💰 -1$ → +2 nourriture (#26)"
+    },
+    {
+      "tour": 19,
+      "etape": 730,
+      "cat": "deploy",
+      "ts": 1785280294497,
+      "msg": "⬡ Mecha déployé sur #32 (-4 métal, +1$)"
+    },
+    {
+      "tour": 19,
+      "etape": 732,
+      "cat": "star",
+      "ts": 1785280294497,
+      "msg": "⭐ 4 Mechas déployés !"
+    },
+    {
+      "tour": 19,
+      "etape": 734,
+      "cat": "ability",
+      "ts": 1785280361075,
+      "msg": "🔓 Ability débloquée : 🏘 Convoi"
+    },
+    {
+      "tour": 19,
+      "etape": 736,
+      "cat": "deploy",
+      "ts": 1785280361075,
+      "msg": "🤝 Confédération: ♥+1 Popularité (propre Deploy)"
+    },
+    {
+      "tour": 19,
+      "etape": 738,
+      "cat": "combat",
+      "ts": 1785280361075,
+      "msg": "🤝 Bayou: 🃏+1 Carte Combat (voisin Confédération → Deploy)"
+    },
+    {
+      "tour": 19,
+      "etape": 740,
+      "cat": "deploy",
+      "ts": 1785280361075,
+      "msg": "🤝 Dominion: ⚡+1 Puissance (voisin Confédération → Deploy)"
+    },
+    {
+      "tour": 19,
+      "etape": 742,
+      "cat": "deploy",
+      "ts": 1785280361075,
+      "msg": "🤝 Confédération: ♥+1 Popularité (propre Deploy)"
+    },
+    {
+      "tour": 19,
+      "etape": 744,
+      "cat": "combat",
+      "ts": 1785280361075,
+      "msg": "🤝 Bayou: 🃏+1 Carte Combat (voisin Confédération → Deploy)"
+    },
+    {
+      "tour": 19,
+      "etape": 746,
+      "cat": "deploy",
+      "ts": 1785280361075,
+      "msg": "🤝 Dominion: ⚡+1 Puissance (voisin Confédération → Deploy)"
+    },
+    {
+      "tour": 19,
+      "etape": 748,
+      "cat": "bot",
+      "ts": 1785280363069,
+      "msg": "🤖 Dominion: +2 Pop (palier ×2 franchi !)"
+    },
+    {
+      "tour": 19,
+      "etape": 750,
+      "cat": "bot",
+      "ts": 1785280363648,
+      "msg": "🤖 Frente Libre: +2 nourriture"
+    },
+    {
+      "tour": 19,
+      "etape": 755,
+      "cat": "bot",
+      "ts": 1785280364235,
+      "msg": "🤖 Bayou: Cap. Zeke → #3 📦1bois"
+    },
+    {
+      "tour": 19,
+      "etape": 756,
+      "cat": "bot",
+      "ts": 1785280364235,
+      "msg": "🤖≋ Sang du Marais : traversée du marécage #3 sans péage"
+    },
+    {
+      "tour": 19,
+      "etape": 757,
+      "cat": "bot",
+      "ts": 1785280364235,
+      "msg": "🤖 Bayou: Mech → #37 📦1bois"
+    },
+    {
+      "tour": 19,
+      "etape": 758,
+      "cat": "bot",
+      "ts": 1785280364235,
+      "msg": "🤖📜 Bayou: \"La Contrebandière\" → Marchander poliment"
+    },
+    {
+      "tour": 20,
+      "etape": 760,
+      "cat": "turn",
+      "ts": 1785280364472,
+      "msg": "── Tour 20 ──"
+    },
+    {
+      "tour": 20,
+      "etape": 762,
+      "cat": "snap",
+      "ts": 1785280364472,
+      "msg": "[Début] ⚡6 🃏3 ♥11 💰12 ⭐2 W5 M4 Fe0 Bo6 No3 Pe1 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 20,
+      "etape": 764,
+      "cat": "snap",
+      "ts": 1785280364472,
+      "msg": "[Début 🤖 Dominion] ⚡16 🃏7 ♥7 💰4 ⭐2 W3 M4 Fe0 Bo3 No0 Pe3 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 20,
+      "etape": 766,
+      "cat": "snap",
+      "ts": 1785280364472,
+      "msg": "[Début 🤖 Frente Libre] ⚡16 🃏6 ♥5 💰8 ⭐0 W2 M3 Fe1 Bo0 No3 Pe0 Ab[0,1,2]"
+    },
+    {
+      "tour": 20,
+      "etape": 768,
+      "cat": "snap",
+      "ts": 1785280364472,
+      "msg": "[Début 🤖 Bayou] ⚡5 🃏7 ♥8 💰10 ⭐1 W5 M4 Fe0 Bo3 No0 Pe0 Ab[0,2,1,3]"
+    },
+    {
+      "tour": 20,
+      "etape": 770,
+      "cat": "resource",
+      "ts": 1785280414213,
+      "msg": "💳 1 Pui"
+    },
+    {
+      "tour": 20,
+      "etape": 772,
+      "cat": "info",
+      "ts": 1785280414213,
+      "msg": "🏭 +1 nourriture #26"
+    },
+    {
+      "tour": 20,
+      "etape": 774,
+      "cat": "info",
+      "ts": 1785280414213,
+      "msg": "🏭 +1 pétrole #40"
+    },
+    {
+      "tour": 20,
+      "etape": 776,
+      "cat": "info",
+      "ts": 1785280414213,
+      "msg": "🏭 +2 bois #29 (Moulin +1)"
+    },
+    {
+      "tour": 20,
+      "etape": 778,
+      "cat": "info",
+      "ts": 1785280414213,
+      "msg": "🏭 +1 nourriture #26"
+    },
+    {
+      "tour": 20,
+      "etape": 780,
+      "cat": "info",
+      "ts": 1785280414213,
+      "msg": "🏭 +1 pétrole #40"
+    },
+    {
+      "tour": 20,
+      "etape": 782,
+      "cat": "info",
+      "ts": 1785280414213,
+      "msg": "🏭 +2 bois #29 (Moulin +1)"
+    },
+    {
+      "tour": 20,
+      "etape": 784,
+      "cat": "enlist",
+      "ts": 1785280431661,
+      "msg": "🤝 Recrue 4/4 sur Enrôler (-3 nourriture, +3$) — immédiat +2 Puissance"
+    },
+    {
+      "tour": 20,
+      "etape": 786,
+      "cat": "combat",
+      "ts": 1785280431661,
+      "msg": "   Permanent 🃏 +1 Carte Combat quand vous/voisins faites Enlist"
+    },
+    {
+      "tour": 20,
+      "etape": 788,
+      "cat": "star",
+      "ts": 1785280431661,
+      "msg": "⭐ 4 Recrues enrôlées !"
+    },
+    {
+      "tour": 20,
+      "etape": 790,
+      "cat": "combat",
+      "ts": 1785280431661,
+      "msg": "🤝 Confédération: 🃏+1 Carte Combat (propre Enlist)"
+    },
+    {
+      "tour": 20,
+      "etape": 792,
+      "cat": "enlist",
+      "ts": 1785280431661,
+      "msg": "🤝 Bayou: ♥+1 Popularité (voisin Confédération → Enlist)"
+    },
+    {
+      "tour": 20,
+      "etape": 794,
+      "cat": "combat",
+      "ts": 1785280431661,
+      "msg": "🤝 Dominion: 🃏+1 Carte Combat (voisin Confédération → Enlist)"
+    },
+    {
+      "tour": 20,
+      "etape": 796,
+      "cat": "combat",
+      "ts": 1785280431661,
+      "msg": "🤝 Confédération: 🃏+1 Carte Combat (propre Enlist)"
+    },
+    {
+      "tour": 20,
+      "etape": 798,
+      "cat": "enlist",
+      "ts": 1785280431661,
+      "msg": "🤝 Bayou: ♥+1 Popularité (voisin Confédération → Enlist)"
+    },
+    {
+      "tour": 20,
+      "etape": 800,
+      "cat": "combat",
+      "ts": 1785280431661,
+      "msg": "🤝 Dominion: 🃏+1 Carte Combat (voisin Confédération → Enlist)"
+    },
+    {
+      "tour": 20,
+      "etape": 804,
+      "cat": "bot",
+      "ts": 1785280456061,
+      "msg": "🤖 Dominion: Col. Whitfield → #30"
+    },
+    {
+      "tour": 20,
+      "etape": 805,
+      "cat": "bot",
+      "ts": 1785280456061,
+      "msg": "🤖 Dominion: Mech → #8"
+    },
+    {
+      "tour": 20,
+      "etape": 806,
+      "cat": "combat",
+      "ts": 1785280456061,
+      "msg": "⚔ Dominion vous attaque sur #30 ! Défendez-vous."
+    },
+    {
+      "tour": 20,
+      "etape": 808,
+      "cat": "combat",
+      "ts": 1785280536389,
+      "msg": "⚔ Dominion: 11 (7⚡+1🃏) vs vous: 0 (0⚡+0🃏)"
+    },
+    {
+      "tour": 20,
+      "etape": 810,
+      "cat": "warn",
+      "ts": 1785280536389,
+      "msg": "❌ Dominion prend #30... Retraite vers la base."
+    },
+    {
+      "tour": 20,
+      "etape": 812,
+      "cat": "bot",
+      "ts": 1785280536980,
+      "msg": "🤖 Frente Libre: Produire"
+    },
+    {
+      "tour": 20,
+      "etape": 814,
+      "cat": "bot",
+      "ts": 1785280537559,
+      "msg": "🤖 Bayou: +2 bois"
+    },
+    {
+      "tour": 21,
+      "etape": 816,
+      "cat": "turn",
+      "ts": 1785280537790,
+      "msg": "── Tour 21 ──"
+    },
+    {
+      "tour": 21,
+      "etape": 818,
+      "cat": "snap",
+      "ts": 1785280537790,
+      "msg": "[Début] ⚡7 🃏4 ♥11 💰15 ⭐3 W5 M4 Fe0 Bo9 No2 Pe3 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 21,
+      "etape": 820,
+      "cat": "snap",
+      "ts": 1785280537790,
+      "msg": "[Début 🤖 Dominion] ⚡9 🃏7 ♥7 💰4 ⭐3 W3 M4 Fe0 Bo4 No0 Pe3 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 21,
+      "etape": 822,
+      "cat": "snap",
+      "ts": 1785280537790,
+      "msg": "[Début 🤖 Frente Libre] ⚡16 🃏6 ♥5 💰8 ⭐0 W2 M3 Fe2 Bo0 No4 Pe0 Ab[0,1,2]"
+    },
+    {
+      "tour": 21,
+      "etape": 824,
+      "cat": "snap",
+      "ts": 1785280537791,
+      "msg": "[Début 🤖 Bayou] ⚡5 🃏7 ♥9 💰9 ⭐1 W5 M4 Fe0 Bo5 No0 Pe0 Ab[0,2,1,3]"
+    },
+    {
+      "tour": 21,
+      "etape": 826,
+      "cat": "move",
+      "ts": 1785280699382,
+      "msg": "🚶 confederation_w4 → #36 📦3bois"
+    },
+    {
+      "tour": 21,
+      "etape": 828,
+      "cat": "move",
+      "ts": 1785280785899,
+      "msg": "🚶 confederation_m3 → #36"
+    },
+    {
+      "tour": 21,
+      "etape": 830,
+      "cat": "move",
+      "ts": 1785280841721,
+      "msg": "✅ Mouvement terminé (2/2)"
+    },
+    {
+      "tour": 21,
+      "etape": 832,
+      "cat": "note",
+      "ts": 1785280843655,
+      "msg": "📝 Bond Convoi (village vers Rouge River) refuse pendant une continuation de deplacement decompose - a verifier: filtre combatTriggers avec Empire desactive?"
+    },
+    {
+      "tour": 21,
+      "etape": 834,
+      "cat": "upgrade",
+      "ts": 1785281027175,
+      "msg": "⬆ Améliorer 1/6: Soutien↑ → Déployer↓ (-2 pétrole, +1$)"
+    },
+    {
+      "tour": 21,
+      "etape": 836,
+      "cat": "enlist",
+      "ts": 1785281027175,
+      "msg": "🤝 Confédération: 💰+1 Pièce (propre Upgrade)"
+    },
+    {
+      "tour": 21,
+      "etape": 838,
+      "cat": "enlist",
+      "ts": 1785281027175,
+      "msg": "🤝 Dominion: 💰+1 Pièce (voisin Confédération → Upgrade)"
+    },
+    {
+      "tour": 21,
+      "etape": 840,
+      "cat": "enlist",
+      "ts": 1785281027175,
+      "msg": "🤝 Confédération: 💰+1 Pièce (propre Upgrade)"
+    },
+    {
+      "tour": 21,
+      "etape": 842,
+      "cat": "enlist",
+      "ts": 1785281027175,
+      "msg": "🤝 Dominion: 💰+1 Pièce (voisin Confédération → Upgrade)"
+    },
+    {
+      "tour": 21,
+      "etape": 850,
+      "cat": "bot",
+      "ts": 1785281058606,
+      "msg": "🤖 Dominion: Produire"
+    },
+    {
+      "tour": 21,
+      "etape": 851,
+      "cat": "bot",
+      "ts": 1785281058606,
+      "msg": "🤖 Dominion: Construire Mémorial #1"
+    },
+    {
+      "tour": 21,
+      "etape": 852,
+      "cat": "star",
+      "ts": 1785281058606,
+      "msg": "⭐ Dominion: objectif !"
+    },
+    {
+      "tour": 21,
+      "etape": 853,
+      "cat": "bot",
+      "ts": 1785281058606,
+      "msg": "🤖🏛 Dominion: Commerce -1petrole→+1$"
+    },
+    {
+      "tour": 21,
+      "etape": 854,
+      "cat": "build",
+      "ts": 1785281058606,
+      "msg": "🤝 Dominion: ♥+1 Popularité (propre Build)"
+    },
+    {
+      "tour": 21,
+      "etape": 855,
+      "cat": "build",
+      "ts": 1785281058606,
+      "msg": "🤝 Confédération: ⚡+1 Puissance (voisin Dominion → Build)"
+    },
+    {
+      "tour": 21,
+      "etape": 856,
+      "cat": "build",
+      "ts": 1785281058606,
+      "msg": "🤝 Frente Libre: ♥+1 Popularité (voisin Dominion → Build)"
+    },
+    {
+      "tour": 21,
+      "etape": 864,
+      "cat": "bot",
+      "ts": 1785281059193,
+      "msg": "🤖 Frente Libre: +1 Pop (palier ×2 franchi !)"
+    },
+    {
+      "tour": 21,
+      "etape": 865,
+      "cat": "bot",
+      "ts": 1785281059193,
+      "msg": "🤖 Frente Libre: Enrôler Enrôler → immédiat ⚡+2 Puissance, recrue 🃏 permanent"
+    },
+    {
+      "tour": 21,
+      "etape": 866,
+      "cat": "star",
+      "ts": 1785281059193,
+      "msg": "⭐ Frente Libre: 4 recrues !"
+    },
+    {
+      "tour": 21,
+      "etape": 867,
+      "cat": "bot",
+      "ts": 1785281059193,
+      "msg": "🤖💰 Frente Libre: +3$ (Enrôler)"
+    },
+    {
+      "tour": 21,
+      "etape": 868,
+      "cat": "combat",
+      "ts": 1785281059193,
+      "msg": "🤝 Frente Libre: 🃏+1 Carte Combat (propre Enlist)"
+    },
+    {
+      "tour": 21,
+      "etape": 869,
+      "cat": "combat",
+      "ts": 1785281059193,
+      "msg": "🤝 Dominion: 🃏+1 Carte Combat (voisin Frente Libre → Enlist)"
+    },
+    {
+      "tour": 21,
+      "etape": 870,
+      "cat": "enlist",
+      "ts": 1785281059193,
+      "msg": "🤝 Bayou: ♥+1 Popularité (voisin Frente Libre → Enlist)"
+    },
+    {
+      "tour": 21,
+      "etape": 876,
+      "cat": "bot",
+      "ts": 1785281059771,
+      "msg": "🤖 Bayou: +2 pui"
+    },
+    {
+      "tour": 21,
+      "etape": 877,
+      "cat": "bot",
+      "ts": 1785281059771,
+      "msg": "🤖 Bayou: Construire Arsenal #34"
+    },
+    {
+      "tour": 21,
+      "etape": 878,
+      "cat": "bot",
+      "ts": 1785281059771,
+      "msg": "🤖💰 Bayou: +3$ (Construire)"
+    },
+    {
+      "tour": 21,
+      "etape": 879,
+      "cat": "build",
+      "ts": 1785281059771,
+      "msg": "🤝 Frente Libre: ♥+1 Popularité (voisin Bayou → Build)"
+    },
+    {
+      "tour": 21,
+      "etape": 880,
+      "cat": "build",
+      "ts": 1785281059771,
+      "msg": "🤝 Confédération: ⚡+1 Puissance (voisin Bayou → Build)"
+    },
+    {
+      "tour": 22,
+      "etape": 882,
+      "cat": "turn",
+      "ts": 1785281060005,
+      "msg": "── Tour 22 ──"
+    },
+    {
+      "tour": 22,
+      "etape": 884,
+      "cat": "snap",
+      "ts": 1785281060005,
+      "msg": "[Début] ⚡9 🃏4 ♥11 💰17 ⭐3 W5 M4 Fe0 Bo9 No2 Pe1 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 22,
+      "etape": 886,
+      "cat": "snap",
+      "ts": 1785281060006,
+      "msg": "[Début 🤖 Dominion] ⚡9 🃏8 ♥8 💰6 ⭐4 W3 M4 Fe1 Bo0 No1 Pe3 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 22,
+      "etape": 888,
+      "cat": "snap",
+      "ts": 1785281060006,
+      "msg": "[Début 🤖 Frente Libre] ⚡16 🃏7 ♥8 💰10 ⭐1 W2 M3 Fe2 Bo0 No0 Pe0 Ab[0,1,2]"
+    },
+    {
+      "tour": 22,
+      "etape": 890,
+      "cat": "snap",
+      "ts": 1785281060006,
+      "msg": "[Début 🤖 Bayou] ⚡7 🃏7 ♥10 💰11 ⭐1 W5 M4 Fe0 Bo1 No0 Pe0 Ab[0,2,1,3]"
+    },
+    {
+      "tour": 22,
+      "etape": 892,
+      "cat": "resource",
+      "ts": 1785281186248,
+      "msg": "💪 -1$ → +4 Pui (Amélioration +1) (Arsenal +1)"
+    },
+    {
+      "tour": 22,
+      "etape": 894,
+      "cat": "info",
+      "ts": 1785281186248,
+      "msg": "🪦 Mémorial: +1 Pop"
+    },
+    {
+      "tour": 22,
+      "etape": 896,
+      "cat": "resource",
+      "ts": 1785281186248,
+      "msg": "💪 -1$ → +4 Pui (Amélioration +1) (Arsenal +1)"
+    },
+    {
+      "tour": 22,
+      "etape": 898,
+      "cat": "info",
+      "ts": 1785281186248,
+      "msg": "🪦 Mémorial: +1 Pop"
+    },
+    {
+      "tour": 22,
+      "etape": 911,
+      "cat": "bot",
+      "ts": 1785281215125,
+      "msg": "🤖 Dominion: Col. Whitfield → #26"
+    },
+    {
+      "tour": 22,
+      "etape": 912,
+      "cat": "bot",
+      "ts": 1785281215125,
+      "msg": "🤖 Dominion: Mech → #3 📦1nourriture"
+    },
+    {
+      "tour": 22,
+      "etape": 913,
+      "cat": "bot",
+      "ts": 1785281215125,
+      "msg": "🤖≋ péage marécage #3 : -1⚡"
+    },
+    {
+      "tour": 22,
+      "etape": 914,
+      "cat": "bot",
+      "ts": 1785281215125,
+      "msg": "🤖 Dominion: Améliorer 3/6"
+    },
+    {
+      "tour": 22,
+      "etape": 915,
+      "cat": "bot",
+      "ts": 1785281215125,
+      "msg": "🤖🏛 Dominion: Commerce -1nourriture→+1$"
+    },
+    {
+      "tour": 22,
+      "etape": 916,
+      "cat": "combat",
+      "ts": 1785281215125,
+      "msg": "⚔🤖 Dominion attaque Bayou sur #3 : 10 vs 6"
+    },
+    {
+      "tour": 22,
+      "etape": 917,
+      "cat": "combat",
+      "ts": 1785281215125,
+      "msg": "⭐⚔ Dominion: étoile de combat 2/2 !"
+    },
+    {
+      "tour": 22,
+      "etape": 918,
+      "cat": "info",
+      "ts": 1785281215125,
+      "msg": "✅ Dominion l'emporte, Bayou bat en retraite"
+    },
+    {
+      "tour": 22,
+      "etape": 919,
+      "cat": "combat",
+      "ts": 1785281215125,
+      "msg": "⚔ Dominion vous attaque sur #26 ! Défendez-vous."
+    },
+    {
+      "tour": 22,
+      "etape": 920,
+      "cat": "enlist",
+      "ts": 1785281215125,
+      "msg": "🤝 Dominion: 💰+1 Pièce (propre Upgrade)"
+    },
+    {
+      "tour": 22,
+      "etape": 921,
+      "cat": "enlist",
+      "ts": 1785281215125,
+      "msg": "🤝 Confédération: 💰+1 Pièce (voisin Dominion → Upgrade)"
+    },
+    {
+      "tour": 22,
+      "etape": 922,
+      "cat": "enlist",
+      "ts": 1785281215125,
+      "msg": "🤝 Frente Libre: 💰+1 Pièce (voisin Dominion → Upgrade)"
+    },
+    {
+      "tour": 22,
+      "etape": 924,
+      "cat": "combat",
+      "ts": 1785281338322,
+      "msg": "⚔ Dominion: 6 (2⚡+1🃏) vs vous: 12 (7⚡+2🃏)"
+    },
+    {
+      "tour": 22,
+      "etape": 926,
+      "cat": "combat",
+      "ts": 1785281338322,
+      "msg": "🛡 Vous repoussez Dominion ! ⭐ Étoile de combat."
+    },
+    {
+      "tour": 22,
+      "etape": 928,
+      "cat": "bot",
+      "ts": 1785281338919,
+      "msg": "🤖 Frente Libre: Produire"
+    },
+    {
+      "tour": 22,
+      "etape": 932,
+      "cat": "bot",
+      "ts": 1785281339496,
+      "msg": "🤖 Bayou: Cap. Zeke → #20"
+    },
+    {
+      "tour": 22,
+      "etape": 933,
+      "cat": "bot",
+      "ts": 1785281339496,
+      "msg": "🤖≋ Sang du Marais : traversée du marécage #20 sans péage"
+    },
+    {
+      "tour": 22,
+      "etape": 934,
+      "cat": "bot",
+      "ts": 1785281339496,
+      "msg": "🤖 Bayou: Mech → #22"
+    },
+    {
+      "tour": 23,
+      "etape": 936,
+      "cat": "turn",
+      "ts": 1785281339726,
+      "msg": "── Tour 23 ──"
+    },
+    {
+      "tour": 23,
+      "etape": 938,
+      "cat": "snap",
+      "ts": 1785281339726,
+      "msg": "[Début] ⚡6 🃏2 ♥12 💰17 ⭐4 W5 M4 Fe0 Bo9 No2 Pe1 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 23,
+      "etape": 940,
+      "cat": "snap",
+      "ts": 1785281339726,
+      "msg": "[Début 🤖 Dominion] ⚡0 🃏7 ♥8 💰9 ⭐5 W3 M4 Fe1 Bo0 No0 Pe0 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 23,
+      "etape": 942,
+      "cat": "snap",
+      "ts": 1785281339727,
+      "msg": "[Début 🤖 Frente Libre] ⚡16 🃏7 ♥8 💰11 ⭐1 W2 M3 Fe3 Bo0 No1 Pe0 Ab[0,1,2]"
+    },
+    {
+      "tour": 23,
+      "etape": 944,
+      "cat": "snap",
+      "ts": 1785281339727,
+      "msg": "[Début 🤖 Bayou] ⚡3 🃏7 ♥10 💰11 ⭐1 W5 M4 Fe0 Bo1 No0 Pe0 Ab[0,2,1,3]"
+    },
+    {
+      "tour": 23,
+      "etape": 946,
+      "cat": "combat",
+      "ts": 1785281534114,
+      "msg": "⚔ Combat PvP vs Bayou sur #22 !"
+    },
+    {
+      "tour": 23,
+      "etape": 948,
+      "cat": "info",
+      "ts": 1785281586750,
+      "msg": "🛡 Cavaliers: +2⚡ "
+    },
+    {
+      "tour": 23,
+      "etape": 950,
+      "cat": "combat",
+      "ts": 1785281586750,
+      "msg": "⚔ Confédération: 9 (6+2⚡+1🃏) vs Bayou: 3 (1⚡+1🃏)"
+    },
+    {
+      "tour": 23,
+      "etape": 952,
+      "cat": "info",
+      "ts": 1785281586750,
+      "msg": "✅ Victoire PvP ! Bayou repoussé."
+    },
+    {
+      "tour": 23,
+      "etape": 954,
+      "cat": "combat",
+      "ts": 1785281586750,
+      "msg": "⭐ Étoile combat 2/2 !"
+    },
+    {
+      "tour": 23,
+      "etape": 956,
+      "cat": "move",
+      "ts": 1785281664652,
+      "msg": "✅ Mouvement terminé (1/2)"
+    },
+    {
+      "tour": 23,
+      "etape": 960,
+      "cat": "bot",
+      "ts": 1785281668034,
+      "msg": "🤖 Dominion: Produire"
+    },
+    {
+      "tour": 23,
+      "etape": 961,
+      "cat": "bot",
+      "ts": 1785281668034,
+      "msg": "🤖🏛 Dominion: Import -2$→+1petrole"
+    },
+    {
+      "tour": 23,
+      "etape": 962,
+      "cat": "bot",
+      "ts": 1785281668034,
+      "msg": "🤖🏛 Dominion: Commerce -1nourriture→+1$"
+    },
+    {
+      "tour": 23,
+      "etape": 967,
+      "cat": "bot",
+      "ts": 1785281668599,
+      "msg": "🤖 Frente Libre: E. Rojas → #41"
+    },
+    {
+      "tour": 23,
+      "etape": 968,
+      "cat": "bot",
+      "ts": 1785281668599,
+      "msg": "🤖🪤 Frente Libre: Trap #41 (1/4)"
+    },
+    {
+      "tour": 23,
+      "etape": 969,
+      "cat": "bot",
+      "ts": 1785281668599,
+      "msg": "🤖 Frente Libre: Mech → #46 📦1nourriture"
+    },
+    {
+      "tour": 23,
+      "etape": 970,
+      "cat": "bot",
+      "ts": 1785281668599,
+      "msg": "🤖📜 Frente Libre: \"L'Imprimerie Clandestine\" → Financer un tirage"
+    },
+    {
+      "tour": 23,
+      "etape": 972,
+      "cat": "bot",
+      "ts": 1785281669176,
+      "msg": "🤖 Bayou: +2 bois"
+    },
+    {
+      "tour": 24,
+      "etape": 974,
+      "cat": "turn",
+      "ts": 1785281669405,
+      "msg": "── Tour 24 ──"
+    },
+    {
+      "tour": 24,
+      "etape": 976,
+      "cat": "snap",
+      "ts": 1785281669405,
+      "msg": "[Début] ⚡0 🃏1 ♥12 💰17 ⭐5 W5 M4 Fe0 Bo9 No2 Pe1 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 24,
+      "etape": 978,
+      "cat": "snap",
+      "ts": 1785281669405,
+      "msg": "[Début 🤖 Dominion] ⚡0 🃏7 ♥8 💰8 ⭐5 W3 M4 Fe2 Bo0 No0 Pe2 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 24,
+      "etape": 980,
+      "cat": "snap",
+      "ts": 1785281669405,
+      "msg": "[Début 🤖 Frente Libre] ⚡16 🃏7 ♥10 💰9 ⭐1 W2 M3 Fe3 Bo0 No1 Pe0 Ab[0,1,2]"
+    },
+    {
+      "tour": 24,
+      "etape": 982,
+      "cat": "snap",
+      "ts": 1785281669405,
+      "msg": "[Début 🤖 Bayou] ⚡2 🃏7 ♥10 💰10 ⭐1 W5 M4 Fe0 Bo3 No0 Pe0 Ab[0,2,1,3]"
+    },
+    {
+      "tour": 24,
+      "etape": 984,
+      "cat": "note",
+      "ts": 1785281772375,
+      "msg": "📝 Mission secrete condition remplie depuis T21 mais jamais revelee aux fins de tour 21-23 (le modal dit revelable a la fin du tour, pas de bouton manuel) - a corriger cote humain"
+    },
+    {
+      "tour": 24,
+      "etape": 986,
+      "cat": "resource",
+      "ts": 1785281773992,
+      "msg": "💪 -1$ → +4 Pui (Amélioration +1) (Arsenal +1)"
+    },
+    {
+      "tour": 24,
+      "etape": 988,
+      "cat": "info",
+      "ts": 1785281773992,
+      "msg": "🪦 Mémorial: +1 Pop"
+    },
+    {
+      "tour": 24,
+      "etape": 990,
+      "cat": "resource",
+      "ts": 1785281773992,
+      "msg": "💪 -1$ → +4 Pui (Amélioration +1) (Arsenal +1)"
+    },
+    {
+      "tour": 24,
+      "etape": 992,
+      "cat": "info",
+      "ts": 1785281773992,
+      "msg": "🪦 Mémorial: +1 Pop"
+    },
+    {
+      "tour": 24,
+      "etape": 997,
+      "cat": "bot",
+      "ts": 1785281794810,
+      "msg": "🤖 Dominion: Col. Whitfield → #4"
+    },
+    {
+      "tour": 24,
+      "etape": 998,
+      "cat": "bot",
+      "ts": 1785281794810,
+      "msg": "🤖 Dominion: Mech → #14"
+    },
+    {
+      "tour": 24,
+      "etape": 999,
+      "cat": "bot",
+      "ts": 1785281794810,
+      "msg": "🤖🏛 Dominion: Import -2$→+1petrole"
+    },
+    {
+      "tour": 24,
+      "etape": 1000,
+      "cat": "bot",
+      "ts": 1785281794810,
+      "msg": "🤖🏛 Dominion: Commerce -1metal→+1$"
+    },
+    {
+      "tour": 24,
+      "etape": 1002,
+      "cat": "bot",
+      "ts": 1785281795415,
+      "msg": "🤖 Frente Libre: Produire"
+    },
+    {
+      "tour": 24,
+      "etape": 1006,
+      "cat": "bot",
+      "ts": 1785281796010,
+      "msg": "🤖 Bayou: Cap. Zeke → #23"
+    },
+    {
+      "tour": 24,
+      "etape": 1007,
+      "cat": "bot",
+      "ts": 1785281796010,
+      "msg": "🤖 Bayou: Mech → #20"
+    },
+    {
+      "tour": 24,
+      "etape": 1008,
+      "cat": "bot",
+      "ts": 1785281796010,
+      "msg": "🤖≋ Sang du Marais : traversée du marécage #20 sans péage"
+    },
+    {
+      "tour": 25,
+      "etape": 1010,
+      "cat": "turn",
+      "ts": 1785281796248,
+      "msg": "── Tour 25 ──"
+    },
+    {
+      "tour": 25,
+      "etape": 1012,
+      "cat": "snap",
+      "ts": 1785281796248,
+      "msg": "[Début] ⚡4 🃏1 ♥13 💰16 ⭐5 W5 M4 Fe0 Bo9 No2 Pe1 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 25,
+      "etape": 1014,
+      "cat": "snap",
+      "ts": 1785281796248,
+      "msg": "[Début 🤖 Dominion] ⚡0 🃏7 ♥8 💰7 ⭐5 W3 M4 Fe1 Bo0 No0 Pe3 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 25,
+      "etape": 1016,
+      "cat": "snap",
+      "ts": 1785281796248,
+      "msg": "[Début 🤖 Frente Libre] ⚡16 🃏7 ♥10 💰9 ⭐1 W2 M3 Fe4 Bo0 No2 Pe0 Ab[0,1,2]"
+    },
+    {
+      "tour": 25,
+      "etape": 1018,
+      "cat": "snap",
+      "ts": 1785281796248,
+      "msg": "[Début 🤖 Bayou] ⚡2 🃏7 ♥10 💰10 ⭐1 W5 M4 Fe0 Bo3 No0 Pe0 Ab[0,2,1,3]"
+    },
+    {
+      "tour": 25,
+      "etape": 1020,
+      "cat": "resource",
+      "ts": 1785281907826,
+      "msg": "💰 -1$ → +1 Pop"
+    },
+    {
+      "tour": 25,
+      "etape": 1023,
+      "cat": "bot",
+      "ts": 1785281910978,
+      "msg": "🤖 Dominion: Produire"
+    },
+    {
+      "tour": 25,
+      "etape": 1024,
+      "cat": "bot",
+      "ts": 1785281910978,
+      "msg": "🤖🏛 Dominion: Commerce -1petrole→+1$"
+    },
+    {
+      "tour": 25,
+      "etape": 1033,
+      "cat": "bot",
+      "ts": 1785281911584,
+      "msg": "🤖 Frente Libre: +2 pui"
+    },
+    {
+      "tour": 25,
+      "etape": 1034,
+      "cat": "bot",
+      "ts": 1785281911584,
+      "msg": "🤖🪦 Frente Libre: +1 Pop (Mémorial)"
+    },
+    {
+      "tour": 25,
+      "etape": 1035,
+      "cat": "star",
+      "ts": 1785281911584,
+      "msg": "⭐ Frente Libre: Puissance max !"
+    },
+    {
+      "tour": 25,
+      "etape": 1036,
+      "cat": "bot",
+      "ts": 1785281911584,
+      "msg": "🤖 Frente Libre: Déployer #41 → 🔓 Guérilla"
+    },
+    {
+      "tour": 25,
+      "etape": 1037,
+      "cat": "star",
+      "ts": 1785281911584,
+      "msg": "⭐ Frente Libre: 4 mechas !"
+    },
+    {
+      "tour": 25,
+      "etape": 1038,
+      "cat": "deploy",
+      "ts": 1785281911584,
+      "msg": "🤝 Frente Libre: ⚡+1 Puissance (propre Deploy)"
+    },
+    {
+      "tour": 25,
+      "etape": 1039,
+      "cat": "deploy",
+      "ts": 1785281911584,
+      "msg": "🤝 Dominion: ⚡+1 Puissance (voisin Frente Libre → Deploy)"
+    },
+    {
+      "tour": 25,
+      "etape": 1040,
+      "cat": "combat",
+      "ts": 1785281911584,
+      "msg": "🤝 Bayou: 🃏+1 Carte Combat (voisin Frente Libre → Deploy)"
+    },
+    {
+      "tour": 25,
+      "etape": 1042,
+      "cat": "bot",
+      "ts": 1785281912170,
+      "msg": "🤖 Bayou: Produire"
+    },
+    {
+      "tour": 26,
+      "etape": 1044,
+      "cat": "turn",
+      "ts": 1785281912415,
+      "msg": "── Tour 26 ──"
+    },
+    {
+      "tour": 26,
+      "etape": 1046,
+      "cat": "snap",
+      "ts": 1785281912415,
+      "msg": "[Début] ⚡4 🃏1 ♥14 💰15 ⭐5 W5 M4 Fe0 Bo9 No2 Pe1 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 26,
+      "etape": 1048,
+      "cat": "snap",
+      "ts": 1785281912415,
+      "msg": "[Début 🤖 Dominion] ⚡1 🃏7 ♥8 💰8 ⭐5 W3 M4 Fe2 Bo0 No1 Pe3 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 26,
+      "etape": 1050,
+      "cat": "snap",
+      "ts": 1785281912415,
+      "msg": "[Début 🤖 Frente Libre] ⚡16 🃏7 ♥11 💰8 ⭐3 W2 M4 Fe0 Bo0 No2 Pe0 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 26,
+      "etape": 1052,
+      "cat": "snap",
+      "ts": 1785281912415,
+      "msg": "[Début 🤖 Bayou] ⚡1 🃏8 ♥10 💰10 ⭐1 W5 M4 Fe0 Bo5 No0 Pe0 Ab[0,2,1,3]"
+    },
+    {
+      "tour": 26,
+      "etape": 1054,
+      "cat": "resource",
+      "ts": 1785281940467,
+      "msg": "💪 -1$ → +4 Pui (Amélioration +1) (Arsenal +1)"
+    },
+    {
+      "tour": 26,
+      "etape": 1056,
+      "cat": "info",
+      "ts": 1785281940467,
+      "msg": "🪦 Mémorial: +1 Pop"
+    },
+    {
+      "tour": 26,
+      "etape": 1058,
+      "cat": "resource",
+      "ts": 1785281940467,
+      "msg": "💪 -1$ → +4 Pui (Amélioration +1) (Arsenal +1)"
+    },
+    {
+      "tour": 26,
+      "etape": 1060,
+      "cat": "info",
+      "ts": 1785281940467,
+      "msg": "🪦 Mémorial: +1 Pop"
+    },
+    {
+      "tour": 26,
+      "etape": 1068,
+      "cat": "bot",
+      "ts": 1785281943770,
+      "msg": "🤖 Dominion: Col. Whitfield → #11"
+    },
+    {
+      "tour": 26,
+      "etape": 1069,
+      "cat": "bot",
+      "ts": 1785281943770,
+      "msg": "🤖 Dominion: Mech → #17"
+    },
+    {
+      "tour": 26,
+      "etape": 1070,
+      "cat": "bot",
+      "ts": 1785281943770,
+      "msg": "🤖 Dominion: Améliorer 4/6"
+    },
+    {
+      "tour": 26,
+      "etape": 1071,
+      "cat": "bot",
+      "ts": 1785281943770,
+      "msg": "🤖🏛 Dominion: Commerce -1nourriture→+1$"
+    },
+    {
+      "tour": 26,
+      "etape": 1072,
+      "cat": "enlist",
+      "ts": 1785281943770,
+      "msg": "🤝 Dominion: 💰+1 Pièce (propre Upgrade)"
+    },
+    {
+      "tour": 26,
+      "etape": 1073,
+      "cat": "enlist",
+      "ts": 1785281943770,
+      "msg": "🤝 Confédération: 💰+1 Pièce (voisin Dominion → Upgrade)"
+    },
+    {
+      "tour": 26,
+      "etape": 1074,
+      "cat": "enlist",
+      "ts": 1785281943770,
+      "msg": "🤝 Frente Libre: 💰+1 Pièce (voisin Dominion → Upgrade)"
+    },
+    {
+      "tour": 26,
+      "etape": 1082,
+      "cat": "bot",
+      "ts": 1785281944351,
+      "msg": "🤖 Frente Libre: E. Rojas → #37 📦1nourriture"
+    },
+    {
+      "tour": 26,
+      "etape": 1083,
+      "cat": "bot",
+      "ts": 1785281944351,
+      "msg": "🤖🪤 Frente Libre: Trap #37 (2/4)"
+    },
+    {
+      "tour": 26,
+      "etape": 1084,
+      "cat": "bot",
+      "ts": 1785281944351,
+      "msg": "🤖 Frente Libre: Mech → #37"
+    },
+    {
+      "tour": 26,
+      "etape": 1085,
+      "cat": "info",
+      "ts": 1785281944351,
+      "msg": "🫱 Bayou ne mise rien (dominé 3 vs 11 — munitions gardées pour la contre-attaque)"
+    },
+    {
+      "tour": 26,
+      "etape": 1086,
+      "cat": "combat",
+      "ts": 1785281944351,
+      "msg": "⚔🤖 Frente Libre attaque Bayou sur #37 : 11 vs 0"
+    },
+    {
+      "tour": 26,
+      "etape": 1087,
+      "cat": "combat",
+      "ts": 1785281944351,
+      "msg": "⭐⚔ Frente Libre: étoile de combat 1/2 !"
+    },
+    {
+      "tour": 26,
+      "etape": 1088,
+      "cat": "info",
+      "ts": 1785281944351,
+      "msg": "✅ Frente Libre l'emporte, Bayou bat en retraite"
+    },
+    {
+      "tour": 26,
+      "etape": 1094,
+      "cat": "bot",
+      "ts": 1785281944943,
+      "msg": "🤖 Bayou: +3 pui (Arsenal)"
+    },
+    {
+      "tour": 26,
+      "etape": 1095,
+      "cat": "bot",
+      "ts": 1785281944943,
+      "msg": "🤖 Bayou: Construire Moulin #31"
+    },
+    {
+      "tour": 26,
+      "etape": 1096,
+      "cat": "bot",
+      "ts": 1785281944943,
+      "msg": "🤖💰 Bayou: +3$ (Construire)"
+    },
+    {
+      "tour": 26,
+      "etape": 1097,
+      "cat": "build",
+      "ts": 1785281944943,
+      "msg": "🤝 Frente Libre: ♥+1 Popularité (voisin Bayou → Build)"
+    },
+    {
+      "tour": 26,
+      "etape": 1098,
+      "cat": "build",
+      "ts": 1785281944943,
+      "msg": "🤝 Confédération: ⚡+1 Puissance (voisin Bayou → Build)"
+    },
+    {
+      "tour": 27,
+      "etape": 1100,
+      "cat": "turn",
+      "ts": 1785281945176,
+      "msg": "── Tour 27 ──"
+    },
+    {
+      "tour": 27,
+      "etape": 1102,
+      "cat": "snap",
+      "ts": 1785281945176,
+      "msg": "[Début] ⚡9 🃏1 ♥15 💰15 ⭐5 W5 M4 Fe0 Bo9 No2 Pe1 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 27,
+      "etape": 1104,
+      "cat": "snap",
+      "ts": 1785281945176,
+      "msg": "[Début 🤖 Dominion] ⚡1 🃏7 ♥8 💰10 ⭐5 W3 M4 Fe2 Bo0 No0 Pe0 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 27,
+      "etape": 1106,
+      "cat": "snap",
+      "ts": 1785281945176,
+      "msg": "[Début 🤖 Frente Libre] ⚡9 🃏5 ♥12 💰9 ⭐4 W2 M4 Fe0 Bo1 No2 Pe0 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 27,
+      "etape": 1108,
+      "cat": "snap",
+      "ts": 1785281945176,
+      "msg": "[Début 🤖 Bayou] ⚡4 🃏8 ♥10 💰12 ⭐1 W5 M4 Fe0 Bo0 No0 Pe0 Ab[0,2,1,3]"
+    },
+    {
+      "tour": 27,
+      "etape": 1110,
+      "cat": "resource",
+      "ts": 1785281969908,
+      "msg": "💰 -1$ → +1 Pop"
+    },
+    {
+      "tour": 27,
+      "etape": 1114,
+      "cat": "bot",
+      "ts": 1785281973115,
+      "msg": "🤖 Dominion: Produire"
+    },
+    {
+      "tour": 27,
+      "etape": 1115,
+      "cat": "bot",
+      "ts": 1785281973115,
+      "msg": "🤖🏛 Dominion: Import -2$→+1petrole"
+    },
+    {
+      "tour": 27,
+      "etape": 1116,
+      "cat": "bot",
+      "ts": 1785281973115,
+      "msg": "🤖🏛 Dominion: Commerce -1nourriture→+1$"
+    },
+    {
+      "tour": 27,
+      "etape": 1118,
+      "cat": "bot",
+      "ts": 1785281973702,
+      "msg": "🤖 Frente Libre: +1 Pop (palier ×3 franchi !)"
+    },
+    {
+      "tour": 27,
+      "etape": 1123,
+      "cat": "bot",
+      "ts": 1785281974292,
+      "msg": "🤖 Bayou: Cap. Zeke → #22"
+    },
+    {
+      "tour": 27,
+      "etape": 1124,
+      "cat": "bot",
+      "ts": 1785281974292,
+      "msg": "🤖 Bayou: Mech → #38"
+    },
+    {
+      "tour": 27,
+      "etape": 1125,
+      "cat": "combat",
+      "ts": 1785281974292,
+      "msg": "⚔ Bayou vous attaque sur #22 ! Défendez-vous."
+    },
+    {
+      "tour": 27,
+      "etape": 1126,
+      "cat": "rr",
+      "ts": 1785281974292,
+      "msg": "⚙ Bayou visite la Rouge River → « Contrat Fédéral » [1⚡ → +2💰 + +1♥]"
+    },
+    {
+      "tour": 27,
+      "etape": 1128,
+      "cat": "combat",
+      "ts": 1785282022597,
+      "msg": "⚔ Bayou: 5 (3⚡+1🃏) vs vous: 8 (7⚡+1🃏)"
+    },
+    {
+      "tour": 27,
+      "etape": 1130,
+      "cat": "combat",
+      "ts": 1785282022597,
+      "msg": "🛡 Vous repoussez Bayou ! ⭐ Étoile de combat."
+    },
+    {
+      "tour": 28,
+      "etape": 1132,
+      "cat": "turn",
+      "ts": 1785282022882,
+      "msg": "── Tour 28 ──"
+    },
+    {
+      "tour": 28,
+      "etape": 1134,
+      "cat": "snap",
+      "ts": 1785282022882,
+      "msg": "[Début] ⚡2 🃏0 ♥16 💰14 ⭐5 W5 M4 Fe0 Bo9 No2 Pe1 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 28,
+      "etape": 1136,
+      "cat": "snap",
+      "ts": 1785282022882,
+      "msg": "[Début 🤖 Dominion] ⚡1 🃏7 ♥8 💰9 ⭐5 W3 M4 Fe3 Bo0 No0 Pe2 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 28,
+      "etape": 1138,
+      "cat": "snap",
+      "ts": 1785282022882,
+      "msg": "[Début 🤖 Frente Libre] ⚡9 🃏5 ♥13 💰8 ⭐4 W2 M4 Fe0 Bo1 No2 Pe0 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 28,
+      "etape": 1140,
+      "cat": "snap",
+      "ts": 1785282022882,
+      "msg": "[Début 🤖 Bayou] ⚡1 🃏8 ♥10 💰12 ⭐1 W5 M4 Fe0 Bo0 No0 Pe0 Ab[0,2,1,3]"
+    },
+    {
+      "tour": 28,
+      "etape": 1142,
+      "cat": "resource",
+      "ts": 1785282069572,
+      "msg": "💪 -1$ → +4 Pui (Amélioration +1) (Arsenal +1)"
+    },
+    {
+      "tour": 28,
+      "etape": 1144,
+      "cat": "info",
+      "ts": 1785282069572,
+      "msg": "🪦 Mémorial: +1 Pop"
+    },
+    {
+      "tour": 28,
+      "etape": 1146,
+      "cat": "resource",
+      "ts": 1785282069572,
+      "msg": "💪 -1$ → +4 Pui (Amélioration +1) (Arsenal +1)"
+    },
+    {
+      "tour": 28,
+      "etape": 1148,
+      "cat": "info",
+      "ts": 1785282069572,
+      "msg": "🪦 Mémorial: +1 Pop"
+    },
+    {
+      "tour": 28,
+      "etape": 1155,
+      "cat": "bot",
+      "ts": 1785282147499,
+      "msg": "🤖 Dominion: Col. Whitfield → #22"
+    },
+    {
+      "tour": 28,
+      "etape": 1156,
+      "cat": "bot",
+      "ts": 1785282147499,
+      "msg": "🤖 Dominion: Mech → #14"
+    },
+    {
+      "tour": 28,
+      "etape": 1157,
+      "cat": "bot",
+      "ts": 1785282147499,
+      "msg": "🤖🏛 Dominion: Import -2$→+1petrole"
+    },
+    {
+      "tour": 28,
+      "etape": 1158,
+      "cat": "bot",
+      "ts": 1785282147499,
+      "msg": "🤖🏛 Dominion: Commerce -1metal→+1$"
+    },
+    {
+      "tour": 28,
+      "etape": 1159,
+      "cat": "combat",
+      "ts": 1785282147499,
+      "msg": "⚔ Dominion vous attaque sur #22 ! Défendez-vous."
+    },
+    {
+      "tour": 28,
+      "etape": 1160,
+      "cat": "rr",
+      "ts": 1785282147499,
+      "msg": "⚙ Dominion visite la Rouge River → « Tournée des Comtés » [1🃏 → +2♥]"
+    },
+    {
+      "tour": 28,
+      "etape": 1162,
+      "cat": "combat",
+      "ts": 1785282224661,
+      "msg": "⚔ Dominion: 5 (1⚡+1🃏) vs vous: 6 (6⚡+0🃏)"
+    },
+    {
+      "tour": 28,
+      "etape": 1164,
+      "cat": "combat",
+      "ts": 1785282224661,
+      "msg": "🛡 Vous repoussez Dominion ! ⭐ Étoile de combat."
+    },
+    {
+      "tour": 28,
+      "etape": 1170,
+      "cat": "bot",
+      "ts": 1785282225259,
+      "msg": "🤖 Frente Libre: E. Rojas → #22 📦1nourriture, 1bois"
+    },
+    {
+      "tour": 28,
+      "etape": 1171,
+      "cat": "bot",
+      "ts": 1785282225259,
+      "msg": "🤖🪤 Frente Libre: Trap #22 (3/4)"
+    },
+    {
+      "tour": 28,
+      "etape": 1172,
+      "cat": "bot",
+      "ts": 1785282225259,
+      "msg": "🤖 Frente Libre: Mech → #22"
+    },
+    {
+      "tour": 28,
+      "etape": 1173,
+      "cat": "combat",
+      "ts": 1785282225259,
+      "msg": "⚔ Frente Libre vous attaque sur #22 ! Défendez-vous."
+    },
+    {
+      "tour": 28,
+      "etape": 1174,
+      "cat": "rr",
+      "ts": 1785282225259,
+      "msg": "⚙ Frente Libre visite la Rouge River → « Convoi de Ravitaillement » [1🃏 → +2 ressources au choix (hex ouvrier) + +1💰]"
+    },
+    {
+      "tour": 28,
+      "etape": 1175,
+      "cat": "combat",
+      "ts": 1785282296046,
+      "msg": "⚔ Frente Libre: 11 (7⚡+2🃏) vs vous: 0 (0⚡+0🃏)"
+    },
+    {
+      "tour": 28,
+      "etape": 1178,
+      "cat": "warn",
+      "ts": 1785282296046,
+      "msg": "❌ Frente Libre prend #22... Retraite vers la base."
+    },
+    {
+      "tour": 28,
+      "etape": 1184,
+      "cat": "bot",
+      "ts": 1785282296655,
+      "msg": "🤖⚙ Bayou: Contrat Fédéral — paie 1⚡"
+    },
+    {
+      "tour": 28,
+      "etape": 1185,
+      "cat": "bot",
+      "ts": 1785282296655,
+      "msg": "🤖⚙ Bayou: +2$ (usine)"
+    },
+    {
+      "tour": 28,
+      "etape": 1186,
+      "cat": "bot",
+      "ts": 1785282296655,
+      "msg": "🤖⚙ Bayou: +1♥ (usine)"
+    },
+    {
+      "tour": 28,
+      "etape": 1187,
+      "cat": "bot",
+      "ts": 1785282296655,
+      "msg": "🤖⚙ Bayou: Cap. Zeke → #3 (bas d'usine, 2 hex)"
+    },
+    {
+      "tour": 28,
+      "etape": 1188,
+      "cat": "bot",
+      "ts": 1785282296655,
+      "msg": "🤖≋ Sang du Marais : traversée du marécage #3 sans péage"
+    },
+    {
+      "tour": 29,
+      "etape": 1190,
+      "cat": "turn",
+      "ts": 1785282296903,
+      "msg": "── Tour 29 ──"
+    },
+    {
+      "tour": 29,
+      "etape": 1192,
+      "cat": "snap",
+      "ts": 1785282296903,
+      "msg": "[Début] ⚡0 🃏0 ♥17 💰13 ⭐5 W5 M4 Fe0 Bo6 No2 Pe1 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 29,
+      "etape": 1194,
+      "cat": "snap",
+      "ts": 1785282296903,
+      "msg": "[Début 🤖 Dominion] ⚡0 🃏7 ♥8 💰8 ⭐5 W3 M4 Fe2 Bo0 No0 Pe3 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 29,
+      "etape": 1196,
+      "cat": "snap",
+      "ts": 1785282296903,
+      "msg": "[Début 🤖 Frente Libre] ⚡2 🃏3 ♥12 💰8 ⭐5 W2 M4 Fe0 Bo4 No2 Pe0 Ab[0,1,2,3]"
+    },
+    {
+      "tour": 29,
+      "etape": 1198,
+      "cat": "snap",
+      "ts": 1785282296903,
+      "msg": "[Début 🤖 Bayou] ⚡0 🃏8 ♥11 💰14 ⭐1 W5 M4 Fe0 Bo0 No0 Pe0 Ab[0,2,1,3]"
+    },
+    {
+      "tour": 29,
+      "etape": 1200,
+      "cat": "resource",
+      "ts": 1785282355335,
+      "msg": "💰 -1$ → +1 Pop"
+    },
+    {
+      "tour": 29,
+      "etape": 1202,
+      "cat": "star",
+      "ts": 1785282355564,
+      "msg": "⭐♥ Popularité maximale (18) !"
+    },
+    {
+      "tour": 29,
+      "etape": 1204,
+      "cat": "star",
+      "ts": 1785282355802,
+      "msg": "🏆🏆🏆 Confédération atteint 6 étoiles ! FIN DE PARTIE IMMÉDIATE !"
+    }
+  ]
+}
