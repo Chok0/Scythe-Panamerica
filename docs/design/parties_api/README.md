@@ -133,3 +133,47 @@ de faction peuvent suggérer.
 4. Frictions déjà connues confirmées : décalage d'affichage `✗`/`✓` sur les
    missions révélées mais acquises ; nommage de champs d'action peu intuitif
    (`trade.buy[].res` en toutes lettres, `encounter.option` et non `opt`).
+
+## Lot 3 (29/07/2026) — correctifs de code + parties de vérification
+
+Trois correctifs appliqués suite au lot 2, puis deux parties rejouées sur les
+**mêmes seeds/config exactes** que le lot 2 pour mesurer l'effet :
+
+- `headlessGame.js` — `bottomEnlist` validait `section`/`recruit` **après**
+  avoir débité les ressources : validation déplacée avant tout effet de bord.
+- `bot.js` (`pickMoveTarget`) — un mecha sans meilleure cible reste
+  désormais volontiers en garde d'un hex où le bot stocke 6+ ressources, au
+  lieu de le laisser sans escorte.
+- `headlessGame.js` — **bug plus sérieux découvert pendant la vérification** :
+  `pass_turn` ne réinitialisait jamais `lastCol` (l'interdiction de rejouer
+  la même colonne du haut deux tours de suite). Un joueur tombé à 0$ ET 0
+  popularité juste après avoir joué Move restait bloqué à vie : les 3 autres
+  colonnes coûtent toutes ≥1$, et Move restait interdit pour toujours
+  puisque rien ne le rejouait jamais pour rafraîchir `lastCol` — `pass_turn`
+  en boucle jusqu'à la fin de partie. `pass_turn` efface maintenant `lastCol`.
+
+| Partie | Comparée à | Résultat |
+|---|---|---|
+| Dominion, seed 4611 (rejouée) | anti_frente (lot 2) | Arrêtée au T31 (budget) — a précisément déclenché le soft-lock ci-dessus côté Dominion, d'où sa découverte |
+| Nations, seed 4612 (rejouée) | sprint_tempo (lot 2) | Terminée T38 — Bayou 98 · Frente 65 · Acadiane 57 · Dominion 47 · **Nations 46 (dernière, +1⭐/+4 paires vs la fois précédente, toujours dernière)** |
+
+**Escorte du Frente Libre : confirmée sur les deux parties**, et généralisée
+(observée aussi chez Bayou sur son propre stock dans la partie Nations) —
+un stock ≥6 ressources se retrouve désormais systématiquement gardé par au
+moins une unité (ouvriers, mecha ou héros), au lieu de rester exposé. Un
+stock encore sous le seuil (4 ressources, T24 partie Nations) reste
+capturable normalement — le comportement est un seuil, pas une garantie
+absolue.
+
+**Bug `bottom_enlist` : confirmé corrigé** dans la partie Nations (4
+utilisations, dont un appel invalide qui échoue proprement sans débiter de
+ressource) — non re-testé dans la partie Dominion faute d'accès à la
+ressource requise.
+
+**Nouvelle leçon (partie Nations)** : éviter le piège précédent (stacker les
+ouvriers sans territoire) ne suffit pas à sortir de la dernière place si le
+**palier de popularité** reste un cran sous celui des adversaires — à 5
+étoiles chacun, la joueuse au palier 7-12 marque 20 pts quand Frente Libre
+au palier 13-18 en marque 25 pour le même nombre d'étoiles. La popularité
+reste le multiplicateur décisif de tout le score, avant même les étoiles ou
+le territoire pris isolément.
