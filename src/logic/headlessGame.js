@@ -843,8 +843,10 @@ export class HeadlessGame {
   bottomEnlist(a, col) {
     const p = this.me();
     if ((p.recruits || 0) >= 4) return 'recrues au maximum';
-    if ((p.enlistMap || [])[a.section] != null) return `section ${a.section} déjà pourvue`;
-    if ((p.enlistMap || []).includes(a.recruit)) return `recrue ${a.recruit} déjà posée`;
+    const freeCols = [0, 1, 2, 3].filter(c => (p.enlistMap || [])[c] == null);
+    const freeRecs = [0, 1, 2, 3].filter(r => !(p.enlistMap || []).includes(r));
+    if (!freeCols.includes(a.section)) return `section invalide (libres: ${freeCols.join(',')})`;
+    if (!freeRecs.includes(a.recruit)) return `recrue invalide (libres: ${freeRecs.join(',')})`;
     const err = this.paidBottom(p, col); if (err) return err;
     p.enlistMap = [...p.enlistMap]; p.enlistMap[a.section] = a.recruit;
     p.recruits = (p.recruits || 0) + 1;

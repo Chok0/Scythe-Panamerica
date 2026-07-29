@@ -522,6 +522,22 @@ const pickMoveTarget = (validMoves, p, empire, enemyHexes, purpose, ctx, prof) =
     // Hex produisant une ressource dont un bottom a besoin : priorité forte pour les ouvriers
     if (purpose === "worker" && t && t.res && need[t.res]) s += 8;
 
+    // ── DÉFENSE DE STOCK (mecha) ───────────────────────────────────────
+    // Un magot laissé sans escorte est offert au premier pillard venu (mesuré
+    // en playtest 29/07 : le Frente Libre, thésauriseur, perd son stock de
+    // nourriture accumulé sur des dizaines de tours dès qu'un adversaire —
+    // même pas celui qui le visait — trouve une ouverture). Un mecha sans
+    // meilleure cible reste volontiers en garde d'un hex où l'on stocke déjà
+    // 6+ ressources, plutôt que de le laisser exposé pendant qu'il vagabonde.
+    if (purpose === "mech") {
+      const stash = p.resources?.[String(hexId)];
+      const qty = stash ? Object.values(stash).reduce((a, b) => a + b, 0) : 0;
+      if (qty >= 6) {
+        const alreadyGuarded = p.mechs.some(m => m.hexId === hexId) || p.hero === hexId;
+        s += alreadyGuarded ? 2 : Math.min(9, qty);
+      }
+    }
+
     // Avoid enemy hexes for workers (displacement risk)
     if (purpose === "worker" && enemyHexes && enemyHexes.has(hexId)) s -= 15;
     // ── CHASSE AUX MACHINES (profil prédateur / Bayou) ────────────────
