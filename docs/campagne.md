@@ -97,8 +97,9 @@ reste disponible sur l'écran de setup, marqué « (campagne) ».
   rendu `EmpireMecha` dans `MapComponents.jsx`.
 - **Sens narratif clarifié** : ces mechas ne sont pas une faction tierce
   générique — ce sont les **derniers vestiges de l'armée impériale**, sortis
-  de Rouge River sous Ferdinand II puis laissés sans commandement clair sous
-  le pantin Léopold. Leurs noms (Écho Rouillé, Sentinelle Aveugle,
+  de Rouge River sous Cyrus II puis laissés sans commandement clair après le
+  régicide de 1915, avant même l'intronisation du pantin Cyrus III. Leurs
+  noms (Écho Rouillé, Sentinelle Aveugle,
   Patrouilleur Usé...) décrivent déjà des machines à l'abandon — c'est
   cohérent avec le texte des règles du jeu de base (« l'Empire mécanique
   s'est effondré, laissant derrière lui des colosses rouillés »).
@@ -109,8 +110,8 @@ reste disponible sur l'écran de setup, marqué « (campagne) ».
 
 Faction sans héros, sans plateau joueur, sans mecha de série — sa mécanique
 de jeu (sabotage plutôt que production/combat classique) est fondamentalement
-différente du reste du roster. C'est elle qui assassine l'Empereur Ferdinand
-II en 1915 (voir lore §III.4) : elle mérite un chapitre de campagne, voire
+différente du reste du roster. C'est elle qui assassine l'Empereur Cyrus II
+en 1915 (voir lore §III.4) : elle mérite un chapitre de campagne, voire
 plusieurs, mais **sa conception (règles, victoire, plateau) est un chantier à
 part entière, à traiter séparément** de la décomposition de séquences
 ci-dessous. Ne pas l'improviser en l'intégrant au parcours à 6 factions tant
@@ -126,46 +127,61 @@ narratif et une variante de jeu), et un **finale** qui boucle sur l'état du
 monde du jeu de base. Chaque chapitre indique : le morceau d'histoire donné
 avant/après la partie, et la variante de jeu appliquée (si applicable).
 
-L'ordre proposé suit une logique de dévoilement (contact avec l'Empire →
+L'ordre proposé suit une logique de dévoilement (l'événement fondateur →
 racines économiques → racines profondes/Tesla → marges négligées →
-prédation ouverte → le maître du jeu financier) mais n'est pas rigide —
-chaque chapitre est normalement autosuffisant.
+prédation ouverte → le maître du jeu financier) mais n'est pas rigide au-delà
+du chapitre 1, qui doit rester premier — c'est lui qui ouvre le marché des
+mechas à tout le monde et rend les cinq suivants possibles.
 
-### Prologue — Le trône qui n'aurait pas dû survivre
+### Prologue — Le trône né de l'intérieur
 
-*Texte seul, pas de partie.* Pose le décor : 1865, la Sécession épuise
-l'Union et le Sud, l'empereur Maximilien (qui aurait dû être fusillé à
-Querétaro en 1867 dans notre histoire) survit et s'étend vers le nord,
-financé par un consortium industriel naissant. Cinquante ans plus tard,
-l'arrivée et la trahison de Tesla ont fait de Rouge River l'arsenal du
-trône. « Vous allez incarner, tour à tour, les factions qui se disputent sa
-dépouille. » *(cf. lore §III.1-2)*
+*Texte seul, pas de partie.* Pose le décor : 1865, une coalition
+d'industriels du Nord couronne l'Empereur Cyrus I sur les ruines de la
+Sécession, en échange de la soumission de l'aristocratie foncière du Sud
+plutôt que de son éradication. Cinquante ans d'expansion continentale plus
+tard, l'arrivée et la trahison de Tesla ont fait de Rouge River l'arsenal
+exclusif du trône (Cyrus II, 1913). En 1915, l'Empereur est assassiné par
+l'Internationale Noire — et une garnison loyaliste, sans ordre de personne,
+verrouille Rouge River par la force plutôt que d'admettre que le trône est
+mort. « Vous allez incarner, tour à tour, les factions qui vont se disputer
+ce qu'il en reste. » *(cf. lore §III.1-4)*
 
-### Chapitre 1 — Confédération (J. Cole & Dixie)
+### Chapitre 1 — Confédération (J. Cole & Dixie) — l'événement fondateur
 
-- **Histoire donnée avant** : le Sud, exsangue depuis 1865, absorbé de force
-  dans l'Empire naissant ; deux générations de rancœur ; une aristocratie
-  foncière qui a discrètement détourné de l'acier impérial pour s'armer.
-- **Variante de jeu** : Mechas de l'Empire **ON** — premier contact du
-  joueur avec les patrouilles impériales, dans le fief même de J. Cole.
-- **Histoire donnée après** : le joueur découvre que la milice de Cole vise
-  moins à « restaurer » l'ancien Sud qu'à profiter du vide de pouvoir pour
-  imposer un ordre nouveau, tout aussi dur — teasing du thème de la Fièvre
-  (bascule fasciste) pour la suite de la campagne.
+- **Histoire donnée avant** : le compromis de 1865 — l'aristocratie foncière
+  du Sud a gardé son ordre racial local en échange de sa soumission à
+  l'Empire ; deux générations plus tard, elle n'est plus qu'une milice sous-
+  traitée d'un industriel de Detroit (le Klan Mécanique, lore §III.3) ; et
+  depuis le régicide, une garnison loyaliste tient Rouge River fermée à
+  tout le monde, Ford y compris.
+- **Variante de jeu** : Mechas de l'Empire **ON**, mission centrée sur la
+  prise de la case Rouge River elle-même (pas une simple patrouille
+  croisée en chemin) — le joueur affronte directement la garnison
+  loyaliste retranchée.
+- **Histoire donnée après** : la garnison lâche prise. Sans Empereur pour
+  l'honorer, la charte d'exclusivité de Ford ne vaut plus rien — il rouvre
+  le Catalogue Ford à tout le continent. **C'est cet instant précis qui
+  explique pourquoi toutes les factions suivantes ont déjà accès aux mechas
+  Ford dans la suite de la campagne (et dans le jeu de base).** Le joueur
+  comprend aussi que Cole n'a rien libéré : il a repris ce qu'il considérait
+  comme sien — teasing du thème de la Fièvre (bascule fasciste) pour la
+  suite de la campagne.
 
 ### Chapitre 2 — Frente Libre (E. Rojas & Trueno)
 
-- **Histoire donnée avant** : l'Empire est né au Mexique — la dette
-  fondatrice de 1865, les concessions minières « exclusives, continent
-  entier » qui ont dépossédé des générations avant même Zapata.
+- **Histoire donnée avant** : l'Empire n'est pas né au Mexique, mais il s'y
+  est étendu une génération après sa fondation — concessions minières et
+  ferroviaires « exclusives, continent entier » qui ont dépossédé des
+  générations avant même que Zapata prenne les armes.
 - **Variante de jeu** : **Ruée vers l'or** (`structureBonus.js`, tuile
   bonus $ tirée en début de partie) — la course aux gisements symbolise la
   curée sur les terres mexicaines par les latifundistes financés par le
   Consortium.
 - **Histoire donnée après** : révélation que la cible de Rojas n'est pas
-  seulement les propriétaires terriens du Nord, mais le trône lui-même,
-  dans son berceau — le joueur comprend que Panamerica n'a pas de « centre »
-  neutre : le Mexique EST l'origine de l'Empire.
+  seulement les propriétaires terriens du Nord, mais le principe même de la
+  concession exclusive — le joueur comprend que Panamerica n'a pas de
+  « centre » géographique unique : l'Empire est un système d'extraction, pas
+  un territoire.
 
 ### Chapitre 3 — Nations Souveraines (Aiyana & Koda)
 
@@ -209,16 +225,19 @@ dépouille. » *(cf. lore §III.1-2)*
 
 ### Chapitre 6 — Dominion (Col. Whitfield & Sterling)
 
-- **Histoire donnée avant** : la finance londonienne qui a jadis aidé à
-  financer l'expansion de Maximilien depuis l'Europe ; le Dominion n'a
-  jamais cherché à conquérir l'Empire, seulement à en vivre.
+- **Histoire donnée avant** : la finance londonienne qui a arrêté net la
+  poussée impériale vers le Canada (lore §III.1) ; le Dominion n'a jamais
+  cherché à conquérir l'Empire, seulement à en vivre — à négocier avec
+  quiconque tient Rouge River à un instant donné.
 - **Variante de jeu** : **Acier Brut** actif sur Rouge River (voir plus
   haut) — le chapitre où le contrôle littéral de l'arsenal impérial est
   l'enjeu, en écho direct à l'ability Commerce Impérial du Dominion.
-- **Histoire donnée après** : révélation du régicide de 1915 (l'Empereur
-  Ferdinand II assassiné par une cellule de l'Internationale Noire) et de la
-  mise en place du pantin Léopold par le Consortium — le joueur comprend
-  enfin QUI tient réellement Rouge River depuis cette date.
+- **Histoire donnée après** : révélation que c'est en partie l'argent du
+  Dominion qui a discrètement financé l'intronisation du pantin Cyrus III
+  en 1917 — non par loyauté, mais parce qu'un trône fictif, même vide, reste
+  plus profitable pour le commerce qu'un continent ouvertement sans
+  souverain. Le joueur comprend que le Dominion n'a jamais voulu que
+  l'Empire meure : il voulait juste qu'il continue à signer des papiers.
 
 ### Finale — Le Trône Vide
 
@@ -226,7 +245,7 @@ dépouille. » *(cf. lore §III.1-2)*
   (Mechas de l'Empire ON + Acier Brut actif), jouable avec la faction de son
   choix parmi les six — pas de héros supplémentaire, c'est un aboutissement,
   pas un septième chapitre.
-- **Histoire donnée après** : le pantin Léopold tombe à son tour ; Rouge
+- **Histoire donnée après** : le pantin Cyrus III tombe à son tour ; Rouge
   River continue de tourner sans personne pour vraiment la commander ; les
   mechas impériaux, sans chaîne de commandement, deviennent les « colosses
   rouillés » que le jeu de base décrit dans son texte de règles
@@ -234,7 +253,8 @@ dépouille. » *(cf. lore §III.1-2)*
   commence une partie standard de Scythe Panamerica.**
 - Cliffhanger explicite vers l'Internationale Noire comme prochain chantier
   de campagne (chantier séparé, voir plus haut) : on sait qui a tiré en
-  1915, on ne sait toujours pas qui ils sont vraiment.
+  1915 et pourquoi Rouge River a fini par s'ouvrir à tous — on ne sait
+  toujours pas qui ils sont vraiment.
 
 ---
 
