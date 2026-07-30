@@ -48,9 +48,11 @@ s'accumule — récompense croissante pour le premier arrivé.
 - **Confirmée comme UNE variante de campagne à part entière** — pas un
   toggle générique, un scénario dédié où le contrôle de l'arsenal impérial
   est l'enjeu central de la partie (chapitre Dominion, voir plus bas).
-- Implémentation à faire : un flag de partie type `empireRouilleSteel: true`
-  qui active la génération passive sur la case Rouge River (hex marqué
-  `factory` dans `hexes.js`) et son ramassage automatique par le contrôleur.
+- ✅ **Implémentée** : drapeau `variant.steel` du chapitre (`data/campaign.js`),
+  génération et ramassage dans `steelTick()` (`logic/campaign.js`), appelée à
+  chaque passage de tour. 1 métal par tour sur l'hex 22 ; pile ramassée
+  ENTIÈRE par le premier contrôleur exclusif ; Usine contestée = personne ne
+  ramasse. Active aux chapitres 6 et 8.
 
 ## ⚙ Catalogue Ford — un deck purement martial
 
@@ -205,7 +207,9 @@ trône tombe tout seul. » *(cf. lore §III.1-2)*
 ### Chapitre 2 — Internationale Noire (sans héros) — Le Régicide
 
 *⚠ Faction spécifiée (`internationale_noire.md`) mais pas encore implémentée ;
-la mécanique de scénario ci-dessous reste à concevoir.*
+la mécanique de scénario ci-dessous reste à concevoir. **En jeu, ce chapitre
+se joue donc en INTERLUDE** — texte seul, comme le prologue : il se lit, il
+ouvre la suite, mais il ne lance pas de partie.*
 
 - **Histoire donnée avant** : une cellule panaméricaine de l'Internationale
   Noire, infiltrée à Rouge River depuis des années sous couvert d'ouvriers,
@@ -348,7 +352,9 @@ la mécanique de scénario ci-dessous reste à concevoir.*
 ### Chapitre 8 — Internationale Noire (sans héros) — Le Sabotage Final
 
 *⚠ Faction spécifiée (`internationale_noire.md`) mais pas encore implémentée ;
-la mécanique de scénario ci-dessous reste à concevoir.*
+la mécanique de scénario ci-dessous reste à concevoir. **En jeu, ce chapitre
+se joue donc en INTERLUDE** — texte seul, comme le prologue : il se lit, il
+ouvre la suite, mais il ne lance pas de partie.*
 
 - **Histoire donnée avant** : six factions armées jusqu'aux dents par Ford,
   qui s'entredéchirent, se défendent ou se conquièrent tour à tour sans
@@ -379,6 +385,63 @@ la mécanique de scénario ci-dessous reste à concevoir.*
 
 ---
 
+## 🧱 Implémentation — le socle est en place (v0.17)
+
+Le mode campagne existe en jeu : bouton **📖 Campagne** sur l'écran de setup.
+
+| Fichier | Rôle |
+|---|---|
+| `src/data/campaign.js` | Prologue + 8 chapitres en données : faction imposée, textes avant/après, variantes, condition canon, legs débloqué. |
+| `src/data/legacies.js` | Les 5 legs de Wardenclyffe (dont Amplificateur et Relais, qui n'existaient pas encore en données). |
+| `src/logic/campaign.js` | Moteur pur : ordre causal, progression persistante, déblocages, condition canon, Acier Brut. |
+| `src/logic/saveFile.js` | Fichier de sauvegarde exportable/importable (progression + partie en cours). |
+| `src/components/CampaignScreen.jsx` | Écran de campagne : reprise, chapitres, histoire, variante, choix du plateau, vitrine des legs, export/import. |
+| `src/logic/__tests__/campaign.test.js` | 23 tests (ordre causal, déblocages, persistance, conditions canon, Acier Brut). |
+| `src/logic/__tests__/saveFile.test.js` | 8 tests (aller-retour export/import, fichiers étrangers ou trafiqués). |
+
+**Sauvegarde — une campagne se joue sur plusieurs sessions, pas d'un trait :**
+
+- **Automatique, deux niveaux.** La progression (chapitres terminés + legs) est
+  écrite dans `localStorage` sous `pa-campagne` à chaque fin de chapitre ; la
+  partie en cours est autosauvegardée sous `pa-save` **à chaque début de tour
+  humain**, plateau au repos, avec le chapitre et la pile d'acier. Fermer
+  l'onglet en cours de chapitre ne coûte au pire que le tour entamé.
+- **Reprise** depuis l'écran de campagne comme depuis l'écran de setup :
+  « Reprendre — chapitre N · tour T ».
+- **Fichier exportable** (`💾 Exporter`) : un `.json` qui embarque progression,
+  legs ET partie en cours, nommé `scythe-campagne-<n>sur8-<date>.json`. C'est
+  la seule protection contre un nettoyage de cache ou un changement de machine
+  — le `localStorage` d'un HTML ouvert en local ne survit ni à l'un ni à
+  l'autre. L'import demande confirmation, résume ce qu'il va écraser, et
+  refuse proprement un fichier étranger (journal de partie, JSON cassé,
+  format plus récent) ; un fichier trafiqué est nettoyé (chapitres et legs
+  inconnus retirés) plutôt que rejeté.
+
+**Arbitrages pris à l'implémentation** (le document restait ouvert dessus) :
+
+- **Chapitres 2 et 8 en interlude.** L'Internationale Noire n'étant pas
+  implémentée et leur mécanique de scénario pas tranchée, ces deux chapitres
+  se lisent (texte seul, comme le prologue) et ouvrent la suite au lieu de
+  bloquer la campagne. Leur piste de condition est conservée dans le champ
+  `canonDraft`, prête à devenir un vrai `canon` le jour où la faction existe.
+- **Legs uniquement sur la voie canon.** Terminer un chapitre aux 6 étoiles le
+  valide et ouvre le suivant, mais ne donne pas la récompense de Tesla — la
+  voie narrative reste la seule à payer.
+- **Chapitre validé = fin de partie déclenchée par le joueur** (condition canon
+  remplie, ou ses propres 6 étoiles). Un bot qui atteint 6 étoiles le premier
+  met fin à la partie et le chapitre est manqué — rejouable.
+- **Ruée vers l'or (chapitre 3)** = tuile bonus **Terres Lointaines** forcée au
+  lieu du tirage (1$ par hex de distance à sa base : l'accaparement des terres
+  éloignées). À rebasculer sur `monts_forets` en changeant un seul id si la
+  lecture « gisements miniers » l'emporte.
+- **Acier Brut** : Rouge River fabrique 1 métal par tour ; tant que personne ne
+  tient l'Usine **seul**, la pile monte, et le premier arrivé la ramasse
+  ENTIÈRE (contestée, elle ne part pas). Le métal atterrit sur l'hex 22 — il ne
+  compte donc au score que tant qu'on tient la place.
+- **Progression persistante** dans `localStorage` sous `pa-campagne`
+  (chapitres terminés + legs), indépendante de la sauvegarde de partie
+  `pa-save`, qui embarque désormais le chapitre en cours et la pile d'acier.
+
 ## 📋 État du chantier — reste à faire
 
 **Design — tranché, prêt à coder**
@@ -392,21 +455,28 @@ la mécanique de scénario ci-dessous reste à concevoir.*
 
 **Design — encore ouvert**
 - Mécanique de scénario des chapitres 2 et 8 (infiltration, sabotage) — seules
-  des pistes sont posées.
+  des pistes sont posées (`canonDraft` dans `campaign.js`).
 - Les 8 questions ouvertes de `internationale_noire.md` §10 (rencontres par
   ouvrier, plateau dédié, slot Vitesse, nom de l'objectif…).
 - Rééquilibrage de `MATS_ORIGINAL` (ordre du tour absent) avant de sortir les
   7 plateaux du jeu original de la réserve.
 
-**Code — rien n'est implémenté**
-- Flags de partie à créer : Mechas de l'Empire par chapitre, `Acier Brut`
-  (`empireRouilleSteel`), Ruée vers l'or forcée, déblocage des legs.
-- Faction Internationale Noire : voir les 7 points de
+**Code — ce qui reste**
+- **Effets en jeu des 5 legs** : le déblocage est enregistré et affiché, aucun
+  effet n'est branché au moteur (`implemented: false` sur les cinq). Chacun
+  touche un système différent — mecha supplémentaire, bâtiment, Produce, vol de
+  ressource — donc un par un.
+- **Déblocages du contenu original** : `PLANS_ORIGINAL` et
+  `OBJECTIVES_ORIGINAL` restent en réserve, aucun chapitre ne les distribue
+  encore.
+- **Faction Internationale Noire** : voir les 7 points de
   `internationale_noire.md` §11 — dont la **factorisation préalable** du compte
   d'unités combattantes (8 sites dupliqués entre UI et moteur headless).
-- Les 2 nouveaux legs (Amplificateur, Relais) n'existent pas en données.
-- Aucune notion de « campagne » n'existe encore côté code : ni progression, ni
-  enchaînement de chapitres, ni persistance des déblocages.
+- **Mode API / headless** (`headlessGame.js`) ignore la campagne : pas de
+  chapitre, pas d'Acier Brut, pas de condition canon — les parties d'agents
+  restent des parties libres.
+- **Bots et Acier Brut** : les bots ne savent pas que la pile existe (aucun
+  aimant vers l'Usine au-delà de l'aimant Rouge River déjà présent).
 
 **Bon à savoir (vérifié)**
 - La règle « 1 carte de combat par unité combattante engagée » est **déjà

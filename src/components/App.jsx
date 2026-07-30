@@ -18,6 +18,10 @@ import { reconcileHand, topCardsSum, spendTopCards, spendPickedCards, handSummar
 import RulesPage from './RulesPage.jsx';
 import Soundtrack from './Soundtrack.jsx';
 import SetupScreen from './SetupScreen.jsx';
+import CampaignScreen from './CampaignScreen.jsx';
+import { chapterById } from '../data/campaign.js';
+import { loadProgress, saveProgress, resetProgress, completeChapter, campaignConfig, canonMet, steelTick } from '../logic/campaign.js';
+import { buildSaveBundle, parseSaveBundle, saveFileName, describeSave } from '../logic/saveFile.js';
 import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
@@ -87,6 +91,12 @@ export default function App(){
   const[empireEnabled,setEmpireEnabled]=useState(false);
   const[difficulty,setDifficulty]=useState("normal");
   const[structureBonus,setStructureBonus]=useState(null); // tuile bonus de construction tirée au début
+  // ── MODE CAMPAGNE (logic/campaign.js) ──
+  const[campaignProgress,setCampaignProgress]=useState(()=>loadProgress());
+  const[chapter,setChapter]=useState(null); // chapitre en cours (null = partie libre)
+  const[steelPile,setSteelPile]=useState(0); // Acier Brut accumulé sur Rouge River
+  const[chapterOutcome,setChapterOutcome]=useState(null); // {victory,canonMet,legacy} en fin de chapitre
+  const[saveTick,setSaveTick]=useState(0); // relecture de la sauvegarde après import
   const[players,setPlayers]=useState([]);
   const[currentP,setCurrentP]=useState(0);
   const[turn,setTurn]=useState(1);
@@ -356,6 +366,7 @@ export default function App(){
   // telle quelle (pure data) et rechargée via loadMap.
   const serializeGame=useCallback(()=>JSON.stringify({
     v:2,date:Date.now(),turn,difficulty,empireEnabled,
+    chapter:chapter?chapter.id:null,steelPile,
     map:CURRENT_MAP,empire,rails,encounterTokens:[...encounterTokens],
     factoryOffer:factoryOffer.map(c=>c.id),teslaOffer:teslaOffer.map(c=>c.id),
     structureBonus:structureBonus?structureBonus.id:null,
@@ -363,7 +374,7 @@ export default function App(){
     log:log.slice(-500),step:stepRef.current,
     players:players.map(p=>({...p,objective:p.objective?p.objective.id:null,objectives:(p.objectives||[]).map(o=>o.id),
       factoryCard:p.factoryCard?p.factoryCard.id:null})),
-  }),[turn,difficulty,empireEnabled,empire,rails,encounterTokens,factoryOffer,teslaOffer,structureBonus,log,players]);
+  }),[turn,difficulty,empireEnabled,chapter,steelPile,empire,rails,encounterTokens,factoryOffer,teslaOffer,structureBonus,log,players]);
 
   useEffect(()=>{
     if(phase!=="playing"||currentP!==0||players.length===0||combat||encounter||botRunning)return;
@@ -394,6 +405,11 @@ export default function App(){
     setStructureBonus(data.structureBonus!=null?(STRUCTURE_BONUSES.find(b=>b.id===data.structureBonus)||null):null);
     setDifficulty(data.difficulty||"normal");
     setEmpireEnabled(!!data.empireEnabled);
+    // Chapitre de campagne : rechargé par id (les fonctions de condition canon
+    // ne sont pas sérialisables)
+    setChapter(data.chapter?chapterById(data.chapter):null);
+    setSteelPile(data.steelPile||0);
+    setChapterOutcome(null);
     setPlayers(data.players.map(p=>({...p,
       objective:p.objective!=null?(ALL_OBJECTIVES.find(o=>o.id===p.objective)||null):null,
       objectives:(p.objectives||[]).map(id=>ALL_OBJECTIVES.find(o=>o.id===id)).filter(Boolean),
@@ -407,18 +423,58 @@ export default function App(){
     addLog(`💾 Partie reprise (tour ${data.turn||1})`);
   },[addLog]);
 
-  // Aperçu de la sauvegarde pour l'écran de setup (bouton « Reprendre »)
+  // Aperçu de la sauvegarde pour les écrans de setup et de campagne
+  // (bouton « Reprendre »). `saveTick` force la relecture après un import.
   const savedGame=useMemo(()=>{
-    if(phase!=="setup")return null;
+    if(phase!=="setup"&&phase!=="campaign")return null;
     try{
       const d=JSON.parse(localStorage.getItem('pa-save')||"null");
       return d&&Array.isArray(d.players)&&d.players.length>0
-        ?{turn:d.turn,faction:d.players[0].faction,date:d.date}:null;
+        ?{turn:d.turn,faction:d.players[0].faction,date:d.date,chapter:d.chapter||null}:null;
     }catch{return null;}
-  },[phase]);
+  },[phase,saveTick]);
 
-  const startGame=useCallback(()=>{
-    if(!selFaction||!selMat)return;
+  // ── Fichier de sauvegarde de campagne (logic/saveFile.js) ──
+  // Le localStorage d'un HTML ouvert en local ne survit pas à un nettoyage de
+  // cache ni à un changement de machine : la campagne s'exporte donc dans un
+  // fichier, progression ET partie en cours comprises.
+  const exportCampaign=useCallback(()=>{
+    let game=null;
+    try{game=JSON.parse(localStorage.getItem('pa-save')||"null");}catch{game=null;}
+    const iso=new Date().toISOString();
+    const bundle=buildSaveBundle({progress:campaignProgress,game,date:iso});
+    const blob=new Blob([JSON.stringify(bundle,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=saveFileName(campaignProgress,iso);
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  },[campaignProgress]);
+
+  const importCampaign=useCallback((text)=>{
+    const res=parseSaveBundle(text);
+    if(!res.ok)return{ok:false,error:res.error};
+    if(!window.confirm(`Charger cette sauvegarde ?\n${describeSave(res)}\n\nLa progression actuelle de ce navigateur sera remplacée.`))
+      return{ok:false,error:null};
+    setCampaignProgress(res.progress);saveProgress(res.progress);
+    try{
+      if(res.game)localStorage.setItem('pa-save',JSON.stringify(res.game));
+      else localStorage.removeItem('pa-save');
+    }catch{/* stockage indisponible : la progression reste en mémoire */}
+    setSaveTick(t=>t+1);
+    return{ok:true,summary:describeSave(res)};
+  },[]);
+
+  // `ch` : chapitre de campagne (faction, variantes et condition canon
+  // imposées) — absent en partie libre. `matOverride` : plateau choisi sur
+  // l'écran de campagne, où seule la faction est fixée par le scénario.
+  const startGame=useCallback((ch=null,matOverride=null)=>{
+    const cfg=ch?campaignConfig(ch):null;
+    const facId=cfg?.faction||selFaction;
+    const matPick=matOverride||selMat;
+    const empOn=cfg?cfg.empireEnabled:empireEnabled;
+    if(!facId||!matPick)return;
+    setChapter(ch);setSteelPile(0);setChapterOutcome(null);
     try{localStorage.removeItem('pa-save');}catch{/* rien */}
     // Carte : v3 (défaut), configuration initiale (v2), ou procédurale
     if(mapChoice==="random"){
@@ -433,17 +489,22 @@ export default function App(){
     }
     setEncounterTokens(new Set(CURRENT_MAP.encounterHexes));
     encounterDeckRef.current=shuffleArray(ENCOUNTERS);
-    setEmpire(empireEnabled?Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])):{});
-    if(empireEnabled)addLog(`🤖 Bots de l'Empire activés (mécanique campagne)`);
+    setEmpire(empOn?Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])):{});
+    if(ch){
+      addLog(`📖 Chapitre ${ch.num} — ${ch.title} (${FACTIONS[facId]?.name})`);
+      if(ch.canon)addLog(`🏛 Condition canon : ${ch.canon.name} — ${ch.canon.desc}`);
+      if(cfg.steel)addLog(`🏦 Acier Brut : Rouge River produit 1 métal par tour, la pile revient au contrôleur de l'Usine`);
+    }
+    if(empOn)addLog(`🤖 Bots de l'Empire activés (mécanique campagne)`);
     // La carte de base démarre sans rails — seules les Gares en posent
     setRails([]);
     // 🏦 Tuile bonus de pose tirée aussi en partie de base (demande de partie
-    // réelle) — la mission « Ruée vers l'or » de la campagne garde sa variante
-    const sb=pickStructureBonus();
+    // réelle) — un chapitre peut l'IMPOSER (Ruée vers l'or, chapitre 3)
+    const sb=cfg?.bonusTile||pickStructureBonus();
     setStructureBonus(sb);
-    addLog(`🏦 Bonus de pose : ${sb.icon} ${sb.name} — ${sb.scale} ${sb.desc}`);
-    const usedFactions=[selFaction];const usedMats=[selMat];
-    const ps=[createPlayer(selFaction,selMat,false)];
+    addLog(`🏦 Bonus de pose : ${sb.icon} ${sb.name} — ${sb.scale} ${sb.desc}${cfg?.bonusTile?" (imposé par le chapitre)":""}`);
+    const usedFactions=[facId];const usedMats=[matPick];
+    const ps=[createPlayer(facId,matPick,false)];
     // Factions ET plateaux des bots TIRÉS AU HASARD (avant : l'ordre fixe de
     // FACTION_IDS donnait toujours les mêmes voisins — Confédération + Frente
     // dès que le joueur n'était pas l'un des deux). Mélange à chaque partie.
@@ -489,6 +550,24 @@ export default function App(){
       setMapView({x,y,w:zw,h:zh});
     }
   },[selFaction,selMat,numBots,mapChoice,empireEnabled,difficulty,addLog]);
+
+  // ── Fin de chapitre : progression + déblocage du legs ──
+  // Les deux voies du document de campagne : `victory` vaut "canon" (condition
+  // du scénario) ou "stars" (6 étoiles atteintes par le joueur). Le legs n'est
+  // donné que si la condition canon a été remplie.
+  const finishChapter=useCallback((ch,victory,met)=>{
+    const {progress,legacy}=completeChapter(campaignProgress,ch.id,{victory,canonMet:met,date:Date.now()});
+    setCampaignProgress(progress);saveProgress(progress);
+    setChapterOutcome({victory,canonMet:met,legacy});
+    if(legacy)addLog(`🎁 Legs de Wardenclyffe débloqué : ${legacy.icon} ${legacy.name}`);
+  },[campaignProgress,addLog]);
+
+  // Interlude (chapitres 2 et 8 — Internationale Noire non implémentée) : lu,
+  // il compte comme terminé et ouvre la suite, sans partie ni legs.
+  const readInterlude=useCallback((ch)=>{
+    const {progress}=completeChapter(campaignProgress,ch.id,{victory:"lu",canonMet:false,date:Date.now()});
+    setCampaignProgress(progress);saveProgress(progress);
+  },[campaignProgress]);
 
   const revealObjective=useCallback((objIdx)=>{
     const p=players[0];if(!p||p.objectiveRevealed)return;
@@ -569,8 +648,24 @@ export default function App(){
           }
         }
       }
+      // 🏦 Acier Brut (variante de campagne) : Rouge River fabrique 1 métal par
+      // tour. Tant que personne ne tient l'Usine SEUL, l'acier s'empile — et le
+      // premier arrivé ramasse toute la pile (logic/campaign.js).
+      const steelOn=!!chapter?.variant?.steel;
+      if(steelOn){
+        const tick=steelTick(steelPile,players);
+        setSteelPile(tick.pile);
+        if(tick.collectorIdx!=null)
+          addLog(`🏦 Acier Brut : ${FACTIONS[players[tick.collectorIdx].faction]?.name} ramasse ${tick.collected}⚙ sur Rouge River`);
+        else addLog(`🏦 Acier Brut : personne ne tient l'Usine — la pile monte à ${tick.pile}⚙`);
+      }
       // Reset commerceUsed for human player at start of new turn
-      setPlayers(prev=>{const n=[...prev];n[0]={...n[0],commerceUsed:false,importUsed:false};return n;});
+      setPlayers(prev=>{
+        // le ramassage est recalculé sur l'état frais (un combat de l'Empire a
+        // pu déloger une unité de l'Usine juste au-dessus)
+        const base=steelOn?steelTick(steelPile,prev).players:prev;
+        const n=[...base];n[0]={...n[0],commerceUsed:false,importUsed:false};return n;
+      });
       turnRef.current=turn+1;setCurrentP(0);setTurn(t=>t+1);setBotRunning(false);addLog(`── Tour ${turn+1} ──`);logSnap("Début",players[0]);
       // Snapshots de debug des BOTS : leurs compteurs étaient invisibles au
       // journal — impossible de vérifier leurs gains (demande de partie réelle)
@@ -811,7 +906,7 @@ export default function App(){
       }
     },350);
     return()=>clearTimeout(timer);
-  },[botRunning,currentP,players,phase,empire,turn,rails,encounterTokens,factoryOffer,teslaOffer,addLog,addLogs]);
+  },[botRunning,currentP,players,phase,empire,turn,rails,encounterTokens,factoryOffer,teslaOffer,chapter,steelPile,addLog,addLogs]);
 
   // After top-row → show bottom-row option
   const endHumanTurn=useCallback((col,movedOverride)=>{
@@ -1447,9 +1542,23 @@ export default function App(){
     if(winner){
       const wf=FACTIONS[winner.faction];
       addLog(`🏆🏆🏆 ${wf.name} atteint 6 étoiles ! FIN DE PARTIE IMMÉDIATE !`);
+      // Campagne, voie classique : le chapitre n'est validé que si c'est le
+      // JOUEUR qui déclenche la fin (un bot à 6 étoiles = chapitre manqué).
+      if(chapter&&!chapterOutcome)
+        finishChapter(chapter,winner===players[0]?"stars":"echec",canonMet(chapter,players[0],{players}));
       setPhase("ended");
     }
-  },[players,phase,addLog]);
+  },[players,phase,addLog,chapter,chapterOutcome,finishChapter]);
+
+  // Campagne, voie canon : la condition du scénario met fin à la partie dès
+  // qu'elle est remplie (docs/campagne.md — « la première atteinte l'emporte »)
+  useEffect(()=>{
+    if(phase!=="playing"||players.length===0||!chapter?.canon||chapterOutcome)return;
+    if(!canonMet(chapter,players[0],{players}))return;
+    addLog(`🏛🏆 ${chapter.canon.name} accompli — chapitre ${chapter.num} remporté par la voie canon !`);
+    finishChapter(chapter,"canon",true);
+    setPhase("ended");
+  },[players,phase,chapter,chapterOutcome,finishChapter,addLog]);
 
   // transportOverride : {transport:{workers,res}} — quantités choisies dans le
   // panneau de transport partiel (repasse par ce même flux après validation) ;
@@ -2547,7 +2656,18 @@ export default function App(){
 
   // ══════════ SETUP SCREEN ══════════
   if(phase==="setup"){
-    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} mapChoice={mapChoice} setMapChoice={setMapChoice} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={startGame} onShowRules={()=>setShowRules(true)} savedGame={savedGame} onResume={resumeSaved} />;
+    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} mapChoice={mapChoice} setMapChoice={setMapChoice} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={()=>startGame()} onShowRules={()=>setShowRules(true)} savedGame={savedGame} onResume={resumeSaved} onShowCampaign={()=>setPhase("campaign")} campaignProgress={campaignProgress} />;
+  }
+
+  // ══════════ CAMPAIGN SCREEN ══════════
+  if(phase==="campaign"){
+    return <CampaignScreen progress={campaignProgress}
+      onPlay={(ch,matId)=>startGame(ch,matId)}
+      onRead={(ch)=>readInterlude(ch)}
+      onBack={()=>setPhase("setup")}
+      onReset={()=>{setCampaignProgress(resetProgress());setSaveTick(t=>t+1);}}
+      savedGame={savedGame} onResume={resumeSaved}
+      onExport={exportCampaign} onImport={importCampaign} />;
   }
 
   // (pick_objective phase removed — player keeps both objectives per Scythe rules)
@@ -2643,6 +2763,36 @@ export default function App(){
         <h1 style={{fontSize:28,fontWeight:900,letterSpacing:8,textTransform:"uppercase",color:"var(--rust)",marginBottom:4,textAlign:"center"}}>Fin de Partie</h1>
         <div style={{width:140,height:1,background:"linear-gradient(90deg,transparent,var(--rust-dark),transparent)",marginBottom:24}}/>
 
+        {/* ── Épilogue de chapitre (mode campagne) ── */}
+        {chapter&&(
+          <div style={{width:"100%",maxWidth:560,marginBottom:20,padding:"16px 20px",borderRadius:8,
+            border:`2px solid ${chapterOutcome?.canonMet?"var(--gold)":"var(--border)"}`,
+            background:chapterOutcome?.canonMet?"rgba(201,168,76,0.08)":"rgba(20,18,12,0.6)"}}>
+            <div style={{fontFamily:"var(--font-title)",fontSize:18,fontWeight:700,color:"var(--gold)",marginBottom:2}}>
+              Chapitre {chapter.num} — {chapter.title}
+            </div>
+            <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:10}}>{chapter.subtitle}</div>
+            <div style={{fontSize:14,color:"var(--text2)",marginBottom:10}}>
+              {chapterOutcome?.victory==="canon"?`🏛 Victoire canon — ${chapter.canon.name} accompli.`
+                :chapterOutcome?.victory==="stars"?"⭐ Victoire aux 6 étoiles — chapitre validé par la voie classique."
+                :"❌ Chapitre manqué : la fin de partie a été déclenchée par un adversaire."}
+            </div>
+            {chapterOutcome?.legacy&&(
+              <div style={{fontSize:14,color:"var(--gold)",marginBottom:10}}>
+                🎁 Legs débloqué : <b>{chapterOutcome.legacy.icon} {chapterOutcome.legacy.name}</b> — {chapterOutcome.legacy.desc}
+              </div>
+            )}
+            {chapterOutcome&&chapterOutcome.victory!=="echec"&&chapter.after.map((t,i)=>(
+              <p key={i} style={{fontSize:14,lineHeight:1.65,color:"var(--text2)",margin:"0 0 8px"}}>{t}</p>
+            ))}
+            <button onClick={()=>{setPhase("campaign");setPlayers([]);setLog([]);setTurn(1);setEmpire({});setRails([]);setRailPlacement(null);}} style={{
+              marginTop:6,padding:"10px 28px",fontSize:13,letterSpacing:3,textTransform:"uppercase",
+              background:"transparent",color:"var(--gold)",border:"1px solid var(--gold-dim)",borderRadius:4,
+              fontWeight:700,fontFamily:"var(--font-title)",cursor:"pointer",
+            }}>← Retour à la campagne</button>
+          </div>
+        )}
+
         {/* Rankings */}
         <div style={{width:"100%",maxWidth:560}}>
           {scores.map((s,i)=>(
@@ -2691,7 +2841,7 @@ export default function App(){
         </div>
 
         <div style={{display:"flex",gap:12,marginTop:24,flexWrap:"wrap",justifyContent:"center"}}>
-          <button onClick={()=>{setPhase("setup");setPlayers([]);setLog([]);setTurn(1);setEmpire({});setRails([]);setRailPlacement(null);setSelFaction(null);setSelMat(null);}} style={{
+          <button onClick={()=>{setPhase("setup");setPlayers([]);setLog([]);setTurn(1);setEmpire({});setRails([]);setRailPlacement(null);setSelFaction(null);setSelMat(null);setChapter(null);setChapterOutcome(null);setSteelPile(0);}} style={{
             padding:"12px 40px",fontSize:15,letterSpacing:4,textTransform:"uppercase",
             background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:6,fontWeight:700,
             fontFamily:"var(--font-title)",cursor:"pointer",
@@ -3819,6 +3969,23 @@ export default function App(){
             </div>
           );})}
         </div>
+
+        {/* ── Chapitre de campagne en cours : condition canon + Acier Brut ── */}
+        {chapter&&(
+          <div title={chapter.canon?`Voie canon : ${chapter.canon.desc} — ou les 6 étoiles classiques, la première atteinte l'emporte`:"Chapitre sans condition canon"}
+            style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:13,color:"var(--gold)",background:"rgba(201,168,76,0.07)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <span>📖</span>
+              <span style={{fontWeight:700,fontFamily:"var(--font-title)"}}>Ch. {chapter.num} — {chapter.title}</span>
+              {chapter.variant?.steel&&<span style={{marginLeft:"auto",color:"var(--text-dim)"}}>🏦 Acier {steelPile}⚙</span>}
+            </div>
+            {chapter.canon&&(
+              <div style={{fontSize:12,color:canonMet(chapter,me,{players})?"#8fc26a":"var(--text-dim)"}}>
+                🏛 {chapter.canon.name} — {chapter.canon.desc}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* ── Bonus de construction actif (barème progressif 2/4/6/9$) ── */}
         {structureBonus&&(()=>{
