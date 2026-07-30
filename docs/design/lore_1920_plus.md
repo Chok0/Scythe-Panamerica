@@ -75,7 +75,7 @@ mécanique s'est effondré, laissant derrière lui des colosses rouillés...* »
 texte des règles). Cette section raconte comment on en est arrivé là. C'est le
 morceau d'histoire que la campagne déroule, chapitre par chapitre.
 
-### 1. 1865 — Le trône né de l'intérieur
+### 1. 1865 — Le trône né des guerres internes
 
 L'Empire Panaméricain n'est pas importé. Il est américain de naissance — et
 c'est bien pire.
@@ -83,40 +83,44 @@ c'est bien pire.
 En 1865, la guerre de Sécession s'achève, mais elle n'achève rien : l'Union
 est exsangue, financièrement autant que militairement, et le Sud est un
 champ de ruines. Ni Washington ni Richmond n'ont les moyens de garantir quoi
-que ce soit sur le reste du continent. Une coalition de financiers et
+que ce soit sur le reste du continent. Dans ce vide, une figure émerge de
+l'intérieur même de l'appareil militaire de l'Union — un général qui refuse
+de croire qu'une paix de compromis tiendra, et qui a l'ambition, l'armée et
+l'aplomb pour l'imposer par la force plutôt que par le vote. Une coalition
 d'industriels du Nord — fortunes de guerre faites dans le rail, l'acier,
-l'armement — comprend qu'aucun des deux camps épuisés ne peut plus offrir ce
-dont le continent a besoin pour rester profitable : l'ordre. Alors ils le
-fabriquent eux-mêmes. Ils exhument un compromis vivant — un général sans
-ambition politique propre, malléable, présentable — et le couronnent
-**Empereur Cyrus I**, arbitre soi-disant neutre au-dessus d'une Union et
-d'une Confédération trop épuisées pour refuser.
+l'armement — voit dans cet homme une occasion : ils **soutiennent** son
+ascension, financent ses campagnes, lui ouvrent leur crédit. Mais ils ne le
+fabriquent pas de toutes pièces, et ils ne le contrôlent pas. Le Consortium
+aide l'Empire à naître. **Il n'est pas l'Empire.** Le nouvel **Empereur
+Cyrus I** est une puissance politique et militaire à part entière, avec ses
+propres généraux, son propre Sénat, sa propre police — pas un pantin.
 
-L'**Empire Panaméricain** est né d'une dette, pas d'une conquête, et il ne
-l'oubliera jamais : ceux qui l'ont financé le possèdent plus que celui qui le
-porte.
+Cyrus I ne s'arrête pas à la réunification. Il pousse son avantage :
+reconquête forcée de tout le continent nord-américain, puis expansion vers
+le sud jusqu'au Mexique et vers le nord jusqu'aux abords du Canada.
+L'**Empire Panaméricain** devient, en une génération, la plus grande
+puissance jamais vue sur le continent — et le Sud vaincu de 1865 en est la
+première victime : il est **absorbé purement et simplement, contre sa
+volonté**, occupé militairement, sans le moindre accord ni compromis. Il n'a
+jamais cessé d'espérer s'en libérer un jour.
 
-Le compromis fondateur ne s'arrête pas à la couronne. Le Sud vaincu n'est
-pas anéanti — il est **absorbé**. L'aristocratie foncière confédérée reçoit
-de Cyrus I ce que Washington lui aurait refusé : le maintien de son ordre
-racial local, en échange d'une soumission économique totale à l'Empire et à
-ses concessionnaires du Nord. Ce n'est pas une réconciliation. C'est un
-partage des tâches : l'argent industriel au Nord, l'appareil de terreur
-raciale au Sud, les deux mis au service du même trône. (Voir section III.3 —
-ce compromis-là a un nom, et il n'a pas disparu en 1920.)
+Tenir un continent entier par la force coûte cher — de plus en plus cher à
+mesure que l'Empire s'étend : au sud, des concessions minières et
+ferroviaires « exclusives » sont arrachées aux terres mexicaines par la
+guerre ; à l'ouest, le rail impérial traverse les Grandes Plaines en écrasant
+toute résistance des Nations qui y vivent ; le long du Mississippi, les
+plantations et les docks du Sud occupé passent sous administration militaire
+directe ; au nord, la poussée vers le Canada s'arrête net face à l'argent et
+la diplomatie britanniques. Chaque faction du roster actuel porte, quelque
+part, la cicatrice d'un de ces fronts — voir section IV.
 
-Une fois le continent nord-américain stabilisé, l'Empire **s'étend** :
-au sud, dans les décennies suivantes, des concessions minières et
-ferroviaires « exclusives » sont arrachées aux terres mexicaines ; à l'ouest,
-le rail impérial traverse les Grandes Plaines sans jamais demander la
-permission des Nations qui y vivent ; le long du Mississippi, les
-plantations et les docks passent sous contrôle impérial direct ; au nord,
-la poussée vers le Canada s'arrête net face à l'argent et la diplomatie
-britanniques. Chaque faction du roster actuel porte, quelque part, la
-cicatrice d'un de ces fronts d'expansion — voir section IV.
-
-Cyrus I règne trente ans, jusqu'à sa mort naturelle en 1897. Son fils
-**Cyrus II** lui succède.
+L'immensité de l'Empire finit par l'épuiser financièrement avant même de
+l'épuiser militairement. Le Consortium, qui avait soutenu son ascension,
+commence à revoir ses positions : un continent entier maintenu sous
+occupation permanente est un gouffre, pas un marché. Le crédit se resserre
+précisément au moment où Cyrus I meurt de mort naturelle, en 1897. Son fils
+**Cyrus II** hérite d'un empire à son sommet territorial et déjà fragile
+financièrement.
 
 ### 2. Tesla, Edison, Ford — la fabrique du trône de fer
 
@@ -165,47 +169,49 @@ surtout comment la **simplifier**.
 
 En 1913, Ford présente à l'**Empereur Cyrus II** le premier mecha produit en
 série : le **Model M**, sept mètres, diesel, sans grâce, sans fil, sans génie
-— de l'efficacité pure. En échange, Cyrus II lui accorde une charte
-d'exclusivité continentale : Ford, et lui seul, a le droit de vendre des
-mechas sur le sol de l'Empire. **Rouge River** — le complexe de Dearborn,
-Michigan — devient l'arsenal officiel du trône. Il en sort dix mechas par
-jour, là où la Factory, dans sa splendeur solitaire, en sortait dix par mois.
-Ford ne pilote jamais de mecha. Ford **possède** les mechas, et depuis 1913
-il possède aussi, dans les faits, l'armée de l'Empereur. *(Cette exclusivité
-a une date de péremption — voir section III.4.)*
+— de l'efficacité pure. Le moment ne doit rien au hasard : c'est précisément
+quand le Consortium referme son crédit que Cyrus II a le plus besoin d'une
+force de substitution — une armée qu'on produit en usine plutôt qu'on paie en
+soldes. Il accorde à Ford une charte d'exclusivité continentale : Ford, et
+lui seul, a le droit de vendre des mechas sur le sol de l'Empire. **Rouge
+River** — le complexe de Dearborn, Michigan — devient l'arsenal officiel du
+trône. Il en sort dix mechas par jour, là où la Factory, dans sa splendeur
+solitaire, en sortait dix par mois. Ford ne pilote jamais de mecha. Ford
+**possède** les mechas, et depuis 1913 il possède aussi, dans les faits,
+l'armée de l'Empereur — sans pour autant posséder l'Empire lui-même : Cyrus
+II reste souverain, Ford n'est encore qu'un fournisseur, quoique
+irremplaçable. *(Cet équilibre a une date de péremption — voir section
+III.4.)*
 
-### 3. Le Consortium et le Klan Mécanique
+### 3. L'Empire, le Consortium et le Klan Mécanique
 
-Ford n'est pas un parti, ce n'est même pas vraiment une idéologie — c'est un
-**système**. Il paie ses ouvriers le double du salaire normal (le « Five
-Dollar Day ») pour qu'ils achètent ses produits ; il déteste les banquiers et
-les syndicats tout en étant lui-même la créature du consortium qui a financé
-le trône ; il publie le *Dearborn Independent*, mélange d'innovation
-industrielle et d'antisémitisme qui glace le sang ; il finance des écoles dans
-le Michigan et entretient une milice privée, le **Service Department** de
-Harry Bennett, qui tabasse les syndicalistes.
+Un point mérite d'être répété parce qu'on l'oublie facilement une fois Rouge
+River au centre de tout : **le Consortium industriel soutient l'Empire, il
+ne l'est pas.** Jusqu'en 1915, c'est Cyrus II qui gouverne, qui déclare la
+guerre, qui administre les provinces conquises. Ford est un fournisseur
+privilégié, pas un souverain caché. Ce basculement-là — Ford devenant, dans
+les faits, plus puissant que le trône — n'arrive qu'après le régicide
+(section III.4). Ne pas le lire en arrière dans les décennies précédentes.
 
-Mais Ford n'a pas inventé la terreur qu'il finance. Il en a hérité — c'est
-le prix du compromis fondateur de 1865 (section III.1). Le **Klan Mécanique**
-est l'héritier direct de l'appareil racial que l'aristocratie foncière du
-Sud a gardé en échange de sa soumission à Cyrus I : mêmes familles, même
-géographie, même cible. Ce qui a changé avec Rouge River, c'est l'outillage
-— des mechas sans numéro de série, sortis des ateliers Ford la nuit, pour
-des hommes qui pilotaient jadis à cheval. Ford ne signe rien. Personne ne
-signe rien. Mais leur caoutchouc, leur acier, leurs machines viennent tous
-de Dearborn. Leur cible : quiconque menace l'expansion industrielle de
-l'Empire — les communautés du Mississippi, les Nations Souveraines,
-l'Acadiane francophone, le Frente Popular mexicain.
+L'occupation du Sud, elle, est de la seule responsabilité de l'Empire. Pour
+tenir un territoire conquis de force et toujours hostile, Cyrus I puis Cyrus
+II ont besoin d'un bras armé local — et le plus efficace est celui qui existe
+déjà : ils cooptent une partie de l'ancienne aristocratie foncière
+confédérée, qui trouve dans la collaboration une manière de garder un
+pouvoir local que la défaite lui aurait autrement retiré. Cette police
+d'occupation prend le nom de **Klan Mécanique** une fois équipée par Rouge
+River — des mechas sans numéro de série, sortis des ateliers Ford la nuit,
+pour des hommes qui pilotaient jadis à cheval. Sa cible : quiconque menace
+l'ordre impérial — les communautés du Mississippi, les Nations Souveraines,
+l'Acadiane francophone, le Frente Popular mexicain, et le reste de la
+population sudiste elle-même, qui n'a jamais accepté l'occupation et qui n'a
+jamais cessé d'espérer sa libération.
 
-C'est précisément ce partenariat qui empoisonne la Confédération
-d'aujourd'hui. Pour les héritiers de cette aristocratie foncière — J. Cole en
-tête (section IV) — le Klan Mécanique n'est pas la milice de Ford. C'est
-**leur** ordre, leur legs, simplement équipé par un industriel du Nord qui en
-tire le vrai profit et n'en respecte pas l'esprit. Ford loue leur cause ; il
-ne la sert pas. C'est une tension qui n'a jamais été résolue, et qui explique
-pourquoi ce sont eux, en 1916, qui referment les mains sur Rouge River
-elle-même (section III.4) — moins une libération qu'une reprise de
-possession.
+C'est cette population-là — pas les collaborateurs du Klan Mécanique — dont
+J. Cole est l'héritier (section IV). Sa Confédération n'a rien à voir avec
+l'appareil de collaboration impériale : elle en est, historiquement, la
+cible autant que les autres provinces occupées. Ce qui les distingue en
+1915, c'est l'occasion — voir section III.4.
 
 Et au fond de tout ça, il y a toujours Tesla, dont personne — ni Ford, ni la
 cour impériale — ne prononce jamais le nom. Le récit officiel de l'Empire dit
@@ -214,56 +220,85 @@ qu'un Serbe ruiné a tout inventé sur une plage de Long Island et que deux
 Américains lui ont volé son travail. C'est un secret que l'Empire ne peut pas
 se permettre de laisser sortir.
 
-### 4. Régicide, siège et marché libre
+### 4. Régicide, Seconde Guerre Civile et libre marché
 
-**Cyrus II** règne dix-huit ans sur un empire de plus en plus vidé de son
-sens — une couronne qui doit tout à un industriel de Detroit, un Sénat
-d'apparat, des provinces qui n'ont jamais vraiment accepté l'autorité
-lointaine de la capitale (voir section IV, chaque faction a sa version de
-cette histoire). En 1915, une cellule panaméricaine de l'Internationale Noire
-— des ouvriers de Rouge River eux-mêmes, dit-on, formés au sabotage bien
-avant d'apprendre à viser — l'assassine lors d'une visite d'inspection dans
-un atelier ferroviaire de Chicago. Ce n'est pas un coup d'État. C'est un
-message : le trône est une machine comme une autre, et les machines peuvent
-tomber en panne.
+**Cyrus II** règne dix-huit ans sur un empire à son sommet territorial et
+déjà exsangue financièrement — un Sénat d'apparat, des provinces occupées
+qui n'ont jamais vraiment accepté l'autorité lointaine de la capitale, une
+armée de plus en plus dépendante de Rouge River parce que le Consortium ne
+paie plus (voir section IV, chaque faction a sa version de cette histoire).
+En 1915, une cellule panaméricaine de l'Internationale Noire — des ouvriers
+de Rouge River eux-mêmes, dit-on, formés au sabotage bien avant d'apprendre
+à viser — l'assassine lors d'une visite d'inspection dans un atelier
+ferroviaire de Chicago. Ce n'est pas un coup d'État. C'est un message : le
+trône est une machine comme une autre, et les machines peuvent tomber en
+panne.
 
-Il n'y a pas de successeur prêt. Pas de régence organisée. Juste une poignée
-de généraux et de hauts gradés loyalistes qui refusent d'admettre que le
-trône est déjà mort, et qui font ce que fait toute armée sans ordres clairs :
-ils tiennent la position. Cette position, c'est **Rouge River** — l'arsenal,
-la seule chose qui vaille encore la peine d'être gardée par la force. Pendant
-des mois, l'usine tourne sous loi martiale impériale, verrouillée, ses
-contrats gelés, son Catalogue Ford fermé à tout le monde — y compris à Ford
-lui-même, otage de sa propre exclusivité.
+Sur n'importe quel autre empire, un régicide aurait produit une crise de
+succession. Sur celui-ci, il produit un **effondrement total** — parce que
+sa cohésion n'a jamais tenu que par la guerre permanente et par une industrie
+du mecha déjà exsangue. Sans Cyrus II pour arbitrer, chaque province tenue
+par la force devient une opportunité : généraux, hauts fonctionnaires,
+politiciens ambitieux qui n'attendaient que ça se taillent des territoires
+du jour au lendemain. C'est la **Seconde Guerre Civile** — moins une guerre
+que cent guerres locales simultanées, et c'est dans ce chaos que plusieurs
+des factions actuelles trouvent leur véritable occasion (Frente Popular,
+Nations Souveraines — voir section IV).
 
-C'est cette garnison fantôme que **la Confédération de J. Cole force à
-lâcher prise en 1916** — moins une libération qu'une reprise de possession,
-comme annoncé en section III.3. L'événement change tout d'un coup : sans
-Empereur pour l'honorer, la charte d'exclusivité de Cyrus II ne vaut plus
-rien, et Ford — dont l'usine vient de rouvrir de force — n'a plus aucune
-raison de la respecter. Il **ouvre le Catalogue Ford à tout le continent**.
-C'est à partir de cet instant précis que le Dominion, l'Acadiane, le Frente
-Popular, les Nations Souveraines et le Bayou peuvent tous acheter à Rouge
-River ce que seul l'Empereur pouvait s'offrir jusque-là — un seul événement
-fondateur, pas six origines séparées.
+Le noyau impérial ne s'effondre pas tout de suite : il se **retranche**, sur
+sa capitale, Washington, et sur la seule chose qui vaille encore la peine
+d'être gardée par la force au loin — **Rouge River**. Une garnison loyaliste
+verrouille l'usine sous loi martiale, contrats gelés, Catalogue Ford fermé à
+tout le monde, y compris à Ford lui-même, otage de sa propre exclusivité.
 
-Le **Consortium**, Ford en tête, panique ensuite pour une autre raison : un
-arsenal sans souverain à qui le facturer est un arsenal sans couverture
-légale. En 1917, ils exhument un héritier lointain, mineur, sans pouvoir
-réel, et le couronnent **Cyrus III** — moins pour gouverner que pour signer
-les papiers que Ford a besoin de faire signer. Le pantin parfait : assez de
-sang impérial pour la façade, aucune volonté propre pour gêner qui que ce
-soit. Le pouvoir réel n'a plus de trône. Il a un bureau, dans une tour de
-verre et d'acier au-dessus des hauts-fourneaux de Dearborn.
+C'est cette garnison que **la Confédération de J. Cole vient déloger en
+1916** — non pas pour elle-même, mais **au secours de Ford**, en échange de
+facilités de paiement sur les mechas dont elle a besoin pour son propre
+projet de reconquête. Pour Cole, c'est un calcul, pas une libération
+désintéressée : après cinquante ans d'occupation subie, la Confédération a
+enfin les moyens de financer sa propre expansion — à crédit, chez l'homme
+qui vient de perdre son seul client. L'événement change tout d'un coup :
+sans Empereur pour l'honorer, l'exclusivité de Cyrus II ne vaut plus rien,
+et Ford — dont l'usine vient de rouvrir de force, avec l'aide d'une milice
+qu'il ne contrôle pas — comprend son intérêt réel : la guerre est le meilleur
+moteur économique qui soit, et six clients valent mieux qu'un souverain
+fauché. Il **ouvre le Catalogue Ford à tout le continent**, puis passe le
+reste de sa fortune à entretenir un habile jeu de promotions et de remises
+qui maintient un équilibre entre les factions — tantôt elles viennent le
+conquérir, tantôt le défendre, tantôt s'entredéchirer au loin avec ses
+mechas. Le seul vrai gagnant, dans cette guerre permanente, c'est l'argent.
+**C'est à partir de cet instant précis** que le Dominion, l'Acadiane, le
+Frente Popular, les Nations Souveraines et le Bayou peuvent tous acheter à
+Rouge River ce que seul l'Empereur pouvait s'offrir jusque-là — un seul
+événement fondateur, pas six origines séparées.
 
-C'est le contexte exact où se déroule *Scythe Panamerica* : un empire
-survivant sur son propre nom, un arsenal devenu bazar ouvert, tenu à bout de
-bras par l'industriel qui aurait dû le servir. Les six factions ne se battent
-pas pour hériter d'un empire fort. Elles se battent pour ce qu'il en reste —
-et pour savoir qui écrira ce qui vient après. (La campagne se termine sur la
-chute finale du pantin Cyrus III — voir `campagne.md` §Séquences, chapitre
-final : c'est le pont direct vers l'état du monde décrit dans les règles du
-jeu de base, « l'Empire mécanique s'est effondré ».)
+La nouvelle se répand vite, et chacun y voit midi à sa porte. Au nord, le
+**Dominion** voit dans un Empire réduit à Washington une occasion d'en finir
+pour de bon : il envoie ses troupes achever ce qui reste de la présence
+impériale au Canada. Dans son sillage, l'**Acadiane** profite du chaos pour
+saboter toute tentative de restructuration politique — la sienne comme
+celle des autres — et étend son réseau jusque dans l'ouest canadien, là où
+plus personne n'administre plus rien. Et maintenant que l'usine n'est plus
+sous la coupe impériale, le **Bayou** aussi veut s'en emparer : rival et
+cousin de l'Acadiane (en affaires, il n'y a pas d'amitié), mais avec un
+enjeu que les autres n'ont pas — si la Confédération de Cole devait un jour
+dominer le continent, le Bayou ne donne pas cher de sa peau.
+
+Le noyau impérial de Washington survit tant bien que mal à la Seconde Guerre
+Civile — trop affaibli pour reconquérir quoi que ce soit, trop symbolique
+pour disparaître tout à fait. Une lignée impériale, **Cyrus III**, continue
+d'y régner en 1920, essentiellement pour la forme : signer des traités que
+plus personne n'a besoin de faire respecter par la force, puisque la vraie
+économie du pouvoir ne passe plus par Washington. Elle passe par Dearborn.
+
+C'est le contexte exact où se déroule *Scythe Panamerica* : un arsenal
+devenu bazar ouvert, un Empire réduit à sa capitale et à son nom, six
+factions qui ne se battent plus pour hériter d'un empire fort, mais pour ce
+qu'il en reste — pendant que le véritable bénéficiaire du chaos, à Dearborn,
+vend des mechas à tout le monde et ne prend jamais parti. (La campagne se
+termine sur la chute finale de Cyrus III — voir `campagne.md` §Séquences,
+chapitre final : c'est le pont direct vers l'état du monde décrit dans les
+règles du jeu de base, « l'Empire mécanique s'est effondré ».)
 
 ### 5. Rouge River et le jeu
 
@@ -332,20 +367,21 @@ ci-dessous sont des **propositions de premier jet**, à ajuster.
 
 *« L'Amérique qui refuse de mourir. »*
 
-Le Sud n'a jamais rejoint l'Empire de gaieté de cœur : il a été absorbé,
-exsangue, dans le compromis fondateur de 1865 — soumission économique à
-Cyrus I contre maintien de son propre ordre racial (section III.1 et III.3).
-Deux générations plus tard, l'aristocratie foncière qui a hérité de cet
-arrangement en a assez d'être la milice sous-traitée d'un industriel de
-Detroit qui en tire le vrai profit. J. Cole est l'héritier direct de cette
-lignée, et son geste fondateur n'est pas une nostalgie : **c'est lui qui,
-en 1916, force la garnison loyaliste à lâcher Rouge River** (section III.4)
-— pas pour libérer l'arsenal, pour se le réapproprier. Le trône vacillant
-n'est pas une tragédie à empêcher pour Cole, c'est l'occasion de reconstruire
-— pas la Confédération d'avant, un ordre nouveau, tout aussi dur, mais cette
-fois sans intermédiaire nordiste. Son ability, **Servitude** (capturer les
-ouvriers vaincus), n'est pas un hasard de design : c'est le cœur noir du
-personnage.
+Le Sud n'a jamais rejoint l'Empire de son plein gré : il a été **absorbé
+purement et simplement, par la force**, en 1865, occupé militairement pendant
+cinquante ans par une administration qui n'a jamais demandé son avis (section
+III.1). Il n'a jamais cessé d'espérer s'en libérer un jour. J. Cole est
+l'héritier de cet espoir-là, pas de la collaboration du Klan Mécanique
+(section III.3) — et en 1915, l'occasion se présente enfin : le régicide
+paralyse le noyau impérial, et une garnison loyaliste s'accroche à Rouge
+River sans personne pour lui donner d'ordres. Cole ne la déloge pas par
+idéal. **Il vient au secours de Ford, en échange de facilités de paiement
+sur les mechas** dont il a besoin pour financer son propre projet : reprendre
+par la force ce que cinquante ans d'occupation lui ont pris, et bâtir à sa
+place un ordre nouveau — pas moins dur, juste sans tuteur nordiste. Son
+ability, **Servitude** (capturer les ouvriers vaincus), n'est pas un hasard
+de design : la libération de Cole n'a jamais été celle de personne d'autre
+que lui.
 
 ### Frente Libre — E. Rojas & Trueno
 
@@ -358,9 +394,13 @@ que Zapata prenne les armes. Pour Rojas, ce n'est pas moins grave : c'est la
 preuve que l'Empire n'a jamais eu de frontière naturelle, seulement des
 marchés à ouvrir. Il se bat dans les montagnes du Morelos aux côtés d'un
 Zapata qui n'est pas mort — leur cible n'est pas telle ou telle plantation,
-c'est le principe même de la concession exclusive, où qu'elle s'exerce.
-**Tierra Minada** (poser un piège sur chaque hex atteint) est une guerre
-défensive qui protège une terre reprise hex par hex, pas une conquête.
+c'est le principe même de la concession exclusive, où qu'elle s'exerce. Le
+régicide de 1915 et la Seconde Guerre Civile qui s'ensuit (section III.4)
+sont, pour eux, l'occasion qu'ils attendaient depuis une génération : sans
+garnison impériale pour les faire respecter, les concessions du Nord ne
+valent plus rien. **Tierra Minada** (poser un piège sur chaque hex atteint)
+est une guerre défensive qui protège une terre reprise hex par hex, pas une
+conquête.
 
 ### Nations Souveraines — Aiyana & Koda
 
@@ -375,9 +415,10 @@ rumeur, jamais confirmée, que des ouvriers sympathisants ont fait sortir des
 fragments d'équipement de Wardenclyffe avant la saisie, échangés depuis contre
 du cuivre travaillé par les artisans des Plaines. Vrai ou pas, la métallurgie
 des Nations reste, de tous les peuples du continent, la plus proche des
-alliages tesliens. Alors que le trône vacille, Aiyana ne cherche pas à
-l'hériter : elle cherche à reprendre, terrain par terrain, ce qui n'aurait
-jamais dû être pris.
+alliages tesliens. Quand la Seconde Guerre Civile éclate en 1915 et que les
+garnisons impériales de l'Ouest se replient vers Washington sans même livrer
+combat, Aiyana ne cherche pas à hériter du trône : elle cherche à reprendre,
+terrain par terrain, ce qui n'aurait jamais dû être pris.
 
 ### Acadiane — M. Thibodeau & Brume
 
@@ -387,12 +428,17 @@ Dispersée par le Grand Dérangement de 1755 — un siècle avant même la naiss
 de l'Empire — l'Acadiane n'a jamais reconnu aucune couronne, ni française, ni
 britannique, ni celle, plus récente, de Dearborn. Thibodeau hérite d'un réseau
 de contrebandiers et de commerçants qui a toujours vécu dans les failles de
-l'autorité impériale plutôt que contre elle, frontalement. Tant que l'Empire
-tenait, ce réseau restait discret. Maintenant qu'il vacille et que les
-douanes de Rouge River ne peuvent plus surveiller ses propres fleuves,
-Thibodeau tisse enfin, ouvertement, le lien du bayou louisianais jusqu'au
-Saint-Laurent — une Acadie qui n'a jamais existé, en train de devenir réelle
-précisément parce que personne d'autre n'a plus les moyens de l'en empêcher.
+l'autorité impériale plutôt que contre elle, frontalement. La Seconde Guerre
+Civile de 1915 change son calcul : pendant que le Dominion envoie ses
+troupes achever l'Empire au nord (section IV, Dominion), Thibodeau ne se
+contente plus de se faufiler — il **sabote activement** toute tentative de
+reconstruire une autorité centrale, la sienne comme celle des autres, et
+profite du vide laissé par le retrait impérial pour étendre son réseau
+jusque dans l'ouest canadien. Ce n'est pas de l'opportunisme désintéressé :
+un continent sans autorité centrale est le seul climat où une Acadie
+dispersée peut enfin se retisser — une nation qui n'a jamais existé, en
+train de devenir réelle précisément parce que personne n'a plus les moyens
+de l'en empêcher.
 
 ### Bayou — Cap. Zeke & Croc
 
@@ -406,23 +452,34 @@ convois de l'Empire plutôt que de ce qu'il cultive. **Sang du Marais**
 **Le Prédateur**, son objectif de faction (capturer un mecha + deux victoires
 contre l'Empire ou des joueurs), n'est pas une coïncidence de design non
 plus — c'est déjà, dans le code, la faction qui chasse ouvertement les
-patrouilles impériales. Le trône ne l'intéresse pas. Ses cargaisons, si.
+patrouilles impériales. Mais depuis que Rouge River a échappé à l'Empire
+(section III.4), la donne a changé : le Bayou aussi veut sa part de l'usine
+— rival et cousin de l'Acadiane, sans l'amitié que le sang devrait imposer en
+affaires. La différence, c'est l'enjeu : si la Confédération de Cole devait
+un jour dominer le continent avec les mechas qu'elle finance à crédit chez
+Ford, le Bayou sait exactement ce qui l'attend. Le trône ne l'intéresse pas.
+Sa survie, si.
 
 ### Dominion — Col. Whitfield & Sterling
 
 *« Le tribut d'un empire qui ne sait plus qu'il en paie un. »*
 
 Whitfield représente la Couronne britannique et ses intérêts financiers à
-Londres — le même genre d'argent qui a arrêté net, à la frontière
-canadienne, la poussée impériale vers le nord (section III.1). Le Dominion
-n'a jamais eu vocation
-à conquérir l'Empire Panaméricain : il a vocation à **en vivre**, à négocier
-avec quiconque tient Rouge River à un instant donné, et à récupérer
-patiemment ce qui se détache d'un trône en décomposition. Son ability,
-**Commerce Impérial** (convertir une ressource en pièce ou carte), et son
-objectif de faction, **Le Tribut** (20 pièces via ce commerce), sont la
-mécanique la plus littérale de tout le roster : le Dominion prélève sa dîme
-sur l'agonie de l'Empire, une transaction à la fois.
+Londres — le même genre d'argent qui a arrêté net, jadis, la poussée
+impériale vers le nord (section III.1). Mais en 1915, la prudence financière
+cède la place au calcul militaire : avec un noyau impérial réduit à
+Washington et incapable de réagir, le Dominion **envoie ses troupes achever
+ce qui reste de la présence impériale au Canada** — moins une conquête
+qu'un nettoyage, l'occasion de transformer une frontière longtemps contestée
+en fait accompli. Le Dominion n'a jamais eu vocation à conquérir le continent
+entier : il a vocation à **en vivre**, à négocier avec quiconque tient Rouge
+River à un instant donné, et à récupérer patiemment ce qui se détache d'un
+trône en décomposition — au nord par les armes, ailleurs par le commerce.
+Son ability, **Commerce Impérial** (convertir une ressource en pièce ou
+carte), et son objectif de faction, **Le Tribut** (20 pièces via ce
+commerce), sont la mécanique la plus littérale de tout le roster : le
+Dominion prélève sa dîme sur l'agonie de l'Empire, une transaction à la
+fois.
 
 ---
 

@@ -133,39 +133,50 @@ prédation ouverte → le maître du jeu financier) mais n'est pas rigide au-del
 du chapitre 1, qui doit rester premier — c'est lui qui ouvre le marché des
 mechas à tout le monde et rend les cinq suivants possibles.
 
-### Prologue — Le trône né de l'intérieur
+### Prologue — Le trône né des guerres internes
 
-*Texte seul, pas de partie.* Pose le décor : 1865, une coalition
-d'industriels du Nord couronne l'Empereur Cyrus I sur les ruines de la
-Sécession, en échange de la soumission de l'aristocratie foncière du Sud
-plutôt que de son éradication. Cinquante ans d'expansion continentale plus
-tard, l'arrivée et la trahison de Tesla ont fait de Rouge River l'arsenal
-exclusif du trône (Cyrus II, 1913). En 1915, l'Empereur est assassiné par
-l'Internationale Noire — et une garnison loyaliste, sans ordre de personne,
-verrouille Rouge River par la force plutôt que d'admettre que le trône est
-mort. « Vous allez incarner, tour à tour, les factions qui vont se disputer
-ce qu'il en reste. » *(cf. lore §III.1-4)*
+*Texte seul, pas de partie.* Pose le décor : 1865, un général soutenu (pas
+fabriqué) par les industriels du Nord se couronne Empereur sur les ruines de
+la Sécession — le Consortium aide l'Empire à naître, il ne l'est pas. Cyrus I
+pousse la reconquête jusqu'au Mexique et jusqu'aux abords du Canada,
+absorbant le Sud vaincu par la pure force militaire, sans le moindre
+compromis. Cinquante ans d'occupation continentale plus tard, l'arrivée et
+la trahison de Tesla ont fait de Rouge River l'arsenal exclusif du trône
+(Cyrus II, 1913) — juste au moment où l'immensité de l'Empire commence à
+l'épuiser financièrement et où le Consortium referme son crédit. En 1915,
+l'Empereur est assassiné par l'Internationale Noire : sans lui, l'Empire ne
+connaît pas une crise de succession, il se disloque d'un coup en une
+**Seconde Guerre Civile** — cent guerres locales où généraux, politiciens et
+factions historiques saisissent chacun leur chance. Le noyau impérial se
+retranche sur Washington, et sur la seule chose qui vaille encore la peine
+d'être gardée par la force au loin : Rouge River, verrouillée par une
+garnison loyaliste. « Vous allez incarner, tour à tour, les factions qui
+vont se disputer ce qu'il en reste. » *(cf. lore §III.1-4)*
 
 ### Chapitre 1 — Confédération (J. Cole & Dixie) — l'événement fondateur
 
-- **Histoire donnée avant** : le compromis de 1865 — l'aristocratie foncière
-  du Sud a gardé son ordre racial local en échange de sa soumission à
-  l'Empire ; deux générations plus tard, elle n'est plus qu'une milice sous-
-  traitée d'un industriel de Detroit (le Klan Mécanique, lore §III.3) ; et
-  depuis le régicide, une garnison loyaliste tient Rouge River fermée à
-  tout le monde, Ford y compris.
+- **Histoire donnée avant** : le Sud n'a jamais rejoint l'Empire de son
+  plein gré — absorbé par la force en 1865, occupé militairement pendant
+  cinquante ans, sans jamais renoncer à l'espoir de s'en libérer (lore
+  §III.1). Le Klan Mécanique, lui, est une police d'occupation cooptée par
+  l'Empire (lore §III.3) — pas la Confédération de Cole. Depuis le régicide,
+  une garnison loyaliste tient Rouge River fermée à tout le monde, Ford y
+  compris.
 - **Variante de jeu** : Mechas de l'Empire **ON**, mission centrée sur la
-  prise de la case Rouge River elle-même (pas une simple patrouille
-  croisée en chemin) — le joueur affronte directement la garnison
-  loyaliste retranchée.
-- **Histoire donnée après** : la garnison lâche prise. Sans Empereur pour
-  l'honorer, la charte d'exclusivité de Ford ne vaut plus rien — il rouvre
-  le Catalogue Ford à tout le continent. **C'est cet instant précis qui
-  explique pourquoi toutes les factions suivantes ont déjà accès aux mechas
-  Ford dans la suite de la campagne (et dans le jeu de base).** Le joueur
-  comprend aussi que Cole n'a rien libéré : il a repris ce qu'il considérait
-  comme sien — teasing du thème de la Fièvre (bascule fasciste) pour la
-  suite de la campagne.
+  prise de la case Rouge River elle-même (pas une simple patrouille croisée
+  en chemin) — le joueur affronte directement la garnison loyaliste
+  retranchée, **au secours de Ford** plutôt qu'en conquérant solitaire.
+- **Histoire donnée après** : la garnison lâche prise. En échange de son aide,
+  Cole obtient de Ford des facilités de paiement sur les mechas nécessaires
+  à son propre projet de reconquête. Sans Empereur pour l'honorer,
+  l'exclusivité de Ford ne vaut plus rien de toute façon — il comprend son
+  intérêt réel (la guerre est le meilleur moteur économique) et rouvre le
+  Catalogue Ford à tout le continent. **C'est cet instant précis qui explique
+  pourquoi toutes les factions suivantes ont déjà accès aux mechas Ford dans
+  la suite de la campagne (et dans le jeu de base).** Le joueur comprend
+  aussi que Cole n'a rien libéré au nom de personne d'autre que lui-même —
+  teasing du thème de la Fièvre (bascule fasciste) pour la suite de la
+  campagne.
 
 ### Chapitre 2 — Frente Libre (E. Rojas & Trueno)
 
@@ -202,42 +213,54 @@ ce qu'il en reste. » *(cf. lore §III.1-4)*
 - **Histoire donnée avant** : dispersée par le Grand Dérangement de 1755,
   un siècle avant l'Empire — l'Acadiane n'a jamais reconnu aucune couronne,
   et son réseau de contrebande a toujours vécu dans les failles de
-  l'autorité impériale.
+  l'autorité impériale. Depuis la Seconde Guerre Civile, le Dominion envoie
+  ses troupes achever l'Empire au Canada (chapitre 6) — un nouveau chaos que
+  Thibodeau compte bien exploiter.
 - **Variante de jeu** : déblocage de la **Tour Wardenclyffe** (bâtiment
   bonus) — le réseau énergétique à distance fait écho, mécaniquement, au
   réseau de comptoirs déjà propre à l'Acadiane (ability Comptoir).
-- **Histoire donnée après** : les douanes impériales de Rouge River, trop
-  occupées par la crise de succession, ne surveillent plus les fleuves —
-  Thibodeau referme enfin, ouvertement, le lien Louisiane–Québec.
+- **Histoire donnée après** : Thibodeau ne se contente plus de contourner
+  l'autorité en place — il **sabote activement** toute tentative de
+  restructuration politique dans son sillage, la sienne comme celle des
+  autres, et étend son réseau jusque dans l'ouest canadien, là où plus
+  personne n'administre rien. Le joueur comprend que l'Acadiane n'attend pas
+  la paix pour se retisser : elle a besoin du chaos pour ça.
 
 ### Chapitre 5 — Bayou (Cap. Zeke & Croc)
 
 - **Histoire donnée avant** : dockers et déserteurs des docks impériaux du
   Mississippi, devenus corsaires d'un fleuve qu'ils refusent de laisser à
-  l'Empire.
+  l'Empire. Rouge River vient d'échapper au contrôle impérial (chapitre 1) —
+  et la Confédération qui l'a libérée finance désormais sa propre
+  reconquête à crédit chez Ford.
 - **Variante de jeu** : Mechas de l'Empire **ON** (à nouveau) + déblocage de
   l'**Éclair** (mecha bonus) en cas de victoire sur l'objectif de faction —
   cohérent avec l'objectif *Le Prédateur*, déjà câblé sur `empireKills` dans
   le code actuel (`factions.js`).
-- **Histoire donnée après** : le joueur comprend que le Bayou ne veut pas le
-  trône — il veut ce que le trône transporte. Premier indice concret sur les
-  convois qui alimentaient Rouge River avant l'assassinat de 1915.
+- **Histoire donnée après** : le joueur comprend que le Bayou ne convoite pas
+  Rouge River par appât du gain comme l'Acadiane (chapitre 4) — c'est une
+  question de survie. Si la Confédération de Cole devait un jour dominer le
+  continent avec les mechas qu'elle achète à crédit, le Bayou sait
+  exactement ce qui l'attend. Premier affrontement d'intérêts direct entre
+  deux chapitres de la campagne.
 
 ### Chapitre 6 — Dominion (Col. Whitfield & Sterling)
 
-- **Histoire donnée avant** : la finance londonienne qui a arrêté net la
-  poussée impériale vers le Canada (lore §III.1) ; le Dominion n'a jamais
-  cherché à conquérir l'Empire, seulement à en vivre — à négocier avec
-  quiconque tient Rouge River à un instant donné.
+- **Histoire donnée avant** : la finance londonienne qui a arrêté net,
+  jadis, la poussée impériale vers le Canada (lore §III.1) ; mais avec
+  Washington réduit à sa capitale et incapable de réagir, la prudence
+  financière cède la place au calcul militaire.
 - **Variante de jeu** : **Acier Brut** actif sur Rouge River (voir plus
   haut) — le chapitre où le contrôle littéral de l'arsenal impérial est
   l'enjeu, en écho direct à l'ability Commerce Impérial du Dominion.
-- **Histoire donnée après** : révélation que c'est en partie l'argent du
-  Dominion qui a discrètement financé l'intronisation du pantin Cyrus III
-  en 1917 — non par loyauté, mais parce qu'un trône fictif, même vide, reste
-  plus profitable pour le commerce qu'un continent ouvertement sans
-  souverain. Le joueur comprend que le Dominion n'a jamais voulu que
-  l'Empire meure : il voulait juste qu'il continue à signer des papiers.
+- **Histoire donnée après** : le joueur y envoie les troupes du Dominion
+  achever ce qui reste de la présence impériale au Canada — moins une
+  conquête qu'un nettoyage. Révélation en clôture : c'est en partie l'argent
+  du Dominion qui a discrètement financé l'intronisation du pantin Cyrus III
+  à Washington — non par loyauté, mais parce qu'un trône fictif, même vide,
+  reste plus profitable pour le commerce qu'un continent ouvertement sans
+  souverain. Le Dominion n'a jamais voulu que l'Empire meure : il voulait
+  juste qu'il continue à signer des papiers.
 
 ### Finale — Le Trône Vide
 
