@@ -1,11 +1,17 @@
-# Mode campagne — idées réservées
+# Mode campagne
 
-Mécaniques retirées du jeu de base mais dont le code est conservé pour de
-futures missions de campagne.
+But de la campagne : explorer les mécaniques spécifiques à Panamerica à
+travers des défis pour parties spéciales (l'équivalent des variantes du jeu
+original), et surtout **dérouler une histoire** — tour à tour, on incarne
+chacune des factions pour découvrir son lore propre et le lore global de
+l'Empire Panaméricain (sa naissance après la guerre de Sécession, la
+trahison de Tesla par Ford, le régicide, le trône devenu pantin). Voir
+`docs/design/lore_1920_plus.md` §III et §IV pour le worldbuilding complet —
+ce document se concentre sur la mécanique et la structure de la campagne.
 
 ## 🎁 Contenu du jeu ORIGINAL en réserve (déblocages de campagne)
 
-Trois ensembles transcrits du Scythe de base vivent dans les données mais ne
+Deux ensembles transcrits du Scythe de base vivent dans les données mais ne
 sont PAS mélangés aux parties standards — récompenses de campagne prévues :
 
 - **Cartes d'usine** : `PLANS_ORIGINAL` (12 cartes, `src/data/plans.js`) —
@@ -13,27 +19,73 @@ sont PAS mélangés aux parties standards — récompenses de campagne prévues 
 - **Objectifs secrets** : `OBJECTIVES_ORIGINAL` (21 missions,
   `src/data/objectives.js`) — nécessite le compteur `scaredWorkers` (déjà
   suivi) et le contexte joueurs (`check(p, {players})`, déjà branché).
-- **Plateaux joueur** : `MATS_ORIGINAL` (7 plateaux ids 101-107,
-  `src/data/mats.js`) — Industrie, Ingénierie, Patriotisme, Mécanique,
-  Agriculture, Innovation, Militant. Tous les lookups passent par
-  `matById()` : assigner un id 10x à un joueur de campagne suffit.
-  ⚠ Dans le jeu de base, le départ pauvre (Industrie 2♥/4$) était compensé
-  par l'ordre du tour — mécanique absente ici, à équilibrer en mission.
-- **Étoile « quête Tesla »** : piste retenue — un scénario dédié pourra
-  récompenser la prise d'un prototype Tesla (2 fragments consommés).
 
-## 🏦 Mission « Ruée vers l'or » — jetons dollars
+**Plateaux joueur** : `MATS_ORIGINAL` (7 plateaux ids 101-107, `src/data/mats.js`)
+— Industrie, Ingénierie, Patriotisme, Mécanique, Agriculture, Innovation,
+Militant. Tous les lookups passent par `matById()` : assigner un id 10x à un
+joueur de campagne suffit. ⚠ Dans le jeu de base, le départ pauvre (Industrie
+2♥/4$) était compensé par l'ordre du tour — mécanique absente ici, à
+équilibrer en mission. **Traité comme variante avancée optionnelle** dans la
+décomposition ci-dessous (pas dans le parcours principal) tant que ce
+rééquilibrage n'a pas été fait.
 
-Ancienne mécanique du « bonus de construction » : une tuile bonus était tirée
-au début de chaque partie et des jetons **$** apparaissaient sur les hexes
-qualifiés ; chaque bâtiment posé dessus rapportait des pièces en fin de partie.
+## 🏦 Rouge River — Acier Brut (variante de campagne)
 
-- Retirée du jeu de base (les jetons $ encombrent la carte en permanence).
-- Code conservé : `src/data/structureBonus.js` (tuiles, `pickStructureBonus`,
-  `structureBonusDetail`), rendu des tuiles marquées `$` dans `App.jsx`
-  (`isBonusTile`), affichages conditionnés à `structureBonus != null`.
-- Idée de mission : une carte parsemée de filons ($) déclenche une course —
-  premier arrivé, premier servi ; scoring spécial autour de l'or amassé.
+Ancienne mécanique décrite dans le lore (`lore_1920_plus.md` §III.5) : à
+chaque tour, Rouge River génère automatiquement 1 ressource Acier Brut,
+récupérée par le joueur qui la contrôle ; si personne ne la contrôle, l'Acier
+s'accumule — récompense croissante pour le premier arrivé.
+
+- Retirée du jeu de base standard (elle favorise trop mécaniquement le
+  contrôle précoce du centre sans y ajouter de tension nouvelle en partie
+  libre).
+- **Confirmée comme UNE variante de campagne à part entière** — pas un
+  toggle générique, un scénario dédié où le contrôle de l'arsenal impérial
+  est l'enjeu central de la partie (chapitre Dominion, voir plus bas).
+- Implémentation à faire : un flag de partie type `empireRouilleSteel: true`
+  qui active la génération passive sur la case Rouge River (hex marqué
+  `factory` dans `hexes.js`) et son ramassage automatique par le contrôleur.
+
+## ⚙ Catalogue Ford — déclinaisons de Plans à concevoir
+
+Deux idées de nouveaux Plans Spéciaux (deck Rouge River), dans l'esprit des
+cartes Factory de Scythe :
+
+- **Bâtiment « moulin à pétrole »** — équivalent du Moulin de Scythe mais
+  produit 1 pétrole supplémentaire à chaque Produce au lieu de bois/métal.
+  Nom de travail : la **Raffinerie Rouge River**.
+- **Bonus d'enrôlement / espionnage industriel** — s'active quand un
+  **autre** joueur utilise son propre Plan d'usine : le possesseur reçoit 1
+  ressource au choix. Nom de travail : **Réseau de Rouge River** — Ford
+  revend en douce ce qu'il voit passer chez les autres.
+
+Ces deux cartes rejoignent les **Plans Ford** existants (Model M, Trimotor,
+River Rouge Special, Iron Horse) dans le Catalogue standard — ce ne sont pas
+des récompenses de campagne, juste des extensions du deck de base à
+concevoir/équilibrer.
+
+## 🔧 Les legs de Wardenclyffe — corrigé (ce ne sont pas des cartes d'usine)
+
+Erreur de classification corrigée : le Golem, la Tour Wardenclyffe et
+l'Éclair ne sont **pas** des Plans à piocher au Catalogue Ford — ce sont des
+**objets hors catalogue**, débloqués par les scénarios de campagne, cachés
+dans le sous-sol scellé que Ford n'a jamais réussi à ouvrir en entier :
+
+- **Le Golem** — **mecha bonus** : un mecha supplémentaire (pas un Plan),
+  alimenté sans fil (aucune ressource Énergie), déplaçable à distance depuis
+  n'importe quelle case où se trouve le héros. 1 sur un dé à chaque combat :
+  il s'arrête (systèmes instables sans leur créateur).
+- **La Tour Wardenclyffe** — **bâtiment bonus** : structure fixe qui
+  alimente en énergie sans fil tous les mechas du joueur dans un rayon de 3
+  cases (+1 mouvement, +1 puissance).
+- **L'Éclair** — **mecha bonus** léger, 4 cases de mouvement (le double de
+  la norme), pensé pour la reconnaissance et le vol de ressources.
+
+**Le « Fantôme de Wardenclyffe » (ancien plan de mecha coopératif
+inter-factions) est retiré** — trop de conditions externes pour un seul objet
+permanent. L'idée de coopération inter-factions reste bonne mais migre vers
+un scénario de campagne dédié plutôt qu'un item du jeu (piste ouverte, pas
+encore assignée à un chapitre).
 
 ## 🤖 Mechas de l'Empire
 
@@ -43,7 +95,149 @@ reste disponible sur l'écran de setup, marqué « (campagne) ».
 - Code conservé : `src/data/empire.js` (`EMPIRE_START`, `EMPIRE_DECK`,
   `EMPIRE_RAILS`), déplacements/combats PvE dans `App.jsx` et `bot.js`,
   rendu `EmpireMecha` dans `MapComponents.jsx`.
-- `EMPIRE_RAILS` : les rails initiaux de l'Empire ont aussi été retirés de la
-  carte de base — à réutiliser dans les missions où l'Empire est présent.
+- **Sens narratif clarifié** : ces mechas ne sont pas une faction tierce
+  générique — ce sont les **derniers vestiges de l'armée impériale**, sortis
+  de Rouge River sous Ferdinand II puis laissés sans commandement clair sous
+  le pantin Léopold. Leurs noms (Écho Rouillé, Sentinelle Aveugle,
+  Patrouilleur Usé...) décrivent déjà des machines à l'abandon — c'est
+  cohérent avec le texte des règles du jeu de base (« l'Empire mécanique
+  s'est effondré, laissant derrière lui des colosses rouillés »).
 - Idée de mission : défendre une région contre les patrouilles, escorter un
   convoi à travers les lignes de l'Empire, détruire les six mechas E1–E6.
+
+## 🕳 Internationale Noire — chantier séparé, pas dans ce parcours
+
+Faction sans héros, sans plateau joueur, sans mecha de série — sa mécanique
+de jeu (sabotage plutôt que production/combat classique) est fondamentalement
+différente du reste du roster. C'est elle qui assassine l'Empereur Ferdinand
+II en 1915 (voir lore §III.4) : elle mérite un chapitre de campagne, voire
+plusieurs, mais **sa conception (règles, victoire, plateau) est un chantier à
+part entière, à traiter séparément** de la décomposition de séquences
+ci-dessous. Ne pas l'improviser en l'intégrant au parcours à 6 factions tant
+que ce chantier n'a pas eu lieu.
+
+---
+
+## Décomposition des séquences de campagne
+
+Structure : un **prologue** (texte seul, pas de partie), **six chapitres**
+(un par faction jouable, une partie complète chacun avec un objectif
+narratif et une variante de jeu), et un **finale** qui boucle sur l'état du
+monde du jeu de base. Chaque chapitre indique : le morceau d'histoire donné
+avant/après la partie, et la variante de jeu appliquée (si applicable).
+
+L'ordre proposé suit une logique de dévoilement (contact avec l'Empire →
+racines économiques → racines profondes/Tesla → marges négligées →
+prédation ouverte → le maître du jeu financier) mais n'est pas rigide —
+chaque chapitre est normalement autosuffisant.
+
+### Prologue — Le trône qui n'aurait pas dû survivre
+
+*Texte seul, pas de partie.* Pose le décor : 1865, la Sécession épuise
+l'Union et le Sud, l'empereur Maximilien (qui aurait dû être fusillé à
+Querétaro en 1867 dans notre histoire) survit et s'étend vers le nord,
+financé par un consortium industriel naissant. Cinquante ans plus tard,
+l'arrivée et la trahison de Tesla ont fait de Rouge River l'arsenal du
+trône. « Vous allez incarner, tour à tour, les factions qui se disputent sa
+dépouille. » *(cf. lore §III.1-2)*
+
+### Chapitre 1 — Confédération (J. Cole & Dixie)
+
+- **Histoire donnée avant** : le Sud, exsangue depuis 1865, absorbé de force
+  dans l'Empire naissant ; deux générations de rancœur ; une aristocratie
+  foncière qui a discrètement détourné de l'acier impérial pour s'armer.
+- **Variante de jeu** : Mechas de l'Empire **ON** — premier contact du
+  joueur avec les patrouilles impériales, dans le fief même de J. Cole.
+- **Histoire donnée après** : le joueur découvre que la milice de Cole vise
+  moins à « restaurer » l'ancien Sud qu'à profiter du vide de pouvoir pour
+  imposer un ordre nouveau, tout aussi dur — teasing du thème de la Fièvre
+  (bascule fasciste) pour la suite de la campagne.
+
+### Chapitre 2 — Frente Libre (E. Rojas & Trueno)
+
+- **Histoire donnée avant** : l'Empire est né au Mexique — la dette
+  fondatrice de 1865, les concessions minières « exclusives, continent
+  entier » qui ont dépossédé des générations avant même Zapata.
+- **Variante de jeu** : **Ruée vers l'or** (`structureBonus.js`, tuile
+  bonus $ tirée en début de partie) — la course aux gisements symbolise la
+  curée sur les terres mexicaines par les latifundistes financés par le
+  Consortium.
+- **Histoire donnée après** : révélation que la cible de Rojas n'est pas
+  seulement les propriétaires terriens du Nord, mais le trône lui-même,
+  dans son berceau — le joueur comprend que Panamerica n'a pas de « centre »
+  neutre : le Mexique EST l'origine de l'Empire.
+
+### Chapitre 3 — Nations Souveraines (Aiyana & Koda)
+
+- **Histoire donnée avant** : les voies ferrées impériales tracées à travers
+  les terres Lakota/Navajo/Cree/Haudenosaunee sans qu'on leur demande rien ;
+  la rumeur d'un fragment d'équipement de Wardenclyffe exfiltré et échangé
+  contre du cuivre travaillé par les Nations avant la saisie du labo de
+  Tesla.
+- **Variante de jeu** : déblocage du **Golem** (mecha bonus) en fin de
+  partie si l'objectif de faction est rempli — la métallurgie cuivre/bronze
+  des Nations est, dans le lore, la plus proche des alliages tesliens.
+- **Histoire donnée après** : la piste du Golem confirme (ou infirme, sans
+  trancher définitivement) la rumeur — laisse un fil ouvert pour une
+  extension future centrée sur l'héritage direct de Wardenclyffe.
+
+### Chapitre 4 — Acadiane (M. Thibodeau & Brume)
+
+- **Histoire donnée avant** : dispersée par le Grand Dérangement de 1755,
+  un siècle avant l'Empire — l'Acadiane n'a jamais reconnu aucune couronne,
+  et son réseau de contrebande a toujours vécu dans les failles de
+  l'autorité impériale.
+- **Variante de jeu** : déblocage de la **Tour Wardenclyffe** (bâtiment
+  bonus) — le réseau énergétique à distance fait écho, mécaniquement, au
+  réseau de comptoirs déjà propre à l'Acadiane (ability Comptoir).
+- **Histoire donnée après** : les douanes impériales de Rouge River, trop
+  occupées par la crise de succession, ne surveillent plus les fleuves —
+  Thibodeau referme enfin, ouvertement, le lien Louisiane–Québec.
+
+### Chapitre 5 — Bayou (Cap. Zeke & Croc)
+
+- **Histoire donnée avant** : dockers et déserteurs des docks impériaux du
+  Mississippi, devenus corsaires d'un fleuve qu'ils refusent de laisser à
+  l'Empire.
+- **Variante de jeu** : Mechas de l'Empire **ON** (à nouveau) + déblocage de
+  l'**Éclair** (mecha bonus) en cas de victoire sur l'objectif de faction —
+  cohérent avec l'objectif *Le Prédateur*, déjà câblé sur `empireKills` dans
+  le code actuel (`factions.js`).
+- **Histoire donnée après** : le joueur comprend que le Bayou ne veut pas le
+  trône — il veut ce que le trône transporte. Premier indice concret sur les
+  convois qui alimentaient Rouge River avant l'assassinat de 1915.
+
+### Chapitre 6 — Dominion (Col. Whitfield & Sterling)
+
+- **Histoire donnée avant** : la finance londonienne qui a jadis aidé à
+  financer l'expansion de Maximilien depuis l'Europe ; le Dominion n'a
+  jamais cherché à conquérir l'Empire, seulement à en vivre.
+- **Variante de jeu** : **Acier Brut** actif sur Rouge River (voir plus
+  haut) — le chapitre où le contrôle littéral de l'arsenal impérial est
+  l'enjeu, en écho direct à l'ability Commerce Impérial du Dominion.
+- **Histoire donnée après** : révélation du régicide de 1915 (l'Empereur
+  Ferdinand II assassiné par une cellule de l'Internationale Noire) et de la
+  mise en place du pantin Léopold par le Consortium — le joueur comprend
+  enfin QUI tient réellement Rouge River depuis cette date.
+
+### Finale — Le Trône Vide
+
+- **Format** : une dernière partie combinant plusieurs variantes déjà vues
+  (Mechas de l'Empire ON + Acier Brut actif), jouable avec la faction de son
+  choix parmi les six — pas de héros supplémentaire, c'est un aboutissement,
+  pas un septième chapitre.
+- **Histoire donnée après** : le pantin Léopold tombe à son tour ; Rouge
+  River continue de tourner sans personne pour vraiment la commander ; les
+  mechas impériaux, sans chaîne de commandement, deviennent les « colosses
+  rouillés » que le jeu de base décrit dans son texte de règles
+  (`rules.js`, section Contexte). **La campagne se referme exactement là où
+  commence une partie standard de Scythe Panamerica.**
+- Cliffhanger explicite vers l'Internationale Noire comme prochain chantier
+  de campagne (chantier séparé, voir plus haut) : on sait qui a tiré en
+  1915, on ne sait toujours pas qui ils sont vraiment.
+
+---
+
+*Ce document est une base de travail, ouverte à l'itération — les variantes
+listées ne sont pas encore implémentées (flags de partie à créer), et l'ordre
+des chapitres peut être réarrangé sans casser la structure.*
