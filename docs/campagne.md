@@ -157,11 +157,10 @@ vont se disputer ce qu'il en reste. » *(cf. lore §III.1-4)*
 
 - **Histoire donnée avant** : le Sud n'a jamais rejoint l'Empire de son
   plein gré — absorbé par la force en 1865, occupé militairement pendant
-  cinquante ans, sans jamais renoncer à l'espoir de s'en libérer (lore
-  §III.1). Le Klan Mécanique, lui, est une police d'occupation cooptée par
-  l'Empire (lore §III.3) — pas la Confédération de Cole. Depuis le régicide,
-  une garnison loyaliste tient Rouge River fermée à tout le monde, Ford y
-  compris.
+  cinquante ans (loi martiale, gouverneurs, garnisons — lore §III.1 et
+  III.3), sans jamais renoncer à l'espoir de s'en libérer. Depuis le
+  régicide, une garnison loyaliste tient Rouge River fermée à tout le monde,
+  Ford y compris.
 - **Variante de jeu** : Mechas de l'Empire **ON**, mission centrée sur la
   prise de la case Rouge River elle-même (pas une simple patrouille croisée
   en chemin) — le joueur affronte directement la garnison loyaliste

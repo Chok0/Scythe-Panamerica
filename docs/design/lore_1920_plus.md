@@ -183,7 +183,7 @@ II reste souverain, Ford n'est encore qu'un fournisseur, quoique
 irremplaçable. *(Cet équilibre a une date de péremption — voir section
 III.4.)*
 
-### 3. L'Empire, le Consortium et le Klan Mécanique
+### 3. L'Empire et le Consortium — deux pouvoirs, pas un
 
 Un point mérite d'être répété parce qu'on l'oublie facilement une fois Rouge
 River au centre de tout : **le Consortium industriel soutient l'Empire, il
@@ -193,24 +193,13 @@ privilégié, pas un souverain caché. Ce basculement-là — Ford devenant, dan
 les faits, plus puissant que le trône — n'arrive qu'après le régicide
 (section III.4). Ne pas le lire en arrière dans les décennies précédentes.
 
-L'occupation du Sud, elle, est de la seule responsabilité de l'Empire. Pour
-tenir un territoire conquis de force et toujours hostile, Cyrus I puis Cyrus
-II ont besoin d'un bras armé local — et le plus efficace est celui qui existe
-déjà : ils cooptent une partie de l'ancienne aristocratie foncière
-confédérée, qui trouve dans la collaboration une manière de garder un
-pouvoir local que la défaite lui aurait autrement retiré. Cette police
-d'occupation prend le nom de **Klan Mécanique** une fois équipée par Rouge
-River — des mechas sans numéro de série, sortis des ateliers Ford la nuit,
-pour des hommes qui pilotaient jadis à cheval. Sa cible : quiconque menace
-l'ordre impérial — les communautés du Mississippi, les Nations Souveraines,
-l'Acadiane francophone, le Frente Popular mexicain, et le reste de la
-population sudiste elle-même, qui n'a jamais accepté l'occupation et qui n'a
-jamais cessé d'espérer sa libération.
-
-C'est cette population-là — pas les collaborateurs du Klan Mécanique — dont
-J. Cole est l'héritier (section IV). Sa Confédération n'a rien à voir avec
-l'appareil de collaboration impériale : elle en est, historiquement, la
-cible autant que les autres provinces occupées. Ce qui les distingue en
+L'occupation du Sud, elle, est de la seule responsabilité de l'Empire — loi
+martiale, gouverneurs militaires, garnisons dans chaque ville tenue. Pas
+d'intermédiaire local, pas de bras armé sous-traité : l'Empire tient le Sud
+directement, à la baïonnette, exactement comme il tient le Mexique conquis
+ou les Grandes Plaines. Cinquante ans d'occupation n'ont jamais éteint
+l'espoir d'une libération — c'est cet espoir-là, et rien d'autre, dont
+J. Cole est l'héritier (section IV). Ce qui distingue sa Confédération en
 1915, c'est l'occasion — voir section III.4.
 
 Et au fond de tout ça, il y a toujours Tesla, dont personne — ni Ford, ni la
@@ -371,8 +360,8 @@ Le Sud n'a jamais rejoint l'Empire de son plein gré : il a été **absorbé
 purement et simplement, par la force**, en 1865, occupé militairement pendant
 cinquante ans par une administration qui n'a jamais demandé son avis (section
 III.1). Il n'a jamais cessé d'espérer s'en libérer un jour. J. Cole est
-l'héritier de cet espoir-là, pas de la collaboration du Klan Mécanique
-(section III.3) — et en 1915, l'occasion se présente enfin : le régicide
+l'héritier de cet espoir-là — et en 1915, l'occasion se présente enfin : le
+régicide
 paralyse le noyau impérial, et une garnison loyaliste s'accroche à Rouge
 River sans personne pour lui donner d'ordres. Cole ne la déloge pas par
 idéal. **Il vient au secours de Ford, en échange de facilités de paiement
@@ -541,8 +530,10 @@ fièvre — on combat l'infection qui la cause. Et l'infection, c'est la peur. �
 Le fascisme n'est pas une faction, c'est une **maladie des factions** : un
 peuple humilié, une économie en ruines, des machines de guerre sans emploi, et
 quelqu'un qui dit « je sais qui est responsable ». Sur le continent
-Panamerica, il porte déjà un visage : le **Klan Mécanique** (section III.3),
-et potentiellement un second si la Confédération de J. Cole bascule.
+Panamerica, le risque est déjà visible dans la Confédération de J. Cole : un
+peuple occupé cinquante ans qui, la première fois qu'il retrouve les moyens
+d'agir (chapitre 1 de la campagne), les emploie à reconstruire exactement ce
+qu'il a subi.
 
 Dans la logique du jeu, le fascisme est un **compteur interne à chaque
 faction** — la Fièvre.
