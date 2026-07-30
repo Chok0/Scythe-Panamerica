@@ -9,7 +9,10 @@ const RES_EMOJI = { petrole: "🛢", metal: "⚙", bois: "🪵", nourriture: "�
 const BOTTOM_EMOJI = ["⬆", "⬡", "🏗", "🤝"]; // Upgrade, Deploy, Build, Enlist — rendus via Glyph (icônes SVG canoniques)
 // Emblème par plateau joueur — tient le rôle du blason de faction pour donner
 // aux cartes de plateau la même structure d'en-tête (emblème + nom doré).
-const MAT_ICONS = { 1: "🏭", 2: "🔧", 3: "🧭", 4: "⚒", 5: "🌾", 6: "🏡" };
+// Les plateaux du jeu original (ids 101-107, débloqués en campagne) portent le
+// même motif d'emblème que les plateaux standard.
+const MAT_ICONS = { 1: "🏭", 2: "🔧", 3: "🧭", 4: "⚒", 5: "🌾", 6: "🏡",
+  101: "⚙", 102: "📐", 103: "🎖", 104: "🔩", 105: "🌽", 106: "💡", 107: "🪖" };
 
 const DIFFICULTIES = [
   { key: "facile", label: "Facile", desc: "bots imprévisibles et sous-optimaux" },
@@ -31,12 +34,13 @@ const frameStyle = (selected) => ({
   boxShadow: bevel(selected),
 });
 
-export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, mapChoice, setMapChoice, difficulty, setDifficulty, empireEnabled, setEmpireEnabled, startGame, onShowRules, savedGame, onResume }) {
+export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, mapChoice, setMapChoice, difficulty, setDifficulty, empireEnabled, setEmpireEnabled, startGame, onShowRules, savedGame, onResume,
+  mission, onOpenCampaign, onQuitMission, mats = MATS, unlocks = [], useUnlocked = true, setUseUnlocked }) {
   const [hoverFaction, setHoverFaction] = useState(null);
   const previewId = hoverFaction || selFaction;
   const preview = previewId ? FACTIONS[previewId] : null;
   const randomFaction = () => setSelFaction(FACTION_IDS[Math.floor(Math.random() * FACTION_IDS.length)]);
-  const randomMat = () => setSelMat(MATS[Math.floor(Math.random() * MATS.length)].id);
+  const randomMat = () => setSelMat(mats[Math.floor(Math.random() * mats.length)].id);
   const diceBtnStyle = {
     padding: "4px 12px", fontSize: 11, letterSpacing: 1, borderRadius: 4,
     background: "transparent", color: "var(--gold-dim)", border: "1px solid var(--border)",
@@ -53,14 +57,79 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
         <p style={{color:"var(--text-dim)",fontSize:13,fontStyle:"italic",letterSpacing:1.5,marginBottom:20,textAlign:"center",maxWidth:320,lineHeight:1.6}}>
           &laquo; L'Empire se meurt. Les machines ne savent pas. &raquo;
         </p>
-        <button onClick={onShowRules} style={{
-          marginBottom:32,padding:"8px 28px",fontSize:12,letterSpacing:3,textTransform:"uppercase",
-          background:"transparent",color:"var(--gold-dim)",border:"1px solid var(--border)",
-          borderRadius:4,fontWeight:700,fontFamily:"'Bitter',serif",boxShadow:bevel(false),
-        }}>Regles du Jeu</button>
+        <div style={{display:"flex",gap:10,marginBottom:32,flexWrap:"wrap",justifyContent:"center"}}>
+          <button onClick={onShowRules} style={{
+            padding:"8px 28px",fontSize:12,letterSpacing:3,textTransform:"uppercase",
+            background:"transparent",color:"var(--gold-dim)",border:"1px solid var(--border)",
+            borderRadius:4,fontWeight:700,fontFamily:"'Bitter',serif",boxShadow:bevel(false),
+          }}>Regles du Jeu</button>
+          {onOpenCampaign&&(
+            <button onClick={onOpenCampaign} title="Campagne « La Chute de l'Empire » — 5 missions qui débloquent le contenu du jeu original" style={{
+              padding:"8px 28px",fontSize:12,letterSpacing:3,textTransform:"uppercase",
+              background:"transparent",color:"var(--gold-dim)",border:"1px solid var(--border)",
+              borderRadius:4,fontWeight:700,fontFamily:"'Bitter',serif",boxShadow:bevel(false),
+            }}>🎖 Campagne</button>
+          )}
+        </div>
+
+        {/* ── Bandeau de mission : la config (adversaires, carte, Empire…) est
+            imposée par la mission ; seuls la faction et le plateau restent au
+            choix du joueur. ── */}
+        {mission&&(
+          <div className="fade-in" style={{
+            width:"100%",marginBottom:28,padding:"16px 20px",borderRadius:8,
+            background:`${GRAIN}, rgba(201,168,76,0.06)`,border:"2px solid var(--gold)",boxShadow:bevel(true),
+          }}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+              <span style={{fontSize:24}}>{mission.icon}</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,letterSpacing:3,textTransform:"uppercase",color:"var(--text-muted)"}}>Mission {mission.num} · {mission.act}</div>
+                <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:19,color:"var(--gold)"}}>{mission.name}</div>
+              </div>
+              {onQuitMission&&(
+                <button onClick={onQuitMission} style={{
+                  padding:"6px 14px",fontSize:11,letterSpacing:1,background:"transparent",
+                  color:"var(--text-muted)",border:"1px solid var(--border)",borderRadius:4,fontFamily:"'Bitter',serif",
+                }}>Quitter la mission</button>
+              )}
+            </div>
+            <div style={{fontSize:13,color:"var(--text2)",lineHeight:1.6,marginBottom:8}}>{mission.brief}</div>
+            <div style={{fontSize:13}}><span style={{color:"var(--gold)"}}>🎯 Objectif</span> — {mission.goal.label}</div>
+            {mission.honors&&<div style={{fontSize:13,color:"var(--text-dim)"}}><span style={{color:"var(--gold-dim)"}}>🎖 Honneurs</span> — {mission.honors.label}</div>}
+            <div style={{fontSize:12,color:"var(--text-dim)",marginTop:8,fontStyle:"italic"}}>
+              Configuration imposée : {mission.setup.bots} adversaire{mission.setup.bots>1?"s":""} ({mission.setup.difficulty})
+              {mission.setup.empire?" · patrouilles de l'Empire actives":""}
+              {mission.setup.empireRails?" · rails impériaux posés":""}
+              {mission.setup.teslaStar?" · le prototype Tesla pose une étoile":""}
+            </div>
+          </div>
+        )}
+
+        {/* Contenu débloqué en campagne — utilisable aussi en partie libre */}
+        {unlocks.length>0&&(
+          <div style={{width:"100%",marginBottom:28,padding:"12px 16px",borderRadius:6,
+            background:"rgba(90,138,90,0.07)",border:"1px solid #4a6a4a"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:useUnlocked?6:0}}>
+              <div style={{fontSize:11,letterSpacing:3,textTransform:"uppercase",color:"#a8cf90",fontFamily:"'Bitter',serif"}}>Contenu de campagne</div>
+              {!mission&&setUseUnlocked&&(
+                <button onClick={()=>setUseUnlocked(v=>!v)} style={{
+                  padding:"4px 12px",fontSize:11,letterSpacing:1,borderRadius:4,fontFamily:"'Bitter',serif",fontWeight:700,
+                  background:useUnlocked?"rgba(90,138,90,0.20)":"transparent",
+                  color:useUnlocked?"#a8cf90":"var(--text-muted)",
+                  border:`1px solid ${useUnlocked?"#5a8a5a":"var(--border)"}`,
+                }}>{useUnlocked?"ACTIVÉ":"désactivé"}</button>
+              )}
+            </div>
+            {useUnlocked&&(
+              <div style={{fontSize:12,color:"var(--text-dim)"}}>
+                {unlocks.map(u=>`${u.icon} ${u.name}`).join(" · ")}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Partie sauvegardée (autosave à chaque tour) : reprise en un clic */}
-        {savedGame&&(
+        {savedGame&&!mission&&(
           <button onClick={onResume} className="fade-in" style={{
             marginBottom:32,padding:"12px 40px",fontSize:13,letterSpacing:3,textTransform:"uppercase",
             background:"linear-gradient(135deg,#3a5a3a,#254025)",color:"#cfe8bf",
@@ -69,6 +138,7 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
           }}>💾 Reprendre la partie — tour {savedGame.turn}{FACTIONS[savedGame.faction]?` · ${FACTIONS[savedGame.faction].name}`:""}</button>
         )}
 
+        {!mission&&(<>
         <div style={{color:"var(--gold-dim)",fontSize:13,fontWeight:600,marginBottom:10,letterSpacing:3,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Adversaires</div>
         <div style={{display:"flex",gap:8,marginBottom:32}}>
           {[1,2,3,4].map(n=>(
@@ -129,6 +199,7 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
             🤖 Bots de l'Empire : {empireEnabled?"ACTIVÉS":"désactivés"} <span style={{opacity:0.7}}>(campagne)</span>
           </button>
         </div>
+        </>)}
 
         <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
           <div style={{color:"var(--gold-dim)",fontSize:13,fontWeight:600,letterSpacing:3,textTransform:"uppercase",fontFamily:"'Bitter',serif"}}>Votre Faction</div>
@@ -196,15 +267,16 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
             <button onClick={randomMat} style={diceBtnStyle}>🎲 Aléatoire</button>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8,width:"100%",marginBottom:32}}>
-            {MATS.map(pm=>{const sel=selMat===pm.id;return(
+            {mats.map(pm=>{const sel=selMat===pm.id;return(
               <button key={pm.id} onClick={()=>setSelMat(pm.id)} className="fade-in" style={{
                 ...frameStyle(sel),
                 padding:"12px 12px",color:"var(--text)",textAlign:"left",display:"flex",flexDirection:"column",gap:6,
               }}>
                 {/* En-tête identique aux cartes de faction : emblème + nom en accent doré */}
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <div style={{width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,opacity:sel?1:0.9,filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.6))"}}>{MAT_ICONS[pm.id]}</div>
+                  <div style={{width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,opacity:sel?1:0.9,filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.6))"}}>{MAT_ICONS[pm.id]||"📜"}</div>
                   <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:18,color:"var(--gold)",lineHeight:1.2}}>{pm.name}</div>
+                  {pm.original&&<div title="Plateau du jeu original — débloqué en campagne" style={{marginLeft:"auto",fontSize:10,letterSpacing:1,color:"#a8cf90",border:"1px solid #4a6a4a",borderRadius:3,padding:"1px 5px",flexShrink:0}}>🎖</div>}
                 </div>
                 {/* Stats de départ — même motif « icône + valeur en gras blanc » que les factions */}
                 <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",fontSize:15,fontFamily:"'IBM Plex Mono',monospace"}}>
@@ -228,7 +300,7 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
             color:"var(--bg)",border:"none",borderRadius:6,padding:"14px 56px",fontSize:14,
             letterSpacing:5,textTransform:"uppercase",fontWeight:700,fontFamily:"'Bitter',serif",
             boxShadow:"0 4px 30px rgba(201,168,76,0.35),inset 0 1px 0 rgba(255,255,255,0.15)",
-          }}>Commencer</button>
+          }}>{mission?`Lancer la mission ${mission.num}`:"Commencer"}</button>
         )}
       </div>
     </div>

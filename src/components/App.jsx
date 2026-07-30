@@ -8,16 +8,19 @@ import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, CURRENT_MAP, DEFAULT_MAP, CLASSIC
 import { generateAcceptedMap } from '../data/mapGen.js';
 import { getCombatBonus } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
-import { EMPIRE_START, drawEmpireCombat } from '../data/empire.js';
+import { EMPIRE_START, EMPIRE_RAILS, drawEmpireCombat } from '../data/empire.js';
 import { ENCOUNTERS } from '../data/encounters.js';
-import { FACTORY_RR_HEX, FACTORY_COL, PLANS_FORD, PLANS_TESLA, ALL_FACTORY_CARDS, TESLA_FRAGMENTS_REQUIRED, TESLA_OFFER_SIZE, factoryCostLabel, factoryGainLabel, factoryEffectLabel, FACTORY_BOTTOM_DESC } from '../data/plans.js';
+import { FACTORY_RR_HEX, FACTORY_COL, PLANS_FORD, PLANS_TESLA, PLANS_ORIGINAL, ALL_FACTORY_CARDS, TESLA_FRAGMENTS_REQUIRED, TESLA_OFFER_SIZE, factoryCostLabel, factoryGainLabel, factoryEffectLabel, FACTORY_BOTTOM_DESC } from '../data/plans.js';
 import { MATS, matById, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes, FR_TOP as FR_TOP_MAP, FR_BOT as FR_BOT_MAP, frTop, frBot } from '../data/mats.js';
-import { OBJECTIVES, ALL_OBJECTIVES } from '../data/objectives.js';
+import { OBJECTIVES, OBJECTIVES_ORIGINAL, ALL_OBJECTIVES } from '../data/objectives.js';
+import { UNLOCKS, missionById } from '../data/campaign.js';
+import { loadProgress, saveProgress, resetProgress, completeMission, evaluateMission, availableMats, matIsAvailable, activeUnlocks, hasUnlock, missionLabel } from '../logic/campaign.js';
 import { structureBonusDetail, pickStructureBonus, STRUCTURE_BONUSES } from '../data/structureBonus.js';
 import { reconcileHand, topCardsSum, spendTopCards, spendPickedCards, handSummary } from '../logic/cards.js';
 import RulesPage from './RulesPage.jsx';
 import Soundtrack from './Soundtrack.jsx';
 import SetupScreen from './SetupScreen.jsx';
+import CampaignScreen from './CampaignScreen.jsx';
 import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
@@ -87,6 +90,18 @@ export default function App(){
   const[empireEnabled,setEmpireEnabled]=useState(false);
   const[difficulty,setDifficulty]=useState("normal");
   const[structureBonus,setStructureBonus]=useState(null); // tuile bonus de construction tirée au début
+  // ── MODE CAMPAGNE ──
+  // `campaign` = progression persistée (missions réussies + contenu débloqué).
+  // `mission` = mission choisie sur l'écran de campagne, en attente de lancement
+  // ou en cours ; `missionRules` = ses règles spéciales figées au démarrage
+  // (une mission quittée en cours de partie ne doit pas changer les règles).
+  const[campaign,setCampaign]=useState(()=>loadProgress());
+  const[showCampaign,setShowCampaign]=useState(false);
+  const[mission,setMission]=useState(null);
+  const[missionRules,setMissionRules]=useState(null); // {id,teslaStar}
+  const[missionResult,setMissionResult]=useState(null); // {success,honors} — évalué en fin de partie
+  // Contenu débloqué utilisé en partie libre (toujours actif dans une mission)
+  const[useUnlocked,setUseUnlocked]=useState(true);
   const[players,setPlayers]=useState([]);
   const[currentP,setCurrentP]=useState(0);
   const[turn,setTurn]=useState(1);
@@ -356,6 +371,9 @@ export default function App(){
   // telle quelle (pure data) et rechargée via loadMap.
   const serializeGame=useCallback(()=>JSON.stringify({
     v:2,date:Date.now(),turn,difficulty,empireEnabled,
+    // Campagne : la mission en cours et ses règles spéciales survivent à une
+    // reprise, sinon la partie reprise ne compterait plus pour la progression
+    mission:mission?.id||null,missionRules,
     map:CURRENT_MAP,empire,rails,encounterTokens:[...encounterTokens],
     factoryOffer:factoryOffer.map(c=>c.id),teslaOffer:teslaOffer.map(c=>c.id),
     structureBonus:structureBonus?structureBonus.id:null,
@@ -363,7 +381,7 @@ export default function App(){
     log:log.slice(-500),step:stepRef.current,
     players:players.map(p=>({...p,objective:p.objective?p.objective.id:null,objectives:(p.objectives||[]).map(o=>o.id),
       factoryCard:p.factoryCard?p.factoryCard.id:null})),
-  }),[turn,difficulty,empireEnabled,empire,rails,encounterTokens,factoryOffer,teslaOffer,structureBonus,log,players]);
+  }),[turn,difficulty,empireEnabled,empire,rails,encounterTokens,factoryOffer,teslaOffer,structureBonus,log,players,mission,missionRules]);
 
   useEffect(()=>{
     if(phase!=="playing"||currentP!==0||players.length===0||combat||encounter||botRunning)return;
@@ -394,6 +412,11 @@ export default function App(){
     setStructureBonus(data.structureBonus!=null?(STRUCTURE_BONUSES.find(b=>b.id===data.structureBonus)||null):null);
     setDifficulty(data.difficulty||"normal");
     setEmpireEnabled(!!data.empireEnabled);
+    // Campagne : mission et règles spéciales de la partie sauvegardée
+    const savedMission=data.mission?missionById(data.mission):null;
+    setMission(savedMission);
+    setMissionRules(data.missionRules||{missionId:savedMission?.id||null,teslaStar:false});
+    setMissionResult(null);
     setPlayers(data.players.map(p=>({...p,
       objective:p.objective!=null?(ALL_OBJECTIVES.find(o=>o.id===p.objective)||null):null,
       objectives:(p.objectives||[]).map(id=>ALL_OBJECTIVES.find(o=>o.id===id)).filter(Boolean),
@@ -417,9 +440,130 @@ export default function App(){
     }catch{return null;}
   },[phase]);
 
+  // ── SCORING FINAL (règles Scythe) ──
+  // Calculé hors du rendu de fin de partie : le mode campagne a besoin du
+  // classement pour évaluer l'objectif de mission dès que la partie se termine.
+  const finalScores=useMemo(()=>{
+    if(players.length===0)return[];
+    return players.map(p=>{
+      const f=FACTIONS[p.faction];
+      const popTier=p.pop<=6?0:p.pop<=12?1:2;
+      const starMult=[3,4,5][popTier];
+      const terMult=[2,3,4][popTier];
+      const resMult=[1,2,3][popTier];
+      // Count territories: hexes with at least one unit (l'hex de base ne
+      // compte pas comme territoire — il est hors plateau)
+      const unitHexes=new Set([p.hero,...p.workers.map(w=>w.hexId),...p.mechs.map(m=>m.hexId)]);
+      [...unitHexes].forEach(id=>{if(isBaseHex(id))unitHexes.delete(id);});
+      // Buildings count as territory if hex has no enemy (règle Scythe : une
+      // unité ennemie SUR l'hex en prend le contrôle malgré le bâtiment)
+      const enemyOccupied=new Set();
+      players.forEach(op=>{
+        if(op===p)return;
+        enemyOccupied.add(op.hero);
+        op.mechs.forEach(m=>enemyOccupied.add(m.hexId));
+        op.workers.forEach(w=>enemyOccupied.add(w.hexId));
+      });
+      (p.buildings||[]).forEach(b=>{if(!enemyOccupied.has(b.hexId))unitHexes.add(b.hexId);});
+      // Trap tokens (Frente) count as territory
+      (p.trapTokens||[]).forEach(t=>{if(!t.disarmed)unitHexes.add(t.hexId);});
+      // Comptoir tokens (Acadiane) count as +1 territory each (not adj to HB)
+      let flagBonus=0;
+      const hb=HOME_BASES[p.faction];
+      const hbHex=baseHexAt(hb);
+      (p.flagTokens||[]).forEach(fl=>{
+        const isAdjHB=hbHex&&(ADJ[hbHex.id]||[]).includes(fl.hexId);
+        if(!isAdjHB)flagBonus++;
+      });
+      const territories=unitHexes.size;
+      // Factory = 3 extra territories if controlled
+      // Règle originale : l'Usine compte 3 territoires EN TOUT (1 + bonus 2)
+      const factoryBonus=unitHexes.has(22)?2:0;
+      // Resources — rule: only resources on territories you control are scored.
+      // Pas de plafond (BALANCE.resScoringCap=9999) : le contre du gros magot
+      // est le pillage — il attire les raids, pas une règle de score.
+      let totalRes=0;Object.entries(p.resources).forEach(([hid,r])=>{if(unitHexes.has(parseInt(hid)))Object.values(r).forEach(n=>totalRes+=n);});
+      const resPairs=Math.floor(Math.min(totalRes,BALANCE.resScoringCap)/2);
+      const starScore=p.stars*starMult;
+      const terScore=(territories+factoryBonus+flagBonus)*terMult;
+      const resScore=resPairs*resMult;
+      // Bonus de construction : barème 2/4/6/9$ (ou tuile spéciale) selon la
+      // tuile tirée — `players` sert aux tuiles relatives aux adversaires
+      const sbDetail=structureBonusDetail(p,structureBonus,players);
+      // Comptoirs Acadiane : postes de commerce — +2$ chacun au scoring
+      // (v0.12 : levier structurel mesuré, sa trésorerie était la pire du jeu)
+      const flagCoins=(p.flagTokens||[]).length*2;
+      const total=starScore+terScore+resScore+p.coins+sbDetail.coins+flagCoins;
+      return{faction:p.faction,name:f.name,color:f.color,hero:f.hero,isBot:p.isBot,
+        stars:p.stars,pop:p.pop,popTier,territories,factoryBonus,flagBonus,totalRes,resPairs,coins:p.coins,
+        starScore,terScore,resScore,total,starMult,terMult,resMult,
+        sbCount:sbDetail.count,sbCoins:sbDetail.coins,flagCoins};
+    }).sort((a,b)=>b.total-a.total);
+  },[players,structureBonus]);
+
+  // ── CAMPAGNE : verdict de mission à la fin de la partie ──
+  // La partie se termine normalement (6 étoiles) ; l'objectif de mission est
+  // alors évalué sur l'état final, et sa réussite enregistre la progression
+  // (et débloque la récompense) une seule fois.
+  useEffect(()=>{
+    if(phase!=="ended"||!mission||missionResult||finalScores.length===0)return;
+    const me0=players[0];if(!me0||me0.isBot)return;
+    const idx=finalScores.findIndex(s=>s.faction===me0.faction);
+    const row=idx>=0?finalScores[idx]:null;
+    const res=evaluateMission(mission,me0,{
+      players,turn,rank:idx+1,score:row?.total??0,sbCoins:row?.sbCoins??0,
+    });
+    setMissionResult(res);
+    addLog(res.success
+      ?`🎖 Mission ${mission.num} réussie — ${mission.goal.label}${res.honors?" · 🎖 HONNEURS":""}`
+      :`🎖 Mission ${mission.num} échouée — objectif non rempli : ${mission.goal.label}`);
+    if(res.success){
+      const next=completeMission(campaign,mission.id,{honors:res.honors,score:row?.total??0,rank:idx+1,turn});
+      setCampaign(next);saveProgress(next);
+      const reward=UNLOCKS[mission.reward];
+      if(reward&&!hasUnlock(campaign,mission.reward))addLog(`${reward.icon} Débloqué : ${reward.name} — ${reward.desc}`);
+    }
+  },[phase,mission,missionResult,finalScores,players,turn,campaign,addLog]);
+
+  // Lancement d'une mission depuis l'écran de campagne : sa configuration
+  // s'impose aux réglages de l'écran de setup (qui les verrouille), le joueur
+  // n'y choisit plus que sa faction et son plateau.
+  const startMission=useCallback((m)=>{
+    setMission(m);setShowCampaign(false);
+    setNumBots(m.setup.bots);setDifficulty(m.setup.difficulty);
+    setMapChoice(m.setup.map||"v3");setEmpireEnabled(!!m.setup.empire);
+    setMissionResult(null);
+    // Un plateau original sélectionné puis reverrouillé resterait invalide
+    if(selMat!=null&&!matIsAvailable(selMat,campaign,true))setSelMat(null);
+  },[campaign,selMat]);
+
+  const quitMission=useCallback(()=>{setMission(null);setMissionResult(null);},[]);
+
+  // Plateaux sélectionnables : standard + originaux débloqués (une mission joue
+  // toujours avec le contenu débloqué)
+  const matPool=useMemo(()=>availableMats(campaign,mission?true:useUnlocked),[campaign,mission,useUnlocked]);
+  const unlockList=useMemo(()=>activeUnlocks(campaign,mission?true:useUnlocked),[campaign,mission,useUnlocked]);
+  // Contenu débloqué désactivé alors qu'un plateau original était choisi :
+  // le choix ne pointe plus sur rien de sélectionnable → on le vide.
+  useEffect(()=>{
+    if(phase==="setup"&&selMat!=null&&!matPool.some(m=>m.id===selMat))setSelMat(null);
+  },[phase,selMat,matPool]);
+
   const startGame=useCallback(()=>{
     if(!selFaction||!selMat)return;
     try{localStorage.removeItem('pa-save');}catch{/* rien */}
+    // ── Campagne : règles spéciales de la mission + contenu débloqué ──
+    // Une mission joue TOUJOURS avec le contenu débloqué ; en partie libre le
+    // joueur peut le désactiver (bascule de l'écran de setup).
+    const ms=mission?.setup||null;
+    const unlockedOn=mission?true:useUnlocked;
+    const plansOriginalOn=unlockedOn&&hasUnlock(campaign,"plans_original");
+    const objOriginalOn=unlockedOn&&hasUnlock(campaign,"objectives_original");
+    // L'étoile de la quête Tesla : règle de la mission 4, puis acquise partout
+    const teslaStarOn=!!ms?.teslaStar||(unlockedOn&&hasUnlock(campaign,"tesla_star"));
+    setMissionRules({missionId:mission?.id||null,teslaStar:teslaStarOn});
+    setMissionResult(null);
+    if(mission)addLog(`🎖 ${missionLabel(mission)} — 🎯 ${mission.goal.label}`);
     // Carte : v3 (défaut), configuration initiale (v2), ou procédurale
     if(mapChoice==="random"){
       const gen=generateAcceptedMap(Math.random);
@@ -435,11 +579,18 @@ export default function App(){
     encounterDeckRef.current=shuffleArray(ENCOUNTERS);
     setEmpire(empireEnabled?Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])):{});
     if(empireEnabled)addLog(`🤖 Bots de l'Empire activés (mécanique campagne)`);
-    // La carte de base démarre sans rails — seules les Gares en posent
-    setRails([]);
+    // La carte de base démarre sans rails — seules les Gares en posent. Les
+    // rails historiques de l'Empire ne reviennent que dans les missions qui
+    // les demandent (setup.empireRails).
+    if(ms?.empireRails){
+      setRails(EMPIRE_RAILS.map(r=>[...r]));
+      addLog(`🛤 Rails de l'Empire déjà posés : ${EMPIRE_RAILS.map(([a,b])=>`${a}–${b}`).join(", ")}`);
+    }else setRails([]);
     // 🏦 Tuile bonus de pose tirée aussi en partie de base (demande de partie
-    // réelle) — la mission « Ruée vers l'or » de la campagne garde sa variante
-    const sb=pickStructureBonus();
+    // réelle) — une mission peut en imposer une (« La Ruée vers l'Or »)
+    const forced=ms?.structureBonus&&ms.structureBonus!=="random"
+      ?STRUCTURE_BONUSES.find(b=>b.id===ms.structureBonus):null;
+    const sb=forced||pickStructureBonus();
     setStructureBonus(sb);
     addLog(`🏦 Bonus de pose : ${sb.icon} ${sb.name} — ${sb.scale} ${sb.desc}`);
     const usedFactions=[selFaction];const usedMats=[selMat];
@@ -458,7 +609,11 @@ export default function App(){
       ps.push(bot);
       usedFactions.push(availF[i]);usedMats.push(availM[i%availM.length]);
     }
-    const shuffled=shuffleArray(OBJECTIVES);
+    // Deck des missions secrètes : le deck original (21 cartes) rejoint le deck
+    // standard une fois débloqué en campagne
+    const objPool=objOriginalOn?[...OBJECTIVES,...OBJECTIVES_ORIGINAL]:OBJECTIVES;
+    if(objOriginalOn)addLog(`🗝 Missions secrètes originales en jeu (${objPool.length} cartes)`);
+    const shuffled=shuffleArray(objPool);
     ps.forEach((p,i)=>{
       const o1=shuffled[(i*2)%shuffled.length];const o2=shuffled[(i*2+1)%shuffled.length];
       p.objectives=[o1,o2];
@@ -467,12 +622,15 @@ export default function App(){
     // ── Offre de l'Usine (règle Scythe) : nb joueurs + 1 cartes Ford tirées au
     // hasard, posées sur la Rouge River pour toute la partie — chaque visiteur
     // en retire une. Les prototypes Tesla s'exposent à côté (fragment requis).
-    // Le deck ORIGINAL (PLANS_ORIGINAL) reste de côté : déblocage en campagne.
-    const offer=drawFactoryOffer(PLANS_FORD,ps.length+1);
+    // Le deck ORIGINAL (PLANS_ORIGINAL) rejoint le tirage une fois débloqué
+    // par la campagne (mission 3) — sinon il reste de côté.
+    const fordPool=plansOriginalOn?[...PLANS_FORD,...PLANS_ORIGINAL]:PLANS_FORD;
+    const offer=drawFactoryOffer(fordPool,ps.length+1);
     setFactoryOffer(offer);
     setTeslaOffer(drawFactoryOffer(PLANS_TESLA,TESLA_OFFER_SIZE));
     setFactoryFlow(null);
-    addLog(`⚙ Usine Rouge River : ${offer.length} plans Ford face cachée (joueurs + 1) — seuls les prototypes Tesla sont en vitrine (clic sur l'Usine)`);
+    addLog(`⚙ Usine Rouge River : ${offer.length} plans face cachée (joueurs + 1)${plansOriginalOn?" — deck original inclus":""} — seuls les prototypes Tesla sont en vitrine (clic sur l'Usine)`);
+    if(teslaStarOn)addLog(`🔬⭐ Quête Tesla : prendre un prototype pose une étoile`);
     setPlayers(ps);setPhase("playing");setCurrentP(0);setTurn(1);turnRef.current=1;
     addLog(`⚔ ${ps.length} joueurs`);
     ps.forEach(p=>{
@@ -488,7 +646,7 @@ export default function App(){
       const y=Math.max(MAP_BASE.y,Math.min(MAP_BASE.y+MAP_BASE.h-zh,heroHex.ry-zh/2));
       setMapView({x,y,w:zw,h:zh});
     }
-  },[selFaction,selMat,numBots,mapChoice,empireEnabled,difficulty,addLog]);
+  },[selFaction,selMat,numBots,mapChoice,empireEnabled,difficulty,addLog,mission,campaign,useUnlocked]);
 
   const revealObjective=useCallback((objIdx)=>{
     const p=players[0];if(!p||p.objectiveRevealed)return;
@@ -778,6 +936,11 @@ export default function App(){
           const card=pool.find(c=>c.deck==="tesla")||pool[Math.floor(Math.random()*pool.length)];
           const bp={...n[cp]};
           claimFactoryCard(bp,card); // consomme les fragments si prototype Tesla
+          // Même règle pour les bots que pour le joueur (campagne : quête Tesla)
+          if(missionRules?.teslaStar&&card.deck==="tesla"&&!bp.starTesla){
+            bp.stars=(bp.stars||0)+1;bp.starTesla=true;
+            logs.push(`⭐🔬 ${FACTIONS[bp.faction].name}: quête Tesla accomplie !`);
+          }
           n[cp]=bp;
           if(card.deck==="tesla")setTeslaOffer(prev=>prev.filter(c=>c.id!==card.id));
           else setFactoryOffer(prev=>prev.filter(c=>c.id!==card.id));
@@ -811,7 +974,7 @@ export default function App(){
       }
     },350);
     return()=>clearTimeout(timer);
-  },[botRunning,currentP,players,phase,empire,turn,rails,encounterTokens,factoryOffer,teslaOffer,addLog,addLogs]);
+  },[botRunning,currentP,players,phase,empire,turn,rails,encounterTokens,factoryOffer,teslaOffer,addLog,addLogs,missionRules]);
 
   // After top-row → show bottom-row option
   const endHumanTurn=useCallback((col,movedOverride)=>{
@@ -2406,19 +2569,23 @@ export default function App(){
   // colonne d'action du joueur pour le reste de la partie.
   const pickFactoryCard=useCallback((card)=>{
     if(!rougeRiver)return;
+    // Campagne : l'étoile de la quête Tesla (mission 4, puis acquise partout)
+    const teslaStar=!!missionRules?.teslaStar&&card.deck==="tesla";
     setPlayers(prev=>{
       const n=[...prev];const p={...n[0]};
       claimFactoryCard(p,card); // consomme les fragments si prototype Tesla
+      if(teslaStar&&!p.starTesla){p.stars=(p.stars||0)+1;p.starTesla=true;}
       n[0]=p;return n;
     });
     if(card.deck==="tesla")setTeslaOffer(prev=>prev.filter(c=>c.id!==card.id));
     else setFactoryOffer(prev=>prev.filter(c=>c.id!==card.id));
     if(card.deck==="tesla")addLog(`🔬 ${TESLA_FRAGMENTS_REQUIRED} Fragments Tesla consommés`);
+    if(teslaStar)addLog(`⭐🔬 Quête Tesla accomplie — prototype en main !`);
     addLog(`⚙ Carte d'usine choisie: ${card.name}${card.deck==="tesla"?" (Tesla)":""} — HAUT ${factoryCostLabel(card)} → ${factoryGainLabel(card)} · BAS ${FACTORY_BOTTOM_DESC}`);
     setRougeRiver(null);
     const moved=(me.movedUnits||[]).length;
     if(moved>=effMoveLimit){setTimeout(()=>endMoveDone(),100);}
-  },[rougeRiver,me,effMoveLimit,endMoveDone,addLog]);
+  },[rougeRiver,me,effMoveLimit,endMoveDone,addLog,missionRules]);
 
   const doMove=(unitType,unitId,fromHex)=>{
     if(!me.movesLeft)setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:effMoveLimit,movedUnits:[]};return n;});
@@ -2545,70 +2712,25 @@ export default function App(){
   // ══════════ RULES OVERLAY ══════════
   if(showRules) return <RulesPage onClose={()=>setShowRules(false)} />;
 
+  // ══════════ CAMPAGNE — CHOIX DE MISSION ══════════
+  if(phase==="setup"&&showCampaign){
+    return <CampaignScreen progress={campaign} onStartMission={startMission}
+      onBack={()=>setShowCampaign(false)}
+      onReset={()=>{setCampaign(resetProgress());setMission(null);setMissionResult(null);}} />;
+  }
+
   // ══════════ SETUP SCREEN ══════════
   if(phase==="setup"){
-    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} mapChoice={mapChoice} setMapChoice={setMapChoice} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={startGame} onShowRules={()=>setShowRules(true)} savedGame={savedGame} onResume={resumeSaved} />;
+    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} mapChoice={mapChoice} setMapChoice={setMapChoice} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={startGame} onShowRules={()=>setShowRules(true)} savedGame={savedGame} onResume={resumeSaved}
+      mission={mission} onOpenCampaign={()=>setShowCampaign(true)} onQuitMission={quitMission}
+      mats={matPool} unlocks={unlockList} useUnlocked={useUnlocked} setUseUnlocked={setUseUnlocked} />;
   }
 
   // (pick_objective phase removed — player keeps both objectives per Scythe rules)
 
   // ══════════ END GAME — SCORING ══════════
   if(phase==="ended"&&players.length>0){
-    // Calculate final scores (Scythe scoring)
-    const scores=players.map(p=>{
-      const f=FACTIONS[p.faction];
-      const popTier=p.pop<=6?0:p.pop<=12?1:2;
-      const starMult=[3,4,5][popTier];
-      const terMult=[2,3,4][popTier];
-      const resMult=[1,2,3][popTier];
-      // Count territories: hexes with at least one unit (l'hex de base ne
-      // compte pas comme territoire — il est hors plateau)
-      const unitHexes=new Set([p.hero,...p.workers.map(w=>w.hexId),...p.mechs.map(m=>m.hexId)]);
-      [...unitHexes].forEach(id=>{if(isBaseHex(id))unitHexes.delete(id);});
-      // Buildings count as territory if hex has no enemy (règle Scythe : une
-      // unité ennemie SUR l'hex en prend le contrôle malgré le bâtiment)
-      const enemyOccupied=new Set();
-      players.forEach(op=>{
-        if(op===p)return;
-        enemyOccupied.add(op.hero);
-        op.mechs.forEach(m=>enemyOccupied.add(m.hexId));
-        op.workers.forEach(w=>enemyOccupied.add(w.hexId));
-      });
-      (p.buildings||[]).forEach(b=>{if(!enemyOccupied.has(b.hexId))unitHexes.add(b.hexId);});
-      // Trap tokens (Frente) count as territory
-      (p.trapTokens||[]).forEach(t=>{if(!t.disarmed)unitHexes.add(t.hexId);});
-      // Comptoir tokens (Acadiane) count as +1 territory each (not adj to HB)
-      let flagBonus=0;
-      const hb=HOME_BASES[p.faction];
-      const hbHex=baseHexAt(hb);
-      (p.flagTokens||[]).forEach(fl=>{
-        const isAdjHB=hbHex&&(ADJ[hbHex.id]||[]).includes(fl.hexId);
-        if(!isAdjHB)flagBonus++;
-      });
-      const territories=unitHexes.size;
-      // Factory = 3 extra territories if controlled
-      // Règle originale : l'Usine compte 3 territoires EN TOUT (1 + bonus 2)
-      const factoryBonus=unitHexes.has(22)?2:0;
-      // Resources — rule: only resources on territories you control are scored.
-      // Pas de plafond (BALANCE.resScoringCap=9999) : le contre du gros magot
-      // est le pillage — il attire les raids, pas une règle de score.
-      let totalRes=0;Object.entries(p.resources).forEach(([hid,r])=>{if(unitHexes.has(parseInt(hid)))Object.values(r).forEach(n=>totalRes+=n);});
-      const resPairs=Math.floor(Math.min(totalRes,BALANCE.resScoringCap)/2);
-      const starScore=p.stars*starMult;
-      const terScore=(territories+factoryBonus+flagBonus)*terMult;
-      const resScore=resPairs*resMult;
-      // Bonus de construction : barème 2/4/6/9$ (ou tuile spéciale) selon la
-      // tuile tirée — `players` sert aux tuiles relatives aux adversaires
-      const sbDetail=structureBonusDetail(p,structureBonus,players);
-      // Comptoirs Acadiane : postes de commerce — +2$ chacun au scoring
-      // (v0.12 : levier structurel mesuré, sa trésorerie était la pire du jeu)
-      const flagCoins=(p.flagTokens||[]).length*2;
-      const total=starScore+terScore+resScore+p.coins+sbDetail.coins+flagCoins;
-      return{faction:p.faction,name:f.name,color:f.color,hero:f.hero,isBot:p.isBot,
-        stars:p.stars,pop:p.pop,popTier,territories,factoryBonus,flagBonus,totalRes,resPairs,coins:p.coins,
-        starScore,terScore,resScore,total,starMult,terMult,resMult,
-        sbCount:sbDetail.count,sbCoins:sbDetail.coins,flagCoins};
-    }).sort((a,b)=>b.total-a.total);
+    const scores=finalScores;
 
     // Export du journal de partie (JSON) — données pour l'entraînement de l'IA
     // et l'étude des bugs : classement complet + log horodaté de tous les coups
@@ -2642,6 +2764,32 @@ export default function App(){
         <div style={{width:80,height:1,background:"linear-gradient(90deg,transparent,var(--rust),transparent)",marginBottom:16}}/>
         <h1 style={{fontSize:28,fontWeight:900,letterSpacing:8,textTransform:"uppercase",color:"var(--rust)",marginBottom:4,textAlign:"center"}}>Fin de Partie</h1>
         <div style={{width:140,height:1,background:"linear-gradient(90deg,transparent,var(--rust-dark),transparent)",marginBottom:24}}/>
+
+        {/* ── Verdict de mission (campagne) ── */}
+        {mission&&missionResult&&(
+          <div className="fade-in" style={{
+            width:"100%",maxWidth:560,marginBottom:20,padding:"16px 20px",borderRadius:8,
+            border:`2px solid ${missionResult.success?"#5a8a5a":"var(--rust)"}`,
+            background:missionResult.success?"rgba(90,138,90,0.10)":"rgba(200,112,64,0.08)",
+          }}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:6}}>
+              <span style={{fontSize:24}}>{mission.icon}</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:11,letterSpacing:3,textTransform:"uppercase",color:"var(--text-muted)"}}>Mission {mission.num}</div>
+                <div style={{fontFamily:"var(--font-title)",fontWeight:700,fontSize:19,color:missionResult.success?"#8fc26a":"var(--rust)"}}>
+                  {mission.name} — {missionResult.success?"réussie":"échouée"}
+                </div>
+              </div>
+            </div>
+            <div style={{fontSize:13,color:"var(--text2)"}}>🎯 {mission.goal.label}</div>
+            {missionResult.honors&&<div style={{fontSize:13,color:"var(--gold)"}}>🎖 Honneurs — {mission.honors.label}</div>}
+            {missionResult.success&&UNLOCKS[mission.reward]&&(
+              <div style={{fontSize:13,color:"#a8cf90",marginTop:6}}>
+                {UNLOCKS[mission.reward].icon} Débloqué : <b>{UNLOCKS[mission.reward].name}</b> — {UNLOCKS[mission.reward].desc}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Rankings */}
         <div style={{width:"100%",maxWidth:560}}>
@@ -2691,11 +2839,18 @@ export default function App(){
         </div>
 
         <div style={{display:"flex",gap:12,marginTop:24,flexWrap:"wrap",justifyContent:"center"}}>
-          <button onClick={()=>{setPhase("setup");setPlayers([]);setLog([]);setTurn(1);setEmpire({});setRails([]);setRailPlacement(null);setSelFaction(null);setSelMat(null);}} style={{
+          <button onClick={()=>{setPhase("setup");setPlayers([]);setLog([]);setTurn(1);setEmpire({});setRails([]);setRailPlacement(null);setSelFaction(null);setSelMat(null);setMission(null);setMissionResult(null);}} style={{
             padding:"12px 40px",fontSize:15,letterSpacing:4,textTransform:"uppercase",
             background:"var(--gold)",color:"var(--bg)",border:"none",borderRadius:6,fontWeight:700,
             fontFamily:"var(--font-title)",cursor:"pointer",
           }}>Nouvelle Partie</button>
+          {mission&&(
+            <button onClick={()=>{setPhase("setup");setPlayers([]);setLog([]);setTurn(1);setEmpire({});setRails([]);setRailPlacement(null);setSelFaction(null);setSelMat(null);setMission(null);setMissionResult(null);setShowCampaign(true);}} style={{
+              padding:"12px 30px",fontSize:15,letterSpacing:2,textTransform:"uppercase",
+              background:"transparent",color:"#a8cf90",border:"1px solid #5a8a5a",borderRadius:6,fontWeight:700,
+              fontFamily:"var(--font-title)",cursor:"pointer",
+            }}>🎖 Retour à la campagne</button>
+          )}
           <button onClick={downloadJournal} title="Exporter le journal complet de la partie en JSON (classement + tous les coups) — utile pour analyser l'IA et les bugs" style={{
             padding:"12px 30px",fontSize:15,letterSpacing:2,textTransform:"uppercase",
             background:"transparent",color:"var(--gold)",border:"1px solid var(--gold-dim)",borderRadius:6,fontWeight:700,

@@ -55,6 +55,15 @@ Plus aucun chantier en attente. Les deux derniers ont été livrés :
 | CARDS | **Cartes de combat valuées** | ✅ Module `logic/cards.js` (deck 1-5, moyenne 2,5). Matérialisation paresseuse : `combatCards` reste le compteur (gains inchangés), la main `cardHand` est réconciliée au besoin. Côté JOUEUR : la contribution au combat = somme des valeurs des cartes engagées (les plus fortes d'abord), modale affichant la main + cartes jouées surlignées ; viewer au clic sur 🃏 (décompte par valeur). Bots inchangés (compteur×2) → simulation valide, équilibre préservé (win rates identiques). |
 | UNDO | **Annuler / refaire** | ✅ Pile de snapshots de l'état de jeu poussée avant chaque coup humain (sélection d'action + chaque sous-déplacement), vidée au passage aux bots (pas d'undo par-delà les tirages aléatoires de l'IA). Boutons ↶/↷ dans la barre. Clonage préservant les objets porteurs de fonctions (objectifs). |
 
+### ✅ Mode campagne (v0.17 — voir campagne.md)
+« La Chute de l'Empire » : 5 missions, chacune une partie complète à
+configuration imposée, objectif évalué sur l'état final + honneurs facultatifs.
+Les trois ensembles du jeu original qui dormaient dans les données
+(`MATS_ORIGINAL`, `PLANS_ORIGINAL`, `OBJECTIVES_ORIGINAL`) et l'étoile de la
+quête Tesla en sont les récompenses, utilisables ensuite en partie libre.
+Reste ouvert : conditions de défaite immédiates, campagne dans le mode API,
+cartes de mission dédiées, bots conscients de l'objectif du joueur.
+
 ### Idées libres (non demandées, pour plus tard)
 - Cartes valuées côté BOTS (retirer l'asymétrie humain/bot) → nécessiterait un re-tuning de la simulation.
 - Undo par-delà le tour des bots via rejeu à seed déterministe.

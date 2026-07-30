@@ -5,6 +5,7 @@ import { FACTIONS } from './factions.js';
 import { COMBAT_ABILITIES } from './combat.js';
 import { TERRAINS } from './terrains.js';
 import { getMechAbilities } from './mechAbilities.js';
+import { CAMPAIGN, UNLOCKS } from './campaign.js';
 
 // v0.15 — les listes « Riverwalk » et « Capacités de combat » étaient copiées
 // à la main et avaient dérivé (elles annonçaient encore les terrains d'avant
@@ -27,6 +28,18 @@ const FACTION_PAGES = Object.entries(FACTIONS).map(([id, f]) => ({
     `Combat: ${COMBAT_ABILITIES[id]?.name} (${COMBAT_ABILITIES[id]?.desc})`,
     `Position (${getMechAbilities(id)[3].name}): ${getMechAbilities(id)[3].desc}`,
     `Objectif de Faction: ${f.fObj.name} — ${f.fObj.desc}`,
+  ],
+}));
+
+// Fiches de mission — dérivées de data/campaign.js pour la même raison : une
+// liste recopiée à la main dérive dès qu'un objectif ou une récompense bouge.
+const CAMPAIGN_PAGES = CAMPAIGN.map(m => ({
+  title: `${m.num}. ${m.icon} ${m.name}`,
+  content: m.brief,
+  list: [
+    `🎯 Objectif : ${m.goal.label}`,
+    `🎖 Honneurs : ${m.honors.label}`,
+    `${UNLOCKS[m.reward]?.icon} Récompense : ${UNLOCKS[m.reward]?.name} — ${UNLOCKS[m.reward]?.desc}`,
   ],
 }));
 
@@ -62,7 +75,7 @@ export const RULES = [
       },
       {
         title: "Fin de tour & révélation d'objectifs",
-        content: "Chaque tour se conclut par une étape de validation (« Terminer le tour »). C'est à ce moment — et seulement là — que se révèlent la Mission secrète et l'Objectif de faction dont la condition est remplie : révéler pose l'étoile et termine le tour au passage. Un « ! » sur la barre des triomphes signale qu'un objectif est prêt. Les missions secrètes combinent 2-3 conditions, souvent avec une contrainte (plafond de pièces, zéro mecha…) : l'étoile se construit, elle ne tombe pas toute seule. Le deck de missions du Scythe original existe en réserve — déblocage prévu dans le mode campagne."
+        content: "Chaque tour se conclut par une étape de validation (« Terminer le tour »). C'est à ce moment — et seulement là — que se révèlent la Mission secrète et l'Objectif de faction dont la condition est remplie : révéler pose l'étoile et termine le tour au passage. Un « ! » sur la barre des triomphes signale qu'un objectif est prêt. Les missions secrètes combinent 2-3 conditions, souvent avec une contrainte (plafond de pièces, zéro mecha…) : l'étoile se construit, elle ne tombe pas toute seule. Les 21 missions du Scythe original forment un second deck, débloqué en fin de campagne (mission 5)."
       }
     ]
   },
@@ -230,6 +243,22 @@ export const RULES = [
     ]
   },
   {
+    id: "campagne",
+    title: "Campagne",
+    icon: "🎖",
+    sections: [
+      {
+        title: "La Chute de l'Empire",
+        content: "La campagne enchaîne 5 missions, chacune étant une PARTIE COMPLÈTE jouée avec une configuration imposée (nombre d'adversaires, difficulté, patrouilles de l'Empire, tuile de pose…). La partie se termine comme d'habitude — au premier joueur à 6 étoiles — puis l'objectif de la mission est évalué sur l'état final : on peut gagner la partie et rater la mission, ou l'inverse. Seuls la faction et le plateau joueur restent au choix ; le bouton « 🎖 Campagne » de l'écran d'accueil ouvre le tableau des missions."
+      },
+      {
+        title: "Déblocages",
+        content: "Chaque mission réussie débloque définitivement du contenu — les trois ensembles transcrits du Scythe original (plateaux joueur, plans d'usine, missions secrètes) et l'étoile de la quête Tesla. Ce contenu sert dans les missions suivantes ET en partie libre, où une bascule permet de le désactiver pour retrouver le jeu de base. Les honneurs, second objectif facultatif de chaque mission, ne rapportent qu'une mention au tableau de campagne."
+      },
+      ...CAMPAIGN_PAGES
+    ]
+  },
+  {
     id: "resources",
     title: "Ressources & Production",
     icon: "⚙",
@@ -330,7 +359,7 @@ export const RULES = [
       },
       {
         title: "Le deck original",
-        content: "Les 12 cartes d'usine du jeu original existent dans les données (deck « original ») mais restent de côté pour l'instant — elles seront débloquées comme récompense dans le mode campagne."
+        content: "Les 12 cartes d'usine du jeu original forment un deck « original » tenu à l'écart des parties standards : il rejoint le tirage de l'Usine une fois débloqué par la campagne (mission 3, « Les Machines Fantômes »)."
       }
     ]
   },
