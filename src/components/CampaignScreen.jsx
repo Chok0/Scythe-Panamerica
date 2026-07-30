@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { PROLOGUE, CHAPTERS } from '../data/campaign.js';
+import React, { useState, useRef } from 'react';
+import { PROLOGUE, CHAPTERS, chapterById } from '../data/campaign.js';
 import { LEGACIES } from '../data/legacies.js';
 import { chapterStates, unlockedLegacies, campaignComplete } from '../logic/campaign.js';
 import { FACTIONS } from '../data/factions.js';
@@ -25,11 +25,29 @@ const SectionTitle = ({ children }) => (
   <div style={{ color: "var(--gold-dim)", fontSize: 12, fontWeight: 600, letterSpacing: 3, textTransform: "uppercase", fontFamily: "'Bitter',serif", margin: "16px 0 8px" }}>{children}</div>
 );
 
-export default function CampaignScreen({ progress, onPlay, onRead, onBack, onReset }) {
+export default function CampaignScreen({ progress, onPlay, onRead, onBack, onReset, savedGame, onResume, onExport, onImport }) {
   const states = chapterStates(progress);
   const firstOpen = states.find(s => s.unlocked && !s.done)?.chapter.id;
   const [openId, setOpenId] = useState(firstOpen || "prologue");
   const [matId, setMatId] = useState(MATS[0].id);
+  const [importMsg, setImportMsg] = useState(null); // {ok,text} — retour du chargement de fichier
+  const fileRef = useRef(null);
+  const savedChapter = savedGame?.chapter ? chapterById(savedGame.chapter) : null;
+
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permet de recharger deux fois le même fichier
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = onImport(String(reader.result || ""));
+      if (res?.ok) setImportMsg({ ok: true, text: `Sauvegarde chargée — ${res.summary}` });
+      else if (res?.error) setImportMsg({ ok: false, text: res.error });
+      else setImportMsg(null); // chargement annulé par le joueur
+    };
+    reader.onerror = () => setImportMsg({ ok: false, text: "Impossible de lire le fichier." });
+    reader.readAsText(file);
+  };
   const legs = unlockedLegacies(progress);
   const complete = campaignComplete(progress);
 
@@ -109,6 +127,18 @@ export default function CampaignScreen({ progress, onPlay, onRead, onBack, onRes
           </p>
         </div>
 
+        {/* Partie en cours (autosauvegardée à chaque tour) — reprise en un clic */}
+        {savedGame && (
+          <button onClick={onResume} style={{
+            width: "100%", marginBottom: 14, padding: "12px 20px", fontSize: 13, letterSpacing: 2,
+            textTransform: "uppercase", background: "linear-gradient(135deg,#3a5a3a,#254025)", color: "#cfe8bf",
+            border: "1px solid #5a8a5a", borderRadius: 6, fontWeight: 700, fontFamily: "'Bitter',serif",
+            boxShadow: "0 4px 24px rgba(90,154,90,0.25)", cursor: "pointer",
+          }}>
+            💾 Reprendre — {savedChapter ? `chapitre ${savedChapter.num} : ${savedChapter.title}` : "partie libre"} · tour {savedGame.turn}
+          </button>
+        )}
+
         {/* Prologue — toujours lisible, aucune partie à jouer */}
         <div style={{ ...frame(openId === "prologue"), marginBottom: 10 }}>
           <button onClick={() => setOpenId(openId === "prologue" ? null : "prologue")} style={{ width: "100%", background: "transparent", border: "none", padding: "12px 16px", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
@@ -170,6 +200,34 @@ export default function CampaignScreen({ progress, onPlay, onRead, onBack, onRes
             🏁 Campagne terminée. La boucle se referme exactement là où commence une partie standard de Scythe Panamerica.
           </div>
         )}
+
+        {/* ── Fichier de sauvegarde : la campagne survit au navigateur ── */}
+        <div style={{ ...frame(false), marginTop: 14, padding: "14px 16px" }}>
+          <div style={{ color: "var(--gold-dim)", fontSize: 12, fontWeight: 600, letterSpacing: 3, textTransform: "uppercase", fontFamily: "'Bitter',serif", marginBottom: 8 }}>
+            Sauvegarde
+          </div>
+          <div style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6, marginBottom: 10 }}>
+            La progression est conservée automatiquement dans ce navigateur, et la partie en cours est
+            sauvegardée à chaque tour — fermer l'onglet ne perd rien. Exportez un fichier pour garder la
+            campagne à l'abri d'un nettoyage de cache, ou la reprendre sur une autre machine.
+          </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button onClick={onExport} title="Télécharge un fichier .json contenant la progression, les legs et la partie en cours" style={{
+              padding: "10px 24px", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", background: "rgba(201,168,76,0.10)",
+              color: "var(--gold)", border: "1px solid var(--gold-dim)", borderRadius: 4, fontWeight: 700, fontFamily: "'Bitter',serif", cursor: "pointer",
+            }}>💾 Exporter</button>
+            <button onClick={() => fileRef.current?.click()} title="Recharge une campagne exportée — remplace la progression de ce navigateur" style={{
+              padding: "10px 24px", fontSize: 12, letterSpacing: 2, textTransform: "uppercase", background: "transparent",
+              color: "var(--gold-dim)", border: "1px solid var(--border)", borderRadius: 4, fontWeight: 700, fontFamily: "'Bitter',serif", cursor: "pointer",
+            }}>📂 Importer</button>
+            <input ref={fileRef} type="file" accept="application/json,.json" onChange={handleFile} style={{ display: "none" }} />
+          </div>
+          {importMsg && (
+            <div style={{ marginTop: 10, fontSize: 13, color: importMsg.ok ? "#8fc26a" : "var(--rust)" }}>
+              {importMsg.ok ? "✅ " : "⚠ "}{importMsg.text}
+            </div>
+          )}
+        </div>
 
         <div style={{ display: "flex", gap: 12, justifyContent: "center", marginTop: 24, flexWrap: "wrap" }}>
           <button onClick={onBack} style={{

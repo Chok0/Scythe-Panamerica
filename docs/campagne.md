@@ -394,8 +394,28 @@ Le mode campagne existe en jeu : bouton **📖 Campagne** sur l'écran de setup.
 | `src/data/campaign.js` | Prologue + 8 chapitres en données : faction imposée, textes avant/après, variantes, condition canon, legs débloqué. |
 | `src/data/legacies.js` | Les 5 legs de Wardenclyffe (dont Amplificateur et Relais, qui n'existaient pas encore en données). |
 | `src/logic/campaign.js` | Moteur pur : ordre causal, progression persistante, déblocages, condition canon, Acier Brut. |
-| `src/components/CampaignScreen.jsx` | Écran de campagne : chapitres, histoire, variante, choix du plateau, vitrine des legs. |
+| `src/logic/saveFile.js` | Fichier de sauvegarde exportable/importable (progression + partie en cours). |
+| `src/components/CampaignScreen.jsx` | Écran de campagne : reprise, chapitres, histoire, variante, choix du plateau, vitrine des legs, export/import. |
 | `src/logic/__tests__/campaign.test.js` | 23 tests (ordre causal, déblocages, persistance, conditions canon, Acier Brut). |
+| `src/logic/__tests__/saveFile.test.js` | 8 tests (aller-retour export/import, fichiers étrangers ou trafiqués). |
+
+**Sauvegarde — une campagne se joue sur plusieurs sessions, pas d'un trait :**
+
+- **Automatique, deux niveaux.** La progression (chapitres terminés + legs) est
+  écrite dans `localStorage` sous `pa-campagne` à chaque fin de chapitre ; la
+  partie en cours est autosauvegardée sous `pa-save` **à chaque début de tour
+  humain**, plateau au repos, avec le chapitre et la pile d'acier. Fermer
+  l'onglet en cours de chapitre ne coûte au pire que le tour entamé.
+- **Reprise** depuis l'écran de campagne comme depuis l'écran de setup :
+  « Reprendre — chapitre N · tour T ».
+- **Fichier exportable** (`💾 Exporter`) : un `.json` qui embarque progression,
+  legs ET partie en cours, nommé `scythe-campagne-<n>sur8-<date>.json`. C'est
+  la seule protection contre un nettoyage de cache ou un changement de machine
+  — le `localStorage` d'un HTML ouvert en local ne survit ni à l'un ni à
+  l'autre. L'import demande confirmation, résume ce qu'il va écraser, et
+  refuse proprement un fichier étranger (journal de partie, JSON cassé,
+  format plus récent) ; un fichier trafiqué est nettoyé (chapitres et legs
+  inconnus retirés) plutôt que rejeté.
 
 **Arbitrages pris à l'implémentation** (le document restait ouvert dessus) :
 

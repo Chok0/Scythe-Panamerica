@@ -21,6 +21,7 @@ import SetupScreen from './SetupScreen.jsx';
 import CampaignScreen from './CampaignScreen.jsx';
 import { chapterById } from '../data/campaign.js';
 import { loadProgress, saveProgress, resetProgress, completeChapter, campaignConfig, canonMet, steelTick } from '../logic/campaign.js';
+import { buildSaveBundle, parseSaveBundle, saveFileName, describeSave } from '../logic/saveFile.js';
 import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
@@ -95,6 +96,7 @@ export default function App(){
   const[chapter,setChapter]=useState(null); // chapitre en cours (null = partie libre)
   const[steelPile,setSteelPile]=useState(0); // Acier Brut accumulé sur Rouge River
   const[chapterOutcome,setChapterOutcome]=useState(null); // {victory,canonMet,legacy} en fin de chapitre
+  const[saveTick,setSaveTick]=useState(0); // relecture de la sauvegarde après import
   const[players,setPlayers]=useState([]);
   const[currentP,setCurrentP]=useState(0);
   const[turn,setTurn]=useState(1);
@@ -421,15 +423,47 @@ export default function App(){
     addLog(`💾 Partie reprise (tour ${data.turn||1})`);
   },[addLog]);
 
-  // Aperçu de la sauvegarde pour l'écran de setup (bouton « Reprendre »)
+  // Aperçu de la sauvegarde pour les écrans de setup et de campagne
+  // (bouton « Reprendre »). `saveTick` force la relecture après un import.
   const savedGame=useMemo(()=>{
-    if(phase!=="setup")return null;
+    if(phase!=="setup"&&phase!=="campaign")return null;
     try{
       const d=JSON.parse(localStorage.getItem('pa-save')||"null");
       return d&&Array.isArray(d.players)&&d.players.length>0
-        ?{turn:d.turn,faction:d.players[0].faction,date:d.date}:null;
+        ?{turn:d.turn,faction:d.players[0].faction,date:d.date,chapter:d.chapter||null}:null;
     }catch{return null;}
-  },[phase]);
+  },[phase,saveTick]);
+
+  // ── Fichier de sauvegarde de campagne (logic/saveFile.js) ──
+  // Le localStorage d'un HTML ouvert en local ne survit pas à un nettoyage de
+  // cache ni à un changement de machine : la campagne s'exporte donc dans un
+  // fichier, progression ET partie en cours comprises.
+  const exportCampaign=useCallback(()=>{
+    let game=null;
+    try{game=JSON.parse(localStorage.getItem('pa-save')||"null");}catch{game=null;}
+    const iso=new Date().toISOString();
+    const bundle=buildSaveBundle({progress:campaignProgress,game,date:iso});
+    const blob=new Blob([JSON.stringify(bundle,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download=saveFileName(campaignProgress,iso);
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  },[campaignProgress]);
+
+  const importCampaign=useCallback((text)=>{
+    const res=parseSaveBundle(text);
+    if(!res.ok)return{ok:false,error:res.error};
+    if(!window.confirm(`Charger cette sauvegarde ?\n${describeSave(res)}\n\nLa progression actuelle de ce navigateur sera remplacée.`))
+      return{ok:false,error:null};
+    setCampaignProgress(res.progress);saveProgress(res.progress);
+    try{
+      if(res.game)localStorage.setItem('pa-save',JSON.stringify(res.game));
+      else localStorage.removeItem('pa-save');
+    }catch{/* stockage indisponible : la progression reste en mémoire */}
+    setSaveTick(t=>t+1);
+    return{ok:true,summary:describeSave(res)};
+  },[]);
 
   // `ch` : chapitre de campagne (faction, variantes et condition canon
   // imposées) — absent en partie libre. `matOverride` : plateau choisi sur
@@ -2631,7 +2665,9 @@ export default function App(){
       onPlay={(ch,matId)=>startGame(ch,matId)}
       onRead={(ch)=>readInterlude(ch)}
       onBack={()=>setPhase("setup")}
-      onReset={()=>setCampaignProgress(resetProgress())} />;
+      onReset={()=>{setCampaignProgress(resetProgress());setSaveTick(t=>t+1);}}
+      savedGame={savedGame} onResume={resumeSaved}
+      onExport={exportCampaign} onImport={importCampaign} />;
   }
 
   // (pick_objective phase removed — player keeps both objectives per Scythe rules)
