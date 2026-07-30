@@ -1,0 +1,226 @@
+// ── Mode campagne : prologue + 8 chapitres ────────────────────────────────
+// Transcription en données de docs/campagne.md. Le document reste la source
+// de vérité NARRATIVE ; ce fichier ne porte que ce dont le moteur a besoin :
+// l'ordre causal, la faction imposée, les drapeaux de variante, la condition
+// canon et le legs débloqué.
+//
+// Deux règles structurantes reprises du document :
+//  1. L'ordre est STRICTEMENT causal — un chapitre ne s'ouvre qu'une fois le
+//     précédent terminé (logic/campaign.js).
+//  2. Chaque chapitre offre DEUX voies de victoire : la condition canon
+//     ci-dessous, ou les 6 étoiles classiques. La première atteinte l'emporte.
+//
+// ⚠ Chapitres 2 et 8 (Internationale Noire) : la faction n'est pas implémentée
+// et la mécanique de scénario (infiltration / sabotage) n'est pas tranchée.
+// Ils sont donc livrés en INTERLUDE — texte seul, comme le prologue — pour ne
+// pas bloquer la progression sur les six chapitres jouables. Leur piste de
+// condition canon est conservée dans `canonDraft`, à activer le jour où la
+// faction existe.
+import { FACTIONS } from './factions.js';
+import { hMap } from './hexes.js';
+
+// L'Usine (Rouge River) — id fixe sur toutes les cartes, y compris
+// procédurales (mapGen.js : FACTORY_ID).
+export const FACTORY_HEX = 22;
+
+/** Hex tenus par un joueur — même définition que le décompte de territoires
+ *  (unités seules : héros, ouvriers, mechas). */
+export const heldHexes = (p) => new Set([
+  p.hero,
+  ...(p.workers || []).map(w => w.hexId),
+  ...(p.mechs || []).map(m => m.hexId),
+]);
+
+export const controlsFactory = (p) => heldHexes(p).has(FACTORY_HEX);
+export const villagesHeld = (p) => [...heldHexes(p)].filter(id => hMap[id]?.t === "village").length;
+
+const fObjCheck = (factionId) => (p, ctx) => FACTIONS[factionId].fObj.check(p, ctx);
+
+export const PROLOGUE = {
+  id: "prologue", kind: "interlude", num: 0,
+  title: "Le trône né des guerres internes",
+  subtitle: "1865 — la fondation de l'Empire Panaméricain",
+  before: [
+    "1865. Un général soutenu — pas fabriqué — par les industriels du Nord se couronne Empereur sur les ruines de la Sécession. Le Consortium aide l'Empire à naître ; il ne l'est pas.",
+    "Cyrus I pousse la reconquête jusqu'au Mexique et jusqu'aux abords du Canada, absorbant le Sud vaincu par la pure force militaire, sans le moindre compromis.",
+    "Cinquante ans d'occupation continentale plus tard, l'arrivée puis la trahison de Tesla ont fait de Rouge River l'arsenal exclusif du trône (Cyrus II, 1913) — juste au moment où l'immensité de l'Empire commence à l'épuiser financièrement et où le Consortium referme son crédit.",
+    "Le trône tient encore, mais des lézardes apparaissent déjà aux marges du continent. Vous allez d'abord incarner une résistance qui n'a pas attendu que le trône tombe tout seul.",
+  ],
+  after: [],
+};
+
+export const CHAPTERS = [
+  {
+    id: "ch1", num: 1, kind: "game", faction: "nations",
+    title: "La résistance active",
+    subtitle: "Nations Souveraines — Aiyana & Koda",
+    variant: { empire: true, steel: false, bonusTile: null,
+      label: "Mechas de l'Empire ACTIFS — des patrouilles encore commandées depuis Washington, mais déjà visiblement usées." },
+    before: [
+      "Le rail impérial a tracé ses voies à travers les terres Lakota, Navajo, Cree et Haudenosaunee sans jamais demander la permission.",
+      "L'Empire tient encore, formellement, mais ses garnisons de l'Ouest tournent depuis des années avec des effectifs réduits et un ravitaillement de plus en plus irrégulier.",
+      "La rumeur d'un fragment d'équipement de Wardenclyffe, exfiltré avant la saisie du labo de Tesla et échangé contre du cuivre travaillé par les Nations, circule depuis longtemps.",
+    ],
+    canon: {
+      name: "Le Grand Retour",
+      desc: "4+ hex Plaine/Forêt contrôlés ET 2 patrouilles impériales détruites",
+      check: (p, ctx) => fObjCheck("nations")(p, ctx) && (p.empireKills || 0) >= 2,
+    },
+    unlock: "golem",
+    after: [
+      "Aiyana ne fait pas tomber l'Empire — elle prouve, avant tout le monde, que ses fissures sont réelles.",
+      "La piste du Golem confirme, sans trancher, la rumeur du fragment. Et quelque part ailleurs, quelqu'un d'autre a vu la même faiblesse, et prépare quelque chose de plus définitif.",
+    ],
+  },
+  {
+    id: "ch2", num: 2, kind: "interlude", faction: "internationale",
+    title: "Le Régicide",
+    subtitle: "Internationale Noire — sans héros",
+    variant: { empire: true, steel: false, bonusTile: null,
+      label: "Faction spécifiée (docs/design/internationale_noire.md) mais pas encore implémentée — chapitre joué en interlude." },
+    before: [
+      "Une cellule panaméricaine de l'Internationale Noire, infiltrée à Rouge River depuis des années sous couvert d'ouvriers, a fini par obtenir ce qu'elle attend depuis le tournant du siècle : un accès à l'Empereur en déplacement.",
+    ],
+    canon: null,
+    // Piste conservée pour le jour où la faction existe (docs/campagne.md ch.2)
+    canonDraft: "Atteindre l'Empereur — prendre le contrôle de l'Usine (hex 22) pour représenter l'accès à sa visite d'inspection, ou détruire un nombre donné de patrouilles impériales.",
+    unlock: null,
+    after: [
+      "Cyrus II est assassiné dans un atelier ferroviaire de Chicago.",
+      "Parce que la cohésion de l'Empire ne tenait que par la guerre permanente et une industrie du mecha déjà exsangue, ce n'est pas une crise de succession : c'est un effondrement total.",
+      "La Seconde Guerre Civile commence — cent guerres locales simultanées. Washington se retranche sur son noyau et sur Rouge River, tenue par une garnison loyaliste.",
+    ],
+  },
+  {
+    id: "ch3", num: 3, kind: "game", faction: "frente",
+    title: "L'éclatement",
+    subtitle: "Frente Libre — E. Rojas & Trueno",
+    // « Ruée vers l'or » : la tuile bonus est FORCÉE au lieu d'être tirée.
+    // Terres Lointaines (1$/hex de distance à sa base) matérialise la curée
+    // sur les terres éloignées — l'accaparement, pas la simple exploitation.
+    variant: { empire: false, steel: false, bonusTile: "terres_lointaines",
+      label: "Ruée vers l'or : tuile bonus de pose FORCÉE sur « Terres Lointaines » — la curée sur les terres mexicaines par les latifundistes financés par le Consortium." },
+    before: [
+      "L'Empire n'est pas né au Mexique, mais il s'y est étendu une génération après sa fondation : concessions minières et ferroviaires « exclusives, continent entier », qui ont dépossédé des générations avant même que Zapata prenne les armes.",
+      "La nouvelle du régicide vient d'atteindre le Morelos.",
+    ],
+    canon: {
+      name: "Terre Libérée",
+      desc: "4 pièges posés ET 2 ouvriers sur Sierras/Déserts",
+      check: fObjCheck("frente"),
+    },
+    unlock: "amplificateur",
+    after: [
+      "Rojas et Zapata ne sont plus seuls : ce n'est plus une révolte régionale, c'est la première étincelle visible de la Seconde Guerre Civile qui embrase déjà tout le continent.",
+      "Panamerica n'a pas de « centre » géographique unique. L'Empire est un système d'extraction, pas un territoire — et il se défait par tous les bouts à la fois.",
+    ],
+  },
+  {
+    id: "ch4", num: 4, kind: "game", faction: "confederation",
+    title: "La libération de Ford",
+    subtitle: "Confédération — J. Cole & Dixie",
+    variant: { empire: true, steel: false, bonusTile: null,
+      label: "Mechas de l'Empire ACTIFS — mission centrée sur la prise de Rouge River elle-même, contre la garnison loyaliste retranchée." },
+    before: [
+      "Le Sud n'a jamais rejoint l'Empire de son plein gré : absorbé par la force en 1865, occupé militairement pendant cinquante ans — loi martiale, gouverneurs, garnisons — sans jamais renoncer à s'en libérer.",
+      "Depuis le régicide, une garnison loyaliste tient Rouge River fermée à tout le monde. Ford y compris.",
+    ],
+    canon: {
+      name: "L'Arsenal",
+      desc: "Contrôler l'Usine (hex 22) en ayant détruit au moins 1 patrouille impériale",
+      check: (p) => controlsFactory(p) && (p.empireKills || 0) >= 1,
+    },
+    unlock: null,
+    after: [
+      "La garnison lâche prise. En échange de son aide, Cole obtient de Ford des facilités de paiement sur les mechas nécessaires à son propre projet de reconquête.",
+      "Sans Empereur pour l'honorer, l'exclusivité de Ford ne vaut plus rien : il comprend son intérêt réel — la guerre est le meilleur moteur économique — et rouvre le Catalogue Ford à tout le continent. C'est cet instant précis qui explique pourquoi toutes les factions suivantes ont déjà accès aux mechas Ford.",
+      "Cole n'a rien libéré au nom de personne d'autre que lui-même.",
+    ],
+  },
+  {
+    id: "ch5", num: 5, kind: "game", faction: "bayou",
+    title: "Le contrage de la Confédération",
+    subtitle: "Bayou — Cap. Zeke & Croc",
+    variant: { empire: true, steel: false, bonusTile: null,
+      label: "Mechas de l'Empire ACTIFS — les patrouilles restantes, désormais sans commandement clair." },
+    before: [
+      "Dockers et déserteurs des docks impériaux du Mississippi, devenus corsaires d'un fleuve qu'ils refusent de laisser à l'Empire.",
+      "Rouge River vient d'échapper au contrôle impérial — et la Confédération qui l'a libérée finance désormais sa propre reconquête à crédit chez Ford.",
+    ],
+    canon: {
+      name: "Le Prédateur",
+      desc: "1 mecha capturé ET 2 proies vaincues (Empire ou joueur)",
+      check: fObjCheck("bayou"),
+    },
+    unlock: "eclair",
+    after: [
+      "Le Bayou ne convoite pas Rouge River par appât du gain : c'est une question de survie.",
+      "Si la Confédération de Cole devait un jour dominer le continent avec les mechas qu'elle achète à crédit, le Bayou sait exactement ce qui l'attend.",
+    ],
+  },
+  {
+    id: "ch6", num: 6, kind: "game", faction: "dominion",
+    title: "L'achèvement de l'Empire",
+    subtitle: "Dominion — Col. Whitfield & Sterling",
+    variant: { empire: false, steel: true, bonusTile: null,
+      label: "Acier Brut : Rouge River produit 1 métal par tour ; tant que personne ne la contrôle, l'acier s'accumule — et le premier arrivé ramasse toute la pile." },
+    before: [
+      "La finance londonienne avait arrêté net, jadis, la poussée impériale vers le Canada.",
+      "Mais avec Washington réduit à sa capitale et incapable de réagir, la prudence financière cède la place au calcul militaire.",
+    ],
+    canon: {
+      name: "Le Tribut",
+      desc: "20+ pièces gagnées via Commerce Impérial",
+      check: fObjCheck("dominion"),
+    },
+    unlock: "relais",
+    after: [
+      "Les troupes du Dominion achèvent ce qui reste de la présence impériale au Canada — moins une conquête qu'un nettoyage.",
+      "Révélation en clôture : c'est en partie l'argent du Dominion qui a discrètement financé l'intronisation du pantin Cyrus III. Non par loyauté — parce qu'un trône fictif, même vide, reste plus profitable pour le commerce qu'un continent ouvertement sans souverain.",
+      "Le Dominion n'a jamais voulu que l'Empire meure : il voulait juste qu'il continue à signer des papiers.",
+    ],
+  },
+  {
+    id: "ch7", num: 7, kind: "game", faction: "acadiane",
+    title: "La redéstabilisation",
+    subtitle: "Acadiane — M. Thibodeau & Brume",
+    variant: { empire: false, steel: false, bonusTile: null,
+      label: "Partie standard — l'enjeu est le réseau, pas la ligne de front." },
+    before: [
+      "Dispersée par le Grand Dérangement de 1755, un siècle avant l'Empire, l'Acadiane n'a jamais reconnu aucune couronne : son réseau de contrebande a toujours vécu dans les failles de l'autorité.",
+      "Le nettoyage du Dominion au Canada menace de refermer ces failles pour de bon — une frontière stabilisée est une frontière surveillée.",
+    ],
+    canon: {
+      name: "Réseau Invisible",
+      desc: "4 Comptoirs non adjacents entre eux, dont 1 sur un Lac",
+      check: fObjCheck("acadiane"),
+    },
+    unlock: "tour",
+    after: [
+      "Thibodeau ne se contente pas de contourner la nouvelle autorité dominioniste : il sabote activement toute tentative de restructuration politique dans son sillage — la sienne comme celle des autres — et étend son réseau jusque dans l'ouest canadien, là où le passage du Dominion a laissé un vide administratif.",
+      "L'Acadiane a besoin du chaos pour se retisser. Elle est prête à l'entretenir elle-même si personne d'autre ne s'en charge.",
+    ],
+  },
+  {
+    id: "ch8", num: 8, kind: "interlude", faction: "internationale",
+    title: "Le Sabotage Final",
+    subtitle: "Internationale Noire — sans héros",
+    variant: { empire: false, steel: true, bonusTile: null,
+      label: "Faction spécifiée mais pas encore implémentée — chapitre joué en interlude. Acier Brut prévu, pour matérialiser ce qu'il s'agit de tarir." },
+    before: [
+      "Six factions armées jusqu'aux dents par Ford, qui s'entredéchirent, se défendent ou se conquièrent tour à tour sans qu'aucune ne l'emporte jamais vraiment — exactement le jeu de promotions que Ford entretient depuis la réouverture du Catalogue.",
+      "L'Internationale Noire comprend que le trône n'était jamais la vraie cible : le régicide de 1915 n'a fait que déplacer le problème de Washington à Dearborn.",
+    ],
+    canon: null,
+    canonDraft: "Saboter Rouge River — tenir l'Usine (hex 22) un nombre donné de tours consécutifs pour représenter l'arrêt de la chaîne, ou capturer/détruire un quota de mechas toutes factions confondues.",
+    unlock: null,
+    after: [
+      "Rouge River ne tombe pas d'un coup : elle s'enraye. Le pantin Cyrus III, déjà sans pouvoir réel, devient définitivement hors sujet.",
+      "Les mechas impériaux comme les stocks de Ford, privés de la chaîne qui les entretenait, deviennent les « colosses rouillés » que le jeu de base décrit dans son texte de règles. La campagne se referme exactement là où commence une partie standard de Scythe Panamerica.",
+      "Dernier mot laissé en suspens : le Horloger avait raison sur un point — détruire une machine de guerre n'a jamais suffi à empêcher la suivante. Reste à savoir ce que l'Internationale Noire compte faire de ce qu'elle vient de gagner.",
+    ],
+  },
+];
+
+export const CHAPTER_IDS = CHAPTERS.map(c => c.id);
+export const chapterById = (id) => CHAPTERS.find(c => c.id === id) || null;

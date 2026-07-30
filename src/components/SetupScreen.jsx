@@ -31,8 +31,9 @@ const frameStyle = (selected) => ({
   boxShadow: bevel(selected),
 });
 
-export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, mapChoice, setMapChoice, difficulty, setDifficulty, empireEnabled, setEmpireEnabled, startGame, onShowRules, savedGame, onResume }) {
+export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, mapChoice, setMapChoice, difficulty, setDifficulty, empireEnabled, setEmpireEnabled, startGame, onShowRules, savedGame, onResume, onShowCampaign, campaignProgress }) {
   const [hoverFaction, setHoverFaction] = useState(null);
+  const doneCount = Object.keys(campaignProgress?.done || {}).length;
   const previewId = hoverFaction || selFaction;
   const preview = previewId ? FACTIONS[previewId] : null;
   const randomFaction = () => setSelFaction(FACTION_IDS[Math.floor(Math.random() * FACTION_IDS.length)]);
@@ -53,11 +54,21 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
         <p style={{color:"var(--text-dim)",fontSize:13,fontStyle:"italic",letterSpacing:1.5,marginBottom:20,textAlign:"center",maxWidth:320,lineHeight:1.6}}>
           &laquo; L'Empire se meurt. Les machines ne savent pas. &raquo;
         </p>
-        <button onClick={onShowRules} style={{
-          marginBottom:32,padding:"8px 28px",fontSize:12,letterSpacing:3,textTransform:"uppercase",
-          background:"transparent",color:"var(--gold-dim)",border:"1px solid var(--border)",
-          borderRadius:4,fontWeight:700,fontFamily:"'Bitter',serif",boxShadow:bevel(false),
-        }}>Regles du Jeu</button>
+        <div style={{display:"flex",gap:10,marginBottom:32,flexWrap:"wrap",justifyContent:"center"}}>
+          <button onClick={onShowRules} style={{
+            padding:"8px 28px",fontSize:12,letterSpacing:3,textTransform:"uppercase",
+            background:"transparent",color:"var(--gold-dim)",border:"1px solid var(--border)",
+            borderRadius:4,fontWeight:700,fontFamily:"'Bitter',serif",boxShadow:bevel(false),
+          }}>Regles du Jeu</button>
+          {onShowCampaign&&(
+            <button onClick={onShowCampaign} title="Huit chapitres, une faction par chapitre : l'histoire de l'Empire Panaméricain, de sa première fissure à son effondrement"
+              style={{
+                padding:"8px 28px",fontSize:12,letterSpacing:3,textTransform:"uppercase",
+                background:"rgba(201,168,76,0.10)",color:"var(--gold)",border:"1px solid var(--gold-dim)",
+                borderRadius:4,fontWeight:700,fontFamily:"'Bitter',serif",boxShadow:bevel(false),
+              }}>📖 Campagne{doneCount>0?` · ${doneCount}/8`:""}</button>
+          )}
+        </div>
 
         {/* Partie sauvegardée (autosave à chaque tour) : reprise en un clic */}
         {savedGame&&(
