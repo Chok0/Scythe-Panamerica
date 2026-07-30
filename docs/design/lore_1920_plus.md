@@ -54,11 +54,15 @@ le monde, c'est aussi des mechas entre les mains de n'importe qui.
 
 **L'Internationale Noire aux Amériques.** Une cellule panaméricaine existe
 depuis le tournant du siècle — voir section III.4, le régicide de 1915. C'est
-elle qui a tiré la première brèche décisive dans le trône. Dans le jeu de base,
-elle n'est pas jouable : pas de héros, pas de plateau joueur, une écologie de
-jeu entièrement différente (sabotage, pas de base, pas de mechas de série).
-**C'est un chantier de campagne à part entière, à concevoir séparément** — cf.
-`campagne.md`, ne pas le préciser plus ici.
+elle qui tire la première brèche décisive dans le trône, et c'est aussi elle
+qui referme la boucle en sabotant Rouge River pour de bon (voir
+`campagne.md` §Séquences, chapitres 2 et 8). Dans le jeu de base, elle n'est
+pas jouable : pas de héros, pas de plateau joueur, une écologie de jeu
+entièrement différente (sabotage, pas de base, pas de mechas de série). Ce
+n'est plus un à-côté optionnel de la campagne — les chapitres 2 et 8 en
+dépendent directement — **mais sa conception (règles, victoire, plateau)
+reste un chantier à part entière, encore à faire.** Cf. `campagne.md`, ne
+pas le préciser plus ici.
 
 ---
 
@@ -285,9 +289,10 @@ devenu bazar ouvert, un Empire réduit à sa capitale et à son nom, six
 factions qui ne se battent plus pour hériter d'un empire fort, mais pour ce
 qu'il en reste — pendant que le véritable bénéficiaire du chaos, à Dearborn,
 vend des mechas à tout le monde et ne prend jamais parti. (La campagne se
-termine sur la chute finale de Cyrus III — voir `campagne.md` §Séquences,
-chapitre final : c'est le pont direct vers l'état du monde décrit dans les
-règles du jeu de base, « l'Empire mécanique s'est effondré ».)
+referme sur le sabotage final de Rouge River par l'Internationale Noire —
+voir `campagne.md` §Séquences, chapitre 8 : c'est le pont direct vers l'état
+du monde décrit dans les règles du jeu de base, « l'Empire mécanique s'est
+effondré ».)
 
 ### 5. Rouge River et le jeu
 
@@ -316,10 +321,11 @@ Scythe, un seul par visite :
   ressources sur cases fluviales.
 - **L'Iron Horse** — mecha-locomotive, déplacement instantané sur tout le
   réseau ferroviaire, ne peut pas quitter les rails.
-- *(pistes nouvelles, à concevoir — voir `campagne.md` §Déclinaisons)* un
-  bâtiment façon moulin qui produit du pétrole en plus à chaque Produce, et un
-  bonus d'enrôlement qui rapporte une ressource au choix quand un **autre**
-  joueur utilise son propre Plan — l'espionnage industriel comme mécanique.
+
+Le Catalogue Ford, c'est de la production de masse — quatre mechas, rien que
+des mechas. Toute idée moins martiale (bâtiment de production, effet
+d'espionnage passif) n'a pas sa place ici : Ford ne pense qu'en usines et en
+colosses. Ces idées-là appartiennent à Tesla, pas à Ford — voir ci-dessous.
 
 **Les legs de Wardenclyffe — corrigé.** Ce ne sont *pas* des Plans d'usine :
 ce sont des **récompenses de campagne**, hors catalogue, cachées dans le
@@ -337,6 +343,15 @@ en entier.
 - **L'Éclair** — **mecha bonus** léger, le plus rapide du jeu (4 cases de
   mouvement), pensé pour la reconnaissance et le vol de ressources, pas le
   combat.
+- **L'Amplificateur** — **bâtiment bonus**, du nom du « magnifying
+  transmitter » de Tesla (authentique, ses expériences de Colorado Springs).
+  Produit 1 pétrole supplémentaire à chaque Produce : une prise d'énergie
+  libre plantée dans le sol, sans lien avec aucun gisement.
+- **Le Relais** — **effet bonus** passif, pas un mecha ni un bâtiment.
+  Écho du rêve de télégraphie sans fil mondiale de Tesla : capte ce que fait
+  n'importe quel autre joueur sur son propre Plan de Rouge River et en
+  détourne 1 ressource au choix à chaque fois. De l'espionnage, mais sans
+  espion — juste une antenne oubliée qui continue d'écouter.
 
 *(Le « Fantôme de Wardenclyffe » — l'ancien plan de mecha coopératif
 inter-factions — est retiré. Trop de conditions externes pour un seul objet de
@@ -532,7 +547,7 @@ peuple humilié, une économie en ruines, des machines de guerre sans emploi, et
 quelqu'un qui dit « je sais qui est responsable ». Sur le continent
 Panamerica, le risque est déjà visible dans la Confédération de J. Cole : un
 peuple occupé cinquante ans qui, la première fois qu'il retrouve les moyens
-d'agir (chapitre 1 de la campagne), les emploie à reconstruire exactement ce
+d'agir (chapitre 4 de la campagne), les emploie à reconstruire exactement ce
 qu'il a subi.
 
 Dans la logique du jeu, le fascisme est un **compteur interne à chaque

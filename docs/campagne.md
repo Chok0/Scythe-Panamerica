@@ -46,30 +46,19 @@ s'accumule — récompense croissante pour le premier arrivé.
   qui active la génération passive sur la case Rouge River (hex marqué
   `factory` dans `hexes.js`) et son ramassage automatique par le contrôleur.
 
-## ⚙ Catalogue Ford — déclinaisons de Plans à concevoir
+## ⚙ Catalogue Ford — un deck purement martial
 
-Deux idées de nouveaux Plans Spéciaux (deck Rouge River), dans l'esprit des
-cartes Factory de Scythe :
+Le Catalogue Ford (Model M, Trimotor, River Rouge Special, Iron Horse) reste
+tel quel : que des mechas, rien que des mechas — Ford ne pense qu'en usines
+et en colosses. Les idées de bâtiment ou d'effet passif appartiennent à
+Tesla, pas à lui — voir la section suivante.
 
-- **Bâtiment « moulin à pétrole »** — équivalent du Moulin de Scythe mais
-  produit 1 pétrole supplémentaire à chaque Produce au lieu de bois/métal.
-  Nom de travail : la **Raffinerie Rouge River**.
-- **Bonus d'enrôlement / espionnage industriel** — s'active quand un
-  **autre** joueur utilise son propre Plan d'usine : le possesseur reçoit 1
-  ressource au choix. Nom de travail : **Réseau de Rouge River** — Ford
-  revend en douce ce qu'il voit passer chez les autres.
+## 🔧 Les legs de Wardenclyffe — 5 récompenses de campagne, pas des cartes d'usine
 
-Ces deux cartes rejoignent les **Plans Ford** existants (Model M, Trimotor,
-River Rouge Special, Iron Horse) dans le Catalogue standard — ce ne sont pas
-des récompenses de campagne, juste des extensions du deck de base à
-concevoir/équilibrer.
-
-## 🔧 Les legs de Wardenclyffe — corrigé (ce ne sont pas des cartes d'usine)
-
-Erreur de classification corrigée : le Golem, la Tour Wardenclyffe et
-l'Éclair ne sont **pas** des Plans à piocher au Catalogue Ford — ce sont des
-**objets hors catalogue**, débloqués par les scénarios de campagne, cachés
-dans le sous-sol scellé que Ford n'a jamais réussi à ouvrir en entier :
+Le Golem, la Tour Wardenclyffe, l'Éclair, l'Amplificateur et le Relais ne
+sont **pas** des Plans à piocher au Catalogue Ford — ce sont des **objets
+hors catalogue**, débloqués par les scénarios de campagne, cachés dans le
+sous-sol scellé que Ford n'a jamais réussi à ouvrir en entier :
 
 - **Le Golem** — **mecha bonus** : un mecha supplémentaire (pas un Plan),
   alimenté sans fil (aucune ressource Énergie), déplaçable à distance depuis
@@ -80,6 +69,15 @@ dans le sous-sol scellé que Ford n'a jamais réussi à ouvrir en entier :
   cases (+1 mouvement, +1 puissance).
 - **L'Éclair** — **mecha bonus** léger, 4 cases de mouvement (le double de
   la norme), pensé pour la reconnaissance et le vol de ressources.
+- **L'Amplificateur** — **bâtiment bonus** (nom de travail repris du
+  « magnifying transmitter », authentique, des expériences de Tesla à
+  Colorado Springs). Produit 1 pétrole supplémentaire à chaque Produce, sans
+  lien avec aucun gisement — une prise d'énergie libre.
+- **Le Relais** — **effet bonus** passif (ni mecha, ni bâtiment) : capte ce
+  que fait n'importe quel autre joueur sur son propre Plan de Rouge River et
+  en détourne 1 ressource au choix à chaque fois. L'écho du rêve de
+  télégraphie sans fil mondiale de Tesla — une antenne oubliée qui continue
+  d'écouter.
 
 **Le « Fantôme de Wardenclyffe » (ancien plan de mecha coopératif
 inter-factions) est retiré** — trop de conditions externes pour un seul objet
@@ -106,32 +104,38 @@ reste disponible sur l'écran de setup, marqué « (campagne) ».
 - Idée de mission : défendre une région contre les patrouilles, escorter un
   convoi à travers les lignes de l'Empire, détruire les six mechas E1–E6.
 
-## 🕳 Internationale Noire — chantier séparé, pas dans ce parcours
+## 🕳 Internationale Noire — chantier prioritaire (2 chapitres en dépendent)
 
 Faction sans héros, sans plateau joueur, sans mecha de série — sa mécanique
 de jeu (sabotage plutôt que production/combat classique) est fondamentalement
-différente du reste du roster. C'est elle qui assassine l'Empereur Cyrus II
-en 1915 (voir lore §III.4) : elle mérite un chapitre de campagne, voire
-plusieurs, mais **sa conception (règles, victoire, plateau) est un chantier à
-part entière, à traiter séparément** de la décomposition de séquences
-ci-dessous. Ne pas l'improviser en l'intégrant au parcours à 6 factions tant
-que ce chantier n'a pas eu lieu.
+différente du reste du roster. Elle n'est plus un à-côté optionnel de la
+campagne : **c'est elle qui joue le régicide de Cyrus II en 1915 (chapitre 2)
+et le sabotage final de Rouge River (chapitre 8, voir plus bas)** — les deux
+verrous qui ouvrent et referment toute la boucle narrative. **Sa conception
+(règles, victoire, plateau) reste un chantier de jeu à part entière, encore
+à faire** — ce document ne prétend pas la résoudre, seulement documenter où
+elle s'insère et ce qu'elle doit accomplir dans chacun des deux chapitres.
+Tant qu'elle n'est pas conçue, les chapitres 2 et 8 restent non jouables ; le
+reste de la campagne (chapitres 1, 3, 4, 5, 6, 7) ne dépend pas d'elle et
+peut être développé indépendamment.
 
 ---
 
 ## Décomposition des séquences de campagne
 
-Structure : un **prologue** (texte seul, pas de partie), **six chapitres**
-(un par faction jouable, une partie complète chacun avec un objectif
-narratif et une variante de jeu), et un **finale** qui boucle sur l'état du
-monde du jeu de base. Chaque chapitre indique : le morceau d'histoire donné
-avant/après la partie, et la variante de jeu appliquée (si applicable).
+Structure : un **prologue** (texte seul, pas de partie) et **huit chapitres**
+— six parties complètes (une par faction jouable, avec objectif narratif et
+variante de jeu) et deux chapitres Internationale Noire qui encadrent tout le
+reste. Pas de « finale » séparée : le chapitre 8 tient ce rôle et boucle sur
+l'état du monde du jeu de base.
 
-L'ordre proposé suit une logique de dévoilement (l'événement fondateur →
-racines économiques → racines profondes/Tesla → marges négligées →
-prédation ouverte → le maître du jeu financier) mais n'est pas rigide au-delà
-du chapitre 1, qui doit rester premier — c'est lui qui ouvre le marché des
-mechas à tout le monde et rend les cinq suivants possibles.
+**L'ordre est maintenant strictement causal, pas juste une logique de
+dévoilement** : chapitre 1 doit précéder le régicide (chapitre 2) puisqu'il
+s'y déroule avant ; le régicide doit précéder tout le reste (3 à 8), qui n'a
+de sens qu'après ; le chapitre 5 réagit directement aux événements du
+chapitre 4 ; le chapitre 7 réagit directement à ceux du chapitre 6 ; le
+chapitre 8 doit rester dernier. Aucun de ces huit chapitres n'est
+interchangeable avec un autre.
 
 ### Prologue — Le trône né des guerres internes
 
@@ -143,107 +147,114 @@ absorbant le Sud vaincu par la pure force militaire, sans le moindre
 compromis. Cinquante ans d'occupation continentale plus tard, l'arrivée et
 la trahison de Tesla ont fait de Rouge River l'arsenal exclusif du trône
 (Cyrus II, 1913) — juste au moment où l'immensité de l'Empire commence à
-l'épuiser financièrement et où le Consortium referme son crédit. En 1915,
-l'Empereur est assassiné par l'Internationale Noire : sans lui, l'Empire ne
-connaît pas une crise de succession, il se disloque d'un coup en une
-**Seconde Guerre Civile** — cent guerres locales où généraux, politiciens et
-factions historiques saisissent chacun leur chance. Le noyau impérial se
-retranche sur Washington, et sur la seule chose qui vaille encore la peine
-d'être gardée par la force au loin : Rouge River, verrouillée par une
-garnison loyaliste. « Vous allez incarner, tour à tour, les factions qui
-vont se disputer ce qu'il en reste. » *(cf. lore §III.1-4)*
+l'épuiser financièrement et où le Consortium referme son crédit. Le trône
+tient encore, mais des lézardes apparaissent déjà aux marges du continent.
+« Vous allez d'abord incarner une résistance qui n'a pas attendu que le
+trône tombe tout seul. » *(cf. lore §III.1-2)*
 
-### Chapitre 1 — Confédération (J. Cole & Dixie) — l'événement fondateur
+### Chapitre 1 — Nations Souveraines (Aiyana & Koda) — la résistance active
+
+- **Histoire donnée avant** : le rail impérial a tracé ses voies à travers
+  les terres Lakota/Navajo/Cree/Haudenosaunee sans jamais demander la
+  permission. L'Empire tient encore, formellement, mais ses garnisons de
+  l'Ouest tournent depuis des années avec des effectifs réduits et un
+  ravitaillement de plus en plus irrégulier — la rumeur d'un fragment
+  d'équipement de Wardenclyffe exfiltré avant la saisie du labo de Tesla, et
+  échangé contre du cuivre travaillé par les Nations, circule depuis
+  longtemps.
+- **Variante de jeu** : Mechas de l'Empire **ON** — des patrouilles encore
+  formellement commandées depuis Washington, mais déjà visiblement usées.
+  Déblocage du **Golem** (mecha bonus) en fin de partie si l'objectif de
+  faction est rempli — la métallurgie cuivre/bronze des Nations est, dans le
+  lore, la plus proche des alliages tesliens.
+- **Histoire donnée après** : Aiyana ne fait pas tomber l'Empire — elle
+  prouve, avant tout le monde, que ses fissures sont réelles. La piste du
+  Golem confirme (ou infirme, sans trancher) la rumeur. Le joueur comprend
+  qu'ailleurs, quelqu'un d'autre a vu la même faiblesse et prépare quelque
+  chose de plus définitif.
+
+### Chapitre 2 — Internationale Noire (sans héros) — Le Régicide
+
+*⚠ Chantier de conception requis avant d'être jouable — voir plus haut.*
+
+- **Histoire donnée avant** : une cellule panaméricaine de l'Internationale
+  Noire, infiltrée à Rouge River depuis des années sous couvert d'ouvriers,
+  a fini par obtenir ce qu'elle attend depuis le tournant du siècle : un
+  accès à l'Empereur en déplacement.
+- **Variante de jeu (à concevoir)** : pas une partie standard à 4 factions —
+  un scénario d'infiltration/sabotage sans héros ni plateau joueur classique,
+  résolu par la mécanique propre à l'Internationale Noire (encore à définir).
+- **Histoire donnée après** : Cyrus II est assassiné dans un atelier
+  ferroviaire de Chicago. Parce que la cohésion de l'Empire ne tenait que
+  par la guerre permanente et une industrie du mecha déjà exsangue
+  financièrement, ce n'est pas une crise de succession — c'est un
+  effondrement total. La **Seconde Guerre Civile** commence : cent guerres
+  locales simultanées. Washington se retranche sur son noyau et sur Rouge
+  River, tenue par une garnison loyaliste.
+
+### Chapitre 3 — Frente Libre (E. Rojas & Trueno) — l'éclatement
+
+- **Histoire donnée avant** : l'Empire n'est pas né au Mexique, mais il s'y
+  est étendu une génération après sa fondation — concessions minières et
+  ferroviaires « exclusives, continent entier » qui ont dépossédé des
+  générations avant même que Zapata prenne les armes. La nouvelle du
+  régicide vient d'atteindre le Morelos.
+- **Variante de jeu** : **Ruée vers l'or** (`structureBonus.js`, tuile bonus
+  $ tirée en début de partie) — la course aux gisements symbolise la curée
+  sur les terres mexicaines par les latifundistes financés par le
+  Consortium. Déblocage de l'**Amplificateur** (bâtiment bonus) en cas de
+  victoire sur l'objectif de faction — ironie du fragment tesla qui produit
+  librement ce que l'Empire n'a jamais cessé d'aller extraire par la force.
+- **Histoire donnée après** : Rojas et Zapata ne sont plus seuls — ce n'est
+  plus une révolte régionale, c'est la **première étincelle visible** de la
+  Seconde Guerre Civile qui embrase déjà tout le continent. Le joueur
+  comprend que Panamerica n'a pas de « centre » géographique unique : l'Empire
+  est un système d'extraction, pas un territoire, et il se défait par tous
+  les bouts à la fois.
+
+### Chapitre 4 — Confédération (J. Cole & Dixie) — la libération de Ford
 
 - **Histoire donnée avant** : le Sud n'a jamais rejoint l'Empire de son
   plein gré — absorbé par la force en 1865, occupé militairement pendant
   cinquante ans (loi martiale, gouverneurs, garnisons — lore §III.1 et
   III.3), sans jamais renoncer à l'espoir de s'en libérer. Depuis le
-  régicide, une garnison loyaliste tient Rouge River fermée à tout le monde,
-  Ford y compris.
+  régicide (chapitre 2), une garnison loyaliste tient Rouge River fermée à
+  tout le monde, Ford y compris.
 - **Variante de jeu** : Mechas de l'Empire **ON**, mission centrée sur la
   prise de la case Rouge River elle-même (pas une simple patrouille croisée
   en chemin) — le joueur affronte directement la garnison loyaliste
   retranchée, **au secours de Ford** plutôt qu'en conquérant solitaire.
-- **Histoire donnée après** : la garnison lâche prise. En échange de son aide,
-  Cole obtient de Ford des facilités de paiement sur les mechas nécessaires
-  à son propre projet de reconquête. Sans Empereur pour l'honorer,
-  l'exclusivité de Ford ne vaut plus rien de toute façon — il comprend son
-  intérêt réel (la guerre est le meilleur moteur économique) et rouvre le
-  Catalogue Ford à tout le continent. **C'est cet instant précis qui explique
-  pourquoi toutes les factions suivantes ont déjà accès aux mechas Ford dans
-  la suite de la campagne (et dans le jeu de base).** Le joueur comprend
-  aussi que Cole n'a rien libéré au nom de personne d'autre que lui-même —
-  teasing du thème de la Fièvre (bascule fasciste) pour la suite de la
-  campagne.
+- **Histoire donnée après** : la garnison lâche prise. En échange de son
+  aide, Cole obtient de Ford des facilités de paiement sur les mechas
+  nécessaires à son propre projet de reconquête. Sans Empereur pour
+  l'honorer, l'exclusivité de Ford ne vaut plus rien de toute façon — il
+  comprend son intérêt réel (la guerre est le meilleur moteur économique) et
+  rouvre le Catalogue Ford à tout le continent. **C'est cet instant précis
+  qui explique pourquoi toutes les factions suivantes ont déjà accès aux
+  mechas Ford dans la suite de la campagne (et dans le jeu de base).** Le
+  joueur comprend aussi que Cole n'a rien libéré au nom de personne d'autre
+  que lui-même — teasing du thème de la Fièvre (bascule fasciste) pour la
+  suite de la campagne.
 
-### Chapitre 2 — Frente Libre (E. Rojas & Trueno)
-
-- **Histoire donnée avant** : l'Empire n'est pas né au Mexique, mais il s'y
-  est étendu une génération après sa fondation — concessions minières et
-  ferroviaires « exclusives, continent entier » qui ont dépossédé des
-  générations avant même que Zapata prenne les armes.
-- **Variante de jeu** : **Ruée vers l'or** (`structureBonus.js`, tuile
-  bonus $ tirée en début de partie) — la course aux gisements symbolise la
-  curée sur les terres mexicaines par les latifundistes financés par le
-  Consortium.
-- **Histoire donnée après** : révélation que la cible de Rojas n'est pas
-  seulement les propriétaires terriens du Nord, mais le principe même de la
-  concession exclusive — le joueur comprend que Panamerica n'a pas de
-  « centre » géographique unique : l'Empire est un système d'extraction, pas
-  un territoire.
-
-### Chapitre 3 — Nations Souveraines (Aiyana & Koda)
-
-- **Histoire donnée avant** : les voies ferrées impériales tracées à travers
-  les terres Lakota/Navajo/Cree/Haudenosaunee sans qu'on leur demande rien ;
-  la rumeur d'un fragment d'équipement de Wardenclyffe exfiltré et échangé
-  contre du cuivre travaillé par les Nations avant la saisie du labo de
-  Tesla.
-- **Variante de jeu** : déblocage du **Golem** (mecha bonus) en fin de
-  partie si l'objectif de faction est rempli — la métallurgie cuivre/bronze
-  des Nations est, dans le lore, la plus proche des alliages tesliens.
-- **Histoire donnée après** : la piste du Golem confirme (ou infirme, sans
-  trancher définitivement) la rumeur — laisse un fil ouvert pour une
-  extension future centrée sur l'héritage direct de Wardenclyffe.
-
-### Chapitre 4 — Acadiane (M. Thibodeau & Brume)
-
-- **Histoire donnée avant** : dispersée par le Grand Dérangement de 1755,
-  un siècle avant l'Empire — l'Acadiane n'a jamais reconnu aucune couronne,
-  et son réseau de contrebande a toujours vécu dans les failles de
-  l'autorité impériale. Depuis la Seconde Guerre Civile, le Dominion envoie
-  ses troupes achever l'Empire au Canada (chapitre 6) — un nouveau chaos que
-  Thibodeau compte bien exploiter.
-- **Variante de jeu** : déblocage de la **Tour Wardenclyffe** (bâtiment
-  bonus) — le réseau énergétique à distance fait écho, mécaniquement, au
-  réseau de comptoirs déjà propre à l'Acadiane (ability Comptoir).
-- **Histoire donnée après** : Thibodeau ne se contente plus de contourner
-  l'autorité en place — il **sabote activement** toute tentative de
-  restructuration politique dans son sillage, la sienne comme celle des
-  autres, et étend son réseau jusque dans l'ouest canadien, là où plus
-  personne n'administre rien. Le joueur comprend que l'Acadiane n'attend pas
-  la paix pour se retisser : elle a besoin du chaos pour ça.
-
-### Chapitre 5 — Bayou (Cap. Zeke & Croc)
+### Chapitre 5 — Bayou (Cap. Zeke & Croc) — le contrage de la Confédération
 
 - **Histoire donnée avant** : dockers et déserteurs des docks impériaux du
   Mississippi, devenus corsaires d'un fleuve qu'ils refusent de laisser à
-  l'Empire. Rouge River vient d'échapper au contrôle impérial (chapitre 1) —
-  et la Confédération qui l'a libérée finance désormais sa propre
-  reconquête à crédit chez Ford.
-- **Variante de jeu** : Mechas de l'Empire **ON** (à nouveau) + déblocage de
-  l'**Éclair** (mecha bonus) en cas de victoire sur l'objectif de faction —
-  cohérent avec l'objectif *Le Prédateur*, déjà câblé sur `empireKills` dans
-  le code actuel (`factions.js`).
+  l'Empire. Rouge River vient d'échapper au contrôle impérial (chapitre 4) —
+  et la Confédération qui l'a libérée finance désormais sa propre reconquête
+  à crédit chez Ford.
+- **Variante de jeu** : Mechas de l'Empire **ON** (les patrouilles restantes,
+  désormais sans commandement clair) + déblocage de l'**Éclair** (mecha
+  bonus) en cas de victoire sur l'objectif de faction — cohérent avec
+  l'objectif *Le Prédateur*, déjà câblé sur `empireKills` dans le code actuel
+  (`factions.js`).
 - **Histoire donnée après** : le joueur comprend que le Bayou ne convoite pas
-  Rouge River par appât du gain comme l'Acadiane (chapitre 4) — c'est une
-  question de survie. Si la Confédération de Cole devait un jour dominer le
-  continent avec les mechas qu'elle achète à crédit, le Bayou sait
-  exactement ce qui l'attend. Premier affrontement d'intérêts direct entre
-  deux chapitres de la campagne.
+  Rouge River par appât du gain — c'est une question de survie. Si la
+  Confédération de Cole devait un jour dominer le continent avec les mechas
+  qu'elle achète à crédit, le Bayou sait exactement ce qui l'attend. Premier
+  affrontement d'intérêts direct entre deux chapitres de la campagne.
 
-### Chapitre 6 — Dominion (Col. Whitfield & Sterling)
+### Chapitre 6 — Dominion (Col. Whitfield & Sterling) — l'achèvement de l'Empire
 
 - **Histoire donnée avant** : la finance londonienne qui a arrêté net,
   jadis, la poussée impériale vers le Canada (lore §III.1) ; mais avec
@@ -252,6 +263,9 @@ vont se disputer ce qu'il en reste. » *(cf. lore §III.1-4)*
 - **Variante de jeu** : **Acier Brut** actif sur Rouge River (voir plus
   haut) — le chapitre où le contrôle littéral de l'arsenal impérial est
   l'enjeu, en écho direct à l'ability Commerce Impérial du Dominion.
+  Déblocage du **Relais** (effet bonus) en cas de victoire sur l'objectif de
+  faction — l'espionnage économique comme prolongement naturel du Commerce
+  Impérial.
 - **Histoire donnée après** : le joueur y envoie les troupes du Dominion
   achever ce qui reste de la présence impériale au Canada — moins une
   conquête qu'un nettoyage. Révélation en clôture : c'est en partie l'argent
@@ -261,25 +275,54 @@ vont se disputer ce qu'il en reste. » *(cf. lore §III.1-4)*
   souverain. Le Dominion n'a jamais voulu que l'Empire meure : il voulait
   juste qu'il continue à signer des papiers.
 
-### Finale — Le Trône Vide
+### Chapitre 7 — Acadiane (M. Thibodeau & Brume) — la redéstabilisation
 
-- **Format** : une dernière partie combinant plusieurs variantes déjà vues
-  (Mechas de l'Empire ON + Acier Brut actif), jouable avec la faction de son
-  choix parmi les six — pas de héros supplémentaire, c'est un aboutissement,
-  pas un septième chapitre.
-- **Histoire donnée après** : le pantin Cyrus III tombe à son tour ; Rouge
-  River continue de tourner sans personne pour vraiment la commander ; les
-  mechas impériaux, sans chaîne de commandement, deviennent les « colosses
+- **Histoire donnée avant** : dispersée par le Grand Dérangement de 1755, un
+  siècle avant l'Empire — l'Acadiane n'a jamais reconnu aucune couronne, et
+  son réseau de contrebande a toujours vécu dans les failles de l'autorité.
+  Le nettoyage du Dominion au Canada (chapitre 6) menace de refermer ces
+  failles pour de bon — une frontière stabilisée est une frontière
+  surveillée.
+- **Variante de jeu** : déblocage de la **Tour Wardenclyffe** (bâtiment
+  bonus) — le réseau énergétique à distance fait écho, mécaniquement, au
+  réseau de comptoirs déjà propre à l'Acadiane (ability Comptoir).
+- **Histoire donnée après** : Thibodeau ne se contente pas de contourner la
+  nouvelle autorité dominioniste — il **sabote activement** toute tentative
+  de restructuration politique dans son sillage, la sienne comme celle des
+  autres, et étend son réseau jusque dans l'ouest canadien, là où le
+  passage du Dominion a laissé un vide administratif. Le joueur comprend
+  que l'Acadiane a besoin du chaos pour se retisser, et qu'elle est prête à
+  l'entretenir elle-même si personne d'autre ne s'en charge.
+
+### Chapitre 8 — Internationale Noire (sans héros) — Le Sabotage Final
+
+*⚠ Chantier de conception requis avant d'être jouable — voir plus haut.*
+
+- **Histoire donnée avant** : six factions armées jusqu'aux dents par Ford,
+  qui s'entredéchirent, se défendent ou se conquièrent tour à tour sans
+  qu'aucune ne l'emporte jamais vraiment — exactement le jeu de promotions
+  que Ford entretient depuis le chapitre 4. L'Internationale Noire comprend
+  que le trône n'était jamais la vraie cible : le régicide de 1915 n'a fait
+  que déplacer le problème de Washington à Dearborn.
+- **Variante de jeu (à concevoir)** : scénario de sabotage final visant
+  directement Rouge River et les stocks de mechas des factions — mécanique
+  propre à l'Internationale Noire, à définir en même temps que le
+  chapitre 2.
+- **Histoire donnée après** : Rouge River ne tombe pas d'un coup — elle
+  s'enraye. Le pantin Cyrus III, déjà sans pouvoir réel, devient
+  définitivement hors sujet. Les mechas impériaux comme les stocks de Ford,
+  privés de la chaîne qui les entretenait, deviennent les « colosses
   rouillés » que le jeu de base décrit dans son texte de règles
   (`rules.js`, section Contexte). **La campagne se referme exactement là où
-  commence une partie standard de Scythe Panamerica.**
-- Cliffhanger explicite vers l'Internationale Noire comme prochain chantier
-  de campagne (chantier séparé, voir plus haut) : on sait qui a tiré en
-  1915 et pourquoi Rouge River a fini par s'ouvrir à tous — on ne sait
-  toujours pas qui ils sont vraiment.
+  commence une partie standard de Scythe Panamerica.** Dernier mot laissé en
+  suspens : le Horloger (lore §II) avait raison sur un point — détruire une
+  machine de guerre n'a jamais suffi à empêcher la suivante. Reste à savoir
+  ce que l'Internationale Noire compte faire de ce qu'elle vient de gagner.
 
 ---
 
 *Ce document est une base de travail, ouverte à l'itération — les variantes
-listées ne sont pas encore implémentées (flags de partie à créer), et l'ordre
-des chapitres peut être réarrangé sans casser la structure.*
+listées ne sont pas encore implémentées (flags de partie à créer), les
+chapitres 2 et 8 nécessitent la conception préalable de l'Internationale
+Noire, et l'ordre des six chapitres à faction reste contraint par les
+dépendances causales décrites plus haut.*
