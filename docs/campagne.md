@@ -166,18 +166,21 @@ interchangeable avec un autre.
 
 ### Prologue — Le trône né des guerres internes
 
-*Texte seul, pas de partie.* Pose le décor : 1865, un général soutenu (pas
-fabriqué) par les industriels du Nord se couronne Empereur sur les ruines de
-la Sécession — le Consortium aide l'Empire à naître, il ne l'est pas. Cyrus I
-pousse la reconquête jusqu'au Mexique et jusqu'aux abords du Canada,
-absorbant le Sud vaincu par la pure force militaire, sans le moindre
-compromis. Cinquante ans d'occupation continentale plus tard, l'arrivée et
-la trahison de Tesla ont fait de Rouge River l'arsenal exclusif du trône
-(Cyrus II, 1913) — juste au moment où l'immensité de l'Empire commence à
-l'épuiser financièrement et où le Consortium referme son crédit. Le trône
-tient encore, mais des lézardes apparaissent déjà aux marges du continent.
-« Vous allez d'abord incarner une résistance qui n'a pas attendu que le
-trône tombe tout seul. » *(cf. lore §III.1-2)*
+*Texte seul, pas de partie.* Pose le décor en cinq mouvements : 1865, un
+général de l'Union tire avantage de la paix manquée et obtient, à coups de
+promesses et de concessions, les faveurs — et le crédit — des industriels du
+Nord qui le regardent se couronner Empereur. Cyrus Ier absorbe le Sud sans
+traité, puis le Mexique, puis les Grandes Plaines, puis pousse jusqu'au
+Canada — un continent entier par la seule force. 1884-1902, l'arc complet de
+Tesla : l'arrivée à New York, la rupture avec Edison, le Golem construit seul
+à Wardenclyffe en 1896, le refus de vendre, Ford qui regarde la même machine
+et y voit un produit, la ruine et le départ sans retour en 1902 — Ford garde
+les plans. 1913, Cyrus II, déjà accablé par le coût du continent, signe la
+charte d'exclusivité qui fait du Model M produit en série l'arsenal du trône,
+juste au moment où le Consortium referme son crédit. Le trône tient encore,
+mais aux marges quelque chose a cessé d'attendre. « Vous allez d'abord
+incarner une résistance qui n'a pas espéré que le trône tombe tout seul. »
+*(cf. lore §III.1-2)*
 
 ### Chapitre 1 — Nations Souveraines (Aiyana & Koda) — la résistance active
 
