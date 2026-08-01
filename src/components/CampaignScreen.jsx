@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { PROLOGUE, CHAPTERS, chapterById } from '../data/campaign.js';
-import { LEGACIES } from '../data/legacies.js';
+import { LEGACIES, LEGACY_IDS } from '../data/legacies.js';
 import { chapterStates, unlockedLegacies, campaignComplete } from '../logic/campaign.js';
 import { FACTIONS } from '../data/factions.js';
 import { MATS } from '../data/mats.js';
@@ -180,13 +180,15 @@ export default function CampaignScreen({ progress, onPlay, onRead, onBack, onRes
           );
         })}
 
-        {/* Legs de Wardenclyffe débloqués — vitrine de progression */}
+        {/* Récompenses débloquées — vitrine de progression. « Legs de
+            Wardenclyffe » ne convient plus comme titre : le chapitre 1 donne
+            désormais le Chantier ferroviaire, qui n'en est pas un. */}
         <div style={{ ...frame(false), marginTop: 18, padding: "14px 16px" }}>
           <div style={{ color: "var(--gold-dim)", fontSize: 12, fontWeight: 600, letterSpacing: 3, textTransform: "uppercase", fontFamily: "'Bitter',serif", marginBottom: 8 }}>
-            Legs de Wardenclyffe — {legs.length}/5
+            Récompenses de campagne — {legs.length}/{LEGACY_IDS.length}
           </div>
           {legs.length === 0
-            ? <div style={{ fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>Aucun legs débloqué. Chacun s'obtient en remplissant la condition canon de son chapitre.</div>
+            ? <div style={{ fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>Aucune récompense débloquée. Chacune s'obtient en remplissant la condition canon de son chapitre.</div>
             : legs.map(l => (
               <div key={l.id} style={{ fontSize: 13, color: "var(--text2)", marginBottom: 6 }}>
                 <b style={{ color: "var(--gold)" }}>{l.icon} {l.name}</b> — {l.desc}

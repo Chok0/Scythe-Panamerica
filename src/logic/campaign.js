@@ -12,6 +12,7 @@ import { CHAPTERS, chapterById, heldHexes, FACTORY_HEX } from '../data/campaign.
 import { LEGACIES } from '../data/legacies.js';
 import { STRUCTURE_BONUSES } from '../data/structureBonus.js';
 import { hMap, ADJ } from '../data/hexes.js';
+import { ENCOUNTERS, RAIL_ENCOUNTERS, hasTeslaFragment } from '../data/encounters.js';
 
 export const CAMPAIGN_KEY = 'pa-campagne';
 
@@ -145,6 +146,23 @@ export const teslaEncountersUnlocked = (progress) => !!progress?.done?.ch3?.cano
 // Cran 2 (chapitre 4, condition canon — prise de Rouge River) : le coffre
 // s'ouvre, les plans T1-T5 rejoignent l'offre de l'Usine.
 export const teslaPlansUnlocked = (progress) => !!progress?.done?.ch4?.canonMet;
+
+/** Deck de rencontres réellement en jeu.
+ *  `chapter` null → partie LIBRE : contenu complet et inchangé, le verrou
+ *  n'existe qu'en campagne. En campagne : cartes à fragment Tesla retirées
+ *  tant que le cran du chapitre 3 n'est pas atteint, cartes « Chantier
+ *  ferroviaire » ajoutées une fois débloquées — mais jamais dans le chapitre
+ *  qui les débloque lui-même (elles rejoignent « les chapitres SUIVANTS » :
+ *  au chapitre 1, le rail reste l'arme de l'Empire). */
+export const campaignEncounterPool = (chapter, progress) => {
+  if (!chapter) return ENCOUNTERS;
+  const base = teslaEncountersUnlocked(progress)
+    ? ENCOUNTERS
+    : ENCOUNTERS.filter(c => !hasTeslaFragment(c));
+  const railUnlocked = (progress?.legacies || []).includes("railCards")
+    && LEGACIES.railCards.chapter !== chapter.id;
+  return railUnlocked ? [...base, ...RAIL_ENCOUNTERS] : base;
+};
 
 // ── « Le rail avance » (chapitre 1) ────────────────────────────────────────
 // Croissance automatique du réseau ferroviaire impérial : 1 segment par tour

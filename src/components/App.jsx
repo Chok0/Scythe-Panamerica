@@ -9,7 +9,7 @@ import { generateAcceptedMap } from '../data/mapGen.js';
 import { getCombatBonus } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
 import { EMPIRE_START, drawEmpireCombat } from '../data/empire.js';
-import { ENCOUNTERS, RAIL_ENCOUNTERS, ALL_ENCOUNTERS, hasTeslaFragment } from '../data/encounters.js';
+import { ENCOUNTERS, ALL_ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, FACTORY_COL, PLANS_FORD, PLANS_TESLA, ALL_FACTORY_CARDS, TESLA_FRAGMENTS_REQUIRED, TESLA_OFFER_SIZE, factoryCostLabel, factoryGainLabel, factoryEffectLabel, FACTORY_BOTTOM_DESC } from '../data/plans.js';
 import { MATS, matById, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes, FR_TOP as FR_TOP_MAP, FR_BOT as FR_BOT_MAP, frTop, frBot } from '../data/mats.js';
 import { OBJECTIVES, ALL_OBJECTIVES } from '../data/objectives.js';
@@ -20,7 +20,7 @@ import Soundtrack from './Soundtrack.jsx';
 import SetupScreen from './SetupScreen.jsx';
 import CampaignScreen from './CampaignScreen.jsx';
 import { chapterById } from '../data/campaign.js';
-import { loadProgress, saveProgress, resetProgress, completeChapter, campaignConfig, canonMet, steelTick, growEmpireRail, teslaEncountersUnlocked, teslaPlansUnlocked, unlockedLegacies } from '../logic/campaign.js';
+import { loadProgress, saveProgress, resetProgress, completeChapter, campaignConfig, canonMet, steelTick, growEmpireRail, teslaEncountersUnlocked, teslaPlansUnlocked, campaignEncounterPool } from '../logic/campaign.js';
 import { buildSaveBundle, parseSaveBundle, saveFileName, describeSave } from '../logic/saveFile.js';
 import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
@@ -72,16 +72,6 @@ const TrackStar=({size=13,earned=false})=>(
       strokeDasharray={earned?undefined:"3 2.4"} opacity={earned?0.95:0.5} strokeLinejoin="round"/>
   </svg>
 );
-
-// Deck de rencontres effectivement en jeu pour un chapitre de campagne donné
-// (docs/campagne.md §4 : verrou du contenu Tesla). `ch` null → partie libre,
-// contenu complet et inchangé — le verrou n'existe qu'en mode campagne.
-const campaignEncounterPool=(ch,progress)=>{
-  if(!ch)return ENCOUNTERS;
-  const base=teslaEncountersUnlocked(progress)?ENCOUNTERS:ENCOUNTERS.filter(c=>!hasTeslaFragment(c));
-  const railUnlocked=unlockedLegacies(progress).some(l=>l.id==="railCards");
-  return railUnlocked?[...base,...RAIL_ENCOUNTERS]:base;
-};
 
 // v0.16 — minuterie d'auto-fermeture de l'écran de révélation de combat :
 // 7 s pour lire le résultat, puis l'overlay s'efface seul (il restait sinon

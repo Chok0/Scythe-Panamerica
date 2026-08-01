@@ -8,7 +8,9 @@ import {
   isChapterUnlocked, isChapterDone, chapterStates, nextChapter, campaignComplete,
   canonMet, completeChapter, unlockedLegacies, campaignConfig, steelTick, CAMPAIGN_KEY,
   teslaEncountersUnlocked, teslaPlansUnlocked, empireRailDone, growEmpireRail,
+  campaignEncounterPool,
 } from '../campaign.js';
+import { ENCOUNTERS, RAIL_ENCOUNTERS, hasTeslaFragment } from '../../data/encounters.js';
 import { createPlayer } from '../player.js';
 
 // localStorage de test (l'API réelle n'existe pas sous vitest/node)
@@ -216,6 +218,43 @@ describe('verrou du contenu Tesla', () => {
     expect(teslaPlansUnlocked(afterCh3)).toBe(false);
     const afterCh4 = completeChapter(afterCh3, 'ch4', { victory: 'canon' }).progress;
     expect(teslaPlansUnlocked(afterCh4)).toBe(true);
+  });
+});
+
+describe('deck de rencontres en campagne', () => {
+  const ch1 = chapterById('ch1'), ch3 = chapterById('ch3'), ch5 = chapterById('ch5');
+  const railDone = () => completeChapter(emptyProgress(), 'ch1', { victory: 'canon' }).progress;
+
+  it('partie LIBRE : contenu complet, aucun filtrage (non-régression)', () => {
+    const pool = campaignEncounterPool(null, emptyProgress());
+    expect(pool).toBe(ENCOUNTERS);
+    expect(pool.filter(hasTeslaFragment).length).toBe(16);
+  });
+
+  it('campagne, verrou fermé : aucune carte à fragment Tesla dans le deck', () => {
+    const pool = campaignEncounterPool(ch1, emptyProgress());
+    expect(pool.filter(hasTeslaFragment).length).toBe(0);
+    expect(pool.length).toBe(ENCOUNTERS.length - 16);
+  });
+
+  it('campagne, verrou ouvert (ch3 canon) : les cartes à fragment reviennent', () => {
+    const afterCh3 = completeChapter(emptyProgress(), 'ch3', { victory: 'canon' }).progress;
+    expect(campaignEncounterPool(ch5, afterCh3).filter(hasTeslaFragment).length).toBe(16);
+  });
+
+  it('Chantier ferroviaire : injecté dans les chapitres SUIVANTS, pas dans le ch.1 rejoué', () => {
+    const prog = railDone();
+    const ids = (ch) => new Set(campaignEncounterPool(ch, prog).map(c => c.id));
+    RAIL_ENCOUNTERS.forEach(rc => {
+      expect(ids(ch3).has(rc.id), `ch3 devrait contenir ${rc.id}`).toBe(true);
+      expect(ids(ch1).has(rc.id), `ch1 rejoué ne doit PAS contenir ${rc.id}`).toBe(false);
+    });
+  });
+
+  it('Chantier ferroviaire absent tant que le chapitre 1 n\'est pas gagné en canon', () => {
+    const stars = completeChapter(emptyProgress(), 'ch1', { victory: 'stars', canonMet: false }).progress;
+    const ids = new Set(campaignEncounterPool(ch3, stars).map(c => c.id));
+    RAIL_ENCOUNTERS.forEach(rc => expect(ids.has(rc.id)).toBe(false));
   });
 });
 
