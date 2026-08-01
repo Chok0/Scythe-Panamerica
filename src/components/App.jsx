@@ -1553,6 +1553,21 @@ export default function App(){
     &&(()=>{const c=getBottomCost(me)[BOTTOM.indexOf("Upgrade")];if(!c)return false;
       return countRes(me,c.res)>=c.qty;})();
 
+  // ── PACK UP (Nations) : destinations cliquables sur la CARTE ──
+  // Comme tout autre déplacement, on doit pouvoir cliquer l'hex d'arrivée —
+  // les boutons « → #n » du panneau restent en second recours. Sert aussi de
+  // source unique à ces deux affichages, qui divergeaient.
+  // La base est exclue : c'est le point hors plateau, pas une destination.
+  const packUpTargets=useMemo(()=>{
+    if(!me||!bottomPick?.packUp||me.packUpUsed)return new Set();
+    const bld=(me.buildings||[])[bottomPick.buildingIdx];
+    if(!bld)return new Set();
+    return new Set((ADJ[bld.hexId]||[]).filter(id=>{
+      const h=hMap[id];
+      return h&&!h.base&&h.t!=="lac"&&h.t!=="marecage"&&!(me.buildings||[]).some(b=>b.hexId===id);
+    }));
+  },[me,bottomPick]);
+
   // Cibles cliquables sur la carte pour les actions bottom Deploy/Build
   // (en plus des boutons du panneau : cliquer l'hex surligné place directement)
   const actionTargets=useMemo(()=>{
@@ -1728,6 +1743,14 @@ export default function App(){
       }
     }
     
+    // ── PACK UP : cliquer l'hex de destination sur la carte ──
+    // Placé ici, avant la sélection d'unité : tant qu'un bâtiment est choisi,
+    // le clic sert la pose — même précédence que le mode de pose de rails.
+    if(packUpTargets.has(hexId)){
+      doPackUpMove(bottomPick.buildingIdx,hexId);
+      return;
+    }
+
     // ── MOVE : re-cliquer l'hex de l'unité sélectionnée = DÉSÉLECTION ──
     if(moveSource&&hexId===moveSource.fromHex){setMoveSource(null);setTransportPick(null);return;}
     if(moveSource&&validMoves.has(hexId)){
@@ -2047,7 +2070,7 @@ export default function App(){
     // tous, pour motiver la quête des fragments avant d'y aller ──
     if(hexId===FACTORY_RR_HEX&&!selAction&&!pendingBottom&&!rougeRiver)setFactoryPreview(true);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,carryOnMove,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes,rougeRiver]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,carryOnMove,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes,rougeRiver,packUpTargets,doPackUpMove]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -3328,7 +3351,7 @@ export default function App(){
             const isV=validMoves.has(hex.id)||(selAction==="Produce"&&producePicks.includes(hex.id));
             const isSel=selHex===hex.id;const isHov=hovHex===hex.id;
             const isFactory=hex.t==="factory";
-            const isSrc=(!moveSource&&movableUnits.has(hex.id))||actionTargets.hexes.has(hex.id)||produceEligible.has(hex.id);
+            const isSrc=(!moveSource&&movableUnits.has(hex.id))||actionTargets.hexes.has(hex.id)||produceEligible.has(hex.id)||packUpTargets.has(hex.id);
             const isBonusTile=structureBonus&&hex.t!=="lac"&&hex.t!=="marecage"&&hex.t!=="factory"&&structureBonus.check(hex.id,players[0],players);
             // Territorial control contour (§2.3 refonte visuelle) : la première unité
             // présente sur l'hex porte la couleur de contrôle — un hex n'est jamais
@@ -3349,7 +3372,7 @@ export default function App(){
               isBonusTile?`🏦 ${structureBonus.icon} ${structureBonus.name} — hex éligible au bonus de pose (${structureBonus.scale})`:null,
               hexHasRail?"🛤 Rail : une unité qui COMMENCE son déplacement sur le réseau peut rejoindre tout nœud relié (coût 1 pas). Monter sur le rail en cours de route n'ouvre pas le réseau ce tour-ci, et le réseau est coupé aux nœuds occupés par l'ennemi.":null,
             ].filter(Boolean).join("\n");
-            return(<g key={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
+            return(<g key={hex.id} data-hex={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
               {hexTitle&&<title>{hexTitle}</title>}
               <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc} controlColor={controlColor} wireframe={mapChoice!=="random"}/>
               {/* Bonus de construction : pastille $ sur les tuiles qualifiées */}
@@ -4457,10 +4480,10 @@ export default function App(){
                   {me.faction==="nations"&&(me.unlockedAbilities||[]).includes(3)&&(me.buildings||[]).length>0&&!me.packUpUsed&&!moveSource&&(()=>{
                     if(bottomPick&&bottomPick.packUp){
                       const bld=(me.buildings||[])[bottomPick.buildingIdx];
-                      const adjTargets=(ADJ[bld.hexId]||[]).filter(id=>{const h=hMap[id];return h&&h.t!=="lac"&&h.t!=="marecage"&&!(me.buildings||[]).some(b=>b.hexId===id);});
+                      const adjTargets=[...packUpTargets];
                       const bt=BUILDING_TYPES.find(t=>t.type===bld.type);
                       return <div style={{marginTop:8,padding:"8px 10px",borderRadius:6,border:"1px solid var(--nations)",background:"rgba(32,178,170,0.06)"}}>
-                        <div style={{fontSize:14,color:"var(--nations)",marginBottom:6}}>📦 Pack Up — déplacer {bt?bt.icon:""} {bt?bt.name:""} depuis #{bld.hexId}</div>
+                        <div style={{fontSize:14,color:"var(--nations)",marginBottom:6}}>📦 Pack Up — déplacer {bt?bt.icon:""} {bt?bt.name:""} depuis #{bld.hexId} <span style={{color:"var(--text-muted)"}}>— cliquez l'hex surligné sur la carte</span></div>
                         {adjTargets.length>0?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{adjTargets.map(hid=><button key={hid} onClick={()=>doPackUpMove(bottomPick.buildingIdx,hid)} className="act-btn" style={{borderColor:"var(--nations)"}}>→ #{hid}</button>)}</div>:<div style={{fontSize:12,color:"var(--text-muted)"}}>Aucun hex adjacent libre</div>}
                         <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Annuler</button>
                       </div>;

@@ -165,3 +165,59 @@ describe('Convoi : bond village ↔ Rouge River', () => {
     expect(moves).not.toContain(22);
   });
 });
+
+// La base de faction est le point HORS PLATEAU où l'on atterrit en attendant
+// de rentrer. On y est renvoyé (retraite, défaite) — on n'y va jamais
+// volontairement. Signalé en partie réelle le 01/08.
+describe('hex de base : jamais une destination', () => {
+  const baseOf = (fac) => Object.values(hMap).find(h => h.base && h.faction === fac);
+
+  it('aucune faction ne peut entrer dans sa propre base, depuis aucun de ses hex de départ', () => {
+    Object.keys(FACTIONS).forEach(fac => {
+      const base = baseOf(fac);
+      expect(base, `${fac} sans hex de base`).toBeTruthy();
+      // Les hex de départ sont précisément ceux qui touchent la base
+      (ADJ[base.id] || []).forEach(startHex => {
+        const p = { hero: startHex, workers: [], mechs: [] };
+        [[], [0], [0, 1, 2, 3]].forEach(abilities => {
+          const moves = new Set(getValidMoves(startHex, fac, abilities, p, []));
+          expect(moves.has(base.id), `${fac}: #${startHex} → base autorisé (abilities ${abilities})`).toBe(false);
+        });
+      });
+    });
+  });
+
+  it('aucune base ADVERSE n\'est accessible non plus', () => {
+    const nations = baseOf('nations');
+    (ADJ[nations.id] || []).forEach(startHex => {
+      const p = { hero: startHex, workers: [], mechs: [] };
+      const moves = new Set(getValidMoves(startHex, 'confederation', [0, 1, 2, 3], p, []));
+      expect(moves.has(nations.id)).toBe(false);
+    });
+  });
+
+  it('on SORT normalement de sa base (retraite → reprise du jeu)', () => {
+    Object.keys(FACTIONS).forEach(fac => {
+      const base = baseOf(fac);
+      const p = { hero: base.id, workers: [], mechs: [] };
+      const moves = new Set(getValidMoves(base.id, fac, [], p, []));
+      expect(moves.size, `${fac} enfermée sur sa base`).toBeGreaterThan(0);
+      // et aucune de ces sorties n'est une autre base
+      [...moves].forEach(id => expect(hMap[id]?.base, `sortie vers une base #${id}`).toBeFalsy());
+    });
+  });
+
+  it('la base ne sert plus de raccourci entre les deux hex de départ', () => {
+    // Elle touche les DEUX hex de départ : sans le filtre, départ1 → base →
+    // départ2 offrait un passage en 2 pas avec Vitesse.
+    Object.keys(FACTIONS).forEach(fac => {
+      const base = baseOf(fac);
+      const [a, b] = ADJ[base.id] || [];
+      if (a == null || b == null) return;
+      if ((ADJ[a] || []).includes(b)) return; // déjà voisins : pas de raccourci à tester
+      const p = { hero: a, workers: [], mechs: [] };
+      const withSpeed = new Set(getValidMoves(a, fac, [0], p, [])); // Vitesse = 2 pas
+      expect(withSpeed.has(b), `${fac}: #${a} → #${b} par la base`).toBe(false);
+    });
+  });
+});
