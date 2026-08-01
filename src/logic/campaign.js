@@ -147,6 +147,14 @@ export const teslaEncountersUnlocked = (progress) => !!progress?.done?.ch3?.cano
 // s'ouvre, les plans T1-T5 rejoignent l'offre de l'Usine.
 export const teslaPlansUnlocked = (progress) => !!progress?.done?.ch4?.canonMet;
 
+/** Les fragments Tesla sont-ils accessible au joueur ?
+ *  Point de vérité UNIQUE pour les trois sources : cartes rencontre, butin
+ *  d'une victoire contre l'Empire, et (indirectement) prototypes de l'Usine.
+ *  Hors campagne : toujours. En campagne : cran 1 (chapitre 3, voie canon) —
+ *  c'est la même matière, les reliques de Wardenclyffe circulent ou non. */
+export const teslaFragmentsAvailable = (chapter, progress) =>
+  !chapter || teslaEncountersUnlocked(progress);
+
 /** Deck de rencontres réellement en jeu.
  *  `chapter` null → partie LIBRE : contenu complet et inchangé, le verrou
  *  n'existe qu'en campagne. En campagne : cartes à fragment Tesla retirées

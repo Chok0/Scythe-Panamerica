@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { CHAPTERS, chapterById, FACTORY_HEX, controlsFactory } from '../../data/campaign.js';
+import { CHAPTERS, chapterById, FACTORY_HEX, controlsFactory, partMet, partProgress } from '../../data/campaign.js';
+import { FACTIONS } from '../../data/factions.js';
 import { LEGACIES, LEGACY_IDS } from '../../data/legacies.js';
 import { hMap } from '../../data/hexes.js';
 import { EMPIRE_RAILS } from '../../data/empire.js';
@@ -218,6 +219,70 @@ describe('verrou du contenu Tesla', () => {
     expect(teslaPlansUnlocked(afterCh3)).toBe(false);
     const afterCh4 = completeChapter(afterCh3, 'ch4', { victory: 'canon' }).progress;
     expect(teslaPlansUnlocked(afterCh4)).toBe(true);
+  });
+});
+
+describe('conditions canon décomposées en membres', () => {
+  it('chaque condition expose ses membres, et `desc` en est généré', () => {
+    CHAPTERS.filter(c => c.canon).forEach(c => {
+      expect(Array.isArray(c.canon.parts), `${c.id} sans membres`).toBe(true);
+      expect(c.canon.parts.length).toBeGreaterThan(0);
+      c.canon.parts.forEach(pt => {
+        expect(typeof pt.label).toBe('string');
+        expect(typeof pt.count).toBe('function');
+        expect(pt.need).toBeGreaterThan(0);
+      });
+      // desc généré → il mentionne chaque membre : plus de phrase figée qui
+      // pourrait mentir sur ce que le moteur vérifie réellement
+      c.canon.parts.forEach(pt => expect(c.canon.desc).toContain(pt.label));
+    });
+  });
+
+  it('`check` est DÉRIVÉ des membres : tous remplis ⇔ condition remplie', () => {
+    const c = chapterById('ch1');
+    const p = createPlayer('nations', 1, false);
+    p.mechs = [{ id: 'm0', hexId: 7 }, { id: 'm1', hexId: 12 }]; // 4 hex plaine/forêt avec #10 et #17
+    p.empireKills = 2;
+    expect(c.canon.parts.every(pt => partMet(pt, p, {}))).toBe(true);
+    expect(c.canon.check(p, {})).toBe(true);
+    p.empireKills = 1; // un seul membre retombe
+    expect(c.canon.parts.every(pt => partMet(pt, p, {}))).toBe(false);
+    expect(c.canon.check(p, {})).toBe(false);
+  });
+
+  it('la progression par membre reflète l\'état réel (le bug du 01/08)', () => {
+    // Position exacte du joueur au tour 17 : patrouilles faites, hex à 2/4.
+    const c = chapterById('ch1');
+    const p = createPlayer('nations', 1, false);
+    p.hero = 41;                                    // champs
+    p.workers = [10, 31, 34].map((h, i) => ({ id: `w${i}`, hexId: h })); // forêt, montagne, forêt
+    p.mechs = [{ id: 'm0', hexId: 38 }];            // champs
+    p.empireKills = 2;
+    const [hexes, patrouilles] = c.canon.parts;
+    expect(partProgress(hexes, p, {})).toBe('2/4');
+    expect(partMet(hexes, p, {})).toBe(false);
+    expect(partProgress(patrouilles, p, {})).toBe('2/2');
+    expect(partMet(patrouilles, p, {})).toBe(true);
+    expect(c.canon.check(p, {})).toBe(false);        // le moteur avait raison
+  });
+
+  // GARDE-FOU : les conditions canon reprennent les objectifs de faction.
+  // Si un seuil bouge dans factions.js sans être répercuté ici, ce test tombe.
+  it('reste d\'accord avec les objectifs de faction dont elle dérive', () => {
+    const cases = [
+      ['ch3', 'frente', p => { p.trapTokens = [1, 2, 3, 4].map(i => ({ hexId: i })); p.workers = [{ id: 'a', hexId: 32 }, { id: 'b', hexId: 23 }]; }],
+      ['ch5', 'bayou', p => { p.capturedMech = 1; p.empireKills = 1; p.combatWins = 1; }],
+      ['ch6', 'dominion', p => { p.imperialCoins = 20; }],
+    ];
+    cases.forEach(([chId, fac, setup]) => {
+      const c = chapterById(chId), fObj = FACTIONS[fac].fObj;
+      const before = createPlayer(fac, 1, false);
+      expect(c.canon.check(before, {}), `${chId} validé à vide`).toBe(fObj.check(before, {}));
+      const after = createPlayer(fac, 1, false);
+      setup(after);
+      expect(c.canon.check(after, {}), `${chId}: canon ≠ objectif de faction`).toBe(fObj.check(after, {}));
+      expect(fObj.check(after, {}), `${chId}: le montage de test ne remplit pas l'objectif`).toBe(true);
+    });
   });
 });
 

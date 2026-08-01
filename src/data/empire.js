@@ -13,3 +13,12 @@ export const EMPIRE_DECK = [
 ];
 
 export const drawEmpireCombat = () => EMPIRE_DECK[Math.floor(Math.random() * EMPIRE_DECK.length)];
+
+// Fourchette du deck impérial. Le joueur mise à l'aveugle contre un bot mais
+// voyait la force EXACTE de l'Empire avant d'engager (constaté en partie
+// réelle le 01/08) : asymétrie non voulue. On n'annonce plus que la
+// fourchette, la valeur n'est révélée qu'à la résolution.
+export const EMPIRE_POWER_MIN = Math.min(...EMPIRE_DECK.map(c => c.power));
+export const EMPIRE_POWER_MAX = Math.max(...EMPIRE_DECK.map(c => c.power));
+/** Fourchette affichable pour `n` patrouilles liguées sur un même hex. */
+export const empirePowerRange = (n = 1) => `${EMPIRE_POWER_MIN * n} à ${EMPIRE_POWER_MAX * n}`;

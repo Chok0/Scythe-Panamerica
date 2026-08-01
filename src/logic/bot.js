@@ -2,7 +2,7 @@ import { FACTIONS } from '../data/factions.js';
 import { TERRAINS } from '../data/terrains.js';
 import { hMap, ADJ, HEXES, HOME_BASES, homeBaseHex } from '../data/hexes.js';
 import { matById, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, getBottomCost, topUpgradeCount, maxBottomCubes, frBot } from '../data/mats.js';
-import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from './resources.js';
+import { countRes, spendRes, getWorkerHexes, resFR, resListFR, canPayMixed, spendMixed } from './resources.js';
 import { canPayProduce, payProduce, getProduceCost } from './production.js';
 import { getValidMoves, findPathWaypoints, marshToll } from './movement.js';
 import { transportUnits } from './transport.js';
@@ -205,7 +205,11 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
 
   // Can we afford the bottom action?
   const altRes = FACTIONS[p.faction]?.deployAltRes;
-  const canBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && altRes && countRes(p, altRes) >= bc.qty));
+  // Substitution PARTIELLE (arbitrage 01/08) : c'est le TOTAL métal + alt qui
+  // doit couvrir le coût, pas l'une OU l'autre pile prise séparément.
+  const canBottom = bc && (bottomAction === "Deploy" && altRes
+    ? canPayMixed(p, bc.res, altRes, bc.qty)
+    : countRes(p, bc.res) >= bc.qty);
   const bottomMaxed = bottomAction === "Upgrade" ? (p.upgrades || 0) >= 6
     : bottomAction === "Deploy" ? p.mechs.length >= 4
     : bottomAction === "Build" ? (p.buildings || []).length >= 4
@@ -1116,7 +1120,9 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     const c = getBottomCost(p)[col];
     if (!c || isBottomMaxed(p, BOTTOM[col])) return false;
     const alt = FACTIONS[p.faction]?.deployAltRes;
-    return countRes(p, c.res) >= c.qty || (BOTTOM[col] === "Deploy" && alt && countRes(p, alt) >= c.qty);
+    return BOTTOM[col] === "Deploy" && alt
+      ? canPayMixed(p, c.res, alt, c.qty)
+      : countRes(p, c.res) >= c.qty;
   })();
   if (action === "Move" && cashDeadlock && !bottomPayableNow && !(ctx && ctx.endgame)) {
     // Scythe rule: Move's alternative is "gain 1$"
@@ -1511,7 +1517,9 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
   const bc = botCosts[col];
   // Ressource ALTERNATIVE de déploiement (Esprit Sauvage, Vapeur des Lacs)
   const altResB = FACTIONS[p.faction]?.deployAltRes;
-  const canAffordBottom = bc && (countRes(p, bc.res) >= bc.qty || (bottomAction === "Deploy" && altResB && countRes(p, altResB) >= bc.qty));
+  const canAffordBottom = bc && (bottomAction === "Deploy" && altResB
+    ? canPayMixed(p, bc.res, altResB, bc.qty)
+    : countRes(p, bc.res) >= bc.qty);
   let bottomDone = false;
   if (canAffordBottom) {
     // v0.16 : même règle de surplus que scoreColumn — au-delà de 2 upgrades,
@@ -1540,8 +1548,9 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     } else if (bottomAction === "Deploy" && p.mechs.length < 4) {
       const wh = getWorkerHexes(p);
       if (wh.length > 0) {
-        const deployRes = (altResB && countRes(p, bc.res) < bc.qty) ? altResB : bc.res;
-        const sp = spendRes(p, deployRes, bc.qty); Object.assign(p, { resources: sp.resources });
+        // Métal d'abord, l'alternative complète le reliquat (mélange autorisé)
+        const sp = altResB ? spendMixed(p, bc.res, altResB, bc.qty) : spendRes(p, bc.res, bc.qty);
+        Object.assign(p, { resources: sp.resources });
         // Deploy on worker hex closest to center (strategic position)
         const centerX = 500, centerY = 500;
         const th = wh.sort((a, b) => {
