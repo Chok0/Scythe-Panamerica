@@ -60,6 +60,9 @@ const canGainUpg = (p) => (p.upgrades || 0) < 6;
 const NON_GARE = ["arsenal", "memorial", "moulin"];
 const canEncBuild = (p) => NON_GARE.some(t => !(p.buildings || []).some(b => b.type === t)) && !(p.buildings || []).some(b => b.hexId === p.hero);
 const canEncRecruit = (p) => (p.recruits || 0) < 4;
+// Gare gratuite (cartes « Chantier ferroviaire », option 3) — seule dérogation :
+// ici c'est justement la Gare qu'on pose, pas un autre type.
+const canEncGare = (p) => (p.buildings || []).length < 4 && !(p.buildings || []).some(b => b.type === "gare" || b.hexId === p.hero);
 
 export const ENCOUNTERS = [
   { id: 1, name: "L'Épave Fumante", desc: "Un mecha gît au bord de la route, fumant encore.",
@@ -95,7 +98,7 @@ export const ENCOUNTERS = [
   { id: 6, name: "Le Dépôt de Trains", desc: "Un dépôt ferroviaire rempli de technologie oubliée.",
     choices: [
       { label: "Inventorier le dépôt", icon: "♥", desc: "+1 pop, +2 métal", effect: p => { gainPop(p, 1); addRes(p, "metal", 2); } },
-      { label: "Acheter la cargaison", icon: "🔬", desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
+      { label: "Acheter la cargaison", icon: "🔬", grantsFragment: true, desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
       { label: "Rafler la technologie", icon: "⬆", desc: "-2 pop, +1 amélioration", grantsUpgrade: true, available: p => p.pop >= 2 && canGainUpg(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
     ] },
   { id: 7, name: "La Fête du Village", desc: "Musique, danse, et moonshine. Le peuple fait la fête.",
@@ -119,13 +122,13 @@ export const ENCOUNTERS = [
   { id: 10, name: "Le Télégraphe Fantôme", desc: "Un appareil crépite des messages codés. Qui écoute ?",
     choices: [
       { label: "Relayer les messages", icon: "♥", desc: "+1 pop, +1 carte combat", effect: p => { gainPop(p, 1); p.combatCards += 1; } },
-      { label: "Décrypter les codes", icon: "🔬", desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
+      { label: "Décrypter les codes", icon: "🔬", grantsFragment: true, desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
       { label: "Détourner le réseau", icon: "⚡", desc: "-2 pop, +4 puissance", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); gainPow(p, 4); } },
     ] },
   { id: 11, name: "Le Cimetière de Mechas", desc: "Des dizaines de colosses rouillés. Mémoire ou ferraille ?",
     choices: [
       { label: "Rendre hommage", icon: "♥", desc: "+1 pop, +2 métal", effect: p => { gainPop(p, 1); addRes(p, "metal", 2); } },
-      { label: "Fouiller les prototypes", icon: "🔬", desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
+      { label: "Fouiller les prototypes", icon: "🔬", grantsFragment: true, desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
       { label: "Reconstruire un colosse", icon: "⬡", desc: "-3 pop, +1 mecha", grantsMech: true, available: p => p.pop >= 3 && p.mechs.length < 4, effect: p => { p.pop = Math.max(0, p.pop - 3); addMech(p); } },
     ] },
   { id: 12, name: "La Contrebandière", desc: "Elle vend de tout. Armes, nourriture, secrets.",
@@ -162,7 +165,7 @@ export const ENCOUNTERS = [
     ] },
   { id: 17, src: "original", name: "La Scierie du Fleuve", desc: "Les lames tournent encore, les ouvriers ont fui.",
     choices: [
-      { label: "Récupérer la vieille dynamo", icon: "🔬", desc: "+1 pop, +1 Fragment Tesla", effect: p => { gainPop(p, 1); p.fragments = (p.fragments || 0) + 1; } },
+      { label: "Récupérer la vieille dynamo", icon: "🔬", grantsFragment: true, desc: "+1 pop, +1 Fragment Tesla", effect: p => { gainPop(p, 1); p.fragments = (p.fragments || 0) + 1; } },
       { label: "Acheter le stock", icon: "🪵", desc: "-2$, +4 bois", available: p => p.coins >= 2, effect: p => { p.coins -= 2; addRes(p, "bois", 4); } },
       { label: "Enrôler les bûcherons", icon: "🤝", desc: "-2 pop, +1 recrue", grantsRecruit: true, available: p => p.pop >= 2 && canEncRecruit(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
     ] },
@@ -181,12 +184,12 @@ export const ENCOUNTERS = [
   { id: 20, src: "original", name: "La Forge de Fortune", desc: "Un forgeron bat le fer des épaves, des recrues plein l'atelier.",
     choices: [
       { label: "Passer commande", icon: "♥", desc: "+1 pop, +2 métal", effect: p => { gainPop(p, 1); addRes(p, "metal", 2); } },
-      { label: "Acheter ses pièces d'un autre âge", icon: "🔬", desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
+      { label: "Acheter ses pièces d'un autre âge", icon: "🔬", grantsFragment: true, desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
       { label: "Vider la réserve", icon: "⚙", desc: "-2 pop, +4 métal", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); addRes(p, "metal", 4); } },
     ] },
   { id: 21, src: "original", name: "Le Négociant en Barils", desc: "Il jure que son pétrole est le plus pur du continent.",
     choices: [
-      { label: "Fouiller sa brocante", icon: "🔬", desc: "+1 pop, +1 Fragment Tesla", effect: p => { gainPop(p, 1); p.fragments = (p.fragments || 0) + 1; } },
+      { label: "Fouiller sa brocante", icon: "🔬", grantsFragment: true, desc: "+1 pop, +1 Fragment Tesla", effect: p => { gainPop(p, 1); p.fragments = (p.fragments || 0) + 1; } },
       { label: "Acheter la citerne", icon: "🛢", desc: "-2$, +4 pétrole", available: p => p.coins >= 2, effect: p => { p.coins -= 2; addRes(p, "petrole", 4); } },
       { label: "Enrôler ses convoyeurs", icon: "🤝", desc: "-2 pop, +1 recrue", grantsRecruit: true, available: p => p.pop >= 2 && canEncRecruit(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
     ] },
@@ -194,17 +197,17 @@ export const ENCOUNTERS = [
     choices: [
       { label: "Distribuer les tracts", icon: "♥", desc: "+1 pop, +1 carte combat", effect: p => { gainPop(p, 1); p.combatCards += 1; } },
       { label: "Financer un tirage", icon: "💰", desc: "-2$, +2 pop", available: p => p.coins >= 2, effect: p => { p.coins -= 2; gainPop(p, 2); } },
-      { label: "Saisir les plans interdits", icon: "🔬", desc: "-2 pop, +1 Fragment Tesla, +2 bois", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); p.fragments = (p.fragments || 0) + 1; addRes(p, "bois", 2); } },
+      { label: "Saisir les plans interdits", icon: "🔬", grantsFragment: true, desc: "-2 pop, +1 Fragment Tesla, +2 bois", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); p.fragments = (p.fragments || 0) + 1; addRes(p, "bois", 2); } },
     ] },
   { id: 23, src: "original", name: "Le Garage du Désert", desc: "Un hangar tôlé : bidons, pièces détachées et un châssis bâché.",
     choices: [
-      { label: "Soulever la bâche", icon: "🔬", desc: "+1 pop, +1 Fragment Tesla", effect: p => { gainPop(p, 1); p.fragments = (p.fragments || 0) + 1; } },
+      { label: "Soulever la bâche", icon: "🔬", grantsFragment: true, desc: "+1 pop, +1 Fragment Tesla", effect: p => { gainPop(p, 1); p.fragments = (p.fragments || 0) + 1; } },
       { label: "Racheter le châssis", icon: "⬡", desc: "-4$, +1 mecha", grantsMech: true, available: p => p.coins >= 4 && p.mechs.length < 4, effect: p => { p.coins -= 4; addMech(p); } },
       { label: "Saisir la caisse", icon: "📦", desc: "-2 pop, +2$, +2 ressources au choix", grantsResources: 2, available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); p.coins += 2; } },
     ] },
   { id: 24, src: "original", name: "La Caravane Marchande", desc: "Des chariots bâchés, chargés de tout ce qui se vend.",
     choices: [
-      { label: "Acheter une curiosité", icon: "🔬", desc: "+1 pop, +1 Fragment Tesla", effect: p => { gainPop(p, 1); p.fragments = (p.fragments || 0) + 1; } },
+      { label: "Acheter une curiosité", icon: "🔬", grantsFragment: true, desc: "+1 pop, +1 Fragment Tesla", effect: p => { gainPop(p, 1); p.fragments = (p.fragments || 0) + 1; } },
       { label: "Faire ses emplettes", icon: "📦", desc: "-2$, +3 ressources au choix", grantsResources: 3, available: p => p.coins >= 2, effect: p => { p.coins -= 2; } },
       { label: "Débaucher un convoyeur", icon: "👷", desc: "-2 pop, +1 ouvrier, +3 bois", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); addWorkers(p, 1); addRes(p, "bois", 3); } },
     ] },
@@ -216,14 +219,14 @@ export const ENCOUNTERS = [
     ] },
   { id: 26, src: "original", name: "L'Arpenteur", desc: "Il plante des piquets et vend des parcelles qui ne sont pas à lui.",
     choices: [
-      { label: "Étudier ses relevés de ruines", icon: "🔬", desc: "+1 pop, +1 Fragment Tesla", effect: p => { gainPop(p, 1); p.fragments = (p.fragments || 0) + 1; } },
+      { label: "Étudier ses relevés de ruines", icon: "🔬", grantsFragment: true, desc: "+1 pop, +1 Fragment Tesla", effect: p => { gainPop(p, 1); p.fragments = (p.fragments || 0) + 1; } },
       { label: "Acheter une parcelle", icon: "🏗", desc: "-3$, +1 bâtiment", grantsBuilding: true, available: p => p.coins >= 3 && canEncBuild(p), effect: p => { p.coins -= 3; } },
       { label: "Chasser l'escroc", icon: "👷", desc: "-2 pop, +1 ouvrier, +3 bois", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); addWorkers(p, 1); addRes(p, "bois", 3); } },
     ] },
   { id: 27, src: "original", name: "Le Ferrailleur", desc: "Sa cour déborde de tôles, d'essieux et d'un bras de mecha.",
     choices: [
       { label: "Marchander la tôle", icon: "♥", desc: "+1 pop, +2$", effect: p => { gainPop(p, 1); p.coins += 2; } },
-      { label: "Racheter le bras de mecha", icon: "🔬", desc: "-2$, +1 Fragment Tesla, +1 métal", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; addRes(p, "metal", 1); } },
+      { label: "Racheter le bras de mecha", icon: "🔬", grantsFragment: true, desc: "-2$, +1 Fragment Tesla, +1 métal", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; addRes(p, "metal", 1); } },
       { label: "Ressusciter le colosse", icon: "⬡", desc: "-3 pop, +1 mecha", grantsMech: true, available: p => p.pop >= 3 && p.mechs.length < 4, effect: p => { p.pop = Math.max(0, p.pop - 3); addMech(p); } },
     ] },
 
@@ -231,14 +234,14 @@ export const ENCOUNTERS = [
   { id: 28, name: "L'Observatoire Abandonné", desc: "Une coupole rouillée, des lentilles intactes et des carnets griffonnés.",
     choices: [
       { label: "Cartographier les environs", icon: "♥", desc: "+1 pop, +1 carte combat", effect: p => { gainPop(p, 1); p.combatCards += 1; } },
-      { label: "Racheter les instruments", icon: "🔬", desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
+      { label: "Racheter les instruments", icon: "🔬", grantsFragment: true, desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
       { label: "Démonter la coupole", icon: "⬆", desc: "-2 pop, +1 amélioration", grantsUpgrade: true, available: p => p.pop >= 2 && canGainUpg(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
     ] },
   { id: 29, name: "Le Bac à Vapeur", desc: "Un passeur ronchon relie les deux rives, chaudière crachotante.",
     choices: [
       { label: "Aider au débarcadère", icon: "♥", desc: "+1 pop, +2 bois", effect: p => { gainPop(p, 1); addRes(p, "bois", 2); } },
       { label: "Affréter le bac", icon: "🌽", desc: "-2$, +4 nourriture", available: p => p.coins >= 2, effect: p => { p.coins -= 2; addRes(p, "nourriture", 4); } },
-      { label: "Saisir la chaudière", icon: "🔬", desc: "-2 pop, +1 Fragment Tesla, +2$", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); p.fragments = (p.fragments || 0) + 1; p.coins += 2; } },
+      { label: "Saisir la chaudière", icon: "🔬", grantsFragment: true, desc: "-2 pop, +1 Fragment Tesla, +2$", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); p.fragments = (p.fragments || 0) + 1; p.coins += 2; } },
     ] },
   { id: 30, name: "La Diligence Postale", desc: "Le courrier de trois comtés, et personne pour l'escorter.",
     choices: [
@@ -248,7 +251,7 @@ export const ENCOUNTERS = [
     ] },
   { id: 31, name: "Le Cirque Ambulant", desc: "Sous le chapiteau : l'homme fort, la voyante, et « l'éclair en bocal ».",
     choices: [
-      { label: "Acheter l'éclair en bocal", icon: "🔬", desc: "+1 pop, +1 Fragment Tesla", effect: p => { gainPop(p, 1); p.fragments = (p.fragments || 0) + 1; } },
+      { label: "Acheter l'éclair en bocal", icon: "🔬", grantsFragment: true, desc: "+1 pop, +1 Fragment Tesla", effect: p => { gainPop(p, 1); p.fragments = (p.fragments || 0) + 1; } },
       { label: "Engager les manœuvres", icon: "👷", desc: "-2$, +2 ouvriers", available: p => p.coins >= 2, effect: p => { p.coins -= 2; addWorkers(p, 2); } },
       { label: "Débaucher l'homme fort", icon: "🤝", desc: "-2 pop, +1 recrue", grantsRecruit: true, available: p => p.pop >= 2 && canEncRecruit(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
     ] },
@@ -256,13 +259,47 @@ export const ENCOUNTERS = [
     choices: [
       { label: "Payer le passage", icon: "♥", desc: "+1 pop, +2 pétrole", effect: p => { gainPop(p, 1); addRes(p, "petrole", 2); } },
       { label: "S'offrir l'escorte armée", icon: "⚡", desc: "-2$, +2 puissance, +1 carte combat", available: p => p.coins >= 2, effect: p => { p.coins -= 2; gainPow(p, 2); p.combatCards += 1; } },
-      { label: "Saisir la contrebande", icon: "🔬", desc: "-2 pop, +1 Fragment Tesla, +2 métal", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); p.fragments = (p.fragments || 0) + 1; addRes(p, "metal", 2); } },
+      { label: "Saisir la contrebande", icon: "🔬", grantsFragment: true, desc: "-2 pop, +1 Fragment Tesla, +2 métal", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); p.fragments = (p.fragments || 0) + 1; addRes(p, "metal", 2); } },
     ] },
   { id: 33, name: "L'Île du Naufrageur", desc: "Des épaves s'entassent sur la grève d'un vieil ermite du lac.",
     choices: [
       { label: "Écouter ses histoires", icon: "♥", desc: "+1 pop, +2 métal", effect: p => { gainPop(p, 1); addRes(p, "metal", 2); } },
-      { label: "Acheter sa relique", icon: "🔬", desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
+      { label: "Acheter sa relique", icon: "🔬", grantsFragment: true, desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
       { label: "Recruter le naufrageur", icon: "👷", desc: "-2 pop, +1 ouvrier, +3 bois", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); addWorkers(p, 1); addRes(p, "bois", 3); } },
     ] },
 ];
+
+// ── Cartes « Chantier ferroviaire » — récompense du chapitre 1 de campagne ──
+// (voir logic/campaign.js). Injectées dans le deck des chapitres SUIVANTS si
+// la condition canon du chapitre 1 a été remplie : au chapitre 1 le rail est
+// l'arme de l'Empire, ensuite les factions se l'approprient. Triptyque
+// standard, avec une dérogation assumée pour l'option 2 (`railSegments: 2`) :
+// la pose de 2 segments chaînés part de la case du héros — pas d'une Gare —
+// résolue par le même flux `railPlacement` que le bâtiment (App.jsx).
+export const RAIL_ENCOUNTERS = [
+  { id: 34, name: "Le Chantier Réquisitionné", desc: "Des cheminots continuent le travail, sans savoir pour qui.",
+    choices: [
+      { label: "Les payer en nature", icon: "♥", desc: "+1 pop, +1 bois", effect: p => { gainPop(p, 1); addRes(p, "bois", 1); } },
+      { label: "Poser la voie vous-même", icon: "🛤", desc: "3$, 2 segments de rail chaînés depuis votre héros", railSegments: 2, available: p => p.coins >= 3, effect: p => { p.coins -= 3; } },
+      { label: "Réquisitionner le chantier", icon: "🏗", desc: "-2 pop, une Gare gratuite (3 segments) sur votre héros", grantsGare: true, available: p => p.pop >= 2 && canEncGare(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
+    ] },
+  { id: 35, name: "Les Aiguilleurs Sans Maître", desc: "Le poste d'aiguillage tourne encore, mais plus personne ne répond de Dearborn.",
+    choices: [
+      { label: "Leur laisser le poste", icon: "♥", desc: "+1 pop, +1 métal", effect: p => { gainPop(p, 1); addRes(p, "metal", 1); } },
+      { label: "Prolonger la ligne", icon: "🛤", desc: "3$, 2 segments de rail chaînés depuis votre héros", railSegments: 2, available: p => p.coins >= 3, effect: p => { p.coins -= 3; } },
+      { label: "Prendre le poste de force", icon: "🏗", desc: "-2 pop, une Gare gratuite (3 segments) sur votre héros", grantsGare: true, available: p => p.pop >= 2 && canEncGare(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
+    ] },
+  { id: 36, name: "Le Convoi de Traverses", desc: "Un wagon plat, chargé de bois de rail, abandonné sur une voie de garage.",
+    choices: [
+      { label: "Redistribuer le bois", icon: "♥", desc: "+1 pop, +2 bois", effect: p => { gainPop(p, 1); addRes(p, "bois", 2); } },
+      { label: "Étendre la voie", icon: "🛤", desc: "3$, 2 segments de rail chaînés depuis votre héros", railSegments: 2, available: p => p.coins >= 3, effect: p => { p.coins -= 3; } },
+      { label: "Réquisitionner le convoi", icon: "🏗", desc: "-2 pop, une Gare gratuite (3 segments) sur votre héros", grantsGare: true, available: p => p.pop >= 2 && canEncGare(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
+    ] },
+];
+
+// Carte contenant un choix « fragment Tesla » — verrou de campagne (logic/campaign.js)
+export const hasTeslaFragment = (card) => card.choices.some(c => c.grantsFragment);
+// Ensemble complet, ids compris — rehydratation d'une sauvegarde (App.jsx),
+// même convention que ALL_OBJECTIVES / ALL_FACTORY_CARDS.
+export const ALL_ENCOUNTERS = [...ENCOUNTERS, ...RAIL_ENCOUNTERS];
 // (les positions des jetons de rencontre vivent dans data/hexes.js — ENCOUNTER_HEXES)

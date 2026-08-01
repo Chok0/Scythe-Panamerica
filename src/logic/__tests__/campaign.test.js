@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { CHAPTERS, chapterById, FACTORY_HEX, controlsFactory } from '../../data/campaign.js';
 import { LEGACIES, LEGACY_IDS } from '../../data/legacies.js';
+import { hMap } from '../../data/hexes.js';
+import { EMPIRE_RAILS } from '../../data/empire.js';
 import {
   emptyProgress, normalizeProgress, loadProgress, saveProgress, resetProgress,
   isChapterUnlocked, isChapterDone, chapterStates, nextChapter, campaignComplete,
   canonMet, completeChapter, unlockedLegacies, campaignConfig, steelTick, CAMPAIGN_KEY,
+  teslaEncountersUnlocked, teslaPlansUnlocked, empireRailDone, growEmpireRail,
 } from '../campaign.js';
 import { createPlayer } from '../player.js';
 
@@ -50,7 +53,7 @@ describe('données de campagne', () => {
     });
   });
 
-  it('les 5 legs de Wardenclyffe sont débloqués par des chapitres jouables distincts', () => {
+  it('les 5 récompenses de campagne sont débloquées par des chapitres jouables distincts', () => {
     expect(LEGACY_IDS.length).toBe(5);
     const unlocks = CHAPTERS.map(c => c.unlock).filter(Boolean);
     expect(new Set(unlocks).size).toBe(unlocks.length);
@@ -95,8 +98,8 @@ describe('ordre causal', () => {
 describe('déblocage des legs', () => {
   it('la victoire canon débloque le legs du chapitre', () => {
     const { progress, legacy } = completeChapter(emptyProgress(), 'ch1', { victory: 'canon' });
-    expect(legacy.id).toBe('golem');
-    expect(unlockedLegacies(progress).map(l => l.id)).toEqual(['golem']);
+    expect(legacy.id).toBe('railCards');
+    expect(unlockedLegacies(progress).map(l => l.id)).toEqual(['railCards']);
   });
 
   it('la victoire aux 6 étoiles termine le chapitre SANS donner le legs', () => {
@@ -110,7 +113,7 @@ describe('déblocage des legs', () => {
     const a = completeChapter(emptyProgress(), 'ch1', { victory: 'canon' }).progress;
     const b = completeChapter(a, 'ch1', { victory: 'canon' });
     expect(b.legacy).toBeNull();
-    expect(b.progress.legacies).toEqual(['golem']);
+    expect(b.progress.legacies).toEqual(['railCards']);
   });
 
   it('un chapitre inconnu ne modifie rien', () => {
@@ -127,7 +130,7 @@ describe('persistance', () => {
     expect(saveProgress(p, store)).toBe(true);
     const back = loadProgress(store);
     expect(back.done.ch1.victory).toBe('canon');
-    expect(back.legacies).toEqual(['golem']);
+    expect(back.legacies).toEqual(['railCards']);
     expect(resetProgress(store).done).toEqual({});
     expect(store.getItem(CAMPAIGN_KEY)).toBeNull();
   });
@@ -192,10 +195,87 @@ describe('conditions canon', () => {
 
 describe('configuration de partie', () => {
   it('les variantes se traduisent en réglages de partie', () => {
-    expect(campaignConfig(chapterById('ch1'))).toMatchObject({ faction: 'nations', empireEnabled: true, steel: false, bonusTile: null });
-    expect(campaignConfig(chapterById('ch6'))).toMatchObject({ faction: 'dominion', empireEnabled: false, steel: true });
+    expect(campaignConfig(chapterById('ch1'))).toMatchObject({ faction: 'nations', empireEnabled: true, steel: false, bonusTile: null, railGrowth: true });
+    expect(campaignConfig(chapterById('ch6'))).toMatchObject({ faction: 'dominion', empireEnabled: false, steel: true, railGrowth: false });
     // Ruée vers l'or : tuile forcée, pas tirée
     expect(campaignConfig(chapterById('ch3')).bonusTile.id).toBe('terres_lointaines');
+  });
+});
+
+describe('verrou du contenu Tesla', () => {
+  it('fermé tant que les chapitres 3 et 4 ne sont pas remportés par la voie canon', () => {
+    expect(teslaEncountersUnlocked(emptyProgress())).toBe(false);
+    expect(teslaPlansUnlocked(emptyProgress())).toBe(false);
+    const stars3 = completeChapter(emptyProgress(), 'ch3', { victory: 'stars', canonMet: false }).progress;
+    expect(teslaEncountersUnlocked(stars3)).toBe(false); // 6 étoiles ≠ condition canon
+  });
+
+  it('les cartes rencontre s\'ouvrent au chapitre 3 canon, les plans T à l\'usine au chapitre 4', () => {
+    const afterCh3 = completeChapter(emptyProgress(), 'ch3', { victory: 'canon' }).progress;
+    expect(teslaEncountersUnlocked(afterCh3)).toBe(true);
+    expect(teslaPlansUnlocked(afterCh3)).toBe(false);
+    const afterCh4 = completeChapter(afterCh3, 'ch4', { victory: 'canon' }).progress;
+    expect(teslaPlansUnlocked(afterCh4)).toBe(true);
+  });
+});
+
+describe('« Le rail avance » — croissance du réseau impérial', () => {
+  const villageHexes = [4, 6, 14, 27, 35, 36, 46]; // carte v3 (DEFAULT_MAP) — id 12 devient plaine en v3, id 6 devient village
+  const allHexesOf = (rails) => new Set(rails.flat());
+
+  it('n\'est pas terminé sans rail, et le devient une fois tous les villages + l\'Usine reliés', () => {
+    expect(empireRailDone([])).toBe(false);
+    // Réseau construit à la main, en étoile depuis l'Usine vers chaque village :
+    // suffisant pour vérifier le critère d'arrêt indépendamment de l'algorithme.
+    const star = villageHexes.map(v => [FACTORY_HEX, v]);
+    expect(empireRailDone(star)).toBe(true);
+  });
+
+  it('pose exactement 1 segment par appel, jamais sur lac/marécage/base, jamais en double', () => {
+    const seen = new Set();
+    let rails = [...EMPIRE_RAILS];
+    rails.forEach(([a, b]) => seen.add(`${Math.min(a, b)}-${Math.max(a, b)}`));
+    let done = false;
+    for (let i = 0; i < 200 && !done; i++) {
+      const step = growEmpireRail(rails);
+      if (step.segment) {
+        const [a, b] = step.segment;
+        const key = `${Math.min(a, b)}-${Math.max(a, b)}`;
+        expect(seen.has(key), `segment ${key} posé deux fois`).toBe(false);
+        seen.add(key);
+        expect(step.rails.length).toBe(rails.length + 1);
+      }
+      rails = step.rails;
+      done = step.done;
+    }
+    expect(done, 'le réseau ne converge pas en 200 tours').toBe(true);
+    expect(empireRailDone(rails)).toBe(true);
+    [...allHexesOf(rails)].forEach(id => {
+      const h = hMap[id];
+      expect(h, `segment vers un hex inconnu #${id}`).toBeTruthy();
+      expect(h.t, `rail sur lac/marécage #${id}`).not.toMatch(/^(lac|marecage)$/);
+      expect(h.base, `rail sur une base #${id}`).toBeFalsy();
+    });
+  });
+
+  it('une fois terminé, n\'ajoute plus rien (idempotent)', () => {
+    let rails = [...EMPIRE_RAILS];
+    for (let i = 0; i < 200 && !empireRailDone(rails); i++) rails = growEmpireRail(rails).rails;
+    expect(empireRailDone(rails)).toBe(true);
+    const again = growEmpireRail(rails);
+    expect(again.rails).toBe(rails); // même référence : aucune mutation
+    expect(again.segment).toBeNull();
+    expect(again.done).toBe(true);
+  });
+
+  it('part de zéro rail tout aussi bien (repli sur l\'Usine comme source)', () => {
+    let rails = [];
+    for (let i = 0; i < 200 && !empireRailDone(rails); i++) {
+      const step = growEmpireRail(rails);
+      expect(step.segment, 'croissance bloquée sans le moindre rail existant').toBeTruthy();
+      rails = step.rails;
+    }
+    expect(empireRailDone(rails)).toBe(true);
   });
 });
 

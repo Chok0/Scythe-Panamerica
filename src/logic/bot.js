@@ -806,8 +806,10 @@ const pickBuilding = (p, availBuildings, prof) => {
 
 // Gare : pose 3 segments de rail chaînés depuis l'hex de la Gare — partagé
 // entre le Build classique et le bâtiment gratuit d'une carte d'usine.
+// `count` (déf. 3) : les cartes rencontre « Chantier ferroviaire » en posent 2,
+// sans Gare, depuis le hex du héros (voir botEncounters.js).
 // Empile dans p._pendingRails (appliqué au réseau par l'appelant App/sim).
-const placeBotRails = (p, gareHex, rails, logs, fName) => {
+export const placeBotRails = (p, gareHex, rails, logs, fName, count = 3) => {
   p._pendingRails = p._pendingRails || [];
   const taken = (a, b) => [...rails, ...p._pendingRails]
     .some(([x, y]) => (x === a && y === b) || (x === b && y === a));
@@ -818,7 +820,7 @@ const placeBotRails = (p, gareHex, rails, logs, fName) => {
     return !taken(from, id);
   });
   const endpoints = [gareHex];
-  for (let ri = 0; ri < 3; ri++) {
+  for (let ri = 0; ri < count; ri++) {
     // Chaînage : repart du dernier point qui a encore une arête libre
     let from = null, opts = [];
     for (let ei = endpoints.length - 1; ei >= 0; ei--) {
