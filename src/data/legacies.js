@@ -1,23 +1,23 @@
-// ── Les legs de Wardenclyffe ──────────────────────────────────────────────
-// Cinq objets HORS CATALOGUE (voir docs/campagne.md §« legs de Wardenclyffe »):
-// ce ne sont pas des Plans à piocher à l'Usine mais des récompenses de
-// campagne, débloquées à la fin d'un chapitre dont la condition canon a été
-// remplie. Ils vivent donc dans leur propre table, séparée de `plans.js`.
+// ── Récompenses de campagne ────────────────────────────────────────────────
+// Cinq récompenses débloquées à la fin d'un chapitre dont la condition canon
+// a été remplie. Quatre sont des « legs de Wardenclyffe » — objets HORS
+// CATALOGUE, pas des Plans à piocher à l'Usine (voir docs/campagne.md). La
+// cinquième (railCards, chapitre 1) est de nature différente : un lot de
+// cartes rencontre injectées dans le deck des chapitres suivants, décidé au
+// cadrage « Le rail avance » — le Golem qui l'occupait avant est retiré du
+// périmètre, réintégré plus tard avec sa propre logique de scénario.
 //
-// ⚠ ÉTAT : données seules. `implemented: false` sur les cinq — la campagne
-// enregistre le déblocage (progression persistante), mais aucun effet n'est
-// encore branché au moteur. C'est volontaire : le déblocage est la première
-// brique, l'effet en jeu se fera legs par legs (chacun touche un système
-// différent : mecha supplémentaire, bâtiment, Produce, vol de ressource).
+// ⚠ ÉTAT : `implemented: false` sur les quatre legs Wardenclyffe restants —
+// la campagne enregistre le déblocage, mais aucun effet n'est encore branché
+// au moteur (un par un, chacun touche un système différent). `railCards` est
+// la seule des cinq à avoir un effet RÉEL en jeu (logic/campaign.js +
+// injection du deck dans App.jsx).
 export const LEGACIES = {
-  golem: {
-    id: "golem", name: "Le Golem", icon: "🗿", kind: "mecha",
+  railCards: {
+    id: "railCards", name: "Chantier ferroviaire", icon: "🛤", kind: "cartes",
     chapter: "ch1",
-    desc: "Mecha supplémentaire alimenté sans fil : aucune ressource Énergie, déplaçable à distance depuis n'importe quelle case où se trouve le héros.",
-    // Systèmes instables sans leur créateur — le grain de sable qui l'empêche
-    // d'être un 5e mecha gratuit sans contrepartie.
-    drawback: "1 sur un dé à chaque combat : il s'arrête.",
-    implemented: false,
+    desc: "3 cartes rencontre « Chantier ferroviaire » rejoignent le deck de tous les chapitres suivants : le rail que l'Empire imposait devient un outil que les factions s'approprient.",
+    implemented: true,
   },
   tour: {
     id: "tour", name: "La Tour Wardenclyffe", icon: "🗼", kind: "batiment",

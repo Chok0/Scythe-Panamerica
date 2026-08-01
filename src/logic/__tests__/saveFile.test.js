@@ -14,7 +14,7 @@ describe('fichier de sauvegarde de campagne', () => {
     const back = parseSaveBundle(JSON.stringify(bundle));
     expect(back.ok).toBe(true);
     expect(Object.keys(back.progress.done)).toEqual(['ch1', 'ch2']);
-    expect(back.progress.legacies).toEqual(['golem']);
+    expect(back.progress.legacies).toEqual(['railCards']);
     expect(back.game.turn).toBe(7);
     expect(back.game.chapter).toBe('ch3');
     expect(back.game.steelPile).toBe(2);
@@ -52,11 +52,11 @@ describe('fichier de sauvegarde de campagne', () => {
   it('un fichier trafiqué (chapitre ou legs inventé) est nettoyé, pas rejeté', () => {
     const r = parseSaveBundle(JSON.stringify({
       app: SAVE_FORMAT, kind: 'campagne', v: 1,
-      progress: { done: { ch1: { victory: 'canon', canonMet: true }, chZZ: { victory: 'canon' } }, legacies: ['golem', 'triche'] },
+      progress: { done: { ch1: { victory: 'canon', canonMet: true }, chZZ: { victory: 'canon' } }, legacies: ['railCards', 'triche'] },
     }));
     expect(r.ok).toBe(true);
     expect(Object.keys(r.progress.done)).toEqual(['ch1']);
-    expect(r.progress.legacies).toEqual(['golem']);
+    expect(r.progress.legacies).toEqual(['railCards']);
   });
 
   it('le nom de fichier porte l\'avancement et la date', () => {

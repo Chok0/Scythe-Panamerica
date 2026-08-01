@@ -9,7 +9,7 @@ import { generateAcceptedMap } from '../data/mapGen.js';
 import { getCombatBonus } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
 import { EMPIRE_START, drawEmpireCombat } from '../data/empire.js';
-import { ENCOUNTERS } from '../data/encounters.js';
+import { ENCOUNTERS, ALL_ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, FACTORY_COL, PLANS_FORD, PLANS_TESLA, ALL_FACTORY_CARDS, TESLA_FRAGMENTS_REQUIRED, TESLA_OFFER_SIZE, factoryCostLabel, factoryGainLabel, factoryEffectLabel, FACTORY_BOTTOM_DESC } from '../data/plans.js';
 import { MATS, matById, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes, FR_TOP as FR_TOP_MAP, FR_BOT as FR_BOT_MAP, frTop, frBot } from '../data/mats.js';
 import { OBJECTIVES, ALL_OBJECTIVES } from '../data/objectives.js';
@@ -20,7 +20,7 @@ import Soundtrack from './Soundtrack.jsx';
 import SetupScreen from './SetupScreen.jsx';
 import CampaignScreen from './CampaignScreen.jsx';
 import { chapterById } from '../data/campaign.js';
-import { loadProgress, saveProgress, resetProgress, completeChapter, campaignConfig, canonMet, steelTick } from '../logic/campaign.js';
+import { loadProgress, saveProgress, resetProgress, completeChapter, campaignConfig, canonMet, steelTick, growEmpireRail, teslaEncountersUnlocked, teslaPlansUnlocked, campaignEncounterPool } from '../logic/campaign.js';
 import { buildSaveBundle, parseSaveBundle, saveFileName, describeSave } from '../logic/saveFile.js';
 import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
@@ -123,8 +123,11 @@ export default function App(){
   // re-mélangé à épuisement — avant, tirage avec remise (mêmes cartes répétées
   // dans la même partie, constaté en partie réelle)
   const encounterDeckRef=useRef([]);
+  // Pool à mélanger — ENCOUNTERS en partie libre, filtré/enrichi en campagne
+  // (campaignEncounterPool, fixé au lancement/à la reprise de la partie).
+  const encounterPoolRef=useRef(ENCOUNTERS);
   const drawEncounterCard=useCallback(()=>{
-    if(encounterDeckRef.current.length===0)encounterDeckRef.current=shuffleArray(ENCOUNTERS);
+    if(encounterDeckRef.current.length===0)encounterDeckRef.current=shuffleArray(encounterPoolRef.current);
     return encounterDeckRef.current.shift();
   },[]);
   // ── Offre de l'Usine (règle Scythe) : (nb joueurs + 1) cartes Ford tirées au
@@ -389,7 +392,11 @@ export default function App(){
     if(!data||!Array.isArray(data.players)||data.players.length===0)return;
     loadMap(data.map);
     setEncounterTokens(new Set(data.encounterTokens||[]));
-    encounterDeckRef.current=(data.encounterDeck||[]).map(id=>ENCOUNTERS.find(e=>e.id===id)).filter(Boolean);
+    // Pool de reshuffle : même verrou Tesla / mêmes cartes Chantier ferroviaire
+    // que la partie d'origine — la progression de campagne (pas la sauvegarde
+    // de partie) fait foi, elle a pu avancer depuis (chapitre relu, etc.)
+    encounterPoolRef.current=campaignEncounterPool(data.chapter?chapterById(data.chapter):null,campaignProgress);
+    encounterDeckRef.current=(data.encounterDeck||[]).map(id=>ALL_ENCOUNTERS.find(e=>e.id===id)).filter(Boolean);
     setEmpire(data.empire||{});
     setRails((data.rails||[]).map(r=>[...r]));
     // Offre d'usine par id ; sauvegarde d'avant la refonte (v1, sans offre) :
@@ -421,7 +428,7 @@ export default function App(){
     turnRef.current=data.turn||1;
     setTurn(data.turn||1);setCurrentP(0);setPhase("playing");
     addLog(`💾 Partie reprise (tour ${data.turn||1})`);
-  },[addLog]);
+  },[addLog,campaignProgress]);
 
   // Aperçu de la sauvegarde pour les écrans de setup et de campagne
   // (bouton « Reprendre »). `saveTick` force la relecture après un import.
@@ -488,12 +495,19 @@ export default function App(){
       loadMap(DEFAULT_MAP);
     }
     setEncounterTokens(new Set(CURRENT_MAP.encounterHexes));
-    encounterDeckRef.current=shuffleArray(ENCOUNTERS);
+    // Verrou du contenu Tesla (docs/campagne.md §4) — actif UNIQUEMENT en
+    // campagne : offre de l'Usine et deck de rencontres filtrés tant que les
+    // crans de déblocage (chapitres 3 et 4, condition canon) ne sont pas
+    // atteints ; les cartes Chantier ferroviaire (chapitre 1) s'ajoutent dès
+    // qu'elles ont été débloquées.
+    encounterPoolRef.current=campaignEncounterPool(ch,campaignProgress);
+    encounterDeckRef.current=shuffleArray(encounterPoolRef.current);
     setEmpire(empOn?Object.fromEntries(EMPIRE_START.map(e=>[e.id,e.hexId])):{});
     if(ch){
       addLog(`📖 Chapitre ${ch.num} — ${ch.title} (${FACTIONS[facId]?.name})`);
       if(ch.canon)addLog(`🏛 Condition canon : ${ch.canon.name} — ${ch.canon.desc}`);
       if(cfg.steel)addLog(`🏦 Acier Brut : Rouge River produit 1 métal par tour, la pile revient au contrôleur de l'Usine`);
+      if(!teslaEncountersUnlocked(campaignProgress))addLog(`🔒 Contenu Tesla verrouillé — rumeurs seulement, aucun fragment en rencontre tant que le chapitre 3 n'est pas remporté par la voie canon`);
     }
     if(empOn)addLog(`🤖 Bots de l'Empire activés (mécanique campagne)`);
     // La carte de base démarre sans rails — seules les Gares en posent
@@ -531,9 +545,13 @@ export default function App(){
     // Le deck ORIGINAL (PLANS_ORIGINAL) reste de côté : déblocage en campagne.
     const offer=drawFactoryOffer(PLANS_FORD,ps.length+1);
     setFactoryOffer(offer);
-    setTeslaOffer(drawFactoryOffer(PLANS_TESLA,TESLA_OFFER_SIZE));
+    // Prototypes Tesla : vitrine vide tant que le chapitre 4 n'est pas gagné
+    // par la voie canon (le coffre de Wardenclyffe reste fermé) — inchangé en
+    // partie libre.
+    const teslaLocked=!!ch&&!teslaPlansUnlocked(campaignProgress);
+    setTeslaOffer(teslaLocked?[]:drawFactoryOffer(PLANS_TESLA,TESLA_OFFER_SIZE));
     setFactoryFlow(null);
-    addLog(`⚙ Usine Rouge River : ${offer.length} plans Ford face cachée (joueurs + 1) — seuls les prototypes Tesla sont en vitrine (clic sur l'Usine)`);
+    addLog(`⚙ Usine Rouge River : ${offer.length} plans Ford face cachée (joueurs + 1)${teslaLocked?" — coffre de Wardenclyffe encore scellé, pas de prototype Tesla":" — seuls les prototypes Tesla sont en vitrine (clic sur l'Usine)"}`);
     setPlayers(ps);setPhase("playing");setCurrentP(0);setTurn(1);turnRef.current=1;
     addLog(`⚔ ${ps.length} joueurs`);
     ps.forEach(p=>{
@@ -549,7 +567,7 @@ export default function App(){
       const y=Math.max(MAP_BASE.y,Math.min(MAP_BASE.y+MAP_BASE.h-zh,heroHex.ry-zh/2));
       setMapView({x,y,w:zw,h:zh});
     }
-  },[selFaction,selMat,numBots,mapChoice,empireEnabled,difficulty,addLog]);
+  },[selFaction,selMat,numBots,mapChoice,empireEnabled,difficulty,addLog,campaignProgress]);
 
   // ── Fin de chapitre : progression + déblocage du legs ──
   // Les deux voies du document de campagne : `victory` vaut "canon" (condition
@@ -600,10 +618,18 @@ export default function App(){
         const adj=ADJ[fromId]||[];
         // Empire can cross rivers but not lakes/swamps
         const validEmpire=adj.filter(toId=>{const h=hMap[toId];return h&&h.t!=="lac"&&h.t!=="marecage"&&!h.base;});
+        // « Le rail avance » (chapitre 1, docs/campagne.md §3.3) : une patrouille
+        // qui commence son activation sur le réseau peut aussi rouler vers
+        // n'importe quel hex connecté — même règle que les joueurs (R4).
+        if(chapter?.variant?.railGrowth){
+          const net=getRailNetwork(fromId,rails);
+          if(net)net.forEach(h=>{if(h!==fromId&&!validEmpire.includes(h))validEmpire.push(h);});
+        }
         if(validEmpire.length>0){
           const toId=validEmpire[Math.floor(Math.random()*validEmpire.length)];
+          const viaRail=!adj.includes(toId);
           setEmpire(prev=>({...prev,[eid]:toId}));
-          addLog(`🔴 Empire ${eid} → #${toId}`);
+          addLog(`🔴 Empire ${eid} → #${toId}${viaRail?" 🛤 (rail)":""}`);
           // Check if empire moved onto a player's combat unit → trigger combat
           for(let pi=0;pi<players.length;pi++){
             const pl=players[pi];
@@ -646,6 +672,16 @@ export default function App(){
               break; // only one combat per empire move
             }
           }
+        }
+      }
+      // 🛤 « Le rail avance » (chapitre 1) : croissance automatique du réseau
+      // impérial, 1 segment par tour de table (logic/campaign.js).
+      if(chapter?.variant?.railGrowth){
+        const grow=growEmpireRail(rails);
+        if(grow.segment){
+          setRails(grow.rails);
+          addLog(`🛤 L'Empire prolonge son réseau : #${grow.segment[0]}↔#${grow.segment[1]}`);
+          if(grow.done)addLog(`🛤 Le réseau impérial relie désormais l'Usine à tous les villages.`);
         }
       }
       // 🏦 Acier Brut (variante de campagne) : Rouge River fabrique 1 métal par
@@ -715,7 +751,7 @@ export default function App(){
             .forEach(hid=>hexThreat.set(hid,Math.max(hexThreat.get(hid)||0,threat)));
         }
       });
-      const botCtx={attackable,hexLoot,hexThreat,hexWorkers,forbidden:new Set(),encounterHexes:encounterTokens,
+      const botCtx={attackable,hexLoot,hexThreat,hexWorkers,forbidden:new Set(),encounterHexes:encounterTokens,rails,
         // Liste des joueurs en partie : objectifs relatifs aux adversaires
         // (plus grande puissance, bases adverses…)
         allPlayers:players,
@@ -858,9 +894,9 @@ export default function App(){
       // ── RENCONTRE BOT : héros sur un jeton, après les combats (règle p.24) ──
       if(encounterTokens.has(n[cp].hero)){
         const encHex=n[cp].hero;
-        if(encounterDeckRef.current.length===0)encounterDeckRef.current=shuffleArray(ENCOUNTERS);
+        if(encounterDeckRef.current.length===0)encounterDeckRef.current=shuffleArray(encounterPoolRef.current);
         const er=resolveBotEncounter(n[cp],encounterDeckRef.current,botCtx);
-        n[cp]=er.player;logs.push(er.log);
+        n[cp]=er.player;logs.push(er.log);(er.logs||[]).forEach(l=>logs.push(l));
         setEncounterTokens(prev=>{const s=new Set(prev);s.delete(encHex);return s;});
       }
       // ── ROUGE RIVER BOT : héros sur l'Usine (1re visite) → carte d'usine ──
@@ -1080,7 +1116,7 @@ export default function App(){
     addLog(`🏗 ${me.factoryCard?.name||"Usine"}: ${bt?.name||buildingType} gratuit sur #${hexId}`);
     if((me.buildings||[]).length+1>=4)addLog(`⭐ 4 Bâtiments construits !`);
     if(buildingType==="gare"){
-      setRailPlacement({remaining:3,fromHex:null,gareHex:hexId,source:"factory"});
+      setRailPlacement({remaining:3,total:3,fromHex:null,gareHex:hexId,source:"factory"});
       addLog(`🚂 Posez 3 segments de rail depuis la Gare ou un rail existant (pas sur lac/marécage)`);
       return;
     }
@@ -1231,7 +1267,7 @@ export default function App(){
     addLog(`🏗 ${bt.name} construit sur #${targetHex} (-${effectiveQty} ${resFR(cost.res)}${colBonus>0?`, +${colBonus}$`:""})`);
     if((me.buildings||[]).length+1>=4)addLog(`⭐ 4 Bâtiments construits !`);
     if(buildingType==="gare"){
-      setRailPlacement({remaining:3,fromHex:null,gareHex:targetHex});
+      setRailPlacement({remaining:3,total:3,fromHex:null,gareHex:targetHex});
       addLog(`🚂 Posez 3 segments de rail depuis la Gare ou un rail existant (pas sur lac/marécage)`);
       return;
     }
@@ -1614,7 +1650,7 @@ export default function App(){
       if(!railPlacement.fromHex){
         // First click: select starting hex of rail segment
         if(!railHexes.has(hexId)){
-          addLog(`⚠ Le rail doit partir de la Gare (#${railPlacement.gareHex}) ou d'un rail existant`);
+          addLog(railPlacement.gareHex!=null?`⚠ Le rail doit partir de la Gare (#${railPlacement.gareHex}) ou d'un rail existant`:`⚠ Le rail doit partir d'un hex déjà relié au réseau`);
           return;
         }
         setRailPlacement(prev=>({...prev,fromHex:hexId}));
@@ -1646,12 +1682,15 @@ export default function App(){
         const remaining=railPlacement.remaining-1;
         addLog(`🛤 Rail posé #${from}↔#${hexId} (${remaining} restant${remaining>1?"s":""})`);
         if(remaining<=0){
-          const fromFactory=railPlacement.source==="factory";
+          const src=railPlacement.source;
           setRailPlacement(null);
-          addLog(`✅ 3 rails posés !`);
+          addLog(`✅ Rails posés !`);
           // Gare gratuite d'une carte d'usine : reprendre la file de gains ;
-          // Gare du Build classique : clôture normale de l'action du bas
-          if(fromFactory)continueFactoryQueue();else finishBottom(2);
+          // Gare/rails d'une carte de RENCONTRE : reprendre le tour normalement
+          // (pas une action bas) ; Gare du Build classique : clôture normale.
+          if(src==="factory")continueFactoryQueue();
+          else if(src==="encounter")resumeAfterEncounter();
+          else finishBottom(2);
         } else {
           setRailPlacement(prev=>({...prev,remaining,fromHex:null}));
         }
@@ -2419,6 +2458,27 @@ export default function App(){
     if(choice.grantsRecruit){ setEncounterEnlist({col:null}); return; }
     if(choice.grantsUpgrade&&(me.upgrades||0)<6){ setEncounterUpgrade({from:null}); return; }
     if(choice.grantsResources>0){ setEncounterResources({remaining:choice.grantsResources}); return; }
+    // ── Cartes « Chantier ferroviaire » (récompense de campagne, ch.1) ──
+    // Gare gratuite (+3 segments) ou 2 segments seuls, toujours depuis le hex
+    // du héros — même flux `railPlacement` que le Build/l'usine (source dédiée
+    // "encounter" pour reprendre le tour normalement, pas comme une action bas).
+    if(choice.grantsGare){
+      if((me.buildings||[]).length>=4||(me.buildings||[]).some(b=>b.hexId===me.hero)){addLog(`⚠ Pas de place pour la Gare (rencontre)`);resumeAfterEncounter();return;}
+      setPlayers(prev=>{
+        const n=[...prev];const p={...n[0],buildings:[...(n[0].buildings||[]),{type:"gare",hexId:n[0].hero}]};
+        const earned=p.buildings.length>=4&&!p.starBuildings;
+        if(earned){p.stars++;p.starBuildings=true;}
+        n[0]=p;return n;
+      });
+      addLog(`🚂 Gare édifiée sur #${me.hero} (rencontre) — posez 3 segments de rail`);
+      setRailPlacement({remaining:3,total:3,fromHex:null,gareHex:me.hero,source:"encounter"});
+      return;
+    }
+    if(choice.railSegments>0){
+      addLog(`🛤 Pose de ${choice.railSegments} segments de rail depuis #${me.hero} (rencontre)`);
+      setRailPlacement({remaining:choice.railSegments,total:choice.railSegments,fromHex:me.hero,gareHex:null,source:"encounter"});
+      return;
+    }
     // Resume movement check
     resumeAfterEncounter();
   },[encounter,me,addLog,resumeAfterEncounter]);
@@ -4723,15 +4783,15 @@ export default function App(){
           {/* Rail placement mode indicator */}
           {railPlacement&&(
             <div style={{padding:"8px 16px",borderTop:"1px solid #6a5030",background:"rgba(100,80,48,0.08)",fontSize:14}}>
-              <div style={{color:"#a08050",fontWeight:700,marginBottom:4}}>🚂 Pose de rails ({railPlacement.remaining}/3 restants)</div>
+              <div style={{color:"#a08050",fontWeight:700,marginBottom:4}}>🚂 Pose de rails ({railPlacement.remaining}/{railPlacement.total||3} restants)</div>
               {railPlacement.fromHex===null?
-                <div style={{color:"var(--text-dim)",fontSize:13}}>Cliquez un hex de départ : la Gare (#{railPlacement.gareHex}) ou un rail existant</div>:
+                <div style={{color:"var(--text-dim)",fontSize:13}}>{railPlacement.gareHex!=null?<>Cliquez un hex de départ : la Gare (#{railPlacement.gareHex}) ou un rail existant</>:<>Cliquez un hex de départ déjà relié au réseau (le premier segment part du héros)</>}</div>:
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   <span style={{color:"#C9A84C",fontSize:13}}>Depuis #{railPlacement.fromHex} → cliquez un hex adjacent</span>
                   <button onClick={()=>setRailPlacement(prev=>({...prev,fromHex:null}))} className="act-btn" style={{fontSize:12,padding:"4px 10px"}}>Annuler</button>
                 </div>
               }
-              <button onClick={()=>{const fromFactory=railPlacement.source==="factory";setRailPlacement(null);addLog(`⏭ Rails passés (${railPlacement.remaining} non posés)`);if(fromFactory)continueFactoryQueue();else finishBottom(2);}} className="act-btn" style={{marginTop:6,width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)",fontSize:13}}>Terminer sans poser les rails restants</button>
+              <button onClick={()=>{const src=railPlacement.source;setRailPlacement(null);addLog(`⏭ Rails passés (${railPlacement.remaining} non posés)`);if(src==="factory")continueFactoryQueue();else if(src==="encounter")resumeAfterEncounter();else finishBottom(2);}} className="act-btn" style={{marginTop:6,width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)",fontSize:13}}>Terminer sans poser les rails restants</button>
             </div>
           )}
 

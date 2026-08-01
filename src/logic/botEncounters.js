@@ -7,7 +7,7 @@ import { FACTIONS } from '../data/factions.js';
 import { BUILDING_TYPES, ENLIST_IMMEDIATE, matById, maxBottomCubes } from '../data/mats.js';
 import { BOT_PROFILES } from './botProfiles.js';
 import { TESLA_FRAGMENTS_REQUIRED } from '../data/plans.js';
-import { losingTrigger } from './bot.js';
+import { losingTrigger, placeBotRails } from './bot.js';
 
 /**
  * Résout une rencontre pour un bot dont le héros est sur un jeton.
@@ -118,5 +118,17 @@ export const resolveBotEncounter = (player, deck, ctx) => {
       if (p.recruits >= 4 && !p.starRecruits) { p.stars++; p.starRecruits = true; }
     }
   }
-  return { player: p, log: `🤖📜 ${FACTIONS[p.faction].name}: "${card.name}" → ${choice.label}` };
+  // ── Cartes « Chantier ferroviaire » (récompense de campagne, ch.1) ──
+  // Gare gratuite (+ 3 segments chaînés) ou 2 segments seuls, tous deux
+  // depuis le hex du héros. `placeBotRails` empile dans p._pendingRails,
+  // appliqué au réseau partagé par l'appelant (App.jsx / simulateur).
+  const railLogs = [];
+  if (choice.grantsGare && (p.buildings || []).length < 4 && !(p.buildings || []).some(b => b.hexId === p.hero)) {
+    p.buildings = [...(p.buildings || []), { type: "gare", hexId: p.hero }];
+    if (p.buildings.length >= 4 && !p.starBuildings) { p.stars++; p.starBuildings = true; }
+    placeBotRails(p, p.hero, (ctx && ctx.rails) || [], railLogs, FACTIONS[p.faction].name);
+  } else if (choice.railSegments > 0) {
+    placeBotRails(p, p.hero, (ctx && ctx.rails) || [], railLogs, FACTIONS[p.faction].name, choice.railSegments);
+  }
+  return { player: p, log: `🤖📜 ${FACTIONS[p.faction].name}: "${card.name}" → ${choice.label}`, logs: railLogs };
 };
