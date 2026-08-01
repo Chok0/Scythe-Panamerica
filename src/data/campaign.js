@@ -17,7 +17,7 @@
 // condition canon est conservée dans `canonDraft`, à activer le jour où la
 // faction existe.
 import { FACTIONS } from './factions.js';
-import { hMap } from './hexes.js';
+import { hMap, ADJ } from './hexes.js';
 
 // L'Usine (Rouge River) — id fixe sur toutes les cartes, y compris
 // procédurales (mapGen.js : FACTORY_ID).
@@ -35,6 +35,38 @@ export const controlsFactory = (p) => heldHexes(p).has(FACTORY_HEX);
 export const villagesHeld = (p) => [...heldHexes(p)].filter(id => hMap[id]?.t === "village").length;
 
 const fObjCheck = (factionId) => (p, ctx) => FACTIONS[factionId].fObj.check(p, ctx);
+
+// ── Conditions canon décomposées en MEMBRES ───────────────────────────────
+// Partie du 01/08 : « 4+ hex Plaine/Forêt ET 2 patrouilles détruites »
+// s'affichait en une phrase d'un bloc. Le joueur avait fait les patrouilles
+// (2/2), était à 2/4 sur les hex, et a cru à un blocage du moteur.
+// Une condition composée expose donc désormais l'état de CHAQUE membre, et
+// `check` en est DÉRIVÉ — un seul point de vérité, le bandeau ne peut plus
+// diverger du moteur.
+//
+// Deux formes de membre :
+//   compte(label, count, need) → progression chiffrée « 2/4 »
+//   jalon(label, met)          → binaire ✓/✗
+const compte = (label, count, need) => ({ label, count, need });
+const jalon = (label, met) => ({ label, met, need: 1, count: (p, ctx) => (met(p, ctx) ? 1 : 0) });
+
+/** Un membre est-il rempli ? */
+export const partMet = (part, p, ctx) => part.count(p, ctx) >= part.need;
+/** Progression lisible d'un membre : « 2/4 » (compte) ou « ✓ / — » (jalon). */
+export const partProgress = (part, p, ctx) =>
+  part.met ? (part.met(p, ctx) ? "✓" : "—") : `${Math.min(part.count(p, ctx), part.need)}/${part.need}`;
+
+/** Assemble une condition canon à partir de ses membres : `desc` et `check`
+ *  en sont générés, donc toujours cohérents avec l'affichage. */
+const canon = (name, parts) => ({
+  name,
+  parts,
+  desc: parts.map(pt => (pt.met ? pt.label : `${pt.need} ${pt.label}`)).join(" ET "),
+  check: (p, ctx) => parts.every(pt => partMet(pt, p, ctx || {})),
+});
+
+// Compteurs réutilisés par les membres ci-dessous
+const hexOfTerrain = (p, terrains) => [...heldHexes(p)].filter(id => terrains.includes(hMap[id]?.t)).length;
 
 export const PROLOGUE = {
   id: "prologue", kind: "interlude", num: 0,
@@ -63,11 +95,10 @@ export const CHAPTERS = [
       "Aiyana l'a compris avant tout le monde. Cheffe de guerre lakota, fille d'un éclaireur de l'ancienne armée et d'une guérisseuse oglala, elle a appris la mécanique dans les ateliers de l'Empire — assez pour savoir démonter ce qu'il fabrique. Les premiers mechas des Nations sont des patrouilles capturées à sec, réveillées au cuivre et au bois, et qui règlent désormais leur pas sur celui de Koda, son vieux bison.",
       "On murmure aussi qu'un fragment de Wardenclyffe, exfiltré avant la saisie du labo de Tesla, aurait été échangé contre du cuivre travaillé par les Nations. Une rumeur. Pour l'instant.",
     ],
-    canon: {
-      name: "Le Grand Retour",
-      desc: "4+ hex Plaine/Forêt contrôlés ET 2 patrouilles impériales détruites",
-      check: (p, ctx) => fObjCheck("nations")(p, ctx) && (p.empireKills || 0) >= 2,
-    },
+    canon: canon("Le Grand Retour", [
+      compte("hex Plaine/Forêt contrôlés", p => hexOfTerrain(p, ["plaine", "foret"]), 4),
+      compte("patrouilles impériales détruites", p => p.empireKills || 0, 2),
+    ]),
     unlock: "railCards",
     after: [
       "Aiyana ne fait pas tomber l'Empire — elle prouve, avant tout le monde, que ses fissures sont réelles.",
@@ -107,11 +138,12 @@ export const CHAPTERS = [
       "L'Empire n'est pas né au Mexique, mais il s'y est étendu une génération après sa fondation : concessions minières et ferroviaires « exclusives, continent entier », qui ont dépossédé des générations avant même que Zapata prenne les armes.",
       "La nouvelle du régicide vient d'atteindre le Morelos.",
     ],
-    canon: {
-      name: "Terre Libérée",
-      desc: "4 pièges posés ET 2 ouvriers sur Sierras/Déserts",
-      check: fObjCheck("frente"),
-    },
+    canon: canon("Terre Libérée", [
+      compte("pièges posés", p => (p.trapTokens || []).length, 4),
+      compte("ouvriers sur Sierras/Déserts", p => (p.workers || []).filter(w => {
+        const t = hMap[w.hexId]?.t; return t === "sierra" || t === "desert";
+      }).length, 2),
+    ]),
     unlock: "amplificateur",
     after: [
       "Rojas et Zapata ne sont plus seuls : ce n'est plus une révolte régionale, c'est la première étincelle visible de la Seconde Guerre Civile qui embrase déjà tout le continent.",
@@ -128,11 +160,10 @@ export const CHAPTERS = [
       "Le Sud n'a jamais rejoint l'Empire de son plein gré : absorbé par la force en 1865, occupé militairement pendant cinquante ans — loi martiale, gouverneurs, garnisons — sans jamais renoncer à s'en libérer.",
       "Depuis le régicide, une garnison loyaliste tient Rouge River fermée à tout le monde. Ford y compris.",
     ],
-    canon: {
-      name: "L'Arsenal",
-      desc: "Contrôler l'Usine (hex 22) en ayant détruit au moins 1 patrouille impériale",
-      check: (p) => controlsFactory(p) && (p.empireKills || 0) >= 1,
-    },
+    canon: canon("L'Arsenal", [
+      jalon("Usine (hex 22) contrôlée", p => controlsFactory(p)),
+      compte("patrouille impériale détruite", p => p.empireKills || 0, 1),
+    ]),
     unlock: null,
     after: [
       "La garnison lâche prise. En échange de son aide, Cole obtient de Ford des facilités de paiement sur les mechas nécessaires à son propre projet de reconquête.",
@@ -150,11 +181,10 @@ export const CHAPTERS = [
       "Dockers et déserteurs des docks impériaux du Mississippi, devenus corsaires d'un fleuve qu'ils refusent de laisser à l'Empire.",
       "Rouge River vient d'échapper au contrôle impérial — et la Confédération qui l'a libérée finance désormais sa propre reconquête à crédit chez Ford.",
     ],
-    canon: {
-      name: "Le Prédateur",
-      desc: "1 mecha capturé ET 2 proies vaincues (Empire ou joueur)",
-      check: fObjCheck("bayou"),
-    },
+    canon: canon("Le Prédateur", [
+      compte("mecha capturé", p => p.capturedMech || 0, 1),
+      compte("proies vaincues (Empire ou joueur)", p => (p.empireKills || 0) + (p.combatWins || 0), 2),
+    ]),
     unlock: "eclair",
     after: [
       "Le Bayou ne convoite pas Rouge River par appât du gain : c'est une question de survie.",
@@ -171,11 +201,9 @@ export const CHAPTERS = [
       "La finance londonienne avait arrêté net, jadis, la poussée impériale vers le Canada.",
       "Mais avec Washington réduit à sa capitale et incapable de réagir, la prudence financière cède la place au calcul militaire.",
     ],
-    canon: {
-      name: "Le Tribut",
-      desc: "20+ pièces gagnées via Commerce Impérial",
-      check: fObjCheck("dominion"),
-    },
+    canon: canon("Le Tribut", [
+      compte("pièces gagnées via Commerce Impérial", p => p.imperialCoins || 0, 20),
+    ]),
     unlock: "relais",
     after: [
       "Les troupes du Dominion achèvent ce qui reste de la présence impériale au Canada — moins une conquête qu'un nettoyage.",
@@ -193,11 +221,14 @@ export const CHAPTERS = [
       "Dispersée par le Grand Dérangement de 1755, un siècle avant l'Empire, l'Acadiane n'a jamais reconnu aucune couronne : son réseau de contrebande a toujours vécu dans les failles de l'autorité.",
       "Le nettoyage du Dominion au Canada menace de refermer ces failles pour de bon — une frontière stabilisée est une frontière surveillée.",
     ],
-    canon: {
-      name: "Réseau Invisible",
-      desc: "4 Comptoirs non adjacents entre eux, dont 1 sur un Lac",
-      check: fObjCheck("acadiane"),
-    },
+    canon: canon("Réseau Invisible", [
+      compte("Comptoirs posés", p => (p.flagTokens || []).length, 4),
+      jalon("dont 1 sur un Lac", p => (p.flagTokens || []).some(fl => hMap[fl.hexId]?.t === "lac")),
+      jalon("aucun Comptoir adjacent à un autre", p => {
+        const ids = (p.flagTokens || []).map(f => f.hexId);
+        return ids.length > 0 && !ids.some((a, i) => ids.slice(i + 1).some(b => (ADJ[a] || []).includes(b)));
+      }),
+    ]),
     unlock: "tour",
     after: [
       "Thibodeau ne se contente pas de contourner la nouvelle autorité dominioniste : il sabote activement toute tentative de restructuration politique dans son sillage — la sienne comme celle des autres — et étend son réseau jusque dans l'ouest canadien, là où le passage du Dominion a laissé un vide administratif.",

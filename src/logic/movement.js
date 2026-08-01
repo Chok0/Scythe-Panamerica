@@ -61,8 +61,13 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) 
 
   return cands.filter(toId => {
     const to = hMap[toId]; if (!to) return false;
-    // Hex de base : seul son propriétaire peut y entrer (retraite/départ)
-    if (to.base) return to.faction === factionId;
+    // Hex de base : JAMAIS une destination volontaire. C'est le point hors
+    // plateau où l'on atterrit en attendant de rentrer — on n'y va pas, on y
+    // est renvoyé (retraite, défaite). On en SORT normalement : seules les
+    // destinations sont filtrées ici, `ADJ[base]` reste praticable.
+    // Corrige au passage un raccourci involontaire : la base touchant les DEUX
+    // hex de départ, elle offrait un passage start1 → base → start2 en 2 pas.
+    if (to.base) return false;
     if (to.t === "lac") return hasPosition && factionId === "acadiane";
     // Marécage : franchissable par tous (règle du péage — voir marshToll) ;
     // l'arrêt forcé est géré dans getValidMoves/findPathWaypoints.

@@ -31,3 +31,31 @@ export const spendRes = (player, resType, qty) => {
 };
 
 export const getWorkerHexes = (player) => [...new Set(player.workers.map(w => w.hexId))];
+
+// ── Paiement MIXTE d'un coût (Esprit Sauvage / Vapeur des Lacs) ───────────
+// Arbitrage du 01/08 : une faction à ressource alternative (`deployAltRes`)
+// peut remplacer AUTANT d'unités qu'elle veut de la ressource primaire par
+// l'alternative — donc payer un Deploy à 4 avec 3 métal + 1 bois. Auparavant
+// le choix était exclusif (4 métal OU 4 bois) et un joueur à 3+1 se voyait
+// refuser l'action, alors que sa capacité est censée l'y autoriser.
+
+/** Le coût est-il payable en mélangeant les deux ressources ? */
+export const canPayMixed = (player, resA, resB, qty) =>
+  countRes(player, resA) + (resB ? countRes(player, resB) : 0) >= qty;
+
+/** Répartition effective : `first` servie en priorité, le reliquat sur `second`.
+ *  Renvoie `{ [res]: n }` — utile pour l'annoncer avant validation. */
+export const mixedSplit = (player, first, second, qty) => {
+  const a = Math.min(countRes(player, first), qty);
+  const b = Math.max(0, qty - a);
+  const split = {};
+  if (a > 0) split[first] = a;
+  if (b > 0 && second) split[second] = b;
+  return split;
+};
+
+/** Dépense un coût réparti sur deux ressources. Pur (renvoie un nouveau p). */
+export const spendMixed = (player, first, second, qty) => {
+  const split = mixedSplit(player, first, second, qty);
+  return Object.entries(split).reduce((p, [res, n]) => spendRes(p, res, n), player);
+};

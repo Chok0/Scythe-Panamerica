@@ -8,7 +8,7 @@ import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, CURRENT_MAP, DEFAULT_MAP, CLASSIC
 import { generateAcceptedMap } from '../data/mapGen.js';
 import { getCombatBonus } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
-import { EMPIRE_START, drawEmpireCombat } from '../data/empire.js';
+import { EMPIRE_START, drawEmpireCombat, empirePowerRange } from '../data/empire.js';
 import { ENCOUNTERS, ALL_ENCOUNTERS } from '../data/encounters.js';
 import { FACTORY_RR_HEX, FACTORY_COL, PLANS_FORD, PLANS_TESLA, ALL_FACTORY_CARDS, TESLA_FRAGMENTS_REQUIRED, TESLA_OFFER_SIZE, factoryCostLabel, factoryGainLabel, factoryEffectLabel, FACTORY_BOTTOM_DESC } from '../data/plans.js';
 import { MATS, matById, BOTTOM, getBottomCost, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, applyEnlistOngoing, topSlots, topUpgradeCount, maxBottomCubes, FR_TOP as FR_TOP_MAP, FR_BOT as FR_BOT_MAP, frTop, frBot } from '../data/mats.js';
@@ -19,10 +19,10 @@ import RulesPage from './RulesPage.jsx';
 import Soundtrack from './Soundtrack.jsx';
 import SetupScreen from './SetupScreen.jsx';
 import CampaignScreen from './CampaignScreen.jsx';
-import { chapterById } from '../data/campaign.js';
-import { loadProgress, saveProgress, resetProgress, completeChapter, campaignConfig, canonMet, steelTick, growEmpireRail, teslaEncountersUnlocked, teslaPlansUnlocked, campaignEncounterPool } from '../logic/campaign.js';
+import { chapterById, partMet, partProgress } from '../data/campaign.js';
+import { loadProgress, saveProgress, resetProgress, completeChapter, campaignConfig, canonMet, steelTick, growEmpireRail, teslaEncountersUnlocked, teslaPlansUnlocked, teslaFragmentsAvailable, campaignEncounterPool } from '../logic/campaign.js';
 import { buildSaveBundle, parseSaveBundle, saveFileName, describeSave } from '../logic/saveFile.js';
-import { countRes, spendRes, getWorkerHexes, resFR, resListFR } from '../logic/resources.js';
+import { countRes, spendRes, getWorkerHexes, resFR, resListFR, canPayMixed, mixedSplit, spendMixed } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
 import { getValidMoves, getValidMoves1Step, getRailNetwork, findPathWaypoints, marshToll, marshFree } from '../logic/movement.js';
@@ -667,10 +667,28 @@ export default function App(){
                 const card=drawEmpireCombat();
                 setCombat({type:"pve",hexId:toId,empireId:eid,empireCard:card,phase:"choose",powerSpend:0,cardsSpend:0,
                   empireAttacks:true});
-                addLog(`⚔ L'Empire attaque ! ${card.name} (Force: ${card.power}) sur #${toId}`);
+                addLog(`⚔ L'Empire attaque sur #${toId} ! Force inconnue — entre ${empirePowerRange(1)}`);
               }
               break; // only one combat per empire move
             }
+          }
+          // ── Ouvriers seuls sur la case : renvoi à la base (règle Scythe) ──
+          // Constaté en partie réelle (01/08) : une patrouille arrivant sur un
+          // tas d'ouvriers ne déclenchait RIEN — ni combat (correct : ce ne
+          // sont pas des unités combattantes), ni renvoi (incorrect). L'Empire
+          // était la seule entité du jeu à ignorer cette règle.
+          // L'Empire n'ayant pas de piste de popularité, il ne paie rien pour
+          // ce renvoi — asymétrie assumée : ce n'est pas un joueur.
+          const anyCombatUnit=players.some(pl=>pl.hero===toId||pl.mechs.some(m=>m.hexId===toId));
+          if(!anyCombatUnit&&players.some(pl=>pl.workers.some(w=>w.hexId===toId))){
+            setPlayers(prev=>prev.map(pl=>{
+              const hit=pl.workers.filter(w=>w.hexId===toId);
+              if(hit.length===0)return pl;
+              const hb=baseHexAt(HOME_BASES[pl.faction]);
+              if(!hb)return pl;
+              addLog(`🔴👷 L'Empire disperse ${hit.length} ouvrier${hit.length>1?"s":""} de ${FACTIONS[pl.faction].name} sur #${toId} → base`);
+              return{...pl,workers:pl.workers.map(w=>w.hexId===toId?{...w,hexId:hb.id}:w)};
+            }));
           }
         }
       }
@@ -790,8 +808,11 @@ export default function App(){
           p.empireKills=(p.empireKills||0)+1;
           // Récompense : un bot en quête Tesla prend le FRAGMENT (les bots
           // n'y touchaient jamais — la quête leur était inaccessible)
+          // Même verrou de campagne que le joueur : le bot ne dépendait
+          // jusqu'ici que de `teslaOffer` vide — effet de bord, pas une règle.
           const hunting=BOT_PROFILES[p.botProfile]?.teslaHunter&&!p.visitedRR
-            &&(p.fragments||0)<TESLA_FRAGMENTS_REQUIRED&&teslaOffer.length>0;
+            &&(p.fragments||0)<TESLA_FRAGMENTS_REQUIRED&&teslaOffer.length>0
+            &&teslaFragmentsAvailable(chapter,campaignProgress);
           const rw=Math.random();
           if(hunting){p.fragments=(p.fragments||0)+1;logs.push(`🤖🔬 ${bf.name}: +1 Fragment Tesla (${p.fragments}/${TESLA_FRAGMENTS_REQUIRED})`);}
           else if(rw<0.4){p.pop=Math.min(p.pop+2,18);logs.push(`🤖 ${bf.name}: +2 Pop`);}
@@ -1206,13 +1227,19 @@ export default function App(){
     const costs=getBottomCost(me);
     const depCost=costs[1]; // Deploy is bottom col 1
     const qty=depCost.qty;
-    const res=overrideRes||depCost.res;
-    if(countRes(me,res)<qty){addLog(`⚠ ${qty} ${resFR(res)} requis`);return;}
+    // Esprit Sauvage / Vapeur des Lacs : substitution PARTIELLE autorisée
+    // (arbitrage du 01/08) — 3 métal + 1 bois paient un Deploy à 4. Le bouton
+    // choisi désigne la ressource servie en PREMIER, l'autre complète.
+    const alt=FACTIONS[me.faction]?.deployAltRes;
+    const first=overrideRes||depCost.res;
+    const second=alt?(first===depCost.res?alt:depCost.res):null;
+    if(!canPayMixed(me,first,second,qty)){addLog(`⚠ ${qty} ${resFR(depCost.res)}${alt?` (ou ${resFR(alt)}, mélange autorisé)`:""} requis`);return;}
+    const split=mixedSplit(me,first,second,qty);
     // Bonus $ imprimé de la colonne Deploy (règle Scythe : chaque action du
     // bas rapporte ses pièces) — avant, seul Upgrade créditait quoi que ce soit
     const colBonus=depCost.bonus||0;
     setPlayers(prev=>{
-      const n=[...prev];let p=spendRes(n[0],res,qty);
+      const n=[...prev];let p=spendMixed(n[0],first,second,qty);
       p.mechs=[...p.mechs,{id:`${p.faction}_m${p.mechs.length}`,hexId:targetHex}];
       // Do NOT unlock ability yet — player chooses
       p.coins+=colBonus;
@@ -1220,7 +1247,8 @@ export default function App(){
       if(earned){p.stars++;p.starMechs=true;}
       n[0]=p;return n;
     });
-    addLog(`⬡ Mecha déployé sur #${targetHex} (-${qty} ${resFR(res)}${colBonus>0?`, +${colBonus}$`:""})`);
+    const paid=Object.entries(split).map(([r,n])=>`${n} ${resFR(r)}`).join(" + ");
+    addLog(`⬡ Mecha déployé sur #${targetHex} (-${paid}${colBonus>0?`, +${colBonus}$`:""})`);
     if(me.mechs.length+1>=4)addLog(`⭐ 4 Mechas déployés !`);
     // Show ability picker — finishBottom will be called after player picks
     setPendingAbility({source:"deploy",col:1});
@@ -1525,6 +1553,21 @@ export default function App(){
     &&(()=>{const c=getBottomCost(me)[BOTTOM.indexOf("Upgrade")];if(!c)return false;
       return countRes(me,c.res)>=c.qty;})();
 
+  // ── PACK UP (Nations) : destinations cliquables sur la CARTE ──
+  // Comme tout autre déplacement, on doit pouvoir cliquer l'hex d'arrivée —
+  // les boutons « → #n » du panneau restent en second recours. Sert aussi de
+  // source unique à ces deux affichages, qui divergeaient.
+  // La base est exclue : c'est le point hors plateau, pas une destination.
+  const packUpTargets=useMemo(()=>{
+    if(!me||!bottomPick?.packUp||me.packUpUsed)return new Set();
+    const bld=(me.buildings||[])[bottomPick.buildingIdx];
+    if(!bld)return new Set();
+    return new Set((ADJ[bld.hexId]||[]).filter(id=>{
+      const h=hMap[id];
+      return h&&!h.base&&h.t!=="lac"&&h.t!=="marecage"&&!(me.buildings||[]).some(b=>b.hexId===id);
+    }));
+  },[me,bottomPick]);
+
   // Cibles cliquables sur la carte pour les actions bottom Deploy/Build
   // (en plus des boutons du panneau : cliquer l'hex surligné place directement)
   const actionTargets=useMemo(()=>{
@@ -1539,8 +1582,10 @@ export default function App(){
       const bc=getBottomCost(me)[1];
       const qty=bc.qty;
       const deployAlt=FACTIONS[me.faction]?.deployAltRes;
-      const res=deployAlt?bottomPick?.deployRes:bc.res; // faction à ressource alternative : attendre le choix métal/bois
-      if(!res||countRes(me,res)<qty)return none;
+      const res=deployAlt?bottomPick?.deployRes:bc.res; // faction à ressource alternative : attendre le choix de la ressource servie en premier
+      // Substitution PARTIELLE (01/08) : le total des deux ressources suffit
+      const second=deployAlt?(res===bc.res?deployAlt:bc.res):null;
+      if(!res||!canPayMixed(me,res,second,qty))return none;
       return{type:"deploy",res:deployAlt?res:undefined,hexes:new Set(workerHexes)};
     }
     if(pendingBottom.action==="Build"&&bottomPick?.building&&(me.buildings||[]).length<4){
@@ -1698,6 +1743,14 @@ export default function App(){
       }
     }
     
+    // ── PACK UP : cliquer l'hex de destination sur la carte ──
+    // Placé ici, avant la sélection d'unité : tant qu'un bâtiment est choisi,
+    // le clic sert la pose — même précédence que le mode de pose de rails.
+    if(packUpTargets.has(hexId)){
+      doPackUpMove(bottomPick.buildingIdx,hexId);
+      return;
+    }
+
     // ── MOVE : re-cliquer l'hex de l'unité sélectionnée = DÉSÉLECTION ──
     if(moveSource&&hexId===moveSource.fromHex){setMoveSource(null);setTransportPick(null);return;}
     if(moveSource&&validMoves.has(hexId)){
@@ -1720,10 +1773,17 @@ export default function App(){
       // Check PvE: Empire mecha on target hex
       const empireOnHex=Object.entries(empire).filter(([_,hid])=>hid===hexId);
       if(movingCombatUnit&&empireOnHex.length>0){
-        const card=drawEmpireCombat();
-        setCombat({type:"pve",hexId,empireId:empireOnHex[0][0],empireCard:card,phase:"choose",powerSpend:0,cardsSpend:0,
+        // Patrouilles EMPILÉES : une carte par patrouille, forces cumulées, et
+        // toutes détruites en cas de victoire. Avant, seule `[0]` était
+        // combattue — constaté en partie réelle (01/08) : deux mechas sur
+        // l'hex, un seul affronté.
+        const cards=empireOnHex.map(()=>drawEmpireCombat());
+        const totalPower=cards.reduce((s,c)=>s+c.power,0);
+        const card={name:cards.map(c=>c.name).join(" + "),power:totalPower};
+        setCombat({type:"pve",hexId,empireId:empireOnHex[0][0],empireIds:empireOnHex.map(([id])=>id),
+          empireCard:card,phase:"choose",powerSpend:0,cardsSpend:0,
           moveData:{...moveSource}});
-        addLog(`⚔ Combat Empire ! ${card.name} (Force: ${card.power})`);
+        addLog(`⚔ Combat Empire ! ${cards.length>1?`${cards.length} patrouilles liguées`:"Patrouille impériale"} — force entre ${empirePowerRange(cards.length)}`);
         setMoveSource(null);
         return;
       }
@@ -2010,7 +2070,7 @@ export default function App(){
     // tous, pour motiver la quête des fragments avant d'y aller ──
     if(hexId===FACTORY_RR_HEX&&!selAction&&!pendingBottom&&!rougeRiver)setFactoryPreview(true);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,carryOnMove,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes,rougeRiver]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,carryOnMove,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes,rougeRiver,packUpTargets,doPackUpMove]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -2159,7 +2219,10 @@ export default function App(){
             if(tr.carried.workers>0||tr.carried.resTypes.length>0) addLog(`🚚 Transport:${tr.carried.workers>0?` 👷×${tr.carried.workers}`:""}${tr.carried.resTypes.length>0?` 📦${resListFR(tr.carried.resTypes)}`:""}`);
           }
           // Empire attacked → player stays in place, no transport needed
-          p.empireKills=(p.empireKills||0)+1;
+          // Patrouilles empilées : chacune vaincue compte (combat.empireIds)
+          const killed=(combat.empireIds||[combat.empireId]).length;
+          p.empireKills=(p.empireKills||0)+killed;
+          if(killed>1)addLog(`💀 ${killed} patrouilles impériales détruites d'un coup`);
           if(p.empireKills>=3&&!p.starLiberator){p.stars++;p.starLiberator=true;addLog(`⭐💀 LIBÉRATEUR ! 3 Empire détruits !`);}
           if(p.faction==="bayou"&&!p.chimereUsed&&(p.unlockedAbilities||[]).includes(2)){
             p.mechs=[...p.mechs,{id:`${p.faction}_chimere`,hexId:combat.hexId}];
@@ -2168,8 +2231,8 @@ export default function App(){
           }
           n[0]=p;return n;
         });
-        // Remove empire mecha
-        setEmpire(prev=>{const n={...prev};delete n[combat.empireId];return n;});
+        // Remove empire mecha(s) — toutes les patrouilles de l'hex
+        setEmpire(prev=>{const n={...prev};(combat.empireIds||[combat.empireId]).forEach(id=>delete n[id]);return n;});
         // Show reward phase
         setCombat(prev=>({...prev,phase:"reward",win:true}));
         return; // Don't close yet — reward phase
@@ -2412,7 +2475,7 @@ export default function App(){
       } else if(reward==="pop"){
         p.pop=Math.min(p.pop+2,18);
         addLog(`🏆 +2 Popularité`);
-      } else if(reward==="fragment"){
+      } else if(reward==="fragment"&&teslaFragmentsAvailable(chapter,campaignProgress)){
         p.fragments=(p.fragments||0)+1;
         addLog(`🏆 +1 Fragment Tesla (${p.fragments}/${TESLA_FRAGMENTS_REQUIRED})`);
       }
@@ -2422,7 +2485,7 @@ export default function App(){
     if((me.movedUnits||[]).length>=effMoveLimit){
       setTimeout(()=>endMoveDone(),100);
     }
-  },[combat,me,addLog,effMoveLimit,endMoveDone]);
+  },[combat,me,addLog,effMoveLimit,endMoveDone,chapter,campaignProgress]);
 
   // Reprend le tour humain après un picker de rencontre (mecha/bâtiment/recrue) :
   // si tous les déplacements sont faits, on enchaîne sur l'action bottom.
@@ -3288,7 +3351,7 @@ export default function App(){
             const isV=validMoves.has(hex.id)||(selAction==="Produce"&&producePicks.includes(hex.id));
             const isSel=selHex===hex.id;const isHov=hovHex===hex.id;
             const isFactory=hex.t==="factory";
-            const isSrc=(!moveSource&&movableUnits.has(hex.id))||actionTargets.hexes.has(hex.id)||produceEligible.has(hex.id);
+            const isSrc=(!moveSource&&movableUnits.has(hex.id))||actionTargets.hexes.has(hex.id)||produceEligible.has(hex.id)||packUpTargets.has(hex.id);
             const isBonusTile=structureBonus&&hex.t!=="lac"&&hex.t!=="marecage"&&hex.t!=="factory"&&structureBonus.check(hex.id,players[0],players);
             // Territorial control contour (§2.3 refonte visuelle) : la première unité
             // présente sur l'hex porte la couleur de contrôle — un hex n'est jamais
@@ -3309,7 +3372,7 @@ export default function App(){
               isBonusTile?`🏦 ${structureBonus.icon} ${structureBonus.name} — hex éligible au bonus de pose (${structureBonus.scale})`:null,
               hexHasRail?"🛤 Rail : une unité qui COMMENCE son déplacement sur le réseau peut rejoindre tout nœud relié (coût 1 pas). Monter sur le rail en cours de route n'ouvre pas le réseau ce tour-ci, et le réseau est coupé aux nœuds occupés par l'ennemi.":null,
             ].filter(Boolean).join("\n");
-            return(<g key={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
+            return(<g key={hex.id} data-hex={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
               {hexTitle&&<title>{hexTitle}</title>}
               <HexTerrain hex={hex} isV={isV} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc} controlColor={controlColor} wireframe={mapChoice!=="random"}/>
               {/* Bonus de construction : pastille $ sur les tuiles qualifiées */}
@@ -3519,6 +3582,8 @@ export default function App(){
                 const cardVal=(combat.cardsPicked||[]).reduce((a,ci)=>a+(handSorted[ci]||0),0);
                 const total=combat.powerSpend + cBonus.powerBonus + cardVal;
                 const isPve=combat.type==="pve";
+                // Patrouilles liguées sur l'hex : la fourchette annoncée suit
+                const empireCount=(combat.empireIds||[combat.empireId]).filter(Boolean).length||1;
                 const enemy=!isPve?players[combat.enemyIdx]:null;
                 const ef=enemy?FACTIONS[enemy.faction]:null;
                 return(
@@ -3526,8 +3591,8 @@ export default function App(){
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
                       <div style={{width:50,height:50,borderRadius:"50%",background:isPve?"rgba(180,30,15,0.2)":"rgba(200,100,30,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,border:isPve?"2px solid #1A3A6A":"2px solid "+(ef?ef.color:"#888"),flexShrink:0}}>⚔</div>
                       <div>
-                        <div style={{fontFamily:"var(--font-title)",color:isPve?"#2A5A8A":ef.color,fontSize:21,fontWeight:700}}>{isPve?combat.empireCard.name:combat.type==="pvp_defense"?`${ef.name} vous attaque !`:`Combat vs ${ef.name}`}</div>
-                        <div style={{fontSize:14,color:"var(--text-muted)",marginTop:3}}>{isPve?`Force Empire: ${combat.empireCard.power}`:combat.type==="pvp_defense"?"Ses forces sont engagées en secret — défendez le territoire":"L'adversaire choisit secrètement…"}</div>
+                        <div style={{fontFamily:"var(--font-title)",color:isPve?"#2A5A8A":ef.color,fontSize:21,fontWeight:700}}>{isPve?(empireCount>1?`${empireCount} patrouilles impériales liguées`:"Patrouille impériale"):combat.type==="pvp_defense"?`${ef.name} vous attaque !`:`Combat vs ${ef.name}`}</div>
+                        <div style={{fontSize:14,color:"var(--text-muted)",marginTop:3}}>{isPve?`Force inconnue — entre ${empirePowerRange(empireCount)} (révélée à la résolution)`:combat.type==="pvp_defense"?"Ses forces sont engagées en secret — défendez le territoire":"L'adversaire choisit secrètement…"}</div>
                       </div>
                     </div>
                     <div style={{marginBottom:14}}>
@@ -3559,7 +3624,7 @@ export default function App(){
                       <span style={{fontSize:25,fontWeight:900,color:"var(--gold)",fontFamily:"var(--font-title)"}}>{total}</span>
                       <span style={{fontSize:14,color:"var(--text-muted)"}}>{combat.powerSpend}{cBonus.powerBonus>0?`+${cBonus.powerBonus}`:""}⚡ + {cardVal}🃏</span>
                       {cBonus.name&&<span style={{fontSize:12,padding:"2px 8px",borderRadius:4,background:"rgba(200,112,64,0.12)",border:"1px solid var(--rust)",color:"var(--rust)"}}>{cBonus.name}{cBonus.powerBonus>0?` +${cBonus.powerBonus}⚡`:""}{cBonus.cardBonus>0?` +${cBonus.cardBonus}🃏`:""}</span>}
-                      {isPve&&<span style={{fontSize:18,fontWeight:700,marginLeft:"auto",color:total>=combat.empireCard.power?"var(--success)":"#ff4444"}}>{total>=combat.empireCard.power?"✓":"✗"} vs {combat.empireCard.power}</span>}
+                      {isPve&&<span style={{fontSize:14,fontWeight:700,marginLeft:"auto",color:"var(--text-muted)"}}>vs {empirePowerRange(empireCount)}</span>}
                     </div>
                     <button onClick={resolveCombat} style={{width:"100%",padding:"14px",fontSize:17,fontWeight:700,fontFamily:"var(--font-title)",letterSpacing:3,textTransform:"uppercase",background:"linear-gradient(135deg,var(--danger),#8b1515)",color:"#fff",border:"none",borderRadius:10,boxShadow:"0 3px 20px rgba(200,56,40,0.4)"}}>⚔ Combattre</button>
                     {combat.type==="pvp_defense"&&me.faction==="acadiane"&&(me.unlockedAbilities||[]).includes(2)&&(
@@ -3576,15 +3641,27 @@ export default function App(){
                     <span style={{fontSize:37}}>🏆</span>
                     <div><div style={{fontFamily:"var(--font-title)",color:"var(--success)",fontSize:23,fontWeight:700}}>Victoire !</div><div style={{fontSize:14,color:"var(--text-dim)"}}>Choisissez votre butin</div></div>
                   </div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-                    {[{k:"metal",icon:"⚙",label:"2 Métal",sub:"Ferraille"},{k:"pop",icon:"♥",label:"+2 Pop",sub:"Acclamation"},{k:"fragment",icon:"🔬",label:"Fragment",sub:`Tesla (${(me.fragments||0)}/${TESLA_FRAGMENTS_REQUIRED})`}].map(r=>(
-                      <button key={r.k} onClick={()=>claimReward(r.k)} style={{background:"var(--bg3)",border:"1px solid var(--border-light)",borderRadius:10,padding:"18px 10px",color:"var(--text)",textAlign:"center",fontFamily:"inherit"}}>
-                        <div style={{fontSize:30,marginBottom:8}}>{r.icon}</div>
-                        <div style={{fontSize:15,fontWeight:700}}>{r.label}</div>
-                        <div style={{fontSize:12,color:"var(--text-muted)",marginTop:4}}>{r.sub}</div>
-                      </button>
-                    ))}
-                  </div>
+                  {/* Le fragment Tesla est la 3e source de fragments : elle
+                      suit le même verrou de campagne que les rencontres et
+                      l'Usine (logic/campaign.js), sinon le chapitre 1 — celui
+                      où l'Empire tourne — le rendrait contournable. */}
+                  {(()=>{
+                    const rewards=[{k:"metal",icon:"⚙",label:"2 Métal",sub:"Ferraille"},{k:"pop",icon:"♥",label:"+2 Pop",sub:"Acclamation"}];
+                    if(teslaFragmentsAvailable(chapter,campaignProgress))
+                      rewards.push({k:"fragment",icon:"🔬",label:"Fragment",sub:`Tesla (${(me.fragments||0)}/${TESLA_FRAGMENTS_REQUIRED})`});
+                    return(<>
+                      <div style={{display:"grid",gridTemplateColumns:`repeat(${rewards.length},1fr)`,gap:12}}>
+                        {rewards.map(r=>(
+                          <button key={r.k} onClick={()=>claimReward(r.k)} style={{background:"var(--bg3)",border:"1px solid var(--border-light)",borderRadius:10,padding:"18px 10px",color:"var(--text)",textAlign:"center",fontFamily:"inherit"}}>
+                            <div style={{fontSize:30,marginBottom:8}}>{r.icon}</div>
+                            <div style={{fontSize:15,fontWeight:700}}>{r.label}</div>
+                            <div style={{fontSize:12,color:"var(--text-muted)",marginTop:4}}>{r.sub}</div>
+                          </button>
+                        ))}
+                      </div>
+                      {rewards.length<3&&<div style={{marginTop:10,fontSize:12,color:"var(--text-muted)",fontStyle:"italic"}}>🔒 Aucune relique de Wardenclyffe ne circule encore — les fragments Tesla restent hors de portée à ce stade de la campagne.</div>}
+                    </>);
+                  })()}
                 </div>
               )}
 
@@ -4039,11 +4116,28 @@ export default function App(){
               <span style={{fontWeight:700,fontFamily:"var(--font-title)"}}>Ch. {chapter.num} — {chapter.title}</span>
               {chapter.variant?.steel&&<span style={{marginLeft:"auto",color:"var(--text-dim)"}}>🏦 Acier {steelPile}⚙</span>}
             </div>
-            {chapter.canon&&(
-              <div style={{fontSize:12,color:canonMet(chapter,me,{players})?"#8fc26a":"var(--text-dim)"}}>
-                🏛 {chapter.canon.name} — {chapter.canon.desc}
-              </div>
-            )}
+            {/* Une ligne PAR MEMBRE, avec sa progression : « 4+ hex Plaine/
+                Forêt ET 2 patrouilles » affiché d'un bloc a fait croire à un
+                blocage du moteur en partie réelle (01/08) alors qu'un seul
+                des deux membres était rempli. */}
+            {chapter.canon&&(()=>{
+              const all=canonMet(chapter,me,{players});
+              return(
+                <div style={{fontSize:12}}>
+                  <div style={{color:all?"#8fc26a":"var(--gold-dim)",fontWeight:600}}>🏛 {chapter.canon.name}{all?" — accompli !":""}</div>
+                  {chapter.canon.parts.map((pt,i)=>{
+                    const ok=partMet(pt,me,{players});
+                    return(
+                      <div key={i} style={{display:"flex",gap:6,color:ok?"#8fc26a":"var(--text-dim)",paddingLeft:14}}>
+                        <span>{ok?"✓":"○"}</span>
+                        <span style={{flex:1,minWidth:0}}>{pt.label}</span>
+                        <span style={{fontFamily:"var(--font-mono)",fontWeight:700}}>{partProgress(pt,me,{players})}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -4386,10 +4480,10 @@ export default function App(){
                   {me.faction==="nations"&&(me.unlockedAbilities||[]).includes(3)&&(me.buildings||[]).length>0&&!me.packUpUsed&&!moveSource&&(()=>{
                     if(bottomPick&&bottomPick.packUp){
                       const bld=(me.buildings||[])[bottomPick.buildingIdx];
-                      const adjTargets=(ADJ[bld.hexId]||[]).filter(id=>{const h=hMap[id];return h&&h.t!=="lac"&&h.t!=="marecage"&&!(me.buildings||[]).some(b=>b.hexId===id);});
+                      const adjTargets=[...packUpTargets];
                       const bt=BUILDING_TYPES.find(t=>t.type===bld.type);
                       return <div style={{marginTop:8,padding:"8px 10px",borderRadius:6,border:"1px solid var(--nations)",background:"rgba(32,178,170,0.06)"}}>
-                        <div style={{fontSize:14,color:"var(--nations)",marginBottom:6}}>📦 Pack Up — déplacer {bt?bt.icon:""} {bt?bt.name:""} depuis #{bld.hexId}</div>
+                        <div style={{fontSize:14,color:"var(--nations)",marginBottom:6}}>📦 Pack Up — déplacer {bt?bt.icon:""} {bt?bt.name:""} depuis #{bld.hexId} <span style={{color:"var(--text-muted)"}}>— cliquez l'hex surligné sur la carte</span></div>
                         {adjTargets.length>0?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{adjTargets.map(hid=><button key={hid} onClick={()=>doPackUpMove(bottomPick.buildingIdx,hid)} className="act-btn" style={{borderColor:"var(--nations)"}}>→ #{hid}</button>)}</div>:<div style={{fontSize:12,color:"var(--text-muted)"}}>Aucun hex adjacent libre</div>}
                         <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Annuler</button>
                       </div>;
@@ -4649,18 +4743,24 @@ export default function App(){
                   const deployAlt=FACTIONS[me.faction]?.deployAltRes;
                   const metalCount=countRes(me,"metal");const altCount=deployAlt?countRes(me,deployAlt):0;
                   const qty=bc.qty;
-                  const hasMetal=metalCount>=qty;const hasAlt=altCount>=qty;
+                  const hasMetal=metalCount>=qty;
                   if(!deployAlt) return hasMetal?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid)} className="act-btn"><Glyph icon="⬡" size={14}/> #{hid}</button>)}</div>:<div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de {bc.res}</div>;
-                  if(!hasMetal&&!hasAlt) return <div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de métal ni de {resFR(deployAlt)}</div>;
+                  // Substitution PARTIELLE (arbitrage 01/08) : c'est le TOTAL des
+                  // deux ressources qui doit couvrir le coût. Le bouton choisi
+                  // désigne la ressource servie en premier, l'autre complète.
+                  if(metalCount+altCount<qty) return <div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de métal ni de {resFR(deployAlt)} (total {metalCount+altCount}/{qty})</div>;
+                  const altIcon=deployAlt==="bois"?"🪵":deployAlt==="petrole"?"🛢":"📦";
+                  const splitLabel=(first)=>Object.entries(mixedSplit(me,first,first==="metal"?deployAlt:"metal",qty))
+                    .map(([r,n])=>`${n} ${resFR(r)}`).join(" + ");
                   if(!bottomPick||!bottomPick.deployRes) return <div>
-                    <div style={{fontSize:12,color:"var(--brass)",marginBottom:6}}>🌿 {FACTIONS[me.faction].deployAltName||FACTIONS[me.faction].ability} — déployer avec :</div>
+                    <div style={{fontSize:12,color:"var(--brass)",marginBottom:6}}>🌿 {FACTIONS[me.faction].deployAltName||FACTIONS[me.faction].ability} — mélange autorisé, servir d'abord :</div>
                     <div style={{display:"flex",gap:6}}>
-                      {hasMetal&&<button onClick={()=>setBottomPick({deployRes:"metal"})} className="act-btn" style={{flex:1}}>⚙ Métal ({metalCount})</button>}
-                      {hasAlt&&<button onClick={()=>setBottomPick({deployRes:deployAlt})} className="act-btn" style={{flex:1,borderColor:"#5a8a3a"}}>{deployAlt==="bois"?"🪵":deployAlt==="petrole"?"🛢":"📦"} {resFR(deployAlt)} ({altCount})</button>}
+                      {metalCount>0&&<button onClick={()=>setBottomPick({deployRes:"metal"})} className="act-btn" style={{flex:1}}>⚙ Métal ({metalCount})<div style={{fontSize:11,opacity:0.75}}>{splitLabel("metal")}</div></button>}
+                      {altCount>0&&<button onClick={()=>setBottomPick({deployRes:deployAlt})} className="act-btn" style={{flex:1,borderColor:"#5a8a3a"}}>{altIcon} {resFR(deployAlt)} ({altCount})<div style={{fontSize:11,opacity:0.75}}>{splitLabel(deployAlt)}</div></button>}
                     </div>
                   </div>;
                   return <div>
-                    <div style={{fontSize:12,color:"var(--brass)",marginBottom:4}}>Deploy avec {bottomPick.deployRes} :</div>
+                    <div style={{fontSize:12,color:"var(--brass)",marginBottom:4}}>Deploy — paiement : {splitLabel(bottomPick.deployRes)}</div>
                     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{deployHexes.map(hid=><button key={hid} onClick={()=>doDeploy(hid,bottomPick.deployRes)} className="act-btn"><Glyph icon="⬡" size={14}/> #{hid}</button>)}</div>
                     <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Autre ressource</button>
                   </div>;
