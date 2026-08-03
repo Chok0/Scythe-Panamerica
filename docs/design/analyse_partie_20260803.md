@@ -128,13 +128,17 @@ seule asymétrie encore ouverte.
 | **Score final** | oui | **oui** (si aucun ennemi sur l'hex) | oui | `App.jsx` §scoring |
 | **Condition canon** | oui | **non** | non | `heldHexes()`, `data/campaign.js` |
 
-Au tour 20, vos deux bâtiments étaient sur des hex éligibles : Moulin
-**#7 (plaine)** et Gare **#11 (forêt)**, tous deux déplacés par Pack Up. Avec
-la définition du score, la condition « 4 hex Plaine/Forêt » était donc remplie
-**au tour 21 — au moment exact où vous avez posé la note**. Il a fallu
-attendre le tour 22 et deux déplacements (m1 → #26 plaine, m0 → #7 plaine)
-pour que le moteur la voie : vous avez dû **poser physiquement un mecha sur
-l'hex où se tenait déjà votre propre moulin**.
+Au tour 21, deux de vos trois bâtiments étaient sur des hex éligibles :
+**Arsenal #17 (plaine)** depuis le tour 10, et **Moulin #7 (plaine)** depuis
+le Pack Up du tour 20. La condition a pourtant attendu le tour 22 et deux
+déplacements — m1 → #26 (plaine) puis m0 → #7 (plaine) — pour se déclencher.
+
+Ce qui se déduit du journal, sans supposition : le second de ces déplacements
+a posé un mecha **sur l'hex où se tenait déjà votre propre moulin**. Avec la
+définition du score, #7 était tenu depuis deux tours : la condition tombait au
+moins un déplacement plus tôt, et dès le **tour 20** si l'Arsenal de #17
+comptait pour un quatrième hex distinct — ce qui est le cas de figure le plus
+probable, vos 8 ouvriers ayant quitté #17 au tour 18.
 
 `heldHexes` sert aussi à `controlsFactory` et `villagesHeld` — donc aux
 conditions canon des chapitres 4 et 6, qui ont le même trou.
@@ -163,10 +167,16 @@ initiés par le joueur ou subis par un bot au hasard.
 Tuile tirée : **🌾 Champs & Toundra** — 1→2$ · 2→4$ · 3→6$ · 4→9$ par bâtiment
 posé sur un champ ou une toundra.
 
-- Hex éligibles sur la carte v3 : **6 sur 43** — toundra #0, #2, #8 ; champs
-  #16, #30, #41. Tous au nord ou à l'extrême sud, loin du départ des Nations.
-- Vos 3 bâtiments : Moulin #10 (forêt), Gare #14 (village), Arsenal #17
-  (plaine) → **0$**.
+- Hex éligibles sur la carte v3 : **5 sur 43** — toundra #0, #2, #11 ; champs
+  #38, #41. Deux à trois seulement sont à 5 pas ou moins de chaque base.
+- Vos 3 bâtiments à l'arrivée : Moulin #7 (plaine), Gare #14 (village),
+  Arsenal #17 (plaine) → **0$**.
+- **Et pourtant vous y étiez.** Au tour 20 vous avez packé la Gare de #14 vers
+  **#11 — une toundra, donc 2$** — avant d'annuler le coup et de packer le
+  Moulin à la place. Deux traces l'attestent : Pack Up est limité à un par
+  action Move (deux dans ce tour = un undo entre les deux), et le score final
+  affiche bien 0$ de bonus de pose. La tuile était gagnable ; rien ne
+  signalait que ce coup-là valait de l'argent.
 - **Les deux bots n'ont posé aucun bâtiment.** Actions comptées sur la partie :
 
 | Bot | Actions du bas |
@@ -264,3 +274,29 @@ API qui passent tous par `getValidMoves`) :
 | `components/App.jsx` | Déplacement décomposé : la branche `continuation` de `validMoves` propose le réseau si l'unité s'y trouve. Comptage des pas : rouler vaut 1 pas depuis l'hex de départ **de chaque saut**, continuation comprise. |
 | `data/rules.js`, tooltip d'hex, libellé du chapitre 1 | Textes de règle réécrits (trois formulations de l'ancienne règle traînaient dans l'UI). |
 | `logic/__tests__/movement.test.js` | Le test « entrer sur un rail en cours de route n'ouvre pas le réseau » est **inversé** ; trois tests ajoutés (embarquer puis rouler, rouler puis sortir, coupure par une unité ennemie). 234 tests au vert. |
+
+---
+
+## 9. Lot de correctifs du 3 août — implémenté et mesuré
+
+Les dix pistes du §7 ont été traitées dans la foulée de l'arbitrage sur le
+rail. Récapitulatif, avec ce qui a été mesuré.
+
+| # | Livré | Mesure / vérification |
+|---|---|---|
+| **C1** | **Contrôle unifié** — `heldHexes(p, ctx)` (`data/campaign.js`) devient le point de vérité : unités **+** bâtiments **+** pièges armés, contestés par toute unité adverse. Utilisé par le score final (UI et mode API) et par les conditions canon. | 5 tests : bâtiment sans unité, piège armé/désamorcé, contestation adverse, contestation impériale, et la condition du chapitre 1 remplie par deux bâtiments. |
+| **C2** | **L'Empire ne prolonge plus que SES rails** — suivi séparé `empireRails` ; le segment posé rejoint le réseau partagé (le partage reste entier pour le déplacement). `EMPIRE_RAILS` est enfin posé au setup, comme l'annonçait `campagne.md`. | La séquence contrefactuelle du §3.1 devient la séquence réelle : 16 segments et 3 tours de plus pour l'Empire quand le joueur construit sa Gare. |
+| **C3** | **Symétrie du rail** — les patrouilles passent par `getRailNetwork(from, rails, blocked)` : le réseau leur est coupé aux nœuds occupés, comme à tout le monde. | — |
+| **C4** | **Le déplacement qui déclenche un combat est logué** (`🚶 unité → #hex ⚔`), PvE et PvP. | Répond à la note 2 : plus de « (2/2) » après un seul mouvement visible. |
+| **C5** | **L'Empire conteste les territoires** — inclus dans C1 : une patrouille sur votre hex vous en retire le contrôle au score. | Test dédié. |
+| **C6** | **Lisibilité de la portée** — les destinations du dernier pas sont surlignées en pointillé (plein pour un pas), et le panneau annonce « N destinations, M à 1 pas » avec la cause des blocages : rivières, lacs, marécages (arrêt forcé), hex occupés. | Sur la position du tour 16, la Vitesse affiche 14 destinations au lieu de 4 (effet combiné de l'arbitrage §8). |
+| **C7** | **Les patrouilles chassent** — le réseau ferré n'entre dans le tirage qu'une fois sur quatre (`EMPIRE_RAIL_CHANCE`), et un hex portant unités, ouvriers ou butin est préféré 3 fois sur 4 (`EMPIRE_HUNT_CHANCE`). | Corrige les 75 % de sauts de rail de fin de partie mesurés au §3.5. |
+| **C8** | **Les bots ne laissent plus une colonne mourir de faim** — le Commerce visait « le plus petit manque », donc jamais le bois de Construire, plus cher d'un ou deux cubes : un bas jamais joué compte désormais 1,5 de manque en moins. Plus un `buildBoost` de profil (le « Bâtisseur » n'en avait aucun) et la prise en compte du gain réel de la tuile bonus. | **120 parties simulées, avant/après** — sièges finissant à 0 bâtiment : **12 % → 7 %** ; sur les parties courtes (≤26 tours, le format de la partie du 03/08) : **32 % → 18 %**, et 1,46 → 1,76 bâtiment. Bâtisseur 20 % → 10 % de sièges à zéro, thésauriseur 21 % → 9 %. Winrates par faction inchangés (écarts dans le bruit), score moyen 64,9 → 68,7. |
+| **C9** | **Tuile bonus jouable et annoncée** — le tirage écarte les tuiles dont la carte ne porte pas au moins 4 hex éligibles, ou qui laissent une faction en jeu à moins de 2 hex éligibles à 5 pas de sa base ; et le journal de setup **nomme les hex éligibles**. | Sur la carte v3 le filtre ne retire rien (vérifié par test) : il protège des cartes procédurales. L'annonce répond à la note 11 du 01/08 (« à quoi servent les jetons dollars »). |
+| **C10** | **Écran de fin de chapitre** — en campagne, le 🏆 revient à qui a **remporté le chapitre**, pas au meneur aux points ; une ligne rappelle son rang au score, et un chapeau précise que le décompte n'est que le score de partie. | — |
+
+Reste ouvert, hors périmètre de ce lot : le constat du §5 (le bot gagne en
+thésaurisant, l'argent valant 1 point sec) — c'est un arbitrage de barème, pas
+un bug.
+
+Suite complète : **243 tests au vert**.

@@ -17,7 +17,7 @@
 //   - « Marais exploités » : trop peu de marécages sur la carte.
 //   - « Quartier général » (groupe connexe) : calqué sur la pose naturelle
 //     des joueurs — la tuile serait validée sans respecter aucune contrainte.
-import { ADJ, hMap, CURRENT_MAP, homeBaseHex } from './hexes.js';
+import { HEXES, ADJ, hMap, CURRENT_MAP, homeBaseHex } from './hexes.js';
 
 // 1→2$ · 2→4$ · 3→6$ · 4→9$ (compte des bâtiments qualifiés)
 const tierBuildings = (n) => n >= 4 ? 9 : n === 3 ? 6 : n === 2 ? 4 : n === 1 ? 2 : 0;
@@ -187,8 +187,66 @@ export const STRUCTURE_BONUSES = [
 
 export const walkDistToBase = distToBase;
 
-export const pickStructureBonus = () =>
-  STRUCTURE_BONUSES[Math.floor(Math.random() * STRUCTURE_BONUSES.length)];
+/** Hex éligibles au surlignage $ d'une tuile sur la carte COURANTE.
+ *  Vide pour les tuiles à critère géométrique (Ligne de Production, Terroirs
+ *  Variés, Terres Lointaines) : tout hex peut y contribuer. */
+export const eligibleHexes = (bonus) => {
+  if (!bonus) return [];
+  return HEXES.filter(h => { try { return !!bonus.check(h.id); } catch { return false; } }).map(h => h.id);
+};
+
+// Une tuile doit être JOUABLE sur la carte tirée. Constaté en partie
+// (01/08 et 03/08) : le bonus de pose a rapporté 0$ aux trois joueurs deux
+// fois de suite. Sur la carte v3 ce filtre ne retire rien (la plus maigre,
+// « Champs & Toundra », a 5 hex éligibles dont 2 à 3 à portée de chaque
+// base) — il protège des cartes procédurales où un terrain est quasi absent.
+const MIN_ELIGIBLE = 4;      // 4 bâtiments max : moins, et le haut du barème est hors d'atteinte
+const MIN_NEAR_BASE = 2;     // par faction en jeu, à MAX_BASE_DIST pas de sa base
+const MAX_BASE_DIST = 5;
+
+/** Distances de marche depuis la base d'une faction (mêmes interdits que
+ *  distToBase : ni lac, ni base adverse). */
+const distMapFrom = (hexId) => {
+  const d = { [hexId]: 0 };
+  let frontier = [hexId], n = 0;
+  while (frontier.length > 0) {
+    n++;
+    const next = [];
+    for (const cur of frontier) {
+      for (const a of (ADJ[cur] || [])) {
+        if (d[a] != null) continue;
+        d[a] = n;
+        const h = hMap[a];
+        if (!h || h.t === "lac" || h.base) continue;
+        next.push(a);
+      }
+    }
+    frontier = next;
+  }
+  return d;
+};
+
+/** La tuile est-elle jouable sur la carte courante, pour les factions en jeu ? */
+export const bonusViable = (bonus, factions) => {
+  const elig = eligibleHexes(bonus);
+  if (elig.length === 0) return true; // critère géométrique : toujours jouable
+  if (elig.length < MIN_ELIGIBLE) return false;
+  return (factions || []).every(fid => {
+    const base = homeBaseHex(fid);
+    if (!base) return true;
+    const d = distMapFrom(base.id);
+    return elig.filter(id => (d[id] ?? 99) <= MAX_BASE_DIST).length >= MIN_NEAR_BASE;
+  });
+};
+
+/** Tirage de la tuile bonus, restreint aux tuiles jouables sur cette carte.
+ *  `factions` : ids des factions en jeu (facultatif — sans elles, seul le
+ *  nombre d'hex éligibles est vérifié). */
+export const pickStructureBonus = (factions) => {
+  const pool = STRUCTURE_BONUSES.filter(b => bonusViable(b, factions));
+  const from = pool.length > 0 ? pool : STRUCTURE_BONUSES;
+  return from[Math.floor(Math.random() * from.length)];
+};
 
 /** Détail du bonus pour un joueur : valeur comptée + pièces.
  *  `players` (optionnel) : liste des joueurs en partie — sert aux tuiles

@@ -242,7 +242,29 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
       // Speed mech first is critical
       if (p.mechs.length === 0) score += 10;
     }
-    else if (bottomAction === "Build") score += 8;
+    else if (bottomAction === "Build") {
+      // v0.17 (mesuré après la partie du 03/08 : 2 bots à 0 bâtiment en
+      // 22 tours, et 22 % des sièges à 0 sur les parties courtes simulées).
+      // Construire était figé à +8, DERRIÈRE Enlist et Deploy, et AUCUN profil
+      // ne pesait dessus — le « Bâtisseur » construisait même moins que le
+      // Blitz (1,80 contre 2,70 en moyenne). Or un bâtiment paie deux fois :
+      // territoire permanent (il tient l'hex sans unité) ET tuile bonus de
+      // pose (jusqu'à 9$, 16$ sur Avant-Postes). On valorise donc le GAIN
+      // RÉEL de la tuile sur le meilleur hex disponible, au lieu d'un forfait.
+      score += 8 + (prof.buildBoost || 0);
+      const sb = ctx && ctx.structureBonus;
+      if (sb) {
+        const spots = getWorkerHexes(p).filter(h => !hMap[h]?.base && !(p.buildings || []).some(b => b.hexId === h));
+        if (spots.length > 0) {
+          const before = sb.score(sb.count(p, ctx.allPlayers), p);
+          const gain = Math.max(...spots.map(hid => {
+            const sim = { ...p, buildings: [...(p.buildings || []), { type: "_sim", hexId: hid }] };
+            return sb.score(sb.count(sim, ctx.allPlayers), sim) - before;
+          }));
+          if (gain > 0) score += Math.min(gain, 9);
+        }
+      }
+    }
     else if (bottomAction === "Upgrade") { if (upgradeWorthIt) score += 5; else score -= 20; }
     // P2 : rentabilité de CETTE colonne sur CE plateau (bonus $ vs surcoût) —
     // sans ça, le Construire 4 bois +0$ de la Forge était joué comme le
@@ -1441,9 +1463,21 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         // n'épargne pas pour Upgrade au-delà de 2, sauf sprint final
         if (bAction === "Upgrade" && !((p.upgrades || 0) < 2 || p.stars >= 4)) continue;
         if (bMaxed || !bCosts) continue;
+        // v0.17 — « le plus petit manque d'abord » AFFAME le bas le plus cher.
+        // Mesuré sur la partie du 03/08 : les deux bots n'achètent QUE de la
+        // nourriture et du métal (Enrôler, Déployer) et finissent à 0 bâtiment
+        // en 22 tours, parce que le bois de Construire coûte 1 ou 2 de plus et
+        // ne gagne jamais le départage. Un bas JAMAIS joué compte donc comme
+        // s'il lui manquait 1,5 de moins : le bot finit par y venir sans que
+        // cela renverse une priorité proche.
+        const doneCount = bAction === "Upgrade" ? (p.upgrades || 0)
+          : bAction === "Deploy" ? p.mechs.length
+          : bAction === "Build" ? (p.buildings || []).length
+          : (p.recruits || 0);
         const gap = bCosts.qty - countRes(p, bCosts.res);
-        if (gap > 0 && (gap < bestGap || (gap === bestGap && tradePrio[ci] < bestPrio))) {
-          bestGap = gap; bestPrio = tradePrio[ci]; targetRes = bCosts.res;
+        const effGap = gap - (doneCount === 0 ? 1.5 : 0);
+        if (gap > 0 && (effGap < bestGap || (effGap === bestGap && tradePrio[ci] < bestPrio))) {
+          bestGap = effGap; bestPrio = tradePrio[ci]; targetRes = bCosts.res;
         }
       }
       if (!targetRes) {

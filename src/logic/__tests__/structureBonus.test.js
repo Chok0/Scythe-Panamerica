@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { STRUCTURE_BONUSES, structureBonusDetail } from '../../data/structureBonus.js';
+import { STRUCTURE_BONUSES, structureBonusDetail, eligibleHexes, bonusViable, pickStructureBonus } from '../../data/structureBonus.js';
 import { HEXES, hMap, ADJ, homeBaseHex } from '../../data/hexes.js';
+import { FACTIONS } from '../../data/factions.js';
 
 const tile = (id) => STRUCTURE_BONUSES.find(b => b.id === id);
 const mkP = (hexIds, faction = "confederation") =>
@@ -124,5 +125,34 @@ describe('tuiles bonus de pose — barème progressif 2/4/6/9$', () => {
       // sans bâtiment : 0 pièce
       expect(structureBonusDetail(mkP([]), b).coins).toBe(0);
     });
+  });
+});
+
+// ── Tuiles jouables sur la carte tirée (correctif du 03/08) ───────────────
+// Deux parties de suite, le bonus de pose a rapporté 0$ aux trois joueurs.
+// Le tirage écarte désormais les tuiles dont la carte ne porte pas assez
+// d'hex éligibles, ou qui sont hors de portée d'une faction en jeu.
+describe('tuiles jouables sur la carte courante', () => {
+  it('eligibleHexes rend les hex à badge $, vide pour les tuiles géométriques', () => {
+    const cultures = STRUCTURE_BONUSES.find(b => b.id === 'cultures');
+    const elig = eligibleHexes(cultures);
+    expect(elig.length).toBeGreaterThan(0);
+    elig.forEach(id => expect(['champs', 'toundra']).toContain(hMap[id].t));
+    expect(eligibleHexes(STRUCTURE_BONUSES.find(b => b.id === 'ligne'))).toEqual([]);
+  });
+
+  it('la carte v3 garde toutes ses tuiles — le filtre vise les cartes procédurales', () => {
+    const factions = Object.keys(FACTIONS);
+    STRUCTURE_BONUSES.forEach(b => expect(bonusViable(b, factions), b.id).toBe(true));
+  });
+
+  it('une tuile à trop peu d\'hex éligibles est écartée du tirage', () => {
+    const factions = Object.keys(FACTIONS);
+    // 2 hex éligibles : le haut du barème (4 bâtiments) est hors d'atteinte
+    expect(bonusViable({ id: 'rare', check: (hid) => hid === 0 || hid === 2 }, factions)).toBe(false);
+    // Aucun hex éligible = critère géométrique (Ligne, Terroirs) : toujours jouable
+    expect(bonusViable({ id: 'geo', check: () => false }, factions)).toBe(true);
+    // Le tirage rend toujours une tuile, même si le filtre vidait le pool
+    expect(pickStructureBonus(factions)).toBeTruthy();
   });
 });

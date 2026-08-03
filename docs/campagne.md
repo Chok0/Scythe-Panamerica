@@ -99,10 +99,20 @@ réseau sous les yeux du joueur, avec les mêmes règles que les siennes.
 - Ciblage : plus court chemin vers le prochain village non raccordé, puis
   vers l'Usine pour fusionner les composantes restantes — mêmes interdits
   que la pose de rail joueur (jamais sur lac/marécage/base).
+- La croissance ne part que des rails IMPÉRIAUX (`empireRails`, suivi à part
+  du réseau partagé). Correctif du 03/08 : `growEmpireRail` recevait le
+  réseau partagé, donc l'Empire prolongeait les segments du joueur — mesuré
+  3 tours et 3 segments gagnés, et le village-hub du joueur raccordé au
+  réseau impérial par sa propre voie.
 - Les patrouilles impériales qui activent leur tour SUR le réseau peuvent
   rouler vers n'importe quel hex connecté, comme un joueur (log dédié `🛤
   (rail)`) — limité au chapitre 1 (`variant.railGrowth`), pour ne pas changer
-  le comportement des patrouilles ailleurs sans qu'on l'ait demandé.
+  le comportement des patrouilles ailleurs sans qu'on l'ait demandé. Comme
+  pour les joueurs, le réseau leur est COUPÉ aux nœuds occupés (03/08 :
+  elles sautaient par-dessus les unités), et le rail n'entre dans le tirage
+  de leur destination qu'une fois sur quatre — sans quoi le réseau achevé
+  leur offrait ~14 destinations contre ~5 voisins (75 % de sauts de rail en
+  fin de partie, « déplacement sans interaction »).
 - Aucun retrait de segment (sabotage hors-scope), aucune traversée de
   lac/marécage.
 

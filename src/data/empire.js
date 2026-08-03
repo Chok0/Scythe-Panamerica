@@ -5,6 +5,19 @@ export const EMPIRE_START = [
 
 export const EMPIRE_RAILS = [[27, 30], [11, 15]];
 
+// ── Comportement des patrouilles (correctifs du 03/08) ────────────────────
+// Une seule patrouille s'active par tour de table, et elle choisissait sa
+// destination au hasard PUR parmi ses voisins + tout le réseau ferré. Une
+// fois le réseau achevé, un nœud offrait ~14 destinations contre ~5 voisins :
+// 6 des 8 derniers déplacements de la partie du 03/08 étaient des sauts de
+// rail d'un bout à l'autre de la carte, sans jamais menacer personne
+// (« déplacement de mecha Empire sans interaction », deux fois).
+/** Probabilité que le réseau ferré entre dans le tirage de la destination. */
+export const EMPIRE_RAIL_CHANCE = 0.25;
+/** Probabilité de préférer un hex « qui vaut le détour » (unités, ouvriers,
+ *  butin) quand il y en a un à portée — la patrouille chasse, elle n'erre pas. */
+export const EMPIRE_HUNT_CHANCE = 0.75;
+
 export const EMPIRE_DECK = [
   { power: 1, name: "Écho Rouillé" }, { power: 2, name: "Sentinelle Aveugle" }, { power: 2, name: "Patrouilleur Usé" },
   { power: 3, name: "Gardien de Route" }, { power: 4, name: "Broyeur de Fer" }, { power: 5, name: "Marcheur d'Acier" },

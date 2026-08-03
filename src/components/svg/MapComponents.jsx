@@ -76,7 +76,11 @@ const HexResIcon = React.memo(({ cx, cy, resType, light = false }) => {
   return null;
 });
 
-export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory, isSrc, controlColor, wireframe }) => {
+// `isFar` : destination atteinte seulement au DERNIER pas (2e hex d'un mech
+// Vitesse, ou trajet ferroviaire). Surlignée plus discrètement — sans ça, la
+// portée d'une capacité de mouvement est illisible : « on dirait que le mecha
+// Speed n'a pas d'effet » (partie du 03/08), alors qu'il ouvrait bien un hex.
+export const HexTerrain = React.memo(({ hex, isV, isFar, isSel, isHov, isFactory, isSrc, controlColor, wireframe }) => {
   const t = TERRAINS[hex.t];
   const isWater = hex.t === "lac" || hex.t === "marecage";
   return (
@@ -145,11 +149,12 @@ export const HexTerrain = React.memo(({ hex, isV, isSel, isHov, isFactory, isSrc
       </>}
       {/* Valid move overlay — bright enough to read on the light painted hexes */}
       {isV && <>
-        <polygon points={hPts(hex.rx, hex.ry)} fill="rgba(60,160,60,0.28)" stroke="none" style={{ pointerEvents: "none" }}>
-          <animate attributeName="opacity" values="0.5;1;0.5" dur="1.4s" repeatCount="indefinite" />
+        <polygon points={hPts(hex.rx, hex.ry)} fill={isFar ? "rgba(60,160,60,0.13)" : "rgba(60,160,60,0.28)"} stroke="none" style={{ pointerEvents: "none" }}>
+          <animate attributeName="opacity" values={isFar ? "0.35;0.7;0.35" : "0.5;1;0.5"} dur="1.4s" repeatCount="indefinite" />
         </polygon>
-        <polygon points={hPts(hex.rx, hex.ry, HS - 2)} fill="none" stroke="#b8f0a8" strokeWidth={2.5} opacity={0.9} style={{ pointerEvents: "none" }}>
-          <animate attributeName="opacity" values="0.55;0.95;0.55" dur="1.4s" repeatCount="indefinite" />
+        <polygon points={hPts(hex.rx, hex.ry, HS - 2)} fill="none" stroke="#b8f0a8" strokeWidth={isFar ? 1.6 : 2.5}
+          strokeDasharray={isFar ? "5 4" : undefined} opacity={0.9} style={{ pointerEvents: "none" }}>
+          <animate attributeName="opacity" values={isFar ? "0.4;0.75;0.4" : "0.55;0.95;0.55"} dur="1.4s" repeatCount="indefinite" />
         </polygon>
       </>}
     </g>

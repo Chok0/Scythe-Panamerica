@@ -275,9 +275,10 @@ export const STEEL_HEX = FACTORY_HEX;
 
 /** Tour d'Acier Brut. Pur : renvoie une NOUVELLE liste de joueurs.
  *  `{ pile, players, collectorIdx, collected }`. */
-export const steelTick = (pile, players) => {
+export const steelTick = (pile, players, empire) => {
   const grown = (pile || 0) + 1;
-  const holders = (players || []).map((p, i) => (p && heldHexes(p).has(STEEL_HEX) ? i : -1)).filter(i => i >= 0);
+  const ctx = { players, empire };
+  const holders = (players || []).map((p, i) => (p && heldHexes(p, ctx).has(STEEL_HEX) ? i : -1)).filter(i => i >= 0);
   if (holders.length !== 1) return { pile: grown, players, collectorIdx: null, collected: 0 };
   const idx = holders[0];
   const p = players[idx];

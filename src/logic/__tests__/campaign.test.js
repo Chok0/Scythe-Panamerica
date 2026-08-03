@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { CHAPTERS, chapterById, FACTORY_HEX, controlsFactory, partMet, partProgress } from '../../data/campaign.js';
+import { CHAPTERS, chapterById, FACTORY_HEX, controlsFactory, heldHexes, partMet, partProgress } from '../../data/campaign.js';
 import { FACTIONS } from '../../data/factions.js';
 import { LEGACIES, LEGACY_IDS } from '../../data/legacies.js';
 import { hMap } from '../../data/hexes.js';
@@ -423,5 +423,58 @@ describe('Acier Brut', () => {
     const s = steelTick(1, [p, other()]);
     expect(s.collectorIdx).toBe(0);
     expect(s.players[0].resources[FACTORY_HEX].metal).toBe(2);
+  });
+});
+
+// ── Contrôle territorial unifié (correctif du 03/08) ──────────────────────
+// Le score final comptait les bâtiments, la condition canon non : « on dirait
+// que mon moulin n'est pas comptabilisé dans les hex Plaine/Forêt pour
+// l'objectif ». Il fallait poser un mecha sur l'hex où se tenait déjà son
+// propre moulin. `heldHexes` est désormais le seul point de vérité.
+describe('heldHexes — contrôle unifié (unités + structures)', () => {
+  const solo = () => ({ faction: 'nations', hero: 900, workers: [], mechs: [], buildings: [], trapTokens: [] });
+
+  it('un bâtiment tient son hex sans aucune unité dessus', () => {
+    const p = solo();
+    p.buildings = [{ type: 'moulin', hexId: 10 }];
+    expect(heldHexes(p).has(10)).toBe(true);
+  });
+
+  it('un piège ARMÉ tient son hex, un piège désamorcé non', () => {
+    const p = solo();
+    p.trapTokens = [{ hexId: 28 }, { hexId: 29, disarmed: true }];
+    expect(heldHexes(p).has(28)).toBe(true);
+    expect(heldHexes(p).has(29)).toBe(false);
+  });
+
+  it('une unité ADVERSE sur l\'hex en retire le contrôle malgré le bâtiment', () => {
+    const p = solo();
+    p.buildings = [{ type: 'moulin', hexId: 10 }];
+    const foe = { faction: 'frente', hero: 10, workers: [], mechs: [] };
+    expect(heldHexes(p, { players: [p, foe] }).has(10)).toBe(false);
+    // …mais une unité à SOI sur l'hex le garde évidemment
+    p.workers = [{ id: 'w', hexId: 10 }];
+    expect(heldHexes(p, { players: [p, foe] }).has(10)).toBe(true);
+  });
+
+  it('une patrouille impériale conteste comme un adversaire', () => {
+    const p = solo();
+    p.buildings = [{ type: 'gare', hexId: 14 }];
+    expect(heldHexes(p, {}).has(14)).toBe(true);
+    expect(heldHexes(p, { empire: { E1: 14 } }).has(14)).toBe(false);
+  });
+
+  it('la condition canon du chapitre 1 compte les bâtiments (bug du 03/08)', () => {
+    const ch1 = chapterById('ch1');
+    // Deux hex Plaine/Forêt tenus par des unités, deux par des bâtiments :
+    // #7 et #26 sont des plaines, #10 et #29 des forêts sur la carte v3.
+    const p = { faction: 'nations', hero: 900, empireKills: 2, mechs: [{ id: 'm', hexId: 26 }],
+      workers: [{ id: 'w', hexId: 29 }], buildings: [{ type: 'moulin', hexId: 7 }, { type: 'arsenal', hexId: 10 }] };
+    ['plaine', 'foret'].forEach(t => expect([7, 26, 10, 29].map(id => hMap[id].t)).toContain(t));
+    expect(canonMet(ch1, p, {})).toBe(true);
+    // Sans les bâtiments, il n'en reste que deux sur quatre
+    expect(canonMet(ch1, { ...p, buildings: [] }, {})).toBe(false);
+    // Une patrouille sur le moulin fait retomber le compte à 3
+    expect(canonMet(ch1, p, { empire: { E1: 7 } })).toBe(false);
   });
 });

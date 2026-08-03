@@ -37,8 +37,9 @@ import { HEXES, hMap, ADJ, CURRENT_MAP, homeBaseHex } from '../data/hexes.js';
 import { TERRAINS } from '../data/terrains.js';
 import { ENCOUNTERS } from '../data/encounters.js';
 import { OBJECTIVES } from '../data/objectives.js';
+import { heldHexes } from '../data/campaign.js';
 import { PLANS_FORD, PLANS_TESLA, FACTORY_RR_HEX, TESLA_FRAGMENTS_REQUIRED, TESLA_OFFER_SIZE } from '../data/plans.js';
-import { pickStructureBonus, structureBonusDetail, STRUCTURE_BONUSES } from '../data/structureBonus.js';
+import { pickStructureBonus, structureBonusDetail, eligibleHexes, STRUCTURE_BONUSES } from '../data/structureBonus.js';
 import { getCombatBonus } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
 
@@ -105,11 +106,17 @@ export class HeadlessGame {
     this.encounterDeck = shuffleArray(ENCOUNTERS);
     this.factoryOffer = shuffleArray(PLANS_FORD).slice(0, this.players.length + 1);
     this.teslaOffer = shuffleArray(PLANS_TESLA).slice(0, TESLA_OFFER_SIZE);
+    // Tirage restreint aux tuiles jouables sur la carte ET à portée des
+    // factions en jeu (03/08 : bonus de pose à 0$ pour tout le monde, deux
+    // parties de suite) — les hex éligibles sont annoncés au journal.
+    const inPlay = this.players.map(p => p.faction);
     this.structureBonus = cfg.structureBonus
-      ? STRUCTURE_BONUSES.find(b => b.id === cfg.structureBonus) || pickStructureBonus()
-      : pickStructureBonus();
+      ? STRUCTURE_BONUSES.find(b => b.id === cfg.structureBonus) || pickStructureBonus(inPlay)
+      : pickStructureBonus(inPlay);
 
     this.log('info', `🏦 Bonus de pose : ${this.structureBonus.icon} ${this.structureBonus.name} — ${this.structureBonus.scale} ${this.structureBonus.desc}`);
+    const eligible = eligibleHexes(this.structureBonus);
+    if (eligible.length > 0) this.log('info', `🏦 ${eligible.length} hex éligibles : ${eligible.map(h => `#${h}`).join(" ")}`);
     this.log('combat', `⚔ ${this.players.length} joueurs`);
     this.players.forEach((p, i) => {
       const f = FACTIONS[p.faction];
@@ -280,9 +287,8 @@ export class HeadlessGame {
     const scoreOf = (p) => {
       const popTier = p.pop <= 6 ? 0 : p.pop <= 12 ? 1 : 2;
       const [sm, tm, rm] = [[3, 2, 1], [4, 3, 2], [5, 4, 3]][popTier];
-      const unitHexes = new Set([p.hero, ...p.workers.map(w => w.hexId), ...p.mechs.map(m => m.hexId)]);
-      (p.buildings || []).forEach(b => unitHexes.add(b.hexId));
-      (p.trapTokens || []).forEach(t => { if (!t.disarmed) unitHexes.add(t.hexId); });
+      // Même point de vérité que l'UI : unités + bâtiments/pièges non contestés
+      const unitHexes = heldHexes(p, { players: this.players, empire: this.empire });
       let flagBonus = 0; const hbh = hbHexOf(p.faction);
       (p.flagTokens || []).forEach(fl => { if (!(hbh && (ADJ[hbh.id] || []).includes(fl.hexId))) flagBonus++; });
       const factoryBonus = unitHexes.has(FACTORY_RR_HEX) ? 2 : 0;

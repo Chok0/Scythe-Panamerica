@@ -23,16 +23,45 @@ import { hMap, ADJ } from './hexes.js';
 // procédurales (mapGen.js : FACTORY_ID).
 export const FACTORY_HEX = 22;
 
-/** Hex tenus par un joueur — même définition que le décompte de territoires
- *  (unités seules : héros, ouvriers, mechas). */
-export const heldHexes = (p) => new Set([
-  p.hero,
-  ...(p.workers || []).map(w => w.hexId),
-  ...(p.mechs || []).map(m => m.hexId),
-]);
+/** Hex tenus par un joueur — POINT DE VÉRITÉ UNIQUE du contrôle territorial,
+ *  partagé par le score final, les conditions canon et l'Acier Brut.
+ *
+ *  Règle Scythe : on tient un hex si on y a une unité, OU une structure /
+ *  un piège armé qu'aucune unité ennemie n'occupe. Corrigé le 03/08 : la
+ *  condition canon ne comptait que les unités alors que le score comptait
+ *  déjà les bâtiments — « mon moulin n'est pas comptabilisé dans les hex
+ *  Plaine/Forêt pour l'objectif », et il fallait poser un mecha sur l'hex où
+ *  se tenait déjà son propre moulin.
+ *
+ *  `ctx.players` (tous les joueurs) et `ctx.empire` ({id: hexId}) sont
+ *  facultatifs : sans eux, structures et pièges comptent sans contestation
+ *  possible — la contestation exige de connaître les autres.
+ *  Les Comptoirs (Acadiane) restent HORS de ce décompte : ce sont des jetons
+ *  de score (+1 territoire, +2$) et non des marqueurs de contrôle. */
+export const heldHexes = (p, ctx) => {
+  const held = new Set([
+    p.hero,
+    ...(p.workers || []).map(w => w.hexId),
+    ...(p.mechs || []).map(m => m.hexId),
+  ]);
+  const enemyUnits = new Set();
+  (ctx?.players || []).forEach(op => {
+    if (!op || op === p) return;
+    enemyUnits.add(op.hero);
+    (op.mechs || []).forEach(m => enemyUnits.add(m.hexId));
+    (op.workers || []).forEach(w => enemyUnits.add(w.hexId));
+  });
+  // Les patrouilles impériales contestent comme n'importe quelle unité
+  // adverse (constaté le 03/08 : l'Empire était invisible au décompte).
+  Object.values(ctx?.empire || {}).forEach(hid => enemyUnits.add(hid));
+  const claim = (hid) => { if (hid != null && !enemyUnits.has(hid)) held.add(hid); };
+  (p.buildings || []).forEach(b => claim(b.hexId));
+  (p.trapTokens || []).forEach(t => { if (!t.disarmed) claim(t.hexId); });
+  return held;
+};
 
-export const controlsFactory = (p) => heldHexes(p).has(FACTORY_HEX);
-export const villagesHeld = (p) => [...heldHexes(p)].filter(id => hMap[id]?.t === "village").length;
+export const controlsFactory = (p, ctx) => heldHexes(p, ctx).has(FACTORY_HEX);
+export const villagesHeld = (p, ctx) => [...heldHexes(p, ctx)].filter(id => hMap[id]?.t === "village").length;
 
 const fObjCheck = (factionId) => (p, ctx) => FACTIONS[factionId].fObj.check(p, ctx);
 
@@ -66,7 +95,7 @@ const canon = (name, parts) => ({
 });
 
 // Compteurs réutilisés par les membres ci-dessous
-const hexOfTerrain = (p, terrains) => [...heldHexes(p)].filter(id => terrains.includes(hMap[id]?.t)).length;
+const hexOfTerrain = (p, ctx, terrains) => [...heldHexes(p, ctx)].filter(id => terrains.includes(hMap[id]?.t)).length;
 
 export const PROLOGUE = {
   id: "prologue", kind: "interlude", num: 0,
@@ -96,7 +125,7 @@ export const CHAPTERS = [
       "On murmure aussi qu'un fragment de Wardenclyffe, exfiltré avant la saisie du labo de Tesla, aurait été échangé contre du cuivre travaillé par les Nations. Une rumeur. Pour l'instant.",
     ],
     canon: canon("Le Grand Retour", [
-      compte("hex Plaine/Forêt contrôlés", p => hexOfTerrain(p, ["plaine", "foret"]), 4),
+      compte("hex Plaine/Forêt contrôlés", (p, ctx) => hexOfTerrain(p, ctx, ["plaine", "foret"]), 4),
       compte("patrouilles impériales détruites", p => p.empireKills || 0, 2),
     ]),
     unlock: "railCards",
@@ -161,7 +190,7 @@ export const CHAPTERS = [
       "Depuis le régicide, une garnison loyaliste tient Rouge River fermée à tout le monde. Ford y compris.",
     ],
     canon: canon("L'Arsenal", [
-      jalon("Usine (hex 22) contrôlée", p => controlsFactory(p)),
+      jalon("Usine (hex 22) contrôlée", (p, ctx) => controlsFactory(p, ctx)),
       compte("patrouille impériale détruite", p => p.empireKills || 0, 1),
     ]),
     unlock: null,

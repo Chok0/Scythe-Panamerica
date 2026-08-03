@@ -267,3 +267,27 @@ describe('P7 — Produire ne se paie pas au prix d\'un palier de popularité', (
     expect(produced, 'le bot brade son palier de popularité').toBeLessThanOrEqual(2);
   });
 });
+
+// ── v0.17 : un bas JAMAIS joué finit par être financé ─────────────────────
+// Partie du 03/08 : les deux bots achètent uniquement nourriture et métal
+// (Enrôler, Déployer) et finissent à 0 bâtiment en 22 tours. Cause : le
+// Commerce visait « le plus petit manque », donc jamais le bois de Construire,
+// plus cher d'un ou deux cubes. Mesure après correctif (120 parties simulées) :
+// sièges finissant à 0 bâtiment 12 % → 7 %, et 32 % → 18 % sur les parties
+// courtes (≤26 tours), sans bouger les winrates.
+describe('v0.17 — le Commerce ne laisse plus une colonne mourir de faim', () => {
+  it('un bot sans bois finit par en acheter pour Construire', () => {
+    const p = mkBot();
+    p.coins = 20;
+    // Nourriture et métal en réserve : Enrôler et Déployer sont déjà payables,
+    // seul Construire (bois) est à sec — c'est LUI que le Commerce doit viser.
+    const hex = p.workers[0].hexId;
+    p.resources = { [hex]: { nourriture: 9, metal: 9, petrole: 9, bois: 0 } };
+    const logs = [];
+    for (let i = 0; i < 12; i++) {
+      logs.push(...run({ ...p, lastCol: i % 4, workers: p.workers.map(w => ({ ...w })), mechs: [],
+        resources: { [hex]: { ...p.resources[hex] } } }).logs);
+    }
+    expect(logs.filter(l => /\+\d+ bois/.test(l)).length, logs.join(" | ")).toBeGreaterThan(0);
+  });
+});
