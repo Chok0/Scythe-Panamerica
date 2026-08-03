@@ -40,7 +40,7 @@ consécutive** (voir §4).
 | 1 | 9 | « D'où ça sort ce morceau de rail 36↔40 » | **BUG confirmé et REJOUÉ.** De VOS rails. `growEmpireRail(rails)` reçoit le tableau de rails **partagé** : les 3 segments posés par votre Gare au tour 6 sont absorbés dans le réseau impérial et servent d'ancrage à sa croissance. Voir §3.1. |
 | 2 | 9 | « J'aurais dû pouvoir resélectionner le mecha avec les ouvriers pour me redéplacer » | **Conforme aux règles.** Une unité ne se déplace qu'une fois par action Move, et la Vitesse n'était pas encore débloquée (`Ab[2]` au tour 9). **Mais le journal ment** : le déplacement qui déclenche un combat n'est **jamais logué** (`🚶` posé après le point de sortie vers la modale). Un seul mouvement visible, puis « Mouvement terminé (2/2) » — on croit à un déplacement compté deux fois. |
 | 3 | 16 | « Il semblerait que le mecha Speed n'ait pas d'effet » | **Implémentée et active — mais MESURÉE à +1 hex sur cette position.** Depuis #17, la Vitesse fait passer les destinations de `{10, 14, 25}` à `{3, 10, 14, 25}` : un seul hex de plus, et c'est un marécage (péage + arrêt forcé). Voir §3.2. Pas un bug : un effet de terrain que rien n'explique à l'écran. |
-| 4 | 16 | « J'ai pu faire un déplacement composé mais pas la 2e partie sur le réseau de rail » | **Conforme au code, et voulu** (`validMoves`, branche `continuation` : 1 pas simple, jamais le rail — « on monte à bord un tour, on roule au suivant »). **Mais asymétrique avec l'Empire**, qui embarque sans dépenser de pas et saute par-dessus les unités. Voir §3.3. |
+| 4 | 16 | « J'ai pu faire un déplacement composé mais pas la 2e partie sur le réseau de rail » | **Conforme au code de l'époque — règle CHANGÉE depuis** par l'arbitrage du 3 août : le rail est un pas comme un autre, à n'importe quel moment du déplacement. Voir §3.3 et §8. |
 | 5 | 21 | « Déplacement mecha de l'Empire sans combat démarré » | **Conforme au code, deux trous derrière.** Pas de combat sans héros/mecha sur l'hex (correct), ouvriers dispersés depuis le 1er août (correct), **bâtiments ignorés** — et une patrouille campée sur votre hex **ne vous en retire pas le contrôle au score** (`enemyOccupied` est construit à partir des `players` seuls : l'Empire est invisible au décompte des territoires). |
 | 6 | 21 | « Mon moulin n'est pas comptabilisé dans les hex Plaine/Forêt pour l'objectif » | **BUG confirmé — il a coûté 1 à 2 tours de partie.** Deux définitions du contrôle coexistent : le score final compte les bâtiments (« règle Scythe »), la condition canon non (`heldHexes` = héros + ouvriers + mechas). Voir §3.4. |
 | 7 | 22 | « À nouveau déplacement de mecha Empire sans interaction » | **Confirmé, cause mesurée.** Une seule patrouille s'active par tour, **au hasard**, vers une destination **au hasard** — et une fois le réseau achevé (tour 14), le rail domine le tirage : **6 des 8 derniers déplacements impériaux sont des sauts de rail** (contre 3 sur 13 avant). Voir §3.5. |
@@ -114,6 +114,12 @@ destinations de 12 à **20**.
 
 Les trois lignes vont dans le même sens. La note 4 est un choix de conception
 défendable — mais il n'est tenable que si l'Empire y est soumis aussi.
+
+**Arbitrage rendu le 3 août (voir §8) : les deux premières lignes de la
+colonne joueur tombent.** Le rail devient un pas comme un autre, empruntable à
+n'importe quel moment du déplacement. Reste la troisième — l'Empire saute
+toujours par-dessus les unités (`getRailNetwork` appelé sans `blockedHexes`),
+seule asymétrie encore ouverte.
 
 ### 3.4 Deux définitions du contrôle dans le même jeu
 
@@ -210,7 +216,7 @@ Frente Libre.** Les deux affichages sont exacts et se contredisent à l'œil.
 |---|---|---|
 | C1 | **Contrôle unifié** : un seul `heldHexes` comptant unités **et** bâtiments (+ comptoirs/pièges), utilisé par le score, les conditions canon et les objectifs. | `data/campaign.js`, `App.jsx` — note 6, chapitres 4 et 6 |
 | C2 | **Croissance impériale sur les rails impériaux** : suivre `empireRails` séparément et n'étendre que depuis eux ; le réseau reste **partagé pour le déplacement** (c'est la promesse du chapitre), pas pour la construction. Poser aussi `EMPIRE_RAILS` au setup, comme le doc l'annonce. | `logic/campaign.js`, `App.jsx` — note 1 |
-| C3 | **Symétrie du rail** : passer `blockedHexes` à `getRailNetwork` côté Empire, et lui faire dépenser son activation pour embarquer. | `App.jsx` — note 4 |
+| C3 | **Symétrie du rail** : passer `blockedHexes` à `getRailNetwork` côté Empire (il saute encore par-dessus les unités). | `App.jsx` — note 4, §3.3 |
 | C4 | **Loguer le déplacement qui déclenche un combat** (`🚶 unité → #hex` avant l'ouverture de la modale). | `App.jsx` — note 2 |
 | C5 | **Contrôle territorial contre l'Empire** : une patrouille sur un hex en retire le contrôle au score, comme une unité adverse. | `App.jsx` §scoring — note 5 |
 | C6 | **Lisibilité de la portée** : distinguer 1er et 2e pas au surlignage, et signaler la cause d'un blocage (rivière, patrouille, marécage). | `App.jsx` — note 3 |
@@ -218,3 +224,43 @@ Frente Libre.** Les deux affichages sont exacts et se contredisent à l'œil.
 | C8 | **Les bots doivent construire** : la colonne Build n'est jamais choisie — même symptôme structurel que le Move d'Acadiane au 1er août (score de colonne hors d'atteinte). À traiter dans le lot bots, **avec mesure avant/après**. | `logic/bot.js` — §4 |
 | C9 | **Tuile bonus de pose** : 6 hex éligibles sur 43 est trop peu. Soit filtrer les tuiles selon la carte, soit annoncer les hex éligibles au setup (les « jetons dollars » de la note 11 du 1er août). | `data/structureBonus.js` — §4 |
 | C10 | **Écran de fin de chapitre** : quand la voie canon est remportée, le 🏆 revient au joueur ; le classement VP passe en second rang de lecture. | `App.jsx` — §6 |
+
+---
+
+## 8. Arbitrage du 3 août — le rail est un pas comme un autre ✅ implémenté
+
+**Décision du concepteur**, énoncée après la partie :
+
+> Une action Move qui part d'un hex avec un rail peut terminer n'importe où
+> sur le réseau connecté. Dans le cas d'un mouvement séquentiel (mecha Vitesse
+> déployé) la règle s'applique toujours : si le premier déplacement amène sur
+> une case avec un rail, le second peut terminer n'importe où sur le réseau ;
+> inversement si le premier move est sur le réseau il termine n'importe où
+> dessus et le second peut en sortir (ou repartir ailleurs sur le réseau).
+
+Autrement dit : **un pas de déplacement est SOIT un hex adjacent, SOIT un
+trajet ferroviaire depuis l'hex courant.** Rouler coûte toujours 1 pas — ce
+n'est pas un téléport gratuit — mais la restriction « il faut COMMENCER son
+déplacement sur le réseau » disparaît.
+
+**Ce que cela renverse.** La règle précédente (« on monte à bord un tour, on
+roule au suivant ») datait de la partie du 22/07 et avait été **confirmée** au
+28/07 (note T24 : « règle maintenue — rouvrir = les rails redeviennent des
+quasi-téléports à 2 pas »). Le risque alors invoqué est réel et assumé : avec
+Vitesse, un mech placé à côté du réseau atteint désormais n'importe lequel de
+ses nœuds. Sur la position exacte du tour 16, la Vitesse passe de **4
+destinations à 14** depuis #17 — ce qui répond du même coup à la note 3.
+
+Le garde-fou conservé : le réseau reste **coupé aux nœuds occupés par une
+unité ennemie** (destination possible, jamais passage) — règle du 22/07,
+inchangée.
+
+**Implémentation** (un seul point de vérité, hérité par les bots et le mode
+API qui passent tous par `getValidMoves`) :
+
+| Fichier | Changement |
+|---|---|
+| `logic/movement.js` | `getValidMoves` : le réseau s'ouvre depuis tout hex atteint, à chaque pas (et non plus au seul pas 0). `findPathWaypoints` suit la même règle — les dépôts en cours de route restent cohérents avec le trajet réel. |
+| `components/App.jsx` | Déplacement décomposé : la branche `continuation` de `validMoves` propose le réseau si l'unité s'y trouve. Comptage des pas : rouler vaut 1 pas depuis l'hex de départ **de chaque saut**, continuation comprise. |
+| `data/rules.js`, tooltip d'hex, libellé du chapitre 1 | Textes de règle réécrits (trois formulations de l'ancienne règle traînaient dans l'UI). |
+| `logic/__tests__/movement.test.js` | Le test « entrer sur un rail en cours de route n'ouvre pas le réseau » est **inversé** ; trois tests ajoutés (embarquer puis rouler, rouler puis sortir, coupure par une unité ennemie). 234 tests au vert. |

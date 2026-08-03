@@ -1,7 +1,7 @@
-// Règle des rails actée en partie réelle : rouler sur le réseau coûte 1 PAS.
-// Sans Vitesse on peut seulement se placer sur le réseau ; avec Vitesse il
-// reste 1 pas pour en sortir. Monter à bord en cours de route n'ouvre pas le
-// réseau ce tour-ci.
+// Règle des rails (arbitrage du 03/08) : rouler sur le réseau coûte 1 PAS, et
+// le rail est un pas comme un autre — il s'emprunte à N'IMPORTE QUEL pas du
+// déplacement. Sans Vitesse on peut seulement se placer sur le réseau ; avec
+// Vitesse, on embarque puis on roule, ou on roule puis on sort.
 import { describe, it, expect } from 'vitest';
 import { getValidMoves, getValidMoves1Step, getRailNetwork, marshToll, findPathWaypoints } from '../movement.js';
 import { hMap, ADJ, hasR, HEXES } from '../../data/hexes.js';
@@ -29,14 +29,39 @@ describe('déplacement par rail', () => {
     expect(moves.has(16)).toBe(true);  // rail (1 pas) puis #9 → #16 (2e pas)
   });
 
-  it("entrer sur un hex à rail en cours de route n'ouvre pas le réseau", () => {
-    // #7 est hors réseau, adjacent à #11 (point d'embarquement potentiel).
-    // Avec Vitesse : #7 → #11 (pas 1) puis un pas NORMAL (pas 2). Si monter
-    // à bord en cours de route ouvrait le réseau, #12 et #9 seraient servis.
+  it("embarquer en cours de route ouvre le réseau au pas suivant", () => {
+    // #7 est hors réseau, adjacent à #11 (point d'embarquement).
+    // Avec Vitesse : #7 → #11 (pas 1, à pied) puis n'importe où sur le réseau
+    // (pas 2). C'est l'arbitrage du 03/08 — l'inverse de la règle v0.16.
     const moves = new Set(getValidMoves(7, 'dominion', [0], stub, RAILS, 'mech', new Set()));
     expect(moves.has(11)).toBe(true);
-    expect(moves.has(8)).toBe(true);   // #11 → #8 à pied (2e pas)
-    expect(moves.has(12)).toBe(false); // réseau fermé en cours de route
+    expect(moves.has(8)).toBe(true);
+    expect(moves.has(12)).toBe(true);  // réseau ouvert depuis #11
+    expect(moves.has(9)).toBe(true);   // …jusqu'à son extrémité
+  });
+
+  it('sans Vitesse (1 pas), embarquer consomme le pas : pas de trajet ensuite', () => {
+    // #7 → #11 est le seul pas disponible ; le réseau ne s'ouvre qu'au pas
+    // suivant, qui n'existe pas ici.
+    const moves = new Set(getValidMoves(7, 'dominion', [], stub, RAILS, 'mech', new Set()));
+    expect(moves.has(11)).toBe(true);
+    expect(moves.has(12)).toBe(false);
+    expect(moves.has(9)).toBe(false);
+  });
+
+  it('rouler puis sortir : le pas restant quitte le réseau', () => {
+    // #11 (sur le réseau) → n'importe quel nœud (pas 1) → 1 pas de sortie.
+    const moves = new Set(getValidMoves(11, 'dominion', [0], stub, RAILS, 'mech', new Set()));
+    expect(moves.has(9)).toBe(true);   // bout du réseau
+    expect(moves.has(16)).toBe(true);  // sortie à pied depuis #9
+  });
+
+  it('une unité ennemie coupe le réseau (destination, jamais passage)', () => {
+    // #8 bloqué : il reste atteignable (combat / déplacement d'ouvriers) mais
+    // la ligne ne se prolonge pas au travers — #12 et #9 sont derrière lui.
+    const moves = new Set(getValidMoves(11, 'dominion', [], stub, RAILS, 'mech', new Set([8])));
+    expect(moves.has(8)).toBe(true);
+    expect(moves.has(12)).toBe(false);
     expect(moves.has(9)).toBe(false);
   });
 });

@@ -1510,15 +1510,18 @@ export default function App(){
   const validMoves=useMemo(()=>{
     if(!moveSource||!me)return new Set();
     // ── DÉPLACEMENT DÉCOMPOSÉ (v0.16) : continuation d'un move en cours —
-    // 1 pas simple à la fois. Le réseau de rails ne se prend pas EN MARCHE
-    // (règle « on monte à bord un tour, on roule au suivant ») et la fin de
-    // course n'engage pas de combat : pour attaquer à 2 hex, cliquez la
-    // cible directement depuis le départ.
+    // 1 pas à la fois, et un pas peut être un TRAJET FERROVIAIRE si l'unité
+    // se trouve sur le réseau (arbitrage du 03/08 : le rail est un pas comme
+    // un autre — on peut donc embarquer au 1er pas et rouler au 2e, ou rouler
+    // puis sortir). La fin de course n'engage pas de combat : pour attaquer à
+    // 2 hex, cliquez la cible directement depuis le départ.
     if(moveSource.continuation){
       const combatTriggers=new Set(Object.values(empire||{}));
       players.slice(1).forEach(ep=>{combatTriggers.add(ep.hero);ep.mechs.forEach(m=>combatTriggers.add(m.hexId));});
-      let moves=getValidMoves1Step(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails)
-        .filter(id=>!combatTriggers.has(id));
+      const stepSet=new Set(getValidMoves1Step(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails));
+      const rn=getRailNetwork(moveSource.fromHex,rails,enemyOccupiedHexes);
+      if(rn)rn.forEach(id=>{if(id!==moveSource.fromHex)stepSet.add(id);});
+      let moves=[...stepSet].filter(id=>!combatTriggers.has(id));
       if(moveSource.unitType==="worker")moves=moves.filter(id=>!enemyOccupiedHexes.has(id));
       return new Set(moves);
     }
@@ -2027,9 +2030,10 @@ export default function App(){
         const budget=moveSource.continuation?(moveSource.stepsLeft||1)
           :(((me.unlockedAbilities||[]).includes(0)?2:1)+(factoryMoveMode?1:0));
         // Pas consommés par CE saut : 1 si la destination était à un pas
-        // simple (ou sur le réseau de rails depuis le départ), 2 sinon
+        // simple OU sur le réseau de rails depuis l'hex de départ de ce saut
+        // (rouler coûte 1 pas, à n'importe quel moment du déplacement), 2 sinon
         const oneStep=new Set(getValidMoves1Step(fromHex,me.faction,me.unlockedAbilities||[],me,rails));
-        if(!moveSource.continuation){const rn=getRailNetwork(fromHex,rails,enemyOccupiedHexes);if(rn)rn.forEach(h=>oneStep.add(h));}
+        {const rn=getRailNetwork(fromHex,rails,enemyOccupiedHexes);if(rn)rn.forEach(h=>oneStep.add(h));}
         const used=oneStep.has(hexId)?1:2;
         // Marécage = arrêt forcé (sauf Bayou) : pas de continuation
         const marshStop=hMap[hexId]?.t==="marecage"&&!marshFree(me.faction);
@@ -3370,7 +3374,7 @@ export default function App(){
             const hexHasRail=rails.some(([a,b])=>a===hex.id||b===hex.id);
             const hexTitle=[
               isBonusTile?`🏦 ${structureBonus.icon} ${structureBonus.name} — hex éligible au bonus de pose (${structureBonus.scale})`:null,
-              hexHasRail?"🛤 Rail : une unité qui COMMENCE son déplacement sur le réseau peut rejoindre tout nœud relié (coût 1 pas). Monter sur le rail en cours de route n'ouvre pas le réseau ce tour-ci, et le réseau est coupé aux nœuds occupés par l'ennemi.":null,
+              hexHasRail?"🛤 Rail : depuis un hex du réseau, un PAS de déplacement mène à tout nœud relié. Vrai à chaque pas — avec Vitesse, on peut embarquer puis rouler, ou rouler puis sortir d'un pas. Le réseau est coupé aux nœuds occupés par l'ennemi (destination possible, jamais passage).":null,
             ].filter(Boolean).join("\n");
             return(<g key={hex.id} data-hex={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
               {hexTitle&&<title>{hexTitle}</title>}
@@ -4413,7 +4417,7 @@ export default function App(){
                     </div>}
                   </div>}
                   {moveSource&&moveSource.continuation&&<div style={{color:"#C9A84C",fontSize:14,marginTop:8}}>
-                    <div style={{fontStyle:"italic",marginBottom:6}}>🚶 {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:"⬡ Mecha"} en route (#{moveSource.fromHex}) — <b>{moveSource.stepsLeft} pas restant{moveSource.stepsLeft>1?"s":""}</b> : cliquez un hex adjacent pour continuer (un mech chargé peut déposer une partie de sa cargaison via le panneau 🚚), ou terminez ici.</div>
+                    <div style={{fontStyle:"italic",marginBottom:6}}>🚶 {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:"⬡ Mecha"} en route (#{moveSource.fromHex}) — <b>{moveSource.stepsLeft} pas restant{moveSource.stepsLeft>1?"s":""}</b> : cliquez un hex vert pour continuer{rails.some(([a,b])=>a===moveSource.fromHex||b===moveSource.fromHex)?<> — <b>vous êtes sur le réseau 🛤 : ce pas peut vous mener à tout hex relié</b></>:null} (un mech chargé peut déposer une partie de sa cargaison via le panneau 🚚), terminez ici, ou cliquez une autre de vos unités pour la déplacer à la place.</div>
                     <button onClick={()=>{const end=(me.movedUnits||[]).length>=effMoveLimit;setMoveSource(null);setTransportPick(null);if(end)endMoveDone((me.movedUnits||[]).length);}} className="act-btn" style={{width:"100%",background:"#3a6a3a",color:"#fff",border:"none",fontWeight:700}}>✓ Terminer ici</button>
                   </div>}
                   {/* ═══ TRANSPORT PARTIEL — répartition façon balance à deux plateaux

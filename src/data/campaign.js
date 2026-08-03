@@ -88,7 +88,7 @@ export const CHAPTERS = [
     title: "La résistance active",
     subtitle: "Nations Souveraines — Aiyana & Koda",
     variant: { empire: true, steel: false, bonusTile: null, railGrowth: true,
-      label: "Le rail avance — chaque tour, l'Empire prolonge son réseau d'un segment vers le prochain village, jusqu'à raccorder tous les villages à Rouge River. Le réseau est partagé : quiconque commence son déplacement dessus peut rouler. Patrouilles impériales ACTIVES — neuves mais affamées, à court de diesel et de pièces, et capables d'emprunter le rail." },
+      label: "Le rail avance — chaque tour, l'Empire prolonge son réseau d'un segment vers le prochain village, jusqu'à raccorder tous les villages à Rouge River. Le réseau est partagé : depuis un hex du réseau, un pas de déplacement mène à n'importe quel hex relié. Patrouilles impériales ACTIVES — neuves mais affamées, à court de diesel et de pièces, et capables d'emprunter le rail." },
     before: [
       "1914. Un an que les Model M sortent de Rouge River — et déjà, le rail impérial pousse ses voies à travers les terres Lakota, Navajo, Cree et Haudenosaunee sans jamais demander la permission. Le rail d'abord, les patrouilles ensuite : c'est ainsi que l'Empire avale l'Ouest.",
       "Mais Dearborn est loin. Les mechas des garnisons de l'Ouest sont neufs — et affamés. Le diesel arrive au compte-gouttes, les pièces détachées jamais. Un Model M à sec n'est plus une arme : c'est sept tonnes de tôle plantées dans la prairie, qui attendent qu'on vienne les cueillir.",

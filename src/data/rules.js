@@ -93,7 +93,7 @@ export const RULES = [
       },
       {
         title: "Réseau de Rails",
-        content: "Un réseau ferroviaire partagé entre tous les joueurs. La carte démarre sans aucun rail : construire une Gare pose 3 segments de rails, chaque segment devant partir de la Gare ou d'un rail existant (réseau connexe), jamais sur un lac ou un marécage. Une unité qui COMMENCE son déplacement sur le réseau peut rouler vers n'importe quel hex relié : le trajet en train coûte 1 PAS de déplacement (avec Vitesse, il reste donc 1 pas pour sortir du réseau). Entrer sur un rail en cours de déplacement ne donne pas accès au réseau ce tour-ci : on monte à bord un tour, on roule au suivant."
+        content: "Un réseau ferroviaire partagé entre tous les joueurs. La carte démarre sans aucun rail : construire une Gare pose 3 segments de rails, chaque segment devant partir de la Gare ou d'un rail existant (réseau connexe), jamais sur un lac ou un marécage. Le trajet en train est un PAS de déplacement comme un autre : depuis un hex du réseau, un pas mène à n'importe quel hex relié. La règle vaut à CHAQUE pas — avec Vitesse (2 pas), on peut embarquer d'un pas puis rouler du second, ou rouler puis sortir du réseau, ou encore rouler, sortir d'un hex adjacent. Le réseau est coupé aux nœuds occupés par une unité ennemie : on peut s'y arrêter (combat), jamais passer au travers."
       },
       {
         title: "Rouge River & Cartes d'Usine",
@@ -177,7 +177,7 @@ export const RULES = [
       },
       {
         title: "Rails",
-        content: "Les rails (réseau partagé) permettent de rejoindre n'importe quel hex relié pour 1 pas de déplacement, à condition de COMMENCER son déplacement sur le réseau (entrer sur un rail en cours de route ne donne l'accès qu'au tour suivant). Construire une Gare pose 3 segments de rails, connectés à la Gare ou au réseau existant, jamais sur lac/marécage."
+        content: "Les rails (réseau partagé) permettent de rejoindre n'importe quel hex relié pour 1 pas de déplacement, dès lors qu'on se trouve sur le réseau — y compris si on vient d'y arriver au pas précédent (avec Vitesse : embarquer puis rouler, ou rouler puis sortir). Construire une Gare pose 3 segments de rails, connectés à la Gare ou au réseau existant, jamais sur lac/marécage."
       }
     ]
   },

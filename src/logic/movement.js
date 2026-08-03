@@ -83,18 +83,20 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) 
   });
 };
 
-// Full movement: rail (1 pas) + N steps.
+// Full movement: N pas, chaque pas étant SOIT un hex adjacent, SOIT un trajet
+// ferroviaire depuis l'hex courant.
 // Steps = 1, +1 avec Speed (slot 0), + bonusSteps (déplacement du BAS d'une
 // carte d'usine : 2 hex de base au lieu d'1 → bonusSteps=1).
-// Rail rules — il faut être À BORD pour rouler :
-//   - Si l'unité COMMENCE son déplacement sur le réseau : rouler COÛTE 1 PAS
-//     (« 1 move pour se placer n'importe où sur le réseau, 1 move de plus pour
-//     en sortir ») — le téléport gratuit d'avant laissait un mech filer de
-//     #11 à #30 dans le même tour, incohérence constatée en partie réelle.
-//   - Entrer sur un hex à rail en cours de déplacement ne donne PAS accès au
-//     réseau dans le même déplacement (on monte à bord un tour, on roule au
-//     suivant) — avant, un pas sur le rail ouvrait tout le réseau au pas
-//     suivant, bug constaté en partie réelle.
+// Rail rules (arbitrage du 03/08) — le rail est un PAS comme un autre :
+//   - Depuis un hex du réseau, un pas mène n'importe où sur la composante
+//     connexe (« 1 pas pour rouler »). Pas de téléport gratuit : rouler
+//     consomme le pas.
+//   - Cette règle vaut à CHAQUE pas, pas seulement au départ : monter à bord
+//     en cours de déplacement ouvre le réseau pour le pas suivant (mech
+//     Vitesse : hex voisin sur rail, puis n'importe où sur le réseau), et
+//     rouler puis sortir reste possible dans l'autre sens.
+//   - Corollaire : la même règle s'applique aux pas d'un déplacement
+//     DÉCOMPOSÉ (continuation) — voir App.jsx `validMoves`.
 // blockedHexes : hexes occupés par des unités ennemies (toutes) — on peut y
 // ENTRER (destination : combat / déplacement d'ouvriers) mais jamais les
 // TRAVERSER ni continuer après (règle Scythe : entrer chez l'ennemi termine
@@ -121,13 +123,11 @@ export const getValidMoves = (fromId, factionId, abilities, player, rails, unitT
       }
     };
     frontier.forEach(fid => {
-      // Réseau de rails : uniquement depuis l'hex de DÉPART du déplacement,
-      // et rouler consomme le pas courant — les nœuds atteints entrent dans
-      // la frontière du pas suivant (plus de « téléport + pas » gratuits)
-      if (s === 0) {
-        const railNet = getRailNetwork(fid, rails, blockedHexes);
-        if (railNet) railNet.forEach(reach);
-      }
+      // Réseau de rails : depuis TOUT hex du réseau atteint à ce stade, et
+      // rouler consomme le pas courant — les nœuds atteints entrent dans la
+      // frontière du pas suivant (on peut donc en ressortir avec le pas d'après)
+      const railNet = getRailNetwork(fid, rails, blockedHexes);
+      if (railNet) railNet.forEach(reach);
       getValidMoves1Step(fid, factionId, abilities, player, rails).forEach(reach);
     });
     frontier = next;
@@ -177,9 +177,9 @@ export const findPathWaypoints = (fromId, toId, factionId, abilities, player, ra
     // on n'étend pas le chemin depuis là, sauf s'il est l'hex de départ.
     if (cur !== fromId && ((hMap[cur]?.t === "marecage" && !marshFree(factionId)) || (blockedHexes && blockedHexes.has(cur)))) continue;
     const nexts = new Set(getValidMoves1Step(cur, factionId, abilities, player, rails));
-    // Même règle que getValidMoves : le réseau de rails ne s'emprunte que
-    // depuis l'hex de DÉPART (à bord dès le début), pas en cours de route
-    const rn = cur === fromId ? getRailNetwork(cur, rails, blockedHexes) : null;
+    // Même règle que getValidMoves : le réseau s'emprunte depuis tout hex du
+    // réseau atteint en chemin (le rail est un pas comme un autre)
+    const rn = getRailNetwork(cur, rails, blockedHexes);
     if (rn) rn.forEach(rid => nexts.add(rid));
     for (const nx of nexts) {
       if (prev.has(nx)) continue;
