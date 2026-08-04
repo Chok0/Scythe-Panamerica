@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { getValidMoves, getValidMoves1Step, getRailNetwork, marshToll, findPathWaypoints } from '../movement.js';
 import { hMap, ADJ, hasR, HEXES } from '../../data/hexes.js';
+import { TERRAINS } from '../../data/terrains.js';
 import { FACTIONS, FACTION_IDS } from '../../data/factions.js';
 import { islandOf, riverwalkValue } from '../../../scripts/riverwalkAudit.mjs';
 
@@ -246,5 +247,37 @@ describe('hex de base : jamais une destination', () => {
       const withSpeed = new Set(getValidMoves(a, fac, [0], p, [])); // Vitesse = 2 pas
       expect(withSpeed.has(b), `${fac}: #${a} → #${b} par la base`).toBe(false);
     });
+  });
+});
+
+// ── Bitume (Dominion, slot 3) — v0.18 ─────────────────────────────────────
+// Le Dominion était la seule faction dont le slot 3 ne faisait RIEN
+// (« Aucun effet spécifique pour l'instant ») alors que les bots le
+// débloquaient 3,3 fois sur 4 : un mecha payé pour du vide. Le pétrole est la
+// matière de la Couronne — ses routes goudronnées relient les gisements.
+describe('Bitume : bond de gisement de pétrole en gisement de pétrole', () => {
+  const dom = { faction: 'dominion', hero: 0, workers: [], mechs: [] };
+  const oilHexes = HEXES.filter(h => TERRAINS[h.t]?.res === 'petrole').map(h => h.id);
+
+  it('la carte porte bien des gisements des deux terrains à pétrole', () => {
+    expect(oilHexes.length).toBeGreaterThanOrEqual(4);
+    expect(new Set(oilHexes.map(id => hMap[id].t)).size).toBe(2); // toundra ET désert
+  });
+
+  it('depuis un gisement, tous les autres gisements sont à 1 pas', () => {
+    const moves = getValidMoves1Step(0, 'dominion', [3], dom, []);
+    oilHexes.filter(id => id !== 0).forEach(id => expect(moves, `#${id}`).toContain(id));
+  });
+
+  it('sans le slot 3, aucun bond — et jamais depuis un terrain sans pétrole', () => {
+    expect(getValidMoves1Step(0, 'dominion', [], dom, [])).not.toContain(oilHexes.find(id => id !== 0));
+    const fromVillage = getValidMoves1Step(4, 'dominion', [3], { ...dom, hero: 4 }, []);
+    expect(fromVillage).not.toContain(oilHexes.find(id => !ADJ[4].includes(id)));
+  });
+
+  it('les autres factions ne bondissent pas de gisement en gisement', () => {
+    const nat = { faction: 'nations', hero: 11, workers: [], mechs: [] };
+    expect(hMap[11].t).toBe('toundra');
+    expect(getValidMoves1Step(11, 'nations', [3], nat, [])).not.toContain(23);
   });
 });

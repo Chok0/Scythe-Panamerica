@@ -2224,15 +2224,27 @@ export default function App(){
       // Permet les passe-passe : déposer un ouvrier à mi-chemin, laisser du
       // matériel au passage et continuer (relais de mechas, expansion…)
       let dropOffer=null;
-      if(moveSource.unitType==="mech"&&carryOnMove){
+      // Règle du jeu original (« Voici quelques points importants concernant
+      // les déplacements — RESSOURCES ET UNITÉS : les unités peuvent PRENDRE
+      // ET DÉPOSER autant de pions Ressource que voulu lors d'une action
+      // Déplacement ») : le ravitaillement en route vaut pour TOUTE unité, et
+      // dans les deux sens. On ne proposait que la dépose, et seulement pour
+      // un mech chargé.
+      if(moveSource.unitType==="mech"||moveSource.unitType==="hero"||moveSource.unitType==="worker"){
         // Jamais de dépose sur un hex ennemi : un ouvrier posé face à une
         // unité de combat serait renvoyé à sa base (règle Scythe) — le
         // trajet lui-même évite désormais les hexes occupés (blockedHexes)
         const mids=findPathWaypoints(fromHex,hexId,me.faction,me.unlockedAbilities||[],me,rails,enemyOccupiedHexes)
           .filter(hid=>{const h=hMap[hid];return h&&h.t!=="lac"&&h.t!=="marecage"&&!enemyOccupiedHexes.has(hid);});
-        const hasCargo=p.workers.some(w=>w.hexId===hexId)||Object.keys(p.resources[String(hexId)]||{}).length>0;
-        if(mids.length>0&&hasCargo){
-          dropOffer={mids,destHex:hexId,endAfter:p.movedUnits.length>=effMoveLimit};
+        // De quoi déposer (ce que l'unité vient d'amener) ou de quoi ramasser
+        // (des ressources à soi laissées sur un hex de passage)
+        const hasCargo=(moveSource.unitType==="mech"&&p.workers.some(w=>w.hexId===hexId))
+          ||Object.keys(p.resources[String(hexId)]||{}).length>0;
+        const pickable=mids.some(mid=>Object.values(p.resources[String(mid)]||{}).some(q=>q>0));
+        if(mids.length>0&&(hasCargo||pickable)){
+          // `unitType` mémorisé : `moveSource` est déjà remis à null quand le
+          // panneau s'affiche (seul un mech peut déposer un ouvrier).
+          dropOffer={mids,destHex:hexId,unitType:moveSource.unitType,endAfter:p.movedUnits.length>=effMoveLimit};
           // La modale (routeDrop) porte l'affordance ; on ne LOGUE que la dépose
           // réelle (« 📦 Ouvrier déposé … au passage ») — l'annonce du simple
           // « possible » était du bruit au journal quand rien n'était déposé.
@@ -3929,6 +3941,19 @@ export default function App(){
                     n[0]=p2;return n;});
                   addLog(`📦 Ouvrier déposé sur #${mid} au passage`);
                 };
+                // Ramassage en route : les ressources laissées sur un hex de
+                // passage montent dans l'unité, qui les a sous la main à
+                // l'arrivée (règle « prendre ET déposer »).
+                const pickRes=(mid)=>{
+                  setPlayers(prev=>{const n=[...prev];const p2={...n[0],resources:{...n[0].resources}};
+                    Object.keys(p2.resources).forEach(k=>{p2.resources[k]={...p2.resources[k]};});
+                    const src=p2.resources[String(mid)]||{};
+                    if(!p2.resources[destKey])p2.resources[destKey]={};
+                    Object.entries(src).forEach(([rt,q])=>{p2.resources[destKey][rt]=(p2.resources[destKey][rt]||0)+q;});
+                    delete p2.resources[String(mid)];
+                    n[0]=p2;return n;});
+                  addLog(`🫴 Ressources ramassées sur #${mid} au passage`);
+                };
                 const dropRes=(mid)=>{
                   setPlayers(prev=>{const n=[...prev];const p2={...n[0],resources:{...n[0].resources}};
                     Object.keys(p2.resources).forEach(k=>{p2.resources[k]={...p2.resources[k]};});
@@ -3941,15 +3966,18 @@ export default function App(){
                 };
                 return(
                 <div style={{padding:"16px",background:"linear-gradient(180deg,#141a10,var(--bg2))",borderRadius:10,border:"1px solid var(--gold-dim)",animation:"slideUp 0.35s ease",marginBottom:10}}>
-                  <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,fontSize:15,marginBottom:6}}>📦 Dépose en route — le mech est passé par {routeDrop.mids.map(m=>`#${m}`).join(", ")}</div>
-                  <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:8,fontStyle:"italic"}}>Déposez des ouvriers ou du matériel sur un hex de passage (expansion, relais, dépôt avant bataille)</div>
-                  {routeDrop.mids.map(mid=>(
-                    <div key={mid} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center"}}>
+                  <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,fontSize:15,marginBottom:6}}>🚚 Ravitaillement en route — passage par {routeDrop.mids.map(m=>`#${m}`).join(", ")}</div>
+                  <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:8,fontStyle:"italic"}}>Règle du jeu original : une unité prend et dépose autant de ressources qu'elle veut pendant son déplacement. Déposez pour tenir le terrain, ramassez pour rapatrier ce qui traîne (au score, seules comptent les ressources sur un hex que vous tenez).</div>
+                  {routeDrop.mids.map(mid=>{
+                    const onMid=Object.entries(me?.resources?.[String(mid)]||{}).filter(([,q])=>q>0);
+                    return(
+                    <div key={mid} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center",flexWrap:"wrap"}}>
                       <span style={{fontSize:14,color:"var(--text)",minWidth:36}}>#{mid}</span>
-                      <button disabled={wAtDest<1} onClick={()=>dropWorker(mid)} className="act-btn" style={{fontSize:13,opacity:wAtDest<1?0.4:1}}>● Déposer 1 ouvrier ({wAtDest} dispo)</button>
-                      <button disabled={resAtDest.length===0} onClick={()=>dropRes(mid)} className="act-btn" style={{fontSize:13,opacity:resAtDest.length===0?0.4:1}}>📦 Déposer les ressources ({resAtDest.map(([rt,q])=>`${q}${rt}`).join(",")||"—"})</button>
+                      {routeDrop.unitType==="mech"&&<button disabled={wAtDest<1} onClick={()=>dropWorker(mid)} className="act-btn" style={{fontSize:13,opacity:wAtDest<1?0.4:1}}>● Déposer 1 ouvrier ({wAtDest} dispo)</button>}
+                      <button disabled={resAtDest.length===0} onClick={()=>dropRes(mid)} className="act-btn" style={{fontSize:13,opacity:resAtDest.length===0?0.4:1}}>📦 Déposer ({resAtDest.map(([rt,q])=>`${q}${resFR(rt)}`).join(", ")||"—"})</button>
+                      <button disabled={onMid.length===0} onClick={()=>pickRes(mid)} className="act-btn" style={{fontSize:13,opacity:onMid.length===0?0.4:1}}>🫴 Ramasser ({onMid.map(([rt,q])=>`${q}${resFR(rt)}`).join(", ")||"—"})</button>
                     </div>
-                  ))}
+                  );})}
                   <button onClick={()=>{const end=routeDrop.endAfter;setRouteDrop(null);if(end)endMoveDone();}} className="act-btn" style={{marginTop:6,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Continuer ▶</button>
                 </div>);
               })()}

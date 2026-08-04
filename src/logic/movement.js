@@ -1,5 +1,6 @@
 import { FACTIONS } from '../data/factions.js';
 import { HEXES, hMap, ADJ, hasR } from '../data/hexes.js';
+import { TERRAINS } from '../data/terrains.js';
 import { FACTORY_RR_HEX } from '../data/plans.js';
 
 // BFS: find all hexes connected to fromId via rail network.
@@ -61,6 +62,11 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) 
     }
     if (pf === "acadiane" && from.t === "lac")
       HEXES.forEach(h => { if (h.t === "lac" && h.id !== fromId && !cands.includes(h.id)) cands.push(h.id); });
+    // Bitume (Dominion) : bond de gisement de pétrole en gisement de pétrole.
+    // On lit la RESSOURCE du terrain plutôt qu'une liste d'ids : la capacité
+    // survit aux cartes procédurales comme aux retouches de terrain.
+    if (pf === "dominion" && TERRAINS[from.t]?.res === "petrole")
+      HEXES.forEach(h => { if (TERRAINS[h.t]?.res === "petrole" && h.id !== fromId && !cands.includes(h.id)) cands.push(h.id); });
   }
 
   return cands.filter(toId => {

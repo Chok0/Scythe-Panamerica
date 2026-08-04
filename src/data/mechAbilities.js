@@ -16,8 +16,12 @@ const POSITION_ABILITIES = {
   nations: { name: "Pack Up", desc: "Déplace un bâtiment pendant l'action Move (1×/tour)", icon: "📦" },
   acadiane: { name: "Batelier", desc: "Entre sur les lacs et bondit de lac en lac", icon: "〰" },
   bayou: { name: "Pirogue", desc: "Bond de marécage en marécage", icon: "≋" },
-  // Pas encore de capacité de position spécifique au Dominion (aucun effet codé)
-  dominion: { name: "Position", desc: "Aucun effet spécifique pour l'instant", icon: "📍" },
+  // v0.18 — le Dominion était la seule faction dont le slot 3 ne faisait RIEN
+  // (les bots débloquaient 3,3 capacités sur 4 : un mecha payé pour du vide).
+  // Bitume : le pétrole est la matière de la Couronne — ses routes goudronnées
+  // relient les gisements entre eux. Terrains à pétrole (toundra et désert),
+  // lu depuis TERRAINS[t].res : compatible cartes procédurales.
+  dominion: { name: "Bitume", desc: "Bond d'un gisement de pétrole à un autre (toundra ↔ désert)", icon: "🛢" },
 };
 
 // Une faction qui ne déploie pas (Internationale Noire) n'a PAS de capacités

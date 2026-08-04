@@ -12,22 +12,32 @@ import { getMechAbilities } from './mechAbilities.js';
 // de désynchronisation possible entre la règle affichée et le code qui joue.
 const tLabel = (t) => TERRAINS[t]?.label || t;
 const RIVERWALK_LIST = Object.values(FACTIONS).map(f =>
-  `${f.name} (${f.rwName}) — ${(f.riverwalk || []).map(tLabel).join(" ↔ ")}`);
+  f.swim
+    ? `${f.name} (${f.ability}) — TOUTES les rivières, ouvriers compris, dès le tour 1`
+    : `${f.name} (${f.rwName}) — ${(f.riverwalk || []).map(tLabel).join(" ↔ ")}`);
 const COMBAT_LIST = Object.entries(FACTIONS).map(([id, f]) =>
   `${f.name} — ${COMBAT_ABILITIES[id]?.name} : ${COMBAT_ABILITIES[id]?.desc}`);
 
 // Fiches de faction — également dérivées : les descriptions écrites à la main
 // annonçaient encore les riverwalks, capacités et objectifs d'avant v0.15.
 const FACTION_PAGES = Object.entries(FACTIONS).map(([id, f]) => ({
-  title: f.isExtension ? `${f.name} (Extension)` : f.name,
-  content: `Héros: ${f.hero} & ${f.companion} | ⚡${f.power} 🃏${f.cards}`,
+  title: f.campaignOnly ? `${f.name} (Campagne)` : f.isExtension ? `${f.name} (Extension)` : f.name,
+  content: f.noHero
+    ? `Sans héros — 4 ouvriers sur ses points d'ancrage | ⚡${f.power} 🃏${f.cards}`
+    : `Héros: ${f.hero} & ${f.companion} | ⚡${f.power} 🃏${f.cards}`,
   list: [
     `Ability: ${f.ability} — ${f.abilityDesc}`,
-    `Riverwalk (${f.rwName}): ${(f.riverwalk || []).map(tLabel).join(" ↔ ")}`,
-    `Combat: ${COMBAT_ABILITIES[id]?.name} (${COMBAT_ABILITIES[id]?.desc})`,
-    `Position (${getMechAbilities(id)[3].name}): ${getMechAbilities(id)[3].desc}`,
+    f.swim
+      ? `Rivières : toutes franchissables dès le tour 1 (le slot de mecha correspondant reste vide)`
+      : `Riverwalk (${f.rwName}): ${(f.riverwalk || []).map(tLabel).join(" ↔ ")}`,
+    // Une faction qui vole ses mechas n'a pas de capacités en propre : ses
+    // slots portent celles qu'elle arrache (mechAbilities.js).
+    f.stealMechs
+      ? `Combat & Position : aucune capacité en propre — elles s'arrachent au mecha vaincu (max ${f.stealMechs} vols)`
+      : `Combat: ${COMBAT_ABILITIES[id]?.name} (${COMBAT_ABILITIES[id]?.desc})`,
+    f.stealMechs ? null : `Position (${getMechAbilities(id)[3].name}): ${getMechAbilities(id)[3].desc}`,
     `Objectif de Faction: ${f.fObj.name} — ${f.fObj.desc}`,
-  ],
+  ].filter(Boolean),
 }));
 
 export const RULES = [
@@ -172,8 +182,8 @@ export const RULES = [
         list: RIVERWALK_LIST
       },
       {
-        title: "Transport",
-        content: "Les ouvriers présents sur le même hex qu'un mecha ou le héros sont transportés lors du déplacement de cette unité."
+        title: "Transport et ravitaillement",
+        content: "Règle du jeu original : pendant une action Déplacement, une unité prend et dépose autant de ressources qu'elle veut — au départ, sur les hex qu'elle traverse et à l'arrivée. Le panneau 🚚 s'ouvre dès qu'il y a de quoi charger ou décharger sur le trajet. Les MECHS transportent en plus autant d'ouvriers qu'ils veulent (jamais le héros), et ce transport ne consomme PAS le déplacement des ouvriers : un ouvrier débarqué peut encore bouger de lui-même. Pensez à rapatrier vos ressources : au décompte final, seules comptent celles qui se trouvent sur un territoire que vous contrôlez."
       },
       {
         title: "Rails",
