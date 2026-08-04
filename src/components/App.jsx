@@ -22,7 +22,7 @@ import CampaignScreen from './CampaignScreen.jsx';
 import { chapterById, partMet, partProgress, heldHexes } from '../data/campaign.js';
 import { loadProgress, saveProgress, resetProgress, completeChapter, campaignConfig, canonMet, steelTick, growEmpireRail, teslaEncountersUnlocked, teslaPlansUnlocked, teslaFragmentsAvailable, campaignEncounterPool } from '../logic/campaign.js';
 import { buildSaveBundle, parseSaveBundle, saveFileName, describeSave } from '../logic/saveFile.js';
-import { countRes, spendRes, getWorkerHexes, resFR, resListFR, canPayMixed, mixedSplit, spendMixed } from '../logic/resources.js';
+import { countRes, spendRes, strandedRes, getWorkerHexes, resFR, resListFR, canPayMixed, mixedSplit, spendMixed } from '../logic/resources.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../logic/production.js';
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
 import { getValidMoves, getValidMoves1Step, getRailNetwork, findPathWaypoints, marshToll, marshFree } from '../logic/movement.js';
@@ -3236,12 +3236,17 @@ export default function App(){
   // Ordre demandé : Métal / Bois / Céréales / Pétrole // Argent / Cartes munitions.
   // (Ouvriers et mechas retirés : leurs valeurs sont lisibles sur la rangée d'objectifs.)
   const playerStats=(p)=>{
-    const tot=(t)=>{let s=0;Object.values(p.resources).forEach(r=>{if(r[t])s+=r[t];});return s;};
+    // v0.18 — on n'affiche QUE le disponible (règle : on ne dépense que les
+    // ressources des territoires qu'on tient). Ce qui traîne sur un hex perdu
+    // apparaît à part, en rouille : c'est le magot à aller rechercher, et
+    // l'aubaine que l'adversaire voit aussi.
+    const tot=(t)=>countRes(p,t);
+    const lost=(t)=>strandedRes(p,t);
     return[
-      {svgKey:"metal",val:tot("metal"),color:"#99aabb",label:"Métal"},
-      {svgKey:"bois",val:tot("bois"),color:"#7aaa55",label:"Bois"},
-      {svgKey:"nourriture",val:tot("nourriture"),color:"#d4b050",label:"Céréales"},
-      {svgKey:"petrole",val:tot("petrole"),color:"#8a90a0",label:"Pétrole"},
+      {svgKey:"metal",val:tot("metal"),stranded:lost("metal"),color:"#99aabb",label:"Métal"},
+      {svgKey:"bois",val:tot("bois"),stranded:lost("bois"),color:"#7aaa55",label:"Bois"},
+      {svgKey:"nourriture",val:tot("nourriture"),stranded:lost("nourriture"),color:"#d4b050",label:"Céréales"},
+      {svgKey:"petrole",val:tot("petrole"),stranded:lost("petrole"),color:"#8a90a0",label:"Pétrole"},
       {svgKey:"coins",val:p.coins,color:"var(--gold)",label:"Argent",sep:true},
       {svgKey:"combatCards",val:p.combatCards,color:"#bbaacc",label:"Cartes munitions"},
     ];
@@ -3310,7 +3315,9 @@ export default function App(){
             return(
             <React.Fragment key={s.svgKey}>
               {s.sep&&<div style={{width:1,height:34,background:"var(--border-light)",flexShrink:0,margin:"0 6px"}}/>}
-              <div title={isCards?"Cartes munitions — cliquer pour voir la main":s.label}
+              <div title={isCards?"Cartes munitions — cliquer pour voir la main"
+                :s.stranded?`${s.label} : ${s.val} utilisable(s) · ${s.stranded} abandonné(s) sur un hex que vous ne tenez plus (invisibles à la dépense ET au score — allez les rechercher, ou quelqu'un d'autre le fera)`
+                :s.label}
                 onClick={isCards?()=>setShowCards(v=>!v):undefined}
                 style={{display:"flex",alignItems:"center",gap:6,flexShrink:0,padding:"3px 5px",borderRadius:6,
                   cursor:isCards?"pointer":"default",
@@ -3318,6 +3325,7 @@ export default function App(){
                   boxShadow:isCards&&showCards?"inset 0 0 0 1px var(--gold-dim)":"none"}}>
                 {Icon?<Icon size={28} color={s.color}/>:null}
                 <span style={{fontSize:24,fontWeight:700,fontFamily:"var(--font-mono)",color:s.color,lineHeight:1}}>{s.val}</span>
+                {s.stranded>0&&<span title="abandonné hors de vos territoires" style={{fontSize:14,fontWeight:700,fontFamily:"var(--font-mono)",color:"var(--rust)",lineHeight:1,marginLeft:-2}}>+{s.stranded}⚠</span>}
               </div>
             </React.Fragment>
           );});
