@@ -40,7 +40,7 @@ import { OBJECTIVES } from '../data/objectives.js';
 import { heldHexes } from '../data/campaign.js';
 import { PLANS_FORD, PLANS_TESLA, FACTORY_RR_HEX, TESLA_FRAGMENTS_REQUIRED, TESLA_OFFER_SIZE } from '../data/plans.js';
 import { pickStructureBonus, structureBonusDetail, eligibleHexes, STRUCTURE_BONUSES } from '../data/structureBonus.js';
-import { getCombatBonus } from '../data/combat.js';
+import { getCombatBonus, combatUnitCount } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
 
 // RNG seedé (reproductibilité) — même générateur que le simulateur
@@ -580,7 +580,10 @@ export class HeadlessGame {
     if (combatDef > 0) {
       const def = this.players[combatDef];
       reconcileHand(p);
-      const units = (u.type === 'hero' ? 1 : 0) + (p.hero === a.to ? (u.type === 'hero' ? 0 : 1) : 0) + p.mechs.filter(m => m.hexId === a.to).length;
+      // combatUnitCount : point de vérité unique (porte la dérogation des
+      // ouvriers combattants de l'Internationale Noire). L'unité qui entre
+      // n'est pas encore posée sur l'hex → `extra: 1`.
+      const units = combatUnitCount(p, a.to, 1);
       const cb = getCombatBonus(p, a.to, true, def.combatCards);
       this.pending = { kind: 'combat', role: 'attaque', hexId: a.to, oppIdx: combatDef, resume: { ...pd, kind: 'move' },
         maxPower: Math.min(7, p.power), maxCards: Math.max(0, Math.min(p.combatCards, units + cb.cardBonus)),
@@ -917,7 +920,7 @@ export class HeadlessGame {
     if (pd.role === 'attaque') {
       // le bot défend : formule défensive de pvpBots
       const oppCb = getCombatBonus(opp, pd.hexId, false, p.combatCards);
-      const units = (opp.hero === pd.hexId ? 1 : 0) + opp.mechs.filter(m => m.hexId === pd.hexId).length;
+      const units = combatUnitCount(opp, pd.hexId);
       oppSpend = Math.min(Math.floor(opp.power * 0.6), 7, opp.power);
       oppCC = Math.min(opp.combatCards, units + oppCb.cardBonus);
       oppTotal = oppSpend + oppCb.powerBonus + oppCC * 2;
@@ -982,7 +985,7 @@ export class HeadlessGame {
     const leaderIdx = standings.indexOf(Math.max(...standings));
     players.forEach((op, oi) => {
       if (oi === cp) return;
-      const eff = (hid) => { const units = (op.hero === hid ? 1 : 0) + op.mechs.filter(m => m.hexId === hid).length; return Math.min(op.power, 7) + Math.min(op.combatCards || 0, units + 1) * 2; };
+      const eff = (hid) => { const units = combatUnitCount(op, hid); return Math.min(op.power, 7) + Math.min(op.combatCards || 0, units + 1) * 2; };
       attackable.set(op.hero, Math.max(attackable.get(op.hero) || 0, eff(op.hero)));
       op.mechs.forEach(m => attackable.set(m.hexId, Math.max(attackable.get(m.hexId) || 0, eff(m.hexId))));
       op.workers.forEach(w => hexWorkers.set(w.hexId, (hexWorkers.get(w.hexId) || 0) + 1));
@@ -1040,9 +1043,9 @@ export class HeadlessGame {
     const clash = [human.hero, ...human.mechs.map(m => m.hexId)].find(h => botCombatHexes.has(h));
     if (clash !== undefined) {
       const atk = players[cp];
-      const atkUnits = (atk.hero === clash ? 1 : 0) + atk.mechs.filter(m => m.hexId === clash).length;
+      const atkUnits = combatUnitCount(atk, clash);
       const cb = getCombatBonus(atk, clash, true, human.combatCards);
-      const humanUnits = (human.hero === clash ? 1 : 0) + human.mechs.filter(m => m.hexId === clash).length;
+      const humanUnits = combatUnitCount(human, clash);
       const humanVis = Math.min(human.power, 7) + Math.min(human.combatCards, humanUnits + 1) * 2;
       const botVis = Math.min(atk.power, 7) + cb.powerBonus + Math.min(atk.combatCards, atkUnits + cb.cardBonus) * 2;
       const endgame = players.some(pl => pl.stars >= 5);

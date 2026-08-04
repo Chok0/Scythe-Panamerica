@@ -1,4 +1,5 @@
 import { hMap, ADJ } from './hexes.js';
+import { heldHexes } from './control.js';
 
 // Règle Scythe respectée à la lettre : la fiche de faction ne porte QUE le
 // militaire (puissance et cartes de combat). Popularité et pièces de départ
@@ -188,6 +189,64 @@ export const FACTIONS = {
       check: p => (p.imperialCoins || 0) >= 20,
     },
   },
+
+  // ═══ INTERNATIONALE NOIRE — faction de CAMPAGNE (chapitres 2 et 8) ═══
+  // Spec : docs/design/internationale_noire.md · lore : lore_1920_plus.md §II.
+  // Exclue de FACTION_IDS (voir plus bas) : elle n'entre jamais dans une
+  // partie standard ni dans un tirage de bot — pas de héros, pas de base,
+  // pas de mecha de série, une écologie de jeu entièrement différente.
+  //
+  // Les quatre chiffres ci-dessous suivent la fiche : la plus faible en duel
+  // (2⚡, 1🃏), la plus nombreuse au départ (4 ouvriers), et un coussin de
+  // popularité (plateau « Le Réseau », 4♥/3$) qui est sa monnaie de survie —
+  // elle perd des ouvriers en permanence.
+  internationale: {
+    name: "Internationale Noire", color: "#9E3B4E",
+    // Sans héros : c'est LA singularité de la faction. `hero: null` est lu
+    // partout comme « cette faction n'en a pas » (createPlayer, contrôle,
+    // combats, rencontres, visite de l'Usine).
+    hero: null, companion: null, noHero: true,
+    power: 2, cards: 1,
+    // 4 ouvriers au lieu de 2, sur les quatre points d'ancrage du réseau.
+    workerHex: [3, 20, 25, 40],
+    // Points d'ancrage : PAS des hex de base (ce sont des hex de terrain
+    // normaux, praticables par tout le monde — les transformer en base
+    // casserait la carte pour les six autres factions). Ils servent de
+    // points de RÉENTRÉE : un ouvrier vaincu part hors-plateau, dans une
+    // réserve jamais capturable, et revient adjacent à un ancrage.
+    anchors: [3, 20, 25, 40],
+    campaignOnly: true,
+    // Le plateau joueur est imposé (pas de tirage) : « Le Réseau », id 200.
+    fixedMat: 200,
+    // La Nage REMPLACE le riverwalk (le slot 1 de mecha est libéré, voir
+    // mechAbilities.js) : toutes les unités, ouvriers compris, traversent
+    // toutes les rivières dès le tour 1.
+    riverwalk: null, rwName: null, swim: true,
+    // Ouvriers combattants : chaque ouvrier présent autorise une carte de
+    // combat de plus (voir combatUnitCount, data/combat.js). C'est le pic de
+    // puissance le plus haut du jeu — freiné par la lenteur du regroupement,
+    // par la main de cartes (départ à 1) et par le plafond de 2 étoiles de
+    // combat.
+    workersFight: true,
+    // Vol de mecha : elle n'en construit aucun, elle les prend (max 4).
+    stealMechs: 4,
+    ability: "La Nage",
+    abilityDesc: "Toutes vos unités, ouvriers compris, traversent toutes les rivières dès le tour 1 · vos ouvriers COMBATTENT (1 carte chacun) · vous ne déployez aucun mecha : vous les VOLEZ en battant un mecha adverse (max 4) · un ouvrier vaincu part en réserve hors-plateau et revient près d'un ancrage",
+    // Objectif de faction — l'inverse exact de la manœuvre de masse : il
+    // force l'étalement (l'Usine plus trois villages, répartis nord et sud).
+    fObj: {
+      name: "L'Usine aux Ouvriers", desc: "Usine (hex 22) + 3 villages contrôlés",
+      check: (p, ctx) => {
+        const held = heldHexes(p, ctx);
+        return held.has(22) && [...held].filter(id => hMap[id]?.t === "village").length >= 3;
+      },
+    },
+  },
 };
 
-export const FACTION_IDS = Object.keys(FACTIONS);
+// Factions de la ROTATION STANDARD : choix du joueur au setup et tirage des
+// bots. L'Internationale Noire (campagne, chapitres 2 et 8) en est exclue —
+// elle n'a ni héros ni base, et ses règles n'ont de sens que dans son
+// scénario. `ALL_FACTION_IDS` reste disponible pour l'UI de campagne.
+export const ALL_FACTION_IDS = Object.keys(FACTIONS);
+export const FACTION_IDS = ALL_FACTION_IDS.filter(id => !FACTIONS[id].campaignOnly);

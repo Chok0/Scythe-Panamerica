@@ -1,13 +1,44 @@
-# L'Internationale Noire — fiche de faction (spec de conception)
+# L'Internationale Noire — fiche de faction
 
-> **Statut : spec de conception, pas encore implémentée.** Aucune entrée dans
-> `src/data/factions.js`, aucune capacité dans `combat.js`/`mechAbilities.js`,
-> aucune base sur la carte. Ce document est la spécification dont le code aura
-> besoin — il débloque les chapitres 2 (Le Régicide) et 8 (Le Sabotage Final)
-> de `docs/campagne.md`.
+> **Statut : IMPLÉMENTÉE (v0.18).** Entrée `internationale` dans
+> `src/data/factions.js`, plateau dédié « Le Réseau » (id 200,
+> `MATS_CAMPAIGN`), capacités dans `combat.js` / `mechAbilities.js` /
+> `movement.js`, réserve hors-plateau et réentrée dans `logic/player.js`,
+> interface et vol de mecha dans `App.jsx`. Les chapitres 2 (Le Régicide) et
+> 8 (Le Sabotage Final) de `docs/campagne.md` sont jouables.
+> Tests : `src/logic/__tests__/internationale.test.js` (20 cas).
 >
-> Lore : `lore_1920_plus.md` §II. Cette faction n'entre **jamais** dans une
-> partie standard — elle est réservée au mode campagne.
+> Elle n'entre **jamais** dans une partie standard : `FACTION_IDS` l'exclut
+> (`campaignOnly: true`), donc ni l'écran de setup ni le tirage des bots ne
+> peuvent la sortir. Lore : `lore_1920_plus.md` §II.
+>
+> **Arbitrages rendus à l'implémentation** (les questions ouvertes du §10) :
+>
+> | # | Question | Décision |
+> |---|---|---|
+> | 1 | Les ouvriers déclenchent-ils les rencontres ? | **Oui, mais UNE par tour** — sans ce garde-fou, quatre groupes d'ouvriers valaient quatre fois l'accès du reste du roster, et deux ancrages sont eux-mêmes des lieux de rencontre. |
+> | 2 | pop/pièces hors `mats.js` | **Plateau dédié « Le Réseau » (id 200)**, 4♥/3$ — l'invariant « la fiche de faction ne porte que le militaire » est préservé. Grammaire du jeu de base respectée (Σ13, Σ6$, 6 cases). |
+> | 3 | Étoile des mechas via Deploy ou captures | **Captures uniquement.** L'action Deploy paie son coût, encaisse son bonus $, et ne pose rien. |
+> | 4 | Sort du slot 0 (Vitesse) | **Reste un slot à débloquer.** Le donner d'emblée n'aurait rien fait : la faction n'a ni héros ni mecha au départ, et Vitesse n'affecte pas les ouvriers. |
+> | 5 | Nom de l'objectif de faction | **« L'Usine aux Ouvriers »** — Usine (hex 22) + 3 villages. |
+> | 6 | Capacité de combat propre (slot 2) | **Sabotage** : +1 carte si ≥2 ouvriers alliés sur l'hex — elle prolonge la dérogation des ouvriers combattants au lieu de la doubler. |
+> | 7 | Winrate & fréquence des stacks | **Non mesuré** : la faction est réservée au joueur humain en campagne, aucun bot ne la joue — `simulate.mjs` ne peut donc pas la mesurer. À reprendre le jour où un profil de bot existera. |
+> | 8 | Mécanique de scénario des chapitres 2 et 8 | **Tranchée** : ch2 = 3 ouvriers sur l'Usine + 2 patrouilles détruites ; ch8 = 3 tours consécutifs sur l'Usine + 3 mechas arrachés. |
+>
+> **Écarts assumés par rapport à la spec ci-dessous :**
+> - **Les ancrages ne sont PAS des hex de base** (§3 proposait `hMap[id].base`).
+>   Ce sont des hex de terrain normaux, praticables par les six autres
+>   factions : les marquer `base` aurait interdit #3/#20/#25/#40 à tout le
+>   monde et cassé la carte. Ils servent uniquement de portes de réentrée.
+> - **Le slot 1, libéré par La Nage, porte les « Passeurs »** (ouvriers à
+>   2 pas) au lieu de rester vide — c'est la réponse directe au frein
+>   structurel décrit au §5 (le regroupement lent), et la seule capacité du
+>   jeu qui accélère des ouvriers.
+> - **Le slot 3 porte les « Tunnels »** : bond d'un ancrage à l'autre.
+> - **Vol de capacité** : le mecha capturé apporte la capacité de combat ou de
+>   position de SA faction (`stolenCombat` / `stolenPosition`), Vitesse restant
+>   commune. Un nouveau vol remplace le précédent — le patchwork se refait.
+>   Le riverwalk volé n'est jamais proposé : La Nage le rend inutile.
 
 ## 1. Le principe
 

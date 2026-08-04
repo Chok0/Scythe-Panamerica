@@ -10,55 +10,24 @@
 //  2. Chaque chapitre offre DEUX voies de victoire : la condition canon
 //     ci-dessous, ou les 6 étoiles classiques. La première atteinte l'emporte.
 //
-// ⚠ Chapitres 2 et 8 (Internationale Noire) : la faction n'est pas implémentée
-// et la mécanique de scénario (infiltration / sabotage) n'est pas tranchée.
-// Ils sont donc livrés en INTERLUDE — texte seul, comme le prologue — pour ne
-// pas bloquer la progression sur les six chapitres jouables. Leur piste de
-// condition canon est conservée dans `canonDraft`, à activer le jour où la
-// faction existe.
+// v0.18 — les HUIT chapitres se jouent. L'Internationale Noire (chapitres 2
+// et 8) est implémentée : sans héros ni base, 4 ouvriers sur ses points
+// d'ancrage, La Nage, ouvriers combattants, vol de mecha. Voir
+// docs/design/internationale_noire.md et data/factions.js. Seul le prologue
+// reste un interlude (texte seul).
 import { FACTIONS } from './factions.js';
 import { hMap, ADJ } from './hexes.js';
+import { heldHexes } from './control.js';
 
 // L'Usine (Rouge River) — id fixe sur toutes les cartes, y compris
 // procédurales (mapGen.js : FACTORY_ID).
 export const FACTORY_HEX = 22;
 
-/** Hex tenus par un joueur — POINT DE VÉRITÉ UNIQUE du contrôle territorial,
- *  partagé par le score final, les conditions canon et l'Acier Brut.
- *
- *  Règle Scythe : on tient un hex si on y a une unité, OU une structure /
- *  un piège armé qu'aucune unité ennemie n'occupe. Corrigé le 03/08 : la
- *  condition canon ne comptait que les unités alors que le score comptait
- *  déjà les bâtiments — « mon moulin n'est pas comptabilisé dans les hex
- *  Plaine/Forêt pour l'objectif », et il fallait poser un mecha sur l'hex où
- *  se tenait déjà son propre moulin.
- *
- *  `ctx.players` (tous les joueurs) et `ctx.empire` ({id: hexId}) sont
- *  facultatifs : sans eux, structures et pièges comptent sans contestation
- *  possible — la contestation exige de connaître les autres.
- *  Les Comptoirs (Acadiane) restent HORS de ce décompte : ce sont des jetons
- *  de score (+1 territoire, +2$) et non des marqueurs de contrôle. */
-export const heldHexes = (p, ctx) => {
-  const held = new Set([
-    p.hero,
-    ...(p.workers || []).map(w => w.hexId),
-    ...(p.mechs || []).map(m => m.hexId),
-  ]);
-  const enemyUnits = new Set();
-  (ctx?.players || []).forEach(op => {
-    if (!op || op === p) return;
-    enemyUnits.add(op.hero);
-    (op.mechs || []).forEach(m => enemyUnits.add(m.hexId));
-    (op.workers || []).forEach(w => enemyUnits.add(w.hexId));
-  });
-  // Les patrouilles impériales contestent comme n'importe quelle unité
-  // adverse (constaté le 03/08 : l'Empire était invisible au décompte).
-  Object.values(ctx?.empire || {}).forEach(hid => enemyUnits.add(hid));
-  const claim = (hid) => { if (hid != null && !enemyUnits.has(hid)) held.add(hid); };
-  (p.buildings || []).forEach(b => claim(b.hexId));
-  (p.trapTokens || []).forEach(t => { if (!t.disarmed) claim(t.hexId); });
-  return held;
-};
+// Le contrôle territorial vit désormais dans `data/control.js` (cycle
+// d'import : factions.js en a besoin pour l'objectif de l'Internationale
+// Noire, et campaign.js importe factions.js). Ré-exporté ici : tout le code
+// existant continue de lire `heldHexes` depuis campaign.js.
+export { heldHexes };
 
 export const controlsFactory = (p, ctx) => heldHexes(p, ctx).has(FACTORY_HEX);
 export const villagesHeld = (p, ctx) => [...heldHexes(p, ctx)].filter(id => hMap[id]?.t === "village").length;
@@ -136,22 +105,32 @@ export const CHAPTERS = [
     ],
   },
   {
-    id: "ch2", num: 2, kind: "interlude", faction: "internationale",
+    id: "ch2", num: 2, kind: "game", faction: "internationale",
     title: "Le Régicide",
-    subtitle: "Internationale Noire — sans héros",
+    subtitle: "Internationale Noire — la cellule de Rouge River",
     variant: { empire: true, steel: false, bonusTile: null,
-      label: "Faction spécifiée (docs/design/internationale_noire.md) mais pas encore implémentée — chapitre joué en interlude." },
+      label: "L'Internationale Noire selon sa fiche : aucun héros, aucune base, 4 ouvriers posés sur les points d'ancrage #3/#20/#25/#40, La Nage (toutes les rivières dès le tour 1), ouvriers COMBATTANTS, aucun mecha au départ — on les VOLE en battant un mecha adverse. Patrouilles impériales ACTIVES : ce sont les dernières unités opérationnelles de Cyrus II, et votre seule source d'armes." },
     before: [
-      "Une cellule panaméricaine de l'Internationale Noire, infiltrée à Rouge River depuis des années sous couvert d'ouvriers, a fini par obtenir ce qu'elle attend depuis le tournant du siècle : un accès à l'Empereur en déplacement.",
+      "L'Internationale Noire n'a ni drapeau, ni capitale, ni mecha de série. Née dans les cendres de la Commune, structurée pendant la Grande Guerre en cellules qui ne se connaissent pas entre elles — Saboteurs, Passeurs, Moissonneurs —, elle ne cherche pas à conquérir quoi que ce soit. Elle cherche à épuiser la guerre jusqu'à ce que la paix devienne la seule option qui reste. Son emblème est une faux brisée : l'outil qu'on a cessé de tourner contre les gens.",
+      "La cellule panaméricaine, elle, n'a pas été parachutée. Elle est née à l'intérieur même de Rouge River. Ce sont des ouvriers de la chaîne — des monteurs, des soudeurs, des femmes du contrôle qualité — qui ont appris le sabotage bien avant d'apprendre à viser. Ils savent exactement où une bielle se fend, quelle soudure lâche à froid, combien de temps un Model M tient sans son circuit de refroidissement. Ils construisent les mechas de l'Empereur depuis dix ans. Ils savent où frapper parce que ce sont eux qui les assemblent.",
+      "1915. Cyrus II règne sur un empire à son sommet territorial et exsangue financièrement : des provinces occupées qui n'ont jamais accepté l'autorité de la capitale, un Sénat d'apparat, une armée devenue dépendante d'une seule usine parce que le Consortium ne prête plus. On annonce une visite d'inspection dans un atelier ferroviaire. La cellule attend cet instant depuis le tournant du siècle.",
+      "Il y a une voix contre. On la surnomme le Horloger — un ancien professeur de philosophie qui passe son temps à démonter des mécanismes pour comprendre ce qui les fait tenir. Sa thèse tient en une phrase : « Chaque mecha que nous détruisons en crée deux dans la tête de ceux qui ont peur. » Il propose autre chose — ouvrir les cockpits, apprendre à tout le monde à les piloter, jusqu'à ce qu'ils cessent d'être des instruments de pouvoir et deviennent des outils : des tracteurs géants, des grues communales. L'idée terrifie absolument tout le monde, y compris une partie de l'Internationale.",
+      "La cellule a tranché sans lui. Vous n'avez pas de héros à envoyer devant : vous avez quatre groupes d'ouvriers dispersés dans les marais et le désert, une popularité qui vous tient lieu de bouclier, et le savoir de ceux qui ont monté ces machines. Vous n'irez pas acheter des mechas. Vous prendrez ceux qui viendront vous chercher.",
     ],
-    canon: null,
-    // Piste conservée pour le jour où la faction existe (docs/campagne.md ch.2)
-    canonDraft: "Atteindre l'Empereur — prendre le contrôle de l'Usine (hex 22) pour représenter l'accès à sa visite d'inspection, ou détruire un nombre donné de patrouilles impériales.",
+    // Condition canon : la foule qui submerge la garde de l'atelier, et le
+    // cordon impérial percé avant d'y arriver. Trois ouvriers sur l'Usine =
+    // contrôle de l'hex (règle du contrôle territorial, data/control.js) —
+    // c'est littéralement « atteindre l'Empereur en nombre ».
+    canon: canon("Atteindre l'Empereur", [
+      compte("ouvriers sur l'Usine (hex 22)", p => (p.workers || []).filter(w => w.hexId === FACTORY_HEX).length, 3),
+      compte("patrouilles impériales détruites", p => p.empireKills || 0, 2),
+    ]),
     unlock: null,
     after: [
-      "Cyrus II est assassiné dans un atelier ferroviaire de Chicago.",
-      "Parce que la cohésion de l'Empire ne tenait que par la guerre permanente et une industrie du mecha déjà exsangue, ce n'est pas une crise de succession : c'est un effondrement total.",
-      "La Seconde Guerre Civile commence — cent guerres locales simultanées. Washington se retranche sur son noyau et sur Rouge River, tenue par une garnison loyaliste.",
+      "Cyrus II est abattu dans un atelier ferroviaire de Chicago, au milieu des machines que la cellule assemblait pour lui. Ce n'est pas un coup d'État : personne ne prend le trône, personne ne le revendique. C'est un message, et il est mécanique — le trône est une machine comme une autre, et les machines peuvent tomber en panne.",
+      "Parce que la cohésion de l'Empire ne tenait que par la guerre permanente et par une industrie du mecha déjà à bout de souffle, il n'y a pas de crise de succession : il y a un effondrement. Les provinces occupées ne se soulèvent pas les unes après les autres, elles se soulèvent en même temps.",
+      "La Seconde Guerre Civile commence — cent guerres locales simultanées, sans front, sans capitale à prendre. Washington se retranche sur son noyau et sur Rouge River, tenue par une garnison loyaliste qui n'attend plus d'ordres de personne.",
+      "Le Horloger n'a pas dit un mot le jour de l'annonce. Il a seulement fait remarquer, plus tard, que l'usine, elle, tournait toujours.",
     ],
   },
   {
@@ -265,22 +244,33 @@ export const CHAPTERS = [
     ],
   },
   {
-    id: "ch8", num: 8, kind: "interlude", faction: "internationale",
+    id: "ch8", num: 8, kind: "game", faction: "internationale",
     title: "Le Sabotage Final",
-    subtitle: "Internationale Noire — sans héros",
+    subtitle: "Internationale Noire — la chaîne qu'on arrête",
     variant: { empire: false, steel: true, bonusTile: null,
-      label: "Faction spécifiée mais pas encore implémentée — chapitre joué en interlude. Acier Brut prévu, pour matérialiser ce qu'il s'agit de tarir." },
+      label: "Même faction qu'au chapitre 2, dans un monde saturé de mechas Ford : le vol de mecha (jusqu'à 4) y trouve enfin sa pleine mesure, puisque tout le monde en a. Acier Brut ACTIF sur Rouge River — chaque tour, l'Usine fabrique un métal de plus, et la pile revient entière à qui la tient seul : c'est très exactement la chaîne qu'il s'agit de tarir." },
     before: [
-      "Six factions armées jusqu'aux dents par Ford, qui s'entredéchirent, se défendent ou se conquièrent tour à tour sans qu'aucune ne l'emporte jamais vraiment — exactement le jeu de promotions que Ford entretient depuis la réouverture du Catalogue.",
-      "L'Internationale Noire comprend que le trône n'était jamais la vraie cible : le régicide de 1915 n'a fait que déplacer le problème de Washington à Dearborn.",
+      "Dix ans ont passé. Six factions armées jusqu'aux dents par Ford s'entredéchirent, se défendent, se conquièrent tour à tour — et aucune ne l'emporte jamais vraiment. Ce n'est pas un accident de l'Histoire : c'est un marché. Ford vend à tout le monde, entretient les promotions, remplace les pertes. Une guerre qui ne finit pas est le meilleur carnet de commandes jamais écrit.",
+      "L'Internationale Noire a mis dix ans à formuler ce que le Horloger avait dit en une phrase le soir du régicide : le trône n'était pas la cible. Tuer Cyrus II n'a pas arrêté la machine, ça l'a seulement déplacée de Washington à Dearborn. Le pouvoir n'était pas assis sur un fauteuil ; il était boulonné à une chaîne de montage.",
+      "Alors la cellule revient là où elle est née. Elle connaît l'usine mieux que ses contremaîtres : les cadences, les rotations de garde, l'endroit précis où la ligne d'assemblage n'a qu'un seul point d'alimentation. Elle sait aussi qu'on n'arrête pas Rouge River en une nuit — il faut la tenir. Une chaîne ne s'arrête pas parce qu'on la frappe : elle s'arrête parce que plus personne ne la remet en marche.",
+      "Et l'ironie est complète : pour tarir l'usine, il faut lui prendre ses propres produits. Chaque mecha arraché à une faction est un mecha de moins sur le marché de Ford, et un de plus dans les mains de ceux qui l'ont assemblé. Le Horloger n'a jamais eu la libération des cockpits qu'il réclamait — il aura ça.",
+      "Personne dans la cellule ne se fait d'illusions sur la suite. Ils savent que la peur qu'ils sèment nourrit ce qu'ils combattent, que le patron d'usine dont la chaîne s'arrête n'entend pas « la paix approche » mais « on veut ma peau ». Ils y vont quand même. C'est le dernier chapitre, et il n'a jamais été écrit pour être propre.",
     ],
-    canon: null,
-    canonDraft: "Saboter Rouge River — tenir l'Usine (hex 22) un nombre donné de tours consécutifs pour représenter l'arrêt de la chaîne, ou capturer/détruire un quota de mechas toutes factions confondues.",
+    // Condition canon : la chaîne s'ENRAYE — elle ne tombe pas. Tenir l'Usine
+    // trois tours de table d'affilée (compteur `factoryHeldTurns`, remis à
+    // zéro dès qu'on la lâche), et retourner contre elle trois de ses propres
+    // machines. Les deux membres tirent la faction dans des directions
+    // opposées : occuper le centre ET aller chercher la bagarre ailleurs.
+    canon: canon("Arrêter la chaîne", [
+      compte("tours consécutifs à tenir l'Usine", p => p.factoryHeldTurns || 0, 3),
+      compte("mechas arrachés à l'ennemi", p => p.capturedMech || 0, 3),
+    ]),
     unlock: null,
     after: [
-      "Rouge River ne tombe pas d'un coup : elle s'enraye. Le pantin Cyrus III, déjà sans pouvoir réel, devient définitivement hors sujet.",
-      "Les mechas impériaux comme les stocks de Ford, privés de la chaîne qui les entretenait, deviennent les « colosses rouillés » que le jeu de base décrit dans son texte de règles. La campagne se referme exactement là où commence une partie standard de Scythe Panamerica.",
-      "Dernier mot laissé en suspens : le Horloger avait raison sur un point — détruire une machine de guerre n'a jamais suffi à empêcher la suivante. Reste à savoir ce que l'Internationale Noire compte faire de ce qu'elle vient de gagner.",
+      "Rouge River ne tombe pas d'un coup : elle s'enraye. Une ligne s'arrête, puis deux, puis la fonderie qui les alimentait ; les contremaîtres découvrent qu'ils ne savent pas relancer ce que d'autres avaient monté. Le pantin Cyrus III, déjà sans pouvoir réel, devient définitivement hors sujet — plus personne ne pense à lui donner d'ordres.",
+      "Les mechas impériaux comme les stocks de Ford, privés de la chaîne qui les entretenait, cessent d'être une armée pour devenir un inventaire. Puis un décor. Ce sont les « colosses rouillés » que le jeu de base décrit dans son texte de règles : la campagne se referme exactement là où commence une partie standard de Scythe Panamerica.",
+      "Le Horloger avait raison sur un point, et il l'a payé : détruire une machine de guerre n'a jamais suffi à empêcher la suivante. Les cockpits sont ouverts, maintenant. N'importe qui peut apprendre à les piloter — et n'importe qui, cette fois, veut dire n'importe qui.",
+      "Reste la question que la faux brisée n'a jamais tranchée : ce que l'Internationale Noire compte faire de ce qu'elle vient de gagner.",
     ],
   },
 ];

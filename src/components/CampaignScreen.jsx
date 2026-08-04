@@ -3,7 +3,7 @@ import { PROLOGUE, CHAPTERS, chapterById } from '../data/campaign.js';
 import { LEGACIES, LEGACY_IDS } from '../data/legacies.js';
 import { chapterStates, unlockedLegacies, campaignComplete } from '../logic/campaign.js';
 import { FACTIONS } from '../data/factions.js';
-import { MATS } from '../data/mats.js';
+import { MATS, matById } from '../data/mats.js';
 import { FACTION_LOGOS } from '../assets/factions/index.js';
 
 // Écran de campagne — sélection de chapitre, histoire avant/après, variantes.
@@ -86,6 +86,11 @@ export default function CampaignScreen({ progress, onPlay, onRead, onBack, onRes
 
         {isGame ? (<>
           <SectionTitle>Plateau joueur — {faction?.name}</SectionTitle>
+          {/* L'Internationale Noire impose son plateau : son économie (4♥/3$,
+              un Déployer qui paie sans rien poser) n'existe sur aucun autre. */}
+          {faction?.fixedMat ? (
+            <Para>⚑ Plateau imposé par la faction : <b style={{ color: "var(--gold)" }}>{matById(faction.fixedMat)?.name}</b> — ♥{matById(faction.fixedMat)?.pop} 💰{matById(faction.fixedMat)?.coins}. {faction.abilityDesc}</Para>
+          ) : (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
             {MATS.map(m => (
               <button key={m.id} onClick={() => setMatId(m.id)} style={{
@@ -95,7 +100,7 @@ export default function CampaignScreen({ progress, onPlay, onRead, onBack, onRes
                 border: `1px solid ${matId === m.id ? "var(--gold)" : "var(--border)"}`,
               }}>{m.name} <span style={{ opacity: 0.7 }}>♥{m.pop} 💰{m.coins}</span></button>
             ))}
-          </div>
+          </div>)}
           <button onClick={() => onPlay(chapter, matId)} style={{
             background: "linear-gradient(135deg,var(--gold),#a08030)", color: "var(--bg)", border: "none",
             borderRadius: 6, padding: "12px 40px", fontSize: 13, letterSpacing: 4, textTransform: "uppercase",

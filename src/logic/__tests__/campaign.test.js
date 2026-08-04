@@ -31,14 +31,18 @@ const doneUpTo = (n) => CHAPTERS.slice(0, n).reduce(
   emptyProgress());
 
 describe('données de campagne', () => {
-  it('8 chapitres, numérotés et ordonnés, sans id ni faction dupliquée', () => {
+  it('8 chapitres, numérotés et ordonnés, tous jouables', () => {
     expect(CHAPTERS.length).toBe(8);
     CHAPTERS.forEach((c, i) => expect(c.num).toBe(i + 1));
     expect(new Set(CHAPTERS.map(c => c.id)).size).toBe(8);
-    // les 6 chapitres jouables couvrent les 6 factions du roster, une fois chacune
+    // v0.18 : plus aucun interlude — l'Internationale Noire est implémentée,
+    // les 8 chapitres se jouent. 6 factions du roster une fois chacune, plus
+    // l'Internationale Noire aux deux extrémités de la campagne (2 et 8).
     const playable = CHAPTERS.filter(c => c.kind === 'game');
-    expect(playable.length).toBe(6);
-    expect(new Set(playable.map(c => c.faction)).size).toBe(6);
+    expect(playable.length).toBe(8);
+    const standard = playable.filter(c => c.faction !== 'internationale');
+    expect(new Set(standard.map(c => c.faction)).size).toBe(6);
+    expect(playable.filter(c => c.faction === 'internationale').map(c => c.id)).toEqual(['ch2', 'ch8']);
   });
 
   it('chaque chapitre jouable a une condition canon et du texte des deux côtés', () => {

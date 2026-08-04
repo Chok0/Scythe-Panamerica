@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { getValidMoves, getValidMoves1Step, getRailNetwork, marshToll, findPathWaypoints } from '../movement.js';
 import { hMap, ADJ, hasR, HEXES } from '../../data/hexes.js';
-import { FACTIONS } from '../../data/factions.js';
+import { FACTIONS, FACTION_IDS } from '../../data/factions.js';
 import { islandOf, riverwalkValue } from '../../../scripts/riverwalkAudit.mjs';
 
 // Carte v3 chargée par défaut à l'import de hexes.js.
@@ -128,7 +128,10 @@ describe('Sang du Marais (Bayou)', () => {
 // test les rattrapera à la prochaine retouche de la carte.
 // L'audit détaillé est dans scripts/riverwalkAudit.mjs (même fonction).
 describe('riverwalks : aucune capacité morte', () => {
-  for (const [fid, f] of Object.entries(FACTIONS)) {
+  // FACTION_IDS = rotation standard : l'Internationale Noire (campagne) n'a
+  // pas de riverwalk du tout — La Nage franchit toutes les rivières.
+  for (const fid of FACTION_IDS) {
+    const f = FACTIONS[fid];
     it(`${f.name} (${f.rwName}) ouvre une sortie par terrain listé`, () => {
       const value = riverwalkValue(fid, f);
       expect(value).toHaveLength(2);
@@ -138,8 +141,7 @@ describe('riverwalks : aucune capacité morte', () => {
   }
 
   it("le Bayou est la seule faction à ne pas démarrer enclavée (Sang du Marais)", () => {
-    const sizes = Object.entries(FACTIONS)
-      .map(([fid, f]) => [fid, islandOf(fid, f).island.size]);
+    const sizes = FACTION_IDS.map(fid => [fid, islandOf(fid, FACTIONS[fid]).island.size]);
     const bayou = sizes.find(([fid]) => fid === 'bayou')[1];
     for (const [fid, n] of sizes) {
       if (fid === 'bayou') expect(n).toBeGreaterThan(20);
@@ -198,7 +200,7 @@ describe('hex de base : jamais une destination', () => {
   const baseOf = (fac) => Object.values(hMap).find(h => h.base && h.faction === fac);
 
   it('aucune faction ne peut entrer dans sa propre base, depuis aucun de ses hex de départ', () => {
-    Object.keys(FACTIONS).forEach(fac => {
+    FACTION_IDS.forEach(fac => {
       const base = baseOf(fac);
       expect(base, `${fac} sans hex de base`).toBeTruthy();
       // Les hex de départ sont précisément ceux qui touchent la base
@@ -222,7 +224,7 @@ describe('hex de base : jamais une destination', () => {
   });
 
   it('on SORT normalement de sa base (retraite → reprise du jeu)', () => {
-    Object.keys(FACTIONS).forEach(fac => {
+    FACTION_IDS.forEach(fac => {
       const base = baseOf(fac);
       const p = { hero: base.id, workers: [], mechs: [] };
       const moves = new Set(getValidMoves(base.id, fac, [], p, []));
@@ -235,7 +237,7 @@ describe('hex de base : jamais une destination', () => {
   it('la base ne sert plus de raccourci entre les deux hex de départ', () => {
     // Elle touche les DEUX hex de départ : sans le filtre, départ1 → base →
     // départ2 offrait un passage en 2 pas avec Vitesse.
-    Object.keys(FACTIONS).forEach(fac => {
+    FACTION_IDS.forEach(fac => {
       const base = baseOf(fac);
       const [a, b] = ADJ[base.id] || [];
       if (a == null || b == null) return;

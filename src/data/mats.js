@@ -89,8 +89,27 @@ export const MATS_ORIGINAL = [
 ];
 
 // Tous les plateaux (standard + campagne) — les LOOKUPS par id passent par
+// ═══ PLATEAU DE CAMPAGNE (id 200) — L'INTERNATIONALE NOIRE ═══
+// La fiche de faction demande 4♥ / 3$ au départ : la popularité la plus haute
+// du jeu (c'est sa monnaie de survie — elle perd des ouvriers en permanence)
+// et la trésorerie la plus basse. L'invariant du projet veut que pop et pièces
+// viennent du PLATEAU, jamais de la fiche de faction : d'où ce plateau dédié
+// plutôt qu'une surcharge dans factions.js (cf. internationale_noire.md §2,
+// TODO #2). Hors rotation standard, comme les plateaux originaux.
+// La grammaire du jeu de base est respectée : Σcoûts = 13, Σbonus = 6$,
+// 6 cases d'amélioration, cases du haut dictées par l'action.
+// Identité : Déployer paie et rapporte (+2$) mais ne pose AUCUN mecha — la
+// faction les vole ; Construire est bon marché (le réseau s'installe partout)
+// et Enrôler cher (on ne recrute pas une clandestinité en un jour).
+export const MATS_CAMPAIGN = [
+  { id: 200, name: "Le Réseau", campaign: true, pop: 4, coins: 3,
+    topRow: ["Move", "Produce", "Trade", "Bolster"],
+    topCubes: [2, 1, 1, 2], bottomSlots: [1, 2, 2, 1],
+    bottomCosts: [{ res: "petrole", base: 3, bonus: 1 }, { res: "metal", base: 3, bonus: 2 }, { res: "bois", base: 3, bonus: 3 }, { res: "nourriture", base: 4, bonus: 0 }] },
+];
+
 // matById pour qu'un plateau original assigné en campagne fonctionne partout.
-export const ALL_MATS = [...MATS, ...MATS_ORIGINAL];
+export const ALL_MATS = [...MATS, ...MATS_ORIGINAL, ...MATS_CAMPAIGN];
 export const matById = (id) => ALL_MATS.find(m => m.id === id);
 
 // Libellés FR des actions (source unique pour l'UI ET les logs — avant, les

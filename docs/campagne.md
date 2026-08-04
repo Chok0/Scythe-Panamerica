@@ -302,10 +302,10 @@ incarner une résistance qui n'a pas espéré que le trône tombe tout seul. »
 
 ### Chapitre 2 — Internationale Noire (sans héros) — Le Régicide
 
-*⚠ Faction spécifiée (`internationale_noire.md`) mais pas encore implémentée ;
-la mécanique de scénario ci-dessous reste à concevoir. **En jeu, ce chapitre
-se joue donc en INTERLUDE** — texte seul, comme le prologue : il se lit, il
-ouvre la suite, mais il ne lance pas de partie.*
+*✅ v0.18 — faction IMPLÉMENTÉE (`internationale_noire.md`, `data/factions.js`)
+et chapitre JOUABLE. Condition canon « Atteindre l'Empereur » : 3 ouvriers sur
+l'Usine (hex 22) — la foule qui submerge la garde de l'atelier — et 2
+patrouilles impériales détruites pour percer le cordon.*
 
 - **Histoire donnée avant** : une cellule panaméricaine de l'Internationale
   Noire, infiltrée à Rouge River depuis des années sous couvert d'ouvriers,
@@ -447,10 +447,11 @@ ouvre la suite, mais il ne lance pas de partie.*
 
 ### Chapitre 8 — Internationale Noire (sans héros) — Le Sabotage Final
 
-*⚠ Faction spécifiée (`internationale_noire.md`) mais pas encore implémentée ;
-la mécanique de scénario ci-dessous reste à concevoir. **En jeu, ce chapitre
-se joue donc en INTERLUDE** — texte seul, comme le prologue : il se lit, il
-ouvre la suite, mais il ne lance pas de partie.*
+*✅ v0.18 — chapitre JOUABLE. Condition canon « Arrêter la chaîne » : tenir
+l'Usine (hex 22) **3 tours de table consécutifs** (compteur remis à zéro dès
+qu'on la lâche — une chaîne ne s'arrête pas parce qu'on la frappe, elle
+s'arrête parce que plus personne ne la remet en marche) ET arracher 3 mechas
+à l'ennemi, avec Acier Brut actif.*
 
 - **Histoire donnée avant** : six factions armées jusqu'aux dents par Ford,
   qui s'entredéchirent, se défendent ou se conquièrent tour à tour sans
@@ -524,11 +525,13 @@ actif dès le lancement du chapitre, sans effet en partie libre.
 
 **Arbitrages pris à l'implémentation** (le document restait ouvert dessus) :
 
-- **Chapitres 2 et 8 en interlude.** L'Internationale Noire n'étant pas
-  implémentée et leur mécanique de scénario pas tranchée, ces deux chapitres
-  se lisent (texte seul, comme le prologue) et ouvrent la suite au lieu de
-  bloquer la campagne. Leur piste de condition est conservée dans le champ
-  `canonDraft`, prête à devenir un vrai `canon` le jour où la faction existe.
+- **Chapitres 2 et 8 jouables (v0.18).** L'Internationale Noire est
+  implémentée : `data/factions.js` (sans héros, ancrages #3/#20/#25/#40, La
+  Nage, ouvriers combattants, vol de mecha ×4), plateau dédié « Le Réseau »
+  (`MATS_CAMPAIGN`, id 200), réserve hors-plateau et réentrée près d'un
+  ancrage (`logic/player.js`), capacités volées (`stolenCombat`/
+  `stolenPosition`). Elle reste hors de la rotation standard : `FACTION_IDS`
+  l'exclut, aucun bot ne peut la tirer.
 - **Legs uniquement sur la voie canon.** Terminer un chapitre aux 6 étoiles le
   valide et ouvre le suivant, mais ne donne pas la récompense de Tesla — la
   voie narrative reste la seule à payer.
