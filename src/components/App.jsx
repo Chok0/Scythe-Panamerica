@@ -149,8 +149,7 @@ export default function App(){
   const[moveSource,setMoveSource]=useState(null);
   // Transport partiel (mech) : choix des ouvriers/ressources à emporter avant le déplacement
   const[transportPick,setTransportPick]=useState(null);
-  const[unitPicker,setUnitPicker]=useState(null); // {hexId,units:[{type,id,label}]} — plusieurs unités sur le hex cliqué
-  const[carryOnMove,setCarryOnMove]=useState(true); // 🚚 emporter ouvriers/ressources au Move
+
   const[routeDrop,setRouteDrop]=useState(null); // 📦 dépose en route: {mids,destHex,endAfter}
   const[preActionSnapshot,setPreActionSnapshot]=useState(null); // snapshot of player[0] before action, for undo
   const[undoStack,setUndoStack]=useState([]); // pile d'annulation (snapshots d'état, dans le tour humain)
@@ -1044,7 +1043,7 @@ export default function App(){
     const moved=movedOverride??(me?.movedUnits||[]).length;
     if((myMat?.topRow||[])[col]==="Move"&&moved>0)addLog(`✅ Mouvement terminé (${moved}/${moveLimit})`);
     setPlayers(prev=>{const n=[...prev];n[0]={...n[0],lastCol:col,movesLeft:undefined,movedUnits:[],packUpUsed:false};return n;});
-    setSelAction(null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(null);setTradePicks([]);setRouteDrop(null);
+    setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);setTradePicks([]);setRouteDrop(null);
     // Show bottom-row option
     const bottomAction=BOTTOM[col];
     setPendingBottom({col,action:bottomAction});
@@ -1092,7 +1091,7 @@ export default function App(){
   const finishFactoryMove=useCallback((moved)=>{
     if((moved??1)>0)addLog(`✅ Déplacement d'usine terminé`);
     setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:undefined,movedUnits:[],packUpUsed:false};return n;});
-    setMoveSource(null);setUnitPicker(null);setRouteDrop(null);setPreActionSnapshot(null);setTransportPick(null);
+    setMoveSource(null);setRouteDrop(null);setPreActionSnapshot(null);setTransportPick(null);
     setPendingBottom(null);
     requestEndTurn();
   },[addLog,requestEndTurn]);
@@ -1608,7 +1607,7 @@ export default function App(){
     setFactoryOffer([...(snap.factoryOffer||[])]);setTeslaOffer([...(snap.teslaOffer||[])]);
     // annule tout état transitoire d'action en cours — mais restaure le
     // contexte d'action capturé (selAction/preActionSnapshot) du snapshot
-    setSelAction(snap.selAction??null);setMoveSource(null);setUnitPicker(null);setPreActionSnapshot(snap.preActionSnapshot??null);setTradePicks([]);
+    setSelAction(snap.selAction??null);setMoveSource(null);setPreActionSnapshot(snap.preActionSnapshot??null);setTradePicks([]);
     setPendingBottom(null);setBottomPick(null);setCombat(null);setEncounter(null);setRougeRiver(null);
     setEncounterBuild(false);setEncounterEnlist(null);setEncounterUpgrade(null);setEncounterResources(null);setFactoryFlow(null);setFactoryPreview(false);
     setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);setEndOfTurn(false);
@@ -1841,10 +1840,9 @@ export default function App(){
     setPhase("ended");
   },[players,phase,chapter,chapterOutcome,finishChapter,addLog]);
 
-  // transportOverride : {transport:{workers,res}} — quantités choisies dans le
-  // panneau de transport partiel (repasse par ce même flux après validation) ;
-  // {forceMove:true} — clic « ➤ Déplacer ici » du unitPicker quand l'hex cible
-  // portait aussi une unité à soi (ambiguïté destination/sélection tranchée)
+  // transportOverride : {transport:{workers,res}} — quantités choisies dans la
+  // boîte de CHARGEMENT (le clic de destination repasse par ce même flux une
+  // fois les quantités validées).
   // ── Hexes de production éligibles (action Produce) : ceux qui portent mes
   // ouvriers, plus le hex du Moulin — territoire BONUS de la règle Scythe,
   // il ne compte pas dans la limite de 2 (3 avec amélioration)
@@ -1961,14 +1959,8 @@ export default function App(){
     // ── MOVE : re-cliquer l'hex de l'unité sélectionnée = DÉSÉLECTION ──
     if(moveSource&&hexId===moveSource.fromHex){setMoveSource(null);setTransportPick(null);return;}
     if(moveSource&&validMoves.has(hexId)){
-      // Hex cible portant aussi une de MES unités encore déplaçables : le clic
-      // est ambigu (destination ? nouvelle sélection ?) → unitPicker enrichi
-      // d'une option « Déplacer ici » — avant, le clic déplaçait la 1re unité
-      // alors qu'on voulait sélectionner la voisine (bug constaté en partie)
-      if(!transportOverride&&movableUnits.has(hexId)){
-        setUnitPicker({hexId,units:movableUnits.get(hexId),moveDest:true});
-        return;
-      }
+      // Un hex cliqué EST une destination — même s'il porte déjà de mes
+      // unités. Pour changer d'unité, on clique son pion.
       // Snapshot avant CE déplacement → l'undo prend en compte chaque sous-coup.
       // Pas de re-push à la validation du transport : le clic qui a ouvert le
       // panneau a déjà poussé ce snapshot (sinon chaque déplacement de mech
@@ -2017,14 +2009,21 @@ export default function App(){
         }
       }
       
-      // ── TRANSPORT PARTIEL (mech) : s'il y a de quoi emporter, ouvrir le
-      // panneau de quantités au lieu d'exécuter — la validation repasse ici
-      // avec transportOverride ──
-      if(moveSource.unitType==="mech"&&carryOnMove&&!transportOverride?.transport){
-        const wOnHex=me.workers.filter(w=>w.hexId===moveSource.fromHex).length;
+      // ── CHARGEMENT (v0.18) : une seule boîte, pour TOUTE unité ──────────
+      // Règle du jeu original : « les unités peuvent prendre et déposer autant
+      // de pions Ressource que voulu lors d'une action Déplacement » — les
+      // trois types d'unités transportent des ressources ; seul le MECH
+      // embarque en plus des ouvriers. On avait accumulé trois itérations qui
+      // se marchaient dessus (bascule globale « emporter oui/non », panneau de
+      // quantités réservé au mech, dépose en route) : il ne reste que le
+      // panneau de quantités, ouvert dès qu'il y a quelque chose à charger.
+      if(!transportOverride?.transport){
+        const wOnHex=moveSource.unitType==="mech"
+          ? me.workers.filter(w=>w.hexId===moveSource.fromHex).length : 0;
         const resOnHex=Object.fromEntries(Object.entries(me.resources[String(moveSource.fromHex)]||{}).filter(([,q])=>q>0));
         if(wOnHex>0||Object.keys(resOnHex).length>0){
-          setTransportPick({toHex:hexId,fromHex:moveSource.fromHex,workersMax:wOnHex,workers:wOnHex,resMax:resOnHex,res:{...resOnHex}});
+          setTransportPick({toHex:hexId,fromHex:moveSource.fromHex,unitType:moveSource.unitType,
+            workersMax:wOnHex,workers:wOnHex,resMax:resOnHex,res:{...resOnHex}});
           return;
         }
       }
@@ -2046,22 +2045,26 @@ export default function App(){
         }
       }
       
+      // Quantités choisies dans la boîte de chargement. Sans boîte (rien à
+      // charger sur l'hex de départ), il n'y a rien à emporter : `carryRes`
+      // reste vrai pour couvrir le cas d'une ressource arrivée entre-temps,
+      // mais les compteurs valent 0 et le transport est un no-op.
+      const tp=transportOverride?.transport;
+      const carryOpts=tp
+        ?{carryWorkers:tp.workers>0,carryRes:true,workerCount:tp.workers,resCounts:tp.res}
+        :{carryWorkers:false,carryRes:true};
       if(moveSource.unitType==="hero"){
         p.hero=hexId;
-        // Hero carries resources (not workers) — sauf si l'emport est désactivé
-        const tr=transportUnits(p, fromHex, hexId, "hero", {carryRes:carryOnMove});
+        // Le héros porte des ressources, jamais d'ouvriers (règle du jeu de base)
+        const tr=transportUnits(p, fromHex, hexId, "hero", carryOpts);
         p=tr.player;
         if(tr.carried.resTypes.length>0) transportLog=` 📦${resListFR(tr.carried.resTypes)}`;
       }
       else if(moveSource.unitType==="mech"){
         p.mechs=p.mechs.map(m=>m.id===moveSource.unitId?{...m,hexId}:m);
-        // Mech carries workers + resources — 🚚 désactivé = les ouvriers et
-        // ressources restent (stratégie d'expansion : le mech continue seul).
-        // Avec transport partiel validé : quantités choisies, le reste sur place.
-        const tp=transportOverride?.transport;
-        const tr=transportUnits(p, fromHex, hexId, "mech", tp
-          ?{carryWorkers:tp.workers>0,carryRes:true,workerCount:tp.workers,resCounts:tp.res}
-          :{carryWorkers:carryOnMove,carryRes:carryOnMove});
+        // Seul le mech embarque des ouvriers — et ce transport ne consomme PAS
+        // leur propre déplacement (règle du jeu de base).
+        const tr=transportUnits(p, fromHex, hexId, "mech", carryOpts);
         p=tr.player;
         marshCarried=tr.carried.workers;
         if(tr.carried.workers>0) transportLog+=` 👷×${tr.carried.workers}`;
@@ -2069,12 +2072,9 @@ export default function App(){
       }
       else if(moveSource.unitType==="worker"){
         p.workers=p.workers.map(w=>w.id===moveSource.unitId?{...w,hexId}:w);
-        // L'ouvrier emporte les ressources de son hex (règle Scythe) si demandé
-        if(carryOnMove){
-          const tr=transportUnits(p, fromHex, hexId, "worker");
-          p=tr.player;
-          if(tr.carried.resTypes.length>0) transportLog=` 📦${resListFR(tr.carried.resTypes)}`;
-        }
+        const tr=transportUnits(p, fromHex, hexId, "worker", carryOpts);
+        p=tr.player;
+        if(tr.carried.resTypes.length>0) transportLog=` 📦${resListFR(tr.carried.resTypes)}`;
       }
       
       // ── PÉAGE DE MARÉCAGE : -1♥ par ouvrier, -1⚡ par unité de combat qui y entre ──
@@ -2289,22 +2289,22 @@ export default function App(){
       }
       setProducePicks(p=>[...p,hexId]);return;
     }
-    // ── SÉLECTION D'UNITÉ AU CLIC (action Move ou bas de carte d'usine) ──
-    if((selAction==="Move"||factoryMoveMode)&&movableUnits.has(hexId)){
+    // ── SÉLECTION D'UNITÉ : par le PION, jamais par l'hex (v0.18) ────────
+    // Un hex qui porte une seule unité reste un raccourci commode ; dès qu'il
+    // y en a plusieurs, c'est au pion de trancher — plus de picker modal.
+    if((selAction==="Move"||factoryMoveMode)&&!moveSource&&movableUnits.has(hexId)){
       const units=movableUnits.get(hexId);
-      setUnitPicker(null);
-      if(units.length===1){doMove(units[0].type,units[0].id,hexId);}
-      else{setMoveSource(null);setUnitPicker({hexId,units});}
-      return;
+      if(units.length===1){doMove(units[0].type,units[0].id,hexId);return;}
+      addLog(`👆 ${units.length} unités sur #${hexId} — cliquez le pion à déplacer`);
+      setSelHex(hexId);return;
     }
     if(moveSource){setMoveSource(null);setTransportPick(null);return;}
-    setUnitPicker(null);
     // ── VITRINE DE L'USINE : cliquer la Rouge River (hors action en cours)
     // ouvre la modale publique — offre Ford + prototypes Tesla visibles de
     // tous, pour motiver la quête des fragments avant d'y aller ──
     if(hexId===FACTORY_RR_HEX&&!selAction&&!pendingBottom&&!rougeRiver)setFactoryPreview(true);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,carryOnMove,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes,rougeRiver,packUpTargets,doPackUpMove]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes,rougeRiver,packUpTargets,doPackUpMove]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -2892,7 +2892,7 @@ export default function App(){
 
   const doMove=(unitType,unitId,fromHex)=>{
     if(!me.movesLeft)setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:effMoveLimit,movedUnits:[]};return n;});
-    setMoveSource({unitType,unitId,fromHex});setSelHex(null);setUnitPicker(null);
+    setMoveSource({unitType,unitId,fromHex});setSelHex(null);
   };
 
   const doBolster=(type)=>{
@@ -3738,7 +3738,13 @@ export default function App(){
                 const movKey=u.type==="hero"?"hero":u.id;
                 const isMovable=selAction==="Move"&&u.factionId===me.faction&&(movableUnits.get(hex.id)||[]).some(mu=>mu.id===movKey);
                 const isSel=!!moveSource&&moveSource.unitId===movKey&&moveSource.fromHex===hex.id;
-                const clickable=isMovable&&!isSel&&!(moveSource&&validMoves.has(hex.id));
+                // v0.18 — un clic sur le PION sélectionne toujours son unité ;
+                // un clic sur l'HEX vise toujours l'hex. Avant, dès que l'hex
+                // était une destination valide, le pion cessait d'être
+                // cliquable et un picker d'ambiguïté s'ouvrait : il cassait le
+                // déplacement séquentiel vers une case déjà occupée par les
+                // siens.
+                const clickable=isMovable&&!isSel;
                 return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6+oy} scale={packScale} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}
                   selectable={clickable} selected={isSel}
                   onClick={clickable?(e)=>{e.stopPropagation();doMove(u.type,movKey,hex.id);}:undefined}/>;
@@ -3802,30 +3808,6 @@ export default function App(){
             <text x="510" y="505" textAnchor="middle" fontSize="80" fill="#c9a84c" letterSpacing="25">1920+</text>
           </g>
         </svg>
-
-        {/* ═══ UNIT PICKER — plusieurs unités sur le hex cliqué (Move ou bas d'usine) ═══ */}
-        {unitPicker&&(selAction==="Move"||factoryMoveMode)&&(
-          <div style={{position:"absolute",bottom:16,left:"50%",transform:"translateX(-50%)",zIndex:8,
-            background:"rgba(14,12,8,0.95)",border:"1px solid var(--gold-dim)",borderRadius:10,
-            padding:"10px 14px",boxShadow:"0 6px 30px rgba(0,0,0,0.7)",backdropFilter:"blur(4px)",animation:"slideUp 0.2s ease"}}>
-            <div style={{fontSize:14,color:"var(--gold)",fontWeight:700,marginBottom:8,fontFamily:"var(--font-title)"}}>
-              {unitPicker.moveDest?`Hex #${unitPicker.hexId} — y déplacer l'unité sélectionnée, ou changer d'unité ?`:`Quelle unité déplacer depuis #${unitPicker.hexId} ?`}
-            </div>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-              {unitPicker.moveDest&&(
-                <button onClick={()=>{const h=unitPicker.hexId;setUnitPicker(null);handleHexClick(h,{forceMove:true});}} className="act-btn" style={{fontSize:15,borderColor:"var(--gold)",color:"var(--gold)",fontWeight:700}}>
-                  ➤ Déplacer ici
-                </button>
-              )}
-              {unitPicker.units.map(u=>(
-                <button key={u.id} onClick={()=>doMove(u.type,u.id,unitPicker.hexId)} className="act-btn" style={{borderColor:myFaction.color+"88",fontSize:15}}>
-                  <Glyph icon={u.icon} size={15}/> {u.label}
-                </button>
-              ))}
-              <button onClick={()=>setUnitPicker(null)} className="act-btn" style={{fontSize:14,opacity:0.7}}>✕</button>
-            </div>
-          </div>
-        )}
 
         {/* ═══ MODAL OVERLAYS (combat/encounter/RR/dépose en route/pouvoir optionnel) ═══ */}
         {(combat||encounter||encounterBuild||encounterEnlist||encounterUpgrade||encounterResources||rougeRiver||factoryPreview||routeDrop||abilityOffer||stealOffer)&&(
@@ -4719,7 +4701,7 @@ export default function App(){
                   {(me.movedUnits||[]).length===0&&<button onClick={()=>{const g=1+topUpgradeCount(me,"Move","coins");setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+g};return n;});addLog(`💰 +${g}$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner {1+topUpgradeCount(me,"Move","coins")}$ (pas de déplacement)</button>}
                   {!moveSource&&(
                     <div style={{padding:"10px 12px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:14,color:"var(--gold)",lineHeight:1.5}}>
-                      👆 Cliquez sur la carte l'unité à déplacer (hexes surlignés en doré), puis sa destination.
+                      👆 Cliquez le <b>pion</b> à déplacer (hexes surlignés en doré), puis l'<b>hex</b> de destination. Un clic sur un pion change toujours d'unité ; un clic sur un hex vise toujours l'hex.
                       <div style={{fontSize:13,color:"var(--text-dim)",marginTop:4}}>
                         Disponibles : {!(me.movedUnits||[]).includes("hero")&&<span>★ {myFaction.hero} · </span>}
                         ● {me.workers.filter(w=>!(me.movedUnits||[]).includes(w.id)).length} ouvrier(s)
@@ -4737,16 +4719,11 @@ export default function App(){
                       🕳 Réserve du réseau : {me.reserve||0} ouvrier(s){me.reserveMechs>0?` · ${me.reserveMechs} mecha(s)`:""} — {reentryMode?"cliquez un hex près d'un ancrage":"faire remonter (coûte 1 déplacement)"}
                     </button>
                   )}
-                  {/* 🚚 Choix d'emport (règle Scythe : le transport est optionnel) —
-                      désactivé, le mech laisse ouvriers+ressources tenir le terrain */}
-                  <button onClick={()=>setCarryOnMove(c=>!c)} className="act-btn" style={{marginTop:8,width:"100%",fontSize:14,
-                    background:carryOnMove?"rgba(201,168,76,0.12)":"transparent",
-                    border:carryOnMove?"1px solid var(--gold)":"1px solid var(--border)",
-                    color:carryOnMove?"var(--gold)":"var(--text-muted)"}}>
-                    🚚 Emporter ouvriers & ressources : {carryOnMove?"OUI":"NON (les laisser sur place)"}
-                  </button>
+                  {/* La boîte de chargement (ci-dessous) porte tout le choix
+                      d'emport : elle s'ouvre à chaque déplacement dès qu'il y a
+                      quelque chose à charger, pour n'importe quelle unité. */}
                   {moveSource&&!moveSource.continuation&&<div style={{color:"#C9A84C",fontSize:14,marginTop:8,fontStyle:"italic"}}>
-                    {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:<><Glyph icon={moveSource.unitType==="mech"?"⬡":"●"} size={14}/> {moveSource.unitType==="mech"?"Mecha":"Ouvrier"}</>} sélectionné (#{moveSource.fromHex}) — cliquez sa destination (hexes verts), ou une autre de vos unités pour changer.
+                    {moveSource.unitType==="hero"?`★ ${myFaction.hero}`:<><Glyph icon={moveSource.unitType==="mech"?"⬡":"●"} size={14}/> {moveSource.unitType==="mech"?"Mecha":"Ouvrier"}</>} sélectionné (#{moveSource.fromHex}) — cliquez l'hex de destination (en vert), ou le pion d'une autre unité pour changer.
                     {(moveSource.unitType==="hero"||moveSource.unitType==="mech")&&myFaction.riverwalk&&<div style={{fontSize:12.5,color:"var(--text-dim)",marginTop:4,fontStyle:"normal"}}>
                       {(me.unlockedAbilities||[]).includes(1)
                         ?<>🌊 {myFaction.rwName} : les rivières ne se traversent que vers <b>{myFaction.riverwalk.join(" / ")}</b></>
@@ -4794,13 +4771,16 @@ export default function App(){
                     <div style={{marginTop:8,width:"100%",
                       background:"linear-gradient(180deg,#241d12,#14100a)",border:"1px solid var(--gold-dim)",borderRadius:10,
                       animation:"slideUp 0.2s ease",overflow:"hidden"}}>
-                      <div style={{textAlign:"center",padding:"5px 0",fontFamily:"var(--font-title)",fontSize:14,letterSpacing:5,fontWeight:800,color:"var(--gold)",borderBottom:"1px solid var(--border)",background:"rgba(0,0,0,0.3)"}}>TRANSPORT</div>
+                      <div style={{textAlign:"center",padding:"5px 0",fontFamily:"var(--font-title)",fontSize:14,letterSpacing:5,fontWeight:800,color:"var(--gold)",borderBottom:"1px solid var(--border)",background:"rgba(0,0,0,0.3)"}}>CHARGEMENT</div>
+                      <div style={{fontSize:12,color:"var(--text-dim)",textAlign:"center",padding:"4px 10px 0"}}>
+                        Ce qui reste sur #{tp.fromHex} à gauche, ce qui part à droite{tp.unitType!=="mech"?" — seuls les mechas embarquent des ouvriers":""}
+                      </div>
                       <div style={{display:"flex",alignItems:"stretch",gap:8,padding:"8px 10px 4px"}}>
                         {/* Plateau gauche : l'hex de départ (ce qui RESTE) */}
                         <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:42,paddingBottom:2}}>
                           <span title={`Reste sur l'hex #${tp.fromHex}`} style={{fontSize:24,lineHeight:1,color:"#8a8070"}}>⬡</span>
                           <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>#{tp.fromHex}</span>
-                          <button style={bigSq} title="Tout laisser (le mecha part seul)"
+                          <button style={bigSq} title="Tout laisser sur place (l'unité part à vide)"
                             onClick={()=>setTransportPick(t=>({...t,workers:0,res:Object.fromEntries(Object.keys(t.resMax).map(k=>[k,0]))}))}>≪</button>
                         </div>
                         {/* Lignes : ouvriers (séparés) puis ressources */}
@@ -4810,7 +4790,11 @@ export default function App(){
                         </div>
                         {/* Plateau droit : le mecha (ce qui EMBARQUE) */}
                         <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"space-between",width:42,paddingBottom:2}}>
-                          <span title={`Embarqué vers l'hex #${tp.toHex}`}>{MechIcon&&<MechIcon size={24} color="#c9a84c"/>}</span>
+                          <span title={`Embarqué vers l'hex #${tp.toHex}`}>
+                            {tp.unitType==="mech"?(MechIcon&&<MechIcon size={24} color="#c9a84c"/>)
+                              :tp.unitType==="hero"?<span style={{fontSize:22,color:"#c9a84c"}}>★</span>
+                              :(WorkerIcon&&<WorkerIcon size={22} color="#c9a84c"/>)}
+                          </span>
                           <span style={{fontSize:11,color:"var(--text-muted)",fontFamily:"var(--font-mono)"}}>#{tp.toHex}</span>
                           <button style={bigSq} title="Tout embarquer"
                             onClick={()=>setTransportPick(t=>({...t,workers:t.workersMax,res:{...t.resMax}}))}>≫</button>
@@ -5013,7 +4997,7 @@ export default function App(){
                 return <button onClick={()=>{setTransportPick(null);endHumanTurn(colIdx);}} className="act-btn"
                   style={{marginTop:8,width:"100%",fontWeight:600,...(moved>0?{background:"#3a6a3a",color:"#fff",border:"none"}:{opacity:0.85})}}>{label}</button>;
               })()}
-              {!(selAction==="Factory"&&factoryFlow)&&<button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setUnitPicker(null);setTransportPick(null);setRouteDrop(null);setPreActionSnapshot(null);setTradePicks([]);setFactoryFlow(null);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>}
+              {!(selAction==="Factory"&&factoryFlow)&&<button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setTransportPick(null);setRouteDrop(null);setPreActionSnapshot(null);setTradePicks([]);setFactoryFlow(null);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>}
             </div>
           )}
 
@@ -5035,7 +5019,7 @@ export default function App(){
                 </div>}
                 {moved>=1
                   ?<button onClick={()=>finishFactoryMove(moved)} className="act-btn" style={{width:"100%",fontWeight:700,background:"#3a6a3a",color:"#fff",border:"none"}}>✓ Terminer le déplacement d'usine</button>
-                  :<button onClick={()=>{setMoveSource(null);setUnitPicker(null);setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:undefined,movedUnits:[]};return n;});requestEndTurn();}} className="act-btn" style={{width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)"}}>Passer →</button>}
+                  :<button onClick={()=>{setMoveSource(null);setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:undefined,movedUnits:[]};return n;});requestEndTurn();}} className="act-btn" style={{width:"100%",background:"var(--bg)",textAlign:"center",color:"var(--text-muted)"}}>Passer →</button>}
               </div>
             );
           })()}
