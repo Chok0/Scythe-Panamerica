@@ -18,26 +18,33 @@ const POSITION_ABILITIES = {
   bayou: { name: "Pirogue", desc: "Bond de marécage en marécage", icon: "≋" },
   // Pas encore de capacité de position spécifique au Dominion (aucun effet codé)
   dominion: { name: "Position", desc: "Aucun effet spécifique pour l'instant", icon: "📍" },
-  internationale: { name: "Tunnels", desc: "Bond d'un point d'ancrage du réseau à un autre (#3, #20, #25, #40)", icon: "🕳" },
 };
 
-// Le slot 1 de l'Internationale Noire est LIBRE : La Nage (capacité de
-// faction) franchit déjà toutes les rivières. Il porte donc les Passeurs —
-// la seule capacité du jeu qui accélère les ouvriers, réponse directe au
-// frein structurel de la faction (le regroupement lent et visible).
-const SLOT1_OVERRIDE = {
-  internationale: { name: "Passeurs", desc: "Vos OUVRIERS se déplacent de 2 hex", icon: "🚶" },
-};
-
-export const getMechAbilities = (factionId) => {
+// Une faction qui ne déploie pas (Internationale Noire) n'a PAS de capacités
+// en propre : « les 4 slots classiques n'ont plus de sens — ils sont remplacés
+// par les capacités volées » (internationale_noire.md §7). Ses slots affichent
+// donc ce qu'elle a arraché à ses victimes ; le slot 1 (riverwalk) reste vide,
+// La Nage franchissant déjà toutes les rivières.
+// `player` (facultatif) porte la provenance des vols : `stolenCombat` et
+// `stolenPosition`.
+export const getMechAbilities = (factionId, player) => {
   const f = FACTIONS[factionId] || {};
-  const combat = COMBAT_ABILITIES[factionId];
+  const steals = !!f.stealMechs;
+  const combatFrom = steals ? (player?.stolenCombat || null) : factionId;
+  const posFrom = steals ? (player?.stolenPosition || null) : factionId;
+  const combat = combatFrom ? COMBAT_ABILITIES[combatFrom] : null;
   const rwTerrains = (f.riverwalk || []).map(t => TERRAINS[t]?.label || t).join(" & ");
+  const volé = (from, base) => from && from !== factionId
+    ? { ...base, name: `${base.name} (volé)`, desc: `${base.desc} — arraché à ${FACTIONS[from]?.name || "l'Empire"}` }
+    : base;
   return [
     { name: "Vitesse", desc: "Déplacement +1 hex", icon: "🏃" },
-    SLOT1_OVERRIDE[factionId] ||
-      { name: f.rwName || "Riverwalk", desc: `Traverse les rivières vers ${rwTerrains || "certains terrains"}`, icon: "🌊" },
-    combat ? { name: combat.name, desc: combat.desc, icon: "⚔" } : { name: "Combat", desc: "Bonus de combat", icon: "⚔" },
-    POSITION_ABILITIES[factionId] || { name: "Position", desc: "Capacité de positionnement", icon: "📍" },
+    steals
+      ? { name: "—", desc: "Slot libre : La Nage franchit déjà toutes les rivières", icon: "🌊" }
+      : { name: f.rwName || "Riverwalk", desc: `Traverse les rivières vers ${rwTerrains || "certains terrains"}`, icon: "🌊" },
+    combat ? volé(combatFrom, { name: combat.name, desc: combat.desc, icon: "⚔" })
+      : { name: steals ? "Capacité à voler" : "Combat", desc: steals ? "Battez un mecha adverse pour lui arracher sa capacité de combat" : "Bonus de combat", icon: "⚔" },
+    posFrom && POSITION_ABILITIES[posFrom] ? volé(posFrom, POSITION_ABILITIES[posFrom])
+      : { name: steals ? "Capacité à voler" : "Position", desc: steals ? "Battez un mecha adverse pour lui arracher sa capacité de position" : "Capacité de positionnement", icon: "📍" },
   ];
 };

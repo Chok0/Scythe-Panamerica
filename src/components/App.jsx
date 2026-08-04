@@ -1186,8 +1186,11 @@ export default function App(){
     });
     addLog(`⬡ ${me.factoryCard?.name||"Usine"}: Mecha gratuit déployé sur #${hexId}`);
     if(me.mechs.length+1>=4)addLog(`⭐ 4 Mechas déployés !`);
+    // Une faction qui ne déploie pas n'a pas de capacités en propre à
+    // débloquer : les siennes s'arrachent en combat (fiche §7).
+    if(FACTIONS[me.faction]?.stealMechs){continueFactoryQueue();return;}
     setPendingAbility({source:"factory"}); // la reprise (confirmAbility) continue la file
-  },[me,addLog,pendingAbility]);
+  },[me,addLog,pendingAbility,continueFactoryQueue]);
 
   // Gain « 1 Bâtiment (hex ouvrier) » : pose gratuite (Gare → pose de rails,
   // la file reprend à la fin de la pose)
@@ -1287,7 +1290,9 @@ export default function App(){
   // Nations "Esprit Sauvage": can deploy with metal OR bois
   // Capacités de mecha SPÉCIFIQUES à la faction du joueur (noms + descriptions
   // depuis data/mechAbilities.js — les mécaniques sont dans movement/combat)
-  const myMechAbilities=getMechAbilities(me?.faction);
+  // Pour une faction qui vole ses mechas, les slots affichent ce qu'elle a
+  // arraché (provenance dans `stolenCombat`/`stolenPosition`).
+  const myMechAbilities=getMechAbilities(me?.faction,me);
 
   // ── VOL DE MECHA (Internationale Noire) ────────────────────────────────
   // « Son arsenal est un patchwork volé. » Battre un mecha adverse — ou une
@@ -2734,7 +2739,7 @@ export default function App(){
     // a déjà payé son coût (mecha/bâtiment/recrue via l'effet), on ouvre le
     // picker correspondant ; le tour reprend une fois le choix fait. Les gardes
     // `available` garantissent qu'un placement/enrôlement valide existe.
-    if(choice.grantsMech&&mechsBefore<4){
+    if(choice.grantsMech&&mechsBefore<4&&!FACTIONS[me.faction]?.stealMechs){
       setPendingAbility({source:"encounter"});
       return; // don't end turn yet — ability picker will handle it
     }

@@ -45,14 +45,6 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) 
   // du roster joue toujours la sienne.
   const pf = player?.stolenPosition || factionId;
   if (hasPosition) {
-    // Tunnels (Internationale Noire) : le réseau clandestin relie ses quatre
-    // points d'ancrage — c'est l'équivalent du bond marais↔marais du Bayou,
-    // sur des hex fixes au lieu d'un terrain.
-    if (factionId === "internationale") {
-      const anchors = FACTIONS.internationale?.anchors || [];
-      if (anchors.includes(fromId))
-        anchors.forEach(a => { if (a !== fromId && !cands.includes(a)) cands.push(a); });
-    }
     if (pf === "bayou" && from.t === "marecage")
       HEXES.forEach(h => { if (h.t === "marecage" && h.id !== fromId && !cands.includes(h.id)) cands.push(h.id); });
     if (pf === "frente" && from.t === "sierra")
@@ -90,7 +82,8 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) 
       if (to.t === "factory") return true;
       // La Nage (Internationale Noire) : capacité de FACTION, active dès le
       // tour 1, ouvriers compris — toutes les rivières, sans condition de
-      // terrain. Elle REMPLACE le riverwalk (le slot 1 sert aux Passeurs).
+      // terrain. Elle REMPLACE le riverwalk : le slot 1 reste vide, et les
+      // capacités de la faction sont celles qu'elle VOLE (fiche §6-§7).
       if (f.swim) return true;
       if (hasRiverwalk) return f.riverwalk.includes(to.t);
       return false;
@@ -122,14 +115,8 @@ export const getValidMoves = (fromId, factionId, abilities, player, rails, unitT
   // Vitesse (slot 0) ne concerne que le héros et les mechas (règle Scythe) :
   // un ouvrier reste à 1 pas. Constaté en partie (28/07) : un ouvrier sur
   // rail enchaînait réseau + 1 pas de sortie grâce à la Vitesse du joueur.
-  const abil = abilities || [];
-  const hasSpeed = unitType !== "worker" && abil.includes(0);
-  // Passeurs (Internationale Noire, slot 1 — le riverwalk est libéré par La
-  // Nage) : la seule capacité du jeu qui accélère les OUVRIERS. C'est la
-  // réponse au frein structurel de la faction, dont toute la puissance vient
-  // d'un regroupement lent et visible.
-  const hasPasseurs = unitType === "worker" && factionId === "internationale" && abil.includes(1);
-  const steps = (hasSpeed || hasPasseurs ? 2 : 1) + bonusSteps;
+  const hasSpeed = unitType !== "worker" && abilities && abilities.includes(0);
+  const steps = (hasSpeed ? 2 : 1) + bonusSteps;
 
   const all = new Set();
   let frontier = [fromId];

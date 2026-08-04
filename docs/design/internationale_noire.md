@@ -30,15 +30,21 @@
 >   Ce sont des hex de terrain normaux, praticables par les six autres
 >   factions : les marquer `base` aurait interdit #3/#20/#25/#40 à tout le
 >   monde et cassé la carte. Ils servent uniquement de portes de réentrée.
-> - **Le slot 1, libéré par La Nage, porte les « Passeurs »** (ouvriers à
->   2 pas) au lieu de rester vide — c'est la réponse directe au frein
->   structurel décrit au §5 (le regroupement lent), et la seule capacité du
->   jeu qui accélère des ouvriers.
-> - **Le slot 3 porte les « Tunnels »** : bond d'un ancrage à l'autre.
 > - **Vol de capacité** : le mecha capturé apporte la capacité de combat ou de
 >   position de SA faction (`stolenCombat` / `stolenPosition`), Vitesse restant
 >   commune. Un nouveau vol remplace le précédent — le patchwork se refait.
 >   Le riverwalk volé n'est jamais proposé : La Nage le rend inutile.
+>
+> **Correctif du 04/08 — deux capacités inventées, retirées.** Une première
+> passe avait meublé les slots libres avec des capacités MAISON (« Passeurs »,
+> ouvriers à 2 pas, et « Tunnels », bond d'ancrage en ancrage). Le §7 dit
+> l'inverse : les quatre slots classiques « n'ont plus de sens pour une faction
+> qui ne déploie pas — ils sont remplacés par les capacités volées ». Pire,
+> « Passeurs » annulait le premier des quatre freins du §5 (le regroupement
+> d'ouvriers est LENT, et c'est ce qui rend le pic de 9 cartes acceptable).
+> Les deux sont supprimées : les slots 1 à 3 n'affichent plus que ce que la
+> faction a arraché, et un mecha gratuit (rencontre, carte d'usine) ne débloque
+> plus rien pour elle.
 
 ## 1. Le principe
 

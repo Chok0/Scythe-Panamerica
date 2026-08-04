@@ -529,9 +529,10 @@ actif dès le lancement du chapitre, sans effet en partie libre.
   implémentée : `data/factions.js` (sans héros, ancrages #3/#20/#25/#40, La
   Nage, ouvriers combattants, vol de mecha ×4), plateau dédié « Le Réseau »
   (`MATS_CAMPAIGN`, id 200), réserve hors-plateau et réentrée près d'un
-  ancrage (`logic/player.js`), capacités volées (`stolenCombat`/
-  `stolenPosition`). Elle reste hors de la rotation standard : `FACTION_IDS`
-  l'exclut, aucun bot ne peut la tirer.
+  ancrage (`logic/player.js`). Elle n'a **aucune capacité de mecha en
+  propre** : ses slots ne portent que ce qu'elle arrache en combat
+  (`stolenCombat`/`stolenPosition`). Elle reste hors de la rotation
+  standard : `FACTION_IDS` l'exclut, aucun bot ne peut la tirer.
 - **Legs uniquement sur la voie canon.** Terminer un chapitre aux 6 étoiles le
   valide et ouvre le suivant, mais ne donne pas la récompense de Tesla — la
   voie narrative reste la seule à payer.

@@ -218,9 +218,10 @@ export const FACTIONS = {
     campaignOnly: true,
     // Le plateau joueur est imposé (pas de tirage) : « Le Réseau », id 200.
     fixedMat: 200,
-    // La Nage REMPLACE le riverwalk (le slot 1 de mecha est libéré, voir
-    // mechAbilities.js) : toutes les unités, ouvriers compris, traversent
-    // toutes les rivières dès le tour 1.
+    // La Nage REMPLACE le riverwalk : toutes les unités, ouvriers compris,
+    // traversent toutes les rivières dès le tour 1. Le slot 1 de mecha reste
+    // VIDE — cette faction n'a aucune capacité en propre, seulement celles
+    // qu'elle vole (fiche §7, correctif du 04/08).
     riverwalk: null, rwName: null, swim: true,
     // Ouvriers combattants : chaque ouvrier présent autorise une carte de
     // combat de plus (voir combatUnitCount, data/combat.js). C'est le pic de

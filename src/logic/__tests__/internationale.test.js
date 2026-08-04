@@ -71,29 +71,33 @@ describe('La Nage — toutes les rivières, dès le tour 1, ouvriers compris', (
   });
 });
 
-describe('capacités du réseau (slots de mecha)', () => {
-  it('le slot 1 porte les Passeurs, pas un riverwalk (La Nage le remplace)', () => {
-    const abil = getMechAbilities(IN);
-    expect(abil[1].name).toBe('Passeurs');
-    expect(abil[3].name).toBe('Tunnels');
+describe('capacités : aucune en propre, uniquement les volées (fiche §7)', () => {
+  it('les quatre slots sont vides au départ — rien à débloquer sans un vol', () => {
+    const abil = getMechAbilities(IN, mk());
+    expect(abil[0].name).toBe('Vitesse');            // commune à tout le roster
+    expect(abil[1].name).toBe('—');                  // libéré par La Nage
+    expect(abil[2].name).toBe('Capacité à voler');
+    expect(abil[3].name).toBe('Capacité à voler');
     expect(FACTIONS[IN].riverwalk).toBeNull();
   });
 
-  it('Passeurs : les OUVRIERS passent à 2 pas (seule capacité du jeu à le faire)', () => {
+  it('après un vol, les slots affichent la capacité ARRACHÉE et sa provenance', () => {
     const p = mk();
-    const sans = getValidMoves(20, IN, [], p, [], 'worker', new Set()).length;
-    const avec = getValidMoves(20, IN, [1], p, [], 'worker', new Set()).length;
-    expect(avec).toBeGreaterThan(sans);
-    // La Vitesse, elle, continue de n'affecter que héros et mechas
-    expect(getValidMoves(20, IN, [0], p, [], 'worker', new Set()).length).toBe(sans);
+    p.stolenCombat = 'dominion'; p.stolenPosition = 'bayou';
+    const abil = getMechAbilities(IN, p);
+    expect(abil[2].name).toBe('Discipline (volé)');
+    expect(abil[3].name).toBe('Pirogue (volé)');
+    expect(abil[3].desc).toMatch(/Bayou/);
   });
 
-  it('Tunnels : bond d\'un ancrage à l\'autre, jamais depuis ailleurs', () => {
+  it('aucune capacité maison ne se glisse dans le mouvement', () => {
     const p = mk();
-    const fromAnchor = getValidMoves1Step(3, IN, [3], p, []);
-    expect(fromAnchor).toEqual(expect.arrayContaining([20, 25, 40]));
-    // #7 n'est pas un ancrage : aucun bond
-    expect(getValidMoves1Step(7, IN, [3], p, [])).not.toContain(20);
+    // Le slot 1 ne fait rien : un ouvrier reste à 1 pas quoi qu'on débloque
+    const base = getValidMoves(20, IN, [], p, [], 'worker', new Set()).length;
+    [[0], [1], [0, 1, 2, 3]].forEach(ab =>
+      expect(getValidMoves(20, IN, ab, p, [], 'worker', new Set()).length).toBe(base));
+    // Le slot 3 sans vol n'ouvre aucun bond entre ancrages
+    expect(getValidMoves1Step(3, IN, [3], p, [])).not.toContain(20);
   });
 });
 
