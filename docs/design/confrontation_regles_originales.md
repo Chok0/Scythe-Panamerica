@@ -23,9 +23,9 @@ Les **écarts** sont numérotés E1…En et repris en §3.
 | « Si votre personnage et/ou mech pénètre sur un territoire contrôlé par des **ouvriers adverses** (et aucune autre unité), leur déplacement s'achève […] chaque ouvrier bat en retraite sur sa base, **laissant sur place les éventuelles ressources**. Vous perdez 1 Popularité par ouvrier chassé. » | Déplacement des ouvriers + perte de popularité ✔ ; les ressources restent sur l'hex ✔ ; l'arrêt du déplacement est assuré par `blockedHexes` (un hex ennemi ne réalimente pas la frontière) ✔. | ✅ conforme |
 | « Vos ouvriers ne peuvent pas se déplacer d'eux-mêmes sur des territoires contrôlés par des ouvriers adverses / par un personnage ou des mechs adverses. » | `validMoves` filtre `enemyOccupiedHexes` pour `unitType === "worker"`. | ✅ conforme |
 | « N'importe quelle unité peut pénétrer dans un territoire seulement contrôlé par un **bâtiment**. Le joueur contrôlant l'unité contrôle désormais le territoire. » | Les bâtiments ne bloquent rien (ils ne sont pas dans `enemyOccupiedHexes`) et `heldHexes` retire le contrôle au propriétaire du bâtiment dès qu'une unité adverse est là. | ✅ conforme |
-| « Si votre personnage et/ou mech pénètre dans un territoire contrôlé par un personnage/mech adverse, le déplacement s'achève. […] Une fois **toutes** vos actions Déplacement effectuées, si vous partagez un territoire avec l'adversaire, un combat a lieu. » | Le combat se déclenche **immédiatement** à l'entrée, pas à la fin de l'action. | **E2 — écart assumé** |
+| « Si votre personnage et/ou mech pénètre dans un territoire contrôlé par un personnage/mech adverse, le déplacement s'achève. […] Une fois **toutes** vos actions Déplacement effectuées, si vous partagez un territoire avec l'adversaire, un combat a lieu. » | L'unité entre, son déplacement s'achève, et le combat est mis en FILE — résolu à la clôture de l'action Déplacement. | **E2 — corrigé le 04/08** |
 | « Vous ne pouvez pas utiliser l'action Déplacement pour déplacer des unités sur une base principale (même la vôtre). » | Les hex de base sont exclus des destinations (correctif du 01/08). | ✅ conforme |
-| « **RENCONTRES** : si vous déplacez votre personnage sur un territoire où se trouve un jeton Rencontre, **son déplacement s'achève** […] après avoir résolu tous les combats du tour, si le personnage s'y trouve toujours, résolvez la rencontre. » | La rencontre se résout **tout de suite** à l'arrivée, et n'interrompt pas formellement le déplacement. | **E3 — écart assumé** |
+| « **RENCONTRES** : si vous déplacez votre personnage sur un territoire où se trouve un jeton Rencontre, **son déplacement s'achève** […] après avoir résolu tous les combats du tour, si le personnage s'y trouve toujours, résolvez la rencontre. » | Le jeton arrête l'unité et la rencontre part en file, vidée APRÈS les combats ; si le personnage n'y est plus (combat perdu), la rencontre est manquée et le jeton reste. | **E3 — corrigé le 04/08** |
 | « **TUNNELS** : tous les territoires à icône tunnel sont considérés adjacents. » | Remplacés par le **réseau de rails**, construit en jeu (Gare) au lieu d'être imprimé sur la carte. | ⚙ substitution Panamerica, documentée |
 | « Il n'y a pas de limitation au nombre d'unités d'une même faction sur un même territoire. » | Aucune limite. | ✅ conforme |
 
@@ -34,14 +34,14 @@ Les **écarts** sont numérotés E1…En et repris en §3.
 | Règle originale | Notre système | Verdict |
 |---|---|---|
 | « Vous contrôlez un territoire si au moins une de vos unités y est présente **OU** si un de vos bâtiments s'y trouve seul sans aucun personnage, ouvrier ou mech adverse. Le contrôle ne revient qu'à un seul joueur. » | `heldHexes(p, ctx)` — unités, plus bâtiments et pièges armés non contestés (correctif du 03/08). Extension maison : les patrouilles impériales contestent aussi, l'Empire n'existant pas dans le jeu original. | ✅ conforme (+ extension assumée) |
-| « **Vous ne pouvez dépenser que les ressources présentes sur les territoires que vous contrôlez.** » | `countRes`/`spendRes` comptent et dépensent sur **tous** les hex où le joueur a des ressources, contrôlés ou non. | **E4 — écart réel, non corrigé** |
+| « **Vous ne pouvez dépenser que les ressources présentes sur les territoires que vous contrôlez.** » | `countRes`/`spendRes` filtrent par `heldHexes` ; ce qui traîne ailleurs s'affiche à part (`strandedRes`) et n'est ni dépensable ni comptabilisé. | **E4 — corrigé le 04/08** |
 | « Vous pouvez dépenser des ressources de n'importe quel territoire que vous contrôlez pour une action ayant lieu sur n'importe quel territoire. » | Aucune contrainte de proximité. | ✅ conforme |
 | « Pour le décompte des territoires, vous contrôlez un territoire **et toutes les ressources présentes dessus** si vous y avez une unité, ou un bâtiment sans unité adverse. » | Le score ne compte que les ressources sur les hex tenus (même fonction `heldHexes`). | ✅ conforme |
 | « Ne décomptez que chaque **paire** de pions Ressource. » | `resPairs = floor(total / 2)`. | ✅ conforme |
 
 ---
 
-## 3. Les quatre écarts
+## 3. Les quatre écarts — tous corrigés le 4 août
 
 ### E1 — Prendre et déposer librement ✅ corrigé le 04/08
 
@@ -68,42 +68,45 @@ conformément à la règle.
 qu'on l'ait cherché — chaque étape rouvre le panneau de transport sur l'hex
 courant. L'écart ne concernait donc que les sauts directs de 2 hex.
 
-### E2 — Combat immédiat au lieu de « après tous les déplacements »
+### E2 — Combats résolus à la fin de l'action ✅ corrigé le 04/08
 
-Le jeu original résout les combats **à la fin** de l'action Déplacement : on
-peut donc amener deux mechs sur le même hex ennemi et livrer **une** bataille
-à deux unités. Chez nous, le premier mech qui entre déclenche le combat sur
-le champ, et le second ne peut plus le rejoindre.
+Le jeu original résout les combats **une fois toutes les actions Déplacement
+effectuées**. On les déclenchait à l'entrée : le premier mech qui touchait
+l'hex ouvrait la bataille, et aucun renfort ne pouvait le rejoindre — donc
+jamais d'assaut groupé, et un plafond de cartes de combat mécaniquement plus
+bas que prévu (1 par unité présente, or il n'y en avait jamais qu'une).
 
-Conséquence : les assauts groupés sont impossibles, et le plafond de cartes de
-combat (1 par unité présente) est mécaniquement plus bas qu'il ne devrait
-l'être. C'est un vrai appauvrissement tactique — mais le corriger demande de
-mettre les combats en file d'attente jusqu'à la fin de l'action, avec toute
-la gestion d'annulation qui va avec. **À arbitrer**, pas anodin.
+**Correctif** : l'unité entre pour de bon (avec son chargement), son
+déplacement s'achève, et l'hex part dans une file. À la clôture de l'action
+Déplacement, la file se vide combat par combat. Conséquences directes :
 
-### E3 — Rencontre résolue à l'arrivée
+- deux mechas peuvent converger sur la même cible et livrer **une** bataille
+  à deux unités — vérifié en jeu : la modale annonce alors « Cartes engagées
+  (0/**2**) » là où l'ancien flux n'en autorisait qu'une ;
+- la défaite renvoie **toutes** vos unités de l'hex, comme le dit la règle,
+  au lieu de la seule unité attaquante ;
+- le déplacement qui ouvre un contact est logué, et le comptage des unités
+  déplacées n'est plus dupliqué entre le mouvement et la résolution.
 
-La règle veut que le jeton arrête le personnage et que la rencontre se résolve
-**après les combats du tour**. Chez nous, elle s'ouvre immédiatement et le
-déplacement peut se poursuivre. Sans conséquence mesurable en solo contre des
-bots ; à revoir si les combats passent en file (E2), les deux règles étant
-liées.
+Un filet garde la cohérence : on ne peut pas valider sa fin de tour en
+laissant un contact non résolu — la file passe d'abord.
 
-### E4 — Dépenser des ressources qu'on ne contrôle plus
+### E3 — Rencontre après les combats ✅ corrigé le 04/08
 
-`countRes` ratisse tout le tableau `resources` du joueur, sans regarder qui
-tient l'hex. Un joueur chassé d'un territoire continue donc de **dépenser** le
-bois qu'il y a laissé, alors que ce même bois ne lui rapportera **aucun
-point** au décompte final. Le jeu se contredit lui-même d'un bout à l'autre de
-la partie.
+Le jeton arrête l'unité et la rencontre est mise en file derrière les
+combats. Si le personnage n'est plus sur l'hex au moment de la résoudre
+(combat perdu entre-temps), la rencontre est **manquée** et le jeton reste
+sur la carte — c'est exactement ce que dit la règle.
 
-Correctif possible en une ligne conceptuelle (filtrer `countRes`/`spendRes`
-par `heldHexes`), mais il touche **tous** les points de dépense — actions du
-bas, cartes d'usine, bots, moteur headless — et durcit sensiblement le jeu :
-un raid réussi ne prive plus seulement l'adversaire de points, il gèle aussi
-ses ressources. **À arbitrer et à mesurer** avant de le poser.
+### E4 — Dépenser des ressources qu'on ne contrôle plus ✅ corrigé le 04/08
 
----
+`countRes`/`spendRes` filtrent désormais par `heldHexes` — la même définition
+que le décompte final. Ce qui traîne hors de vos territoires reste sur le
+plateau, visible dans le bandeau en rouille (`+N ⚠`), inutilisable et
+invisible au score : c'est la tension voulue, un ouvrier seul assis sur dix
+pétrole est une aubaine pour quiconque passe par là. Le pillage — déjà
+implémenté sur la chasse aux ouvriers et la victoire en combat — prend enfin
+ce qu'il promet.
 
 ## 4. Ce que l'audit ne couvre pas
 

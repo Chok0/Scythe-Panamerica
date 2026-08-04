@@ -149,6 +149,13 @@ export default function App(){
   const[moveSource,setMoveSource]=useState(null);
   // Transport partiel (mech) : choix des ouvriers/ressources à emporter avant le déplacement
   const[transportPick,setTransportPick]=useState(null);
+  // ── File de fin d'action Déplacement (v0.18, règles originales) ─────────
+  // Les combats se résolvent « une fois TOUTES vos actions Déplacement
+  // effectuées », et les rencontres APRÈS les combats — d'où deux files
+  // vidées dans cet ordre avant de passer à l'action du bas.
+  const[pendingCombats,setPendingCombats]=useState([]);   // [hexId]
+  const[pendingEncs,setPendingEncs]=useState([]);         // [hexId]
+  const[afterMoveCol,setAfterMoveCol]=useState(null);     // colonne dont le bas attend la fin de la file
 
   const[routeDrop,setRouteDrop]=useState(null); // 📦 dépose en route: {mids,destHex,endAfter}
   const[preActionSnapshot,setPreActionSnapshot]=useState(null); // snapshot of player[0] before action, for undo
@@ -1044,15 +1051,79 @@ export default function App(){
     if((myMat?.topRow||[])[col]==="Move"&&moved>0)addLog(`✅ Mouvement terminé (${moved}/${moveLimit})`);
     setPlayers(prev=>{const n=[...prev];n[0]={...n[0],lastCol:col,movesLeft:undefined,movedUnits:[],packUpUsed:false};return n;});
     setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);setTradePicks([]);setRouteDrop(null);
-    // Show bottom-row option
+    // Combats puis rencontres en attente : ils passent AVANT l'action du bas
+    // (règle du jeu original). L'effet `useEffect` de la file s'en charge et
+    // ouvrira le bas quand tout sera résolu.
+    if(pendingCombats.length>0||pendingEncs.length>0){setAfterMoveCol(col);setBottomPick(null);return;}
     const bottomAction=BOTTOM[col];
     setPendingBottom({col,action:bottomAction});
     setBottomPick(null);
-  },[me,myMat,moveLimit,addLog]);
+  },[me,myMat,moveLimit,addLog,pendingCombats,pendingEncs]);
+
+  // ── Vidage de la file de fin de déplacement ────────────────────────────
+  // Ordre imposé par les règles : TOUS les combats, PUIS les rencontres (« si
+  // votre personnage s'y trouve toujours »), PUIS l'action du bas.
+  const openQueuedCombat=useCallback((hexId)=>{
+    const empireOnHex=Object.entries(empire).filter(([_,hid])=>hid===hexId);
+    if(empireOnHex.length>0){
+      // Patrouilles empilées : une carte par patrouille, forces cumulées
+      const cards=empireOnHex.map(()=>drawEmpireCombat());
+      const card={name:cards.map(c=>c.name).join(" + "),power:cards.reduce((a,c)=>a+c.power,0)};
+      setCombat({type:"pve",hexId,empireId:empireOnHex[0][0],empireIds:empireOnHex.map(([id])=>id),
+        empireCard:card,phase:"choose",powerSpend:0,cardsSpend:0,postMove:true});
+      addLog(`⚔ Combat Empire sur #${hexId} ! ${cards.length>1?`${cards.length} patrouilles liguées`:"Patrouille impériale"} — force entre ${empirePowerRange(cards.length)}`);
+      return true;
+    }
+    const pi=players.findIndex((ep,i)=>i>0&&(ep.hero===hexId||ep.mechs.some(m=>m.hexId===hexId)));
+    if(pi>0){
+      setCombat({type:"pvp",hexId,enemyIdx:pi,phase:"choose",powerSpend:0,cardsSpend:0,postMove:true});
+      addLog(`⚔ Combat sur #${hexId} vs ${FACTIONS[players[pi].faction].name} !`);
+      return true;
+    }
+    return false; // l'adversaire a disparu entre-temps (autre combat résolu)
+  },[empire,players,addLog]);
+
+  const openQueuedEncounter=useCallback((hexId)=>{
+    // « …si votre personnage se trouve TOUJOURS sur ce territoire » : un
+    // combat perdu entre-temps annule la rencontre, et le jeton reste.
+    const p0=players[0];if(!p0)return false;
+    const stillThere=p0.hero===hexId
+      ||(FACTIONS[p0.faction]?.noHero&&(p0.workers.some(w=>w.hexId===hexId)||p0.mechs.some(m=>m.hexId===hexId)));
+    if(!stillThere||!encounterTokens.has(hexId)){
+      addLog(`📜 Rencontre de #${hexId} manquée — vous n'y êtes plus`);
+      return false;
+    }
+    const card=drawEncounterCard();
+    setEncounterTokens(prev=>{const st=new Set(prev);st.delete(hexId);return st;});
+    setEncounter({card,hexId});
+    addLog(`📜 Rencontre: "${card.name}"`);
+    return true;
+  },[players,encounterTokens,addLog]);
+
+  useEffect(()=>{
+    if(afterMoveCol==null||combat||encounter||combatReveal)return;
+    if(pendingCombats.length>0){
+      const [hexId,...rest]=pendingCombats;
+      setPendingCombats(rest);
+      openQueuedCombat(hexId);
+      return;
+    }
+    if(pendingEncs.length>0){
+      const [hexId,...rest]=pendingEncs;
+      setPendingEncs(rest);
+      openQueuedEncounter(hexId);
+      return;
+    }
+    const col=afterMoveCol;setAfterMoveCol(null);
+    // col < 0 : vidage seul (file rattrapée à la validation de fin de tour),
+    // sans rouvrir une action du bas déjà jouée.
+    if(col>=0){setPendingBottom({col,action:BOTTOM[col]});setBottomPick(null);}
+  },[afterMoveCol,combat,encounter,combatReveal,pendingCombats,pendingEncs,openQueuedCombat,openQueuedEncounter]);
 
   // Actually finish and pass to bots
   const actuallyEndTurn=useCallback(()=>{
     setPendingBottom(null);setBottomPick(null);setEndOfTurn(false);
+    setPendingCombats([]);setPendingEncs([]);setAfterMoveCol(null);
     // On ne peut pas annuler par-delà le tour des bots (tirages aléatoires) :
     // les piles sont vidées au passage à l'IA.
     setUndoStack([]);setRedoStack([]);
@@ -1065,9 +1136,17 @@ export default function App(){
   // termine le tour au passage. Le joueur garde aussi une dernière fenêtre
   // pour Commerce/Import Impérial avant de valider.
   const requestEndTurn=useCallback(()=>{
+    // Filet : on ne quitte pas son tour en laissant un contact non résolu
+    // (« une fois toutes vos actions Déplacement effectuées, un combat a
+    // lieu ») — la file passe d'abord, sans rouvrir l'action du bas.
+    if(pendingCombats.length>0||pendingEncs.length>0){
+      addLog(`⚔ Contacts en attente — ils se résolvent avant la fin du tour`);
+      setPendingBottom(null);setBottomPick(null);setAfterMoveCol(-1);
+      return;
+    }
     setPendingBottom(null);setBottomPick(null);
     setEndOfTurn(true);
-  },[]);
+  },[pendingCombats,pendingEncs,addLog]);
 
   // Wrapper: apply enlist ongoing bonuses then end turn
   const finishBottom=useCallback((bottomCol)=>{
@@ -1581,7 +1660,7 @@ export default function App(){
   // par-dessus des tirages aléatoires de l'IA). Les objets porteurs de
   // fonctions (objectifs) sont conservés par référence lors du clonage.
   const gameRef=useRef({});
-  gameRef.current={players,empire,rails,empireRails,encounterTokens,factoryOffer,teslaOffer,selAction,preActionSnapshot};
+  gameRef.current={players,empire,rails,empireRails,encounterTokens,factoryOffer,teslaOffer,selAction,preActionSnapshot,pendingCombats,pendingEncs};
   const cloneVal=useCallback((v)=>{
     if(Array.isArray(v))return v.map(cloneVal);
     if(v&&typeof v==="object"){
@@ -1596,13 +1675,17 @@ export default function App(){
       // Contexte d'action : un undo de sous-coup (déplacement 2/2 → 1/2) doit
       // rester DANS l'action en cours — sinon on peut garder le 1er déplacement
       // et enchaîner une autre action top (Move gratuit + Produce).
-      selAction:g.selAction,preActionSnapshot:g.preActionSnapshot};
+      selAction:g.selAction,preActionSnapshot:g.preActionSnapshot,
+      // Contacts en attente : annuler un déplacement doit aussi annuler le
+      // combat qu'il avait mis en file.
+      pendingCombats:[...(g.pendingCombats||[])],pendingEncs:[...(g.pendingEncs||[])]};
   },[cloneVal]);
   const restoreGame=useCallback((snap)=>{
     setPlayers(snap.players.map(cloneVal));
     setEmpire({...snap.empire});
     setRails(snap.rails.map(r=>[...r]));
     setEmpireRails((snap.empireRails||[]).map(r=>[...r]));
+    setPendingCombats([...(snap.pendingCombats||[])]);setPendingEncs([...(snap.pendingEncs||[])]);setAfterMoveCol(null);
     setEncounterTokens(new Set(snap.encounterTokens));
     setFactoryOffer([...(snap.factoryOffer||[])]);setTeslaOffer([...(snap.teslaOffer||[])]);
     // annule tout état transitoire d'action en cours — mais restaure le
@@ -1966,49 +2049,21 @@ export default function App(){
       // panneau a déjà poussé ce snapshot (sinon chaque déplacement de mech
       // chargé compterait double dans la pile d'annulation).
       if(!transportOverride?.transport)pushHistory();
-      // Check for combat triggers before actually moving
+      // ── COMBATS : mis en FILE, résolus après TOUS les déplacements ─────
+      // Règle du jeu original : « si votre personnage et/ou mech pénètre dans
+      // un territoire contrôlé par un personnage et/ou mech adverse, le
+      // déplacement s'achève. […] Une FOIS TOUTES VOS ACTIONS DÉPLACEMENT
+      // EFFECTUÉES, si vous partagez un territoire avec l'adversaire, un
+      // combat a lieu. » L'unité entre donc pour de bon, et deux mechas
+      // peuvent converger sur la même cible pour livrer UNE bataille à deux —
+      // ce que l'ancien déclenchement immédiat rendait impossible.
       const movingCombatUnit=moveSource.unitType==="hero"||moveSource.unitType==="mech";
-      // Le déplacement qui DÉCLENCHE un combat n'était jamais logué (sortie
-      // anticipée vers la modale) : au journal du 03/08, une seule unité
-      // visible puis « Mouvement terminé (2/2) ». On le loge maintenant.
-      const attackLog=()=>addLog(`🚶 ${moveSource.unitType==="hero"?myFaction.hero:moveSource.unitId} → #${hexId} ⚔`);
-      
-      // Check PvE: Empire mecha on target hex
       const empireOnHex=Object.entries(empire).filter(([_,hid])=>hid===hexId);
-      if(movingCombatUnit&&empireOnHex.length>0){
-        // Patrouilles EMPILÉES : une carte par patrouille, forces cumulées, et
-        // toutes détruites en cas de victoire. Avant, seule `[0]` était
-        // combattue — constaté en partie réelle (01/08) : deux mechas sur
-        // l'hex, un seul affronté.
-        const cards=empireOnHex.map(()=>drawEmpireCombat());
-        const totalPower=cards.reduce((s,c)=>s+c.power,0);
-        const card={name:cards.map(c=>c.name).join(" + "),power:totalPower};
-        setCombat({type:"pve",hexId,empireId:empireOnHex[0][0],empireIds:empireOnHex.map(([id])=>id),
-          empireCard:card,phase:"choose",powerSpend:0,cardsSpend:0,
-          moveData:{...moveSource}});
-        attackLog();
-        addLog(`⚔ Combat Empire ! ${cards.length>1?`${cards.length} patrouilles liguées`:"Patrouille impériale"} — force entre ${empirePowerRange(cards.length)}`);
-        setMoveSource(null);
-        return;
-      }
-      
-      // Check PvP: enemy combat units (hero or mech) on target hex
-      if(movingCombatUnit){
-        for(let pi=1;pi<players.length;pi++){
-          const ep=players[pi];
-          const enemyHero=ep.hero===hexId;
-          const enemyMechs=ep.mechs.filter(m=>m.hexId===hexId);
-          if(enemyHero||enemyMechs.length>0){
-            setCombat({type:"pvp",hexId,enemyIdx:pi,phase:"choose",powerSpend:0,cardsSpend:0,
-              moveData:{...moveSource}});
-            attackLog();
-            addLog(`⚔ Combat PvP vs ${FACTIONS[ep.faction].name} sur #${hexId} !`);
-            setMoveSource(null);
-            return;
-          }
-        }
-      }
-      
+      const enemyIdxHere=movingCombatUnit
+        ? players.findIndex((ep,pi)=>pi>0&&(ep.hero===hexId||ep.mechs.some(m=>m.hexId===hexId)))
+        : -1;
+      const opensCombat=movingCombatUnit&&(empireOnHex.length>0||enemyIdxHere>0);
+
       // ── CHARGEMENT (v0.18) : une seule boîte, pour TOUTE unité ──────────
       // Règle du jeu original : « les unités peuvent prendre et déposer autant
       // de pions Ressource que voulu lors d'une action Déplacement » — les
@@ -2177,6 +2232,8 @@ export default function App(){
       // roster, et deux de ses ancrages sont eux-mêmes des lieux de rencontre.
       const noHeroFaction=!!FACTIONS[me.faction]?.noHero;
       const heroLike=moveSource.unitType==="hero"||noHeroFaction;
+      // Un jeton de rencontre atteint arrête l'unité (règle du jeu original)
+      let encounterStop=false;
       if(heroLike){
         // ── TIERRA MINADA (Frente) : poser un piège ici est un CHOIX — les
         // 4 jetons sont précieux, l'emplacement se décide (plus d'office) ──
@@ -2189,14 +2246,18 @@ export default function App(){
           setAbilityOffer({type:"flag",hexId});
         }
         
-        // Encounter token? (une seule par tour pour une faction sans héros)
+        // Rencontre : mise en FILE. Règle du jeu original — « si vous déplacez
+        // votre personnage sur un territoire où se trouve un jeton Rencontre,
+        // son déplacement s'achève […] APRÈS avoir résolu tous les combats du
+        // tour, si votre personnage s'y trouve TOUJOURS, défaussez le jeton et
+        // résolvez la rencontre ». Perdre le combat qui suit annule donc la
+        // rencontre, et le jeton reste sur la carte.
+        // (une seule par tour pour une faction sans héros — garde-fou §10.1)
         if(encounterTokens.has(hexId)&&!(noHeroFaction&&p.encounterTurn===turn)){
           if(noHeroFaction)p.encounterTurn=turn;
-          const card=drawEncounterCard();
-          setEncounterTokens(prev=>{const s=new Set(prev);s.delete(hexId);return s;});
-          setEncounter({card,hexId});
-          addLog(`📜 Rencontre: "${card.name}"`);
-          return; // Pause — player must resolve encounter before continuing
+          setPendingEncs(q=>q.includes(hexId)?q:[...q,hexId]);
+          addLog(`📜 Jeton de rencontre atteint sur #${hexId} — il se résoudra après les combats`);
+          encounterStop=true;
         }
         // Rouge River (hex #22) — first visit by this hero?
         if(hexId===FACTORY_RR_HEX&&!me.visitedRR){
@@ -2255,8 +2316,15 @@ export default function App(){
       // L'unité RESTE sélectionnée et continue hex par hex — le cas d'école :
       // mech chargé, 1er pas, déposer une partie des ouvriers (panneau 🚚 du
       // pas suivant), repartir avec le reste.
+      // Contact ennemi : le combat est mis en file (résolu à la fin de
+      // l'action) et le déplacement de CETTE unité s'achève — règle du jeu
+      // original, y compris avec la Vitesse.
+      if(opensCombat){
+        setPendingCombats(q=>q.includes(hexId)?q:[...q,hexId]);
+        addLog(`⚔ Contact sur #${hexId} — le combat se résoudra à la fin de vos déplacements`);
+      }
       let contOffer=null;
-      if((moveSource.unitType==="hero"||moveSource.unitType==="mech")&&!dropOffer){
+      if((moveSource.unitType==="hero"||moveSource.unitType==="mech")&&!dropOffer&&!opensCombat&&!encounterStop){
         const budget=moveSource.continuation?(moveSource.stepsLeft||1)
           :(((me.unlockedAbilities||[]).includes(0)?2:1)+(factoryMoveMode?1:0));
         // Pas consommés par CE saut : 1 si la destination était à un pas
@@ -2411,22 +2479,15 @@ export default function App(){
           // Règle : le PERDANT pioche 1 carte s'il a engagé au moins 1 point
           // (puissance ou carte) — appliquée aussi contre l'Empire
           if(playerTotal>=1)p.combatCards=(p.combatCards||0)+1;
+          // Défaite : TOUTES nos unités présentes sur l'hex battent en
+          // retraite (règle du jeu original) — attaquant comme défenseur, car
+          // depuis v0.18 l'unité attaquante est DÉJÀ entrée sur l'hex.
           const hbId=baseHexAt(HOME_BASES[p.faction])?.id??null;
-          if(isDefender){
-            // L'Empire nous attaque : toutes nos unités quittent l'hex (base,
-            // ou réserve hors-plateau pour l'Internationale Noire)
-            const r=retreatFromHex(p,combat.hexId,hbId);
-            Object.assign(p,r.player);
-            if(r.toReserve+r.mechsToReserve>0)addLog(`🕳 ${r.toReserve} ouvrier(s)${r.mechsToReserve>0?` et ${r.mechsToReserve} mecha(s)`:""} repliés dans la réserve du réseau`);
-          } else {
-            // Nous attaquions : seule l'unité attaquante recule (elle n'a pas
-            // encore bougé — seul le héros est déjà nommé ici)
-            if(combat.moveData.unitType==="hero"&&hbId!=null)p.hero=hbId;
-          }
+          const r=retreatFromHex(p,combat.hexId,hbId);
+          Object.assign(p,r.player);
+          if(r.toReserve+r.mechsToReserve>0)addLog(`🕳 ${r.toReserve} ouvrier(s)${r.mechsToReserve>0?` et ${r.mechsToReserve} mecha(s)`:""} repliés dans la réserve du réseau`);
         }
-        if(!isDefender){
-          p.movesLeft=(me.movesLeft||moveLimit)-1;p.movedUnits=[...(me.movedUnits||[]),combat.moveData.unitId];
-        }
+        // Le déplacement a déjà été compté par le mouvement lui-même
         n[0]=p;return n;
       });
 
@@ -2442,15 +2503,9 @@ export default function App(){
         setPlayers(prev=>{
           const n=[...prev];let p={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
           Object.keys(n[0].resources).forEach(k=>{p.resources[k]={...n[0].resources[k]};});
-          if(!isDefender){
-            // Player attacked → move unit to hex + transport
-            if(combat.moveData.unitType==="hero")p.hero=combat.hexId;
-            else if(combat.moveData.unitType==="mech")p.mechs=p.mechs.map(m=>m.id===combat.moveData.unitId?{...m,hexId:combat.hexId}:m);
-            const tr=transportUnits(p, combat.moveData.fromHex, combat.hexId, combat.moveData.unitType);
-            p=tr.player;
-            if(tr.carried.workers>0||tr.carried.resTypes.length>0) addLog(`🚚 Transport:${tr.carried.workers>0?` 👷×${tr.carried.workers}`:""}${tr.carried.resTypes.length>0?` 📦${resListFR(tr.carried.resTypes)}`:""}`);
-          }
-          // Empire attacked → player stays in place, no transport needed
+          // v0.18 : plus rien à déplacer ici — l'unité (ou les unités : deux
+          // mechas peuvent avoir convergé) est entrée sur l'hex avant le
+          // combat, avec son chargement.
           // Patrouilles empilées : chacune vaincue compte (combat.empireIds)
           const killed=(combat.empireIds||[combat.empireId]).length;
           p.empireKills=(p.empireKills||0)+killed;
@@ -2489,19 +2544,15 @@ export default function App(){
         const ehbHex=baseHexAt(ehb);
         setPlayers(prev=>{
           const n=[...prev];
-          // Attacker moves in (no power/cards spent)
+          // L'attaquant est déjà entré sur l'hex (combat résolu après les
+          // déplacements) : il ne reste qu'à encaisser.
           n[0]={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
           Object.keys(prev[0].resources).forEach(k=>{n[0].resources[k]={...prev[0].resources[k]};});
-          if(combat.moveData.unitType==="hero")n[0].hero=combat.hexId;
-          else if(combat.moveData.unitType==="mech")n[0].mechs=n[0].mechs.map(m=>m.id===combat.moveData.unitId?{...m,hexId:combat.hexId}:m);
-          const tr=transportUnits(n[0], combat.moveData.fromHex, combat.hexId, combat.moveData.unitType);
-          n[0]=tr.player;
           n[0].combatWins=(n[0].combatWins||0)+1;
           if(n[0].combatWins<=2&&!n[0][`starCombat${n[0].combatWins}`]){n[0].stars++;n[0][`starCombat${n[0].combatWins}`]=true;}
           // Pop loss for displacing enemy workers
           const wfWorkersOnHex=n[combat.enemyIdx].workers.filter(w=>w.hexId===combat.hexId).length;
           if(wfWorkersOnHex>0)n[0].pop=Math.max(0,n[0].pop-wfWorkersOnHex);
-          n[0].movesLeft=(me.movesLeft||moveLimit)-1;n[0].movedUnits=[...(me.movedUnits||[]),combat.moveData.unitId];
           // Defender retreats + gains 2 pop
           n[combat.enemyIdx]={...n[combat.enemyIdx],workers:[...n[combat.enemyIdx].workers],mechs:[...n[combat.enemyIdx].mechs],resources:{...n[combat.enemyIdx].resources}};
           Object.keys(prev[combat.enemyIdx].resources).forEach(k=>{n[combat.enemyIdx].resources[k]={...prev[combat.enemyIdx].resources[k]};});
@@ -2515,7 +2566,7 @@ export default function App(){
         const wfWorkerCount=enemy.workers.filter(w=>w.hexId===combat.hexId).length;
         addLog(`⭐ Étoile combat ${(me.combatWins||0)+1}/2 (White Flag) !${wfWorkerCount>0?` ♥ -${wfWorkerCount} Pop (ouvriers déplacés)`:""}`);
         setCombat(null);
-        if((me.movedUnits||[]).length+1>=effMoveLimit){setTimeout(()=>endMoveDone(),100);}
+        if(!combat.postMove&&(me.movedUnits||[]).length+1>=effMoveLimit){setTimeout(()=>endMoveDone(),100);}
         return;
       }
       
@@ -2567,12 +2618,8 @@ export default function App(){
         n[combat.enemyIdx].power-=botPower;n[combat.enemyIdx].combatCards-=botCards;
         
         if(win){
-          // Winner: move to hex
-          if(combat.moveData.unitType==="hero")n[0].hero=combat.hexId;
-          else if(combat.moveData.unitType==="mech")n[0].mechs=n[0].mechs.map(m=>m.id===combat.moveData.unitId?{...m,hexId:combat.hexId}:m);
-          // Transport workers+resources
-          const tr=transportUnits(n[0], combat.moveData.fromHex, combat.hexId, combat.moveData.unitType);
-          n[0]=tr.player;
+          // v0.18 : l'attaquant est déjà sur l'hex avec son chargement — le
+          // combat se résout après les déplacements (règle du jeu original).
           n[0].combatWins=(n[0].combatWins||0)+1;
           if(n[0].combatWins<=2&&!n[0][`starCombat${n[0].combatWins}`]){n[0].stars++;n[0][`starCombat${n[0].combatWins}`]=true;}
           // Count enemy workers on hex for pop loss
@@ -2593,9 +2640,9 @@ export default function App(){
           // Rule: the loser draws 1 combat card if they revealed at least 1 power
           if(enemyTotal>=1)n[combat.enemyIdx].combatCards++;
         } else {
-          // Attacker loses: retreat to HB
-          if(combat.moveData.unitType==="hero")n[0].hero=hbHex.id;
-          else if(combat.moveData.unitType==="mech")n[0].mechs=n[0].mechs.map(m=>m.id===combat.moveData.unitId?{...m,hexId:hbHex.id}:m);
+          // Défaite : toutes mes unités présentes battent en retraite
+          const rr=retreatFromHex(n[0],combat.hexId,hbHex?.id??null);
+          n[0]=rr.player;
           // Rule: the loser (player) draws 1 combat card if they revealed at least 1 power
           if(playerTotal>=1)n[0].combatCards++;
           // Rule: the winner — even defending — gains a combat star (max 2)
@@ -2604,7 +2651,6 @@ export default function App(){
           if(db.combatWins<=2&&!db[`starCombat${db.combatWins}`]){db.stars++;db[`starCombat${db.combatWins}`]=true;}
           n[combat.enemyIdx]=db;
         }
-        n[0].movesLeft=(me.movesLeft||moveLimit)-1;n[0].movedUnits=[...(me.movedUnits||[]),combat.moveData.unitId];
         return n;
       });
       
@@ -2657,9 +2703,10 @@ export default function App(){
     }
     
     setCombat(null);
-    // Check if movement is done (Move classique ou bas de carte d'usine)
-    if((me.movedUnits||[]).length+1>=effMoveLimit){
-      // Need to trigger la clôture after state updates (elle logue ✅ elle-même)
+    // v0.18 : un combat de file se résout APRÈS la clôture du déplacement —
+    // c'est l'effet de file qui enchaîne (combats → rencontres → action du
+    // bas). Seuls les combats hors file (défense) clôturent encore ici.
+    if(!combat.postMove&&(me.movedUnits||[]).length+1>=effMoveLimit){
       setTimeout(()=>endMoveDone(),100);
     }
   },[combat,me,players,empire,myFaction,myMat,addLog,effMoveLimit,endMoveDone]);
@@ -2720,7 +2767,7 @@ export default function App(){
       n[0]=p;return n;
     });
     setCombat(null);
-    if((me.movedUnits||[]).length>=effMoveLimit){
+    if(!combat.postMove&&(me.movedUnits||[]).length>=effMoveLimit){
       setTimeout(()=>endMoveDone(),100);
     }
   },[combat,me,addLog,effMoveLimit,endMoveDone,chapter,campaignProgress]);
@@ -3745,7 +3792,7 @@ export default function App(){
                 // déplacement séquentiel vers une case déjà occupée par les
                 // siens.
                 const clickable=isMovable&&!isSel;
-                return <UnitToken key={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6+oy} scale={packScale} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}
+                return <UnitToken key={u.id} unitId={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6+oy} scale={packScale} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}
                   selectable={clickable} selected={isSel}
                   onClick={clickable?(e)=>{e.stopPropagation();doMove(u.type,movKey,hex.id);}:undefined}/>;
               });
@@ -3822,10 +3869,10 @@ export default function App(){
                 // combatUnitCount (data/combat.js) : point de vérité unique —
                 // il porte la dérogation « les ouvriers de l'Internationale
                 // Noire combattent » (chacun autorise une carte de plus).
-                // En attaque, l'unité entrante n'est pas encore sur l'hex.
-                const combatUnits=combat.moveData
-                  ?combatUnitCount(me,combat.hexId,1)
-                  :combatUnitCount(me,combat.hexId);
+                // v0.18 : les combats se résolvent APRÈS les déplacements, donc
+                // toutes les unités engagées sont déjà sur l'hex — deux mechas
+                // qui ont convergé donnent bien droit à deux cartes.
+                const combatUnits=combatUnitCount(me,combat.hexId);
                 // Combat ability bonus (slot 2)
                 const isAttacker=!combat.empireAttacks&&combat.type!=="pvp_defense";
                 const cBonus=getCombatBonus(me, combat.hexId, isAttacker);
