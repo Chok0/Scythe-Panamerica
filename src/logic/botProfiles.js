@@ -20,6 +20,7 @@ export const BOT_PROFILES = {
     produceBoost: 0,
     maxWorkersEarly: 5,  // régime d'ouvriers du corpus : 5 puis 8
     starRush: 0,         // bonus pour un bottom à 1 action de l'étoile
+    buildBoost: 0,       // poids ajouté à la colonne Construire (v0.17)
     enlistPriority: [0, 1, 2, 3],   // puissance, pièces, pop, cartes
     buildPriority: null,            // ordre par phase (défaut de bot.js)
   },
@@ -43,6 +44,10 @@ export const BOT_PROFILES = {
     produceBoost: 1,     // v0.15 : il lui manquait des ressources pour bâtir
     maxWorkersEarly: 5,
     starRush: 0,
+    // v0.17 : un profil nommé « Bâtisseur » construisait MOINS que le Blitz
+    // (1,80 bâtiment contre 2,70 en simulation) — rien ne pesait sur la
+    // colonne Construire. Le Mémorial est en plus son moteur de popularité.
+    buildBoost: 8,
     teslaHunter: true,   // patient par nature : bon candidat à la quête Tesla
     enlistPriority: [2, 1, 0, 3],   // pop d'abord
     buildPriority: ["memorial", "moulin", "gare", "arsenal"],

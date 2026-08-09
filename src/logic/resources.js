@@ -1,3 +1,4 @@
+import { heldHexes } from '../data/control.js';
 // Libellés FR des ressources pour les logs (les CLÉS restent metal/bois/
 // nourriture/petrole ; c'est l'affichage qui s'uniformise — avant, « +2 metal »
 // côtoyait « +3 nourriture »). Terminologie alignée sur les règles (rules.js).
@@ -5,18 +6,53 @@ export const RES_FR = { metal: "métal", bois: "bois", nourriture: "nourriture",
 export const resFR = (r) => RES_FR[r] || r;
 export const resListFR = (arr) => (arr || []).map(resFR).join(", ");
 
-// Resource helpers — count & spend across all controlled hexes
+// ── Ressources DISPONIBLES : celles des territoires qu'on tient ───────────
+// Règle du jeu original, mot pour mot : « Vous ne pouvez dépenser que les
+// ressources présentes sur les territoires que vous contrôlez. »
+// Jusqu'ici on comptait TOUT le tableau `resources`, contrôlé ou non : un
+// joueur chassé d'un territoire continuait de dépenser le bois qu'il y avait
+// laissé, alors que ce même bois ne lui rapportait aucun point au décompte
+// final (qui, lui, filtrait déjà par le contrôle). Le jeu se contredisait
+// d'un bout à l'autre de la partie.
+//
+// C'est aussi LA tension du plateau : un ouvrier seul assis sur dix pétrole
+// est une aubaine pour quiconque passe par là — le pillage prend enfin ce
+// qu'il promet, et laisser sa production sans garde a un coût immédiat.
+//
+// `heldHexes(player)` sans contexte : unités + bâtiments/pièges du joueur.
+// La contestation par une unité adverse n'est pas évaluée ici (elle exige de
+// connaître les autres joueurs) — le décompte final, lui, la prend en compte.
+const availableHexes = (player) => heldHexes(player);
+
+/** Ressources d'un type, sur les seuls hex tenus. */
 export const countRes = (player, resType) => {
+  const held = availableHexes(player);
   let total = 0;
-  Object.values(player.resources).forEach(r => { if (r[resType]) total += r[resType]; });
+  Object.entries(player.resources).forEach(([hid, r]) => {
+    if (r[resType] && held.has(Number(hid))) total += r[resType];
+  });
+  return total;
+};
+
+/** Ressources d'un type posées sur des hex qu'on NE tient PLUS : inutilisables
+ *  et invisibles au score, mais toujours sur le plateau — c'est le magot que
+ *  l'adversaire vient chercher. Sert à l'affichage (HUD, journal). */
+export const strandedRes = (player, resType) => {
+  const held = availableHexes(player);
+  let total = 0;
+  Object.entries(player.resources).forEach(([hid, r]) => {
+    if (r[resType] && !held.has(Number(hid))) total += r[resType];
+  });
   return total;
 };
 
 export const spendRes = (player, resType, qty) => {
   const p = { ...player, resources: {} };
   Object.entries(player.resources).forEach(([hid, r]) => { p.resources[hid] = { ...r }; });
+  const held = availableHexes(player);
   let left = qty;
-  for (const hid of Object.keys(p.resources)) {
+  // On ne dépense QUE sur les hex tenus (même filtre que countRes)
+  for (const hid of Object.keys(p.resources).filter(h => held.has(Number(h)))) {
     if (left <= 0) break;
     const avail = p.resources[hid][resType] || 0;
     if (avail > 0) {

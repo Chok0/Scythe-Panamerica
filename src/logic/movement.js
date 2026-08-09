@@ -1,5 +1,6 @@
 import { FACTIONS } from '../data/factions.js';
 import { HEXES, hMap, ADJ, hasR } from '../data/hexes.js';
+import { TERRAINS } from '../data/terrains.js';
 import { FACTORY_RR_HEX } from '../data/plans.js';
 
 // BFS: find all hexes connected to fromId via rail network.
@@ -40,12 +41,16 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) 
   let cands = [...adj];
 
   // Position abilities (slot 3)
+  // `pf` : faction dont on tient la capacité de position. L'Internationale
+  // Noire VOLE celle du mecha qu'elle capture (`stolenPosition`) — le reste
+  // du roster joue toujours la sienne.
+  const pf = player?.stolenPosition || factionId;
   if (hasPosition) {
-    if (factionId === "bayou" && from.t === "marecage")
+    if (pf === "bayou" && from.t === "marecage")
       HEXES.forEach(h => { if (h.t === "marecage" && h.id !== fromId && !cands.includes(h.id)) cands.push(h.id); });
-    if (factionId === "frente" && from.t === "sierra")
+    if (pf === "frente" && from.t === "sierra")
       HEXES.forEach(h => { if (h.t === "sierra" && h.id !== fromId && !cands.includes(h.id)) cands.push(h.id); });
-    if (factionId === "confederation" && player) {
+    if (pf === "confederation" && player) {
       const unitHexes = new Set([player.hero, ...player.workers.map(w => w.hexId), ...player.mechs.map(m => m.hexId)]);
       const ctrlVillages = HEXES.filter(h => h.t === "village" && unitHexes.has(h.id)).map(h => h.id);
       if (from.t === "village" || from.t === "factory") {
@@ -55,8 +60,13 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) 
       if (fromId === FACTORY_RR_HEX)
         ctrlVillages.forEach(v => { if (!cands.includes(v)) cands.push(v); });
     }
-    if (factionId === "acadiane" && from.t === "lac")
+    if (pf === "acadiane" && from.t === "lac")
       HEXES.forEach(h => { if (h.t === "lac" && h.id !== fromId && !cands.includes(h.id)) cands.push(h.id); });
+    // Bitume (Dominion) : bond de gisement de pétrole en gisement de pétrole.
+    // On lit la RESSOURCE du terrain plutôt qu'une liste d'ids : la capacité
+    // survit aux cartes procédurales comme aux retouches de terrain.
+    if (pf === "dominion" && TERRAINS[from.t]?.res === "petrole")
+      HEXES.forEach(h => { if (TERRAINS[h.t]?.res === "petrole" && h.id !== fromId && !cands.includes(h.id)) cands.push(h.id); });
   }
 
   return cands.filter(toId => {
@@ -68,7 +78,7 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) 
     // Corrige au passage un raccourci involontaire : la base touchant les DEUX
     // hex de départ, elle offrait un passage start1 → base → start2 en 2 pas.
     if (to.base) return false;
-    if (to.t === "lac") return hasPosition && factionId === "acadiane";
+    if (to.t === "lac") return hasPosition && pf === "acadiane";
     // Marécage : franchissable par tous (règle du péage — voir marshToll) ;
     // l'arrêt forcé est géré dans getValidMoves/findPathWaypoints.
     if (adj.includes(toId) && hasR(fromId, toId)) {
@@ -76,6 +86,11 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) 
       // rivières (aucune faction n'a « factory » dans son riverwalk, sinon
       // l'approche par l'hex 26 était un cul-de-sac)
       if (to.t === "factory") return true;
+      // La Nage (Internationale Noire) : capacité de FACTION, active dès le
+      // tour 1, ouvriers compris — toutes les rivières, sans condition de
+      // terrain. Elle REMPLACE le riverwalk : le slot 1 reste vide, et les
+      // capacités de la faction sont celles qu'elle VOLE (fiche §6-§7).
+      if (f.swim) return true;
       if (hasRiverwalk) return f.riverwalk.includes(to.t);
       return false;
     }
@@ -83,18 +98,20 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) 
   });
 };
 
-// Full movement: rail (1 pas) + N steps.
+// Full movement: N pas, chaque pas étant SOIT un hex adjacent, SOIT un trajet
+// ferroviaire depuis l'hex courant.
 // Steps = 1, +1 avec Speed (slot 0), + bonusSteps (déplacement du BAS d'une
 // carte d'usine : 2 hex de base au lieu d'1 → bonusSteps=1).
-// Rail rules — il faut être À BORD pour rouler :
-//   - Si l'unité COMMENCE son déplacement sur le réseau : rouler COÛTE 1 PAS
-//     (« 1 move pour se placer n'importe où sur le réseau, 1 move de plus pour
-//     en sortir ») — le téléport gratuit d'avant laissait un mech filer de
-//     #11 à #30 dans le même tour, incohérence constatée en partie réelle.
-//   - Entrer sur un hex à rail en cours de déplacement ne donne PAS accès au
-//     réseau dans le même déplacement (on monte à bord un tour, on roule au
-//     suivant) — avant, un pas sur le rail ouvrait tout le réseau au pas
-//     suivant, bug constaté en partie réelle.
+// Rail rules (arbitrage du 03/08) — le rail est un PAS comme un autre :
+//   - Depuis un hex du réseau, un pas mène n'importe où sur la composante
+//     connexe (« 1 pas pour rouler »). Pas de téléport gratuit : rouler
+//     consomme le pas.
+//   - Cette règle vaut à CHAQUE pas, pas seulement au départ : monter à bord
+//     en cours de déplacement ouvre le réseau pour le pas suivant (mech
+//     Vitesse : hex voisin sur rail, puis n'importe où sur le réseau), et
+//     rouler puis sortir reste possible dans l'autre sens.
+//   - Corollaire : la même règle s'applique aux pas d'un déplacement
+//     DÉCOMPOSÉ (continuation) — voir App.jsx `validMoves`.
 // blockedHexes : hexes occupés par des unités ennemies (toutes) — on peut y
 // ENTRER (destination : combat / déplacement d'ouvriers) mais jamais les
 // TRAVERSER ni continuer après (règle Scythe : entrer chez l'ennemi termine
@@ -121,13 +138,11 @@ export const getValidMoves = (fromId, factionId, abilities, player, rails, unitT
       }
     };
     frontier.forEach(fid => {
-      // Réseau de rails : uniquement depuis l'hex de DÉPART du déplacement,
-      // et rouler consomme le pas courant — les nœuds atteints entrent dans
-      // la frontière du pas suivant (plus de « téléport + pas » gratuits)
-      if (s === 0) {
-        const railNet = getRailNetwork(fid, rails, blockedHexes);
-        if (railNet) railNet.forEach(reach);
-      }
+      // Réseau de rails : depuis TOUT hex du réseau atteint à ce stade, et
+      // rouler consomme le pas courant — les nœuds atteints entrent dans la
+      // frontière du pas suivant (on peut donc en ressortir avec le pas d'après)
+      const railNet = getRailNetwork(fid, rails, blockedHexes);
+      if (railNet) railNet.forEach(reach);
       getValidMoves1Step(fid, factionId, abilities, player, rails).forEach(reach);
     });
     frontier = next;
@@ -177,9 +192,9 @@ export const findPathWaypoints = (fromId, toId, factionId, abilities, player, ra
     // on n'étend pas le chemin depuis là, sauf s'il est l'hex de départ.
     if (cur !== fromId && ((hMap[cur]?.t === "marecage" && !marshFree(factionId)) || (blockedHexes && blockedHexes.has(cur)))) continue;
     const nexts = new Set(getValidMoves1Step(cur, factionId, abilities, player, rails));
-    // Même règle que getValidMoves : le réseau de rails ne s'emprunte que
-    // depuis l'hex de DÉPART (à bord dès le début), pas en cours de route
-    const rn = cur === fromId ? getRailNetwork(cur, rails, blockedHexes) : null;
+    // Même règle que getValidMoves : le réseau s'emprunte depuis tout hex du
+    // réseau atteint en chemin (le rail est un pas comme un autre)
+    const rn = getRailNetwork(cur, rails, blockedHexes);
     if (rn) rn.forEach(rid => nexts.add(rid));
     for (const nx of nexts) {
       if (prev.has(nx)) continue;

@@ -99,10 +99,20 @@ réseau sous les yeux du joueur, avec les mêmes règles que les siennes.
 - Ciblage : plus court chemin vers le prochain village non raccordé, puis
   vers l'Usine pour fusionner les composantes restantes — mêmes interdits
   que la pose de rail joueur (jamais sur lac/marécage/base).
+- La croissance ne part que des rails IMPÉRIAUX (`empireRails`, suivi à part
+  du réseau partagé). Correctif du 03/08 : `growEmpireRail` recevait le
+  réseau partagé, donc l'Empire prolongeait les segments du joueur — mesuré
+  3 tours et 3 segments gagnés, et le village-hub du joueur raccordé au
+  réseau impérial par sa propre voie.
 - Les patrouilles impériales qui activent leur tour SUR le réseau peuvent
   rouler vers n'importe quel hex connecté, comme un joueur (log dédié `🛤
   (rail)`) — limité au chapitre 1 (`variant.railGrowth`), pour ne pas changer
-  le comportement des patrouilles ailleurs sans qu'on l'ait demandé.
+  le comportement des patrouilles ailleurs sans qu'on l'ait demandé. Comme
+  pour les joueurs, le réseau leur est COUPÉ aux nœuds occupés (03/08 :
+  elles sautaient par-dessus les unités), et le rail n'entre dans le tirage
+  de leur destination qu'une fois sur quatre — sans quoi le réseau achevé
+  leur offrait ~14 destinations contre ~5 voisins (75 % de sauts de rail en
+  fin de partie, « déplacement sans interaction »).
 - Aucun retrait de segment (sabotage hors-scope), aucune traversée de
   lac/marécage.
 
@@ -292,10 +302,10 @@ incarner une résistance qui n'a pas espéré que le trône tombe tout seul. »
 
 ### Chapitre 2 — Internationale Noire (sans héros) — Le Régicide
 
-*⚠ Faction spécifiée (`internationale_noire.md`) mais pas encore implémentée ;
-la mécanique de scénario ci-dessous reste à concevoir. **En jeu, ce chapitre
-se joue donc en INTERLUDE** — texte seul, comme le prologue : il se lit, il
-ouvre la suite, mais il ne lance pas de partie.*
+*✅ v0.18 — faction IMPLÉMENTÉE (`internationale_noire.md`, `data/factions.js`)
+et chapitre JOUABLE. Condition canon « Atteindre l'Empereur » : 3 ouvriers sur
+l'Usine (hex 22) — la foule qui submerge la garde de l'atelier — et 2
+patrouilles impériales détruites pour percer le cordon.*
 
 - **Histoire donnée avant** : une cellule panaméricaine de l'Internationale
   Noire, infiltrée à Rouge River depuis des années sous couvert d'ouvriers,
@@ -437,10 +447,11 @@ ouvre la suite, mais il ne lance pas de partie.*
 
 ### Chapitre 8 — Internationale Noire (sans héros) — Le Sabotage Final
 
-*⚠ Faction spécifiée (`internationale_noire.md`) mais pas encore implémentée ;
-la mécanique de scénario ci-dessous reste à concevoir. **En jeu, ce chapitre
-se joue donc en INTERLUDE** — texte seul, comme le prologue : il se lit, il
-ouvre la suite, mais il ne lance pas de partie.*
+*✅ v0.18 — chapitre JOUABLE. Condition canon « Arrêter la chaîne » : tenir
+l'Usine (hex 22) **3 tours de table consécutifs** (compteur remis à zéro dès
+qu'on la lâche — une chaîne ne s'arrête pas parce qu'on la frappe, elle
+s'arrête parce que plus personne ne la remet en marche) ET arracher 3 mechas
+à l'ennemi, avec Acier Brut actif.*
 
 - **Histoire donnée avant** : six factions armées jusqu'aux dents par Ford,
   qui s'entredéchirent, se défendent ou se conquièrent tour à tour sans
@@ -514,11 +525,14 @@ actif dès le lancement du chapitre, sans effet en partie libre.
 
 **Arbitrages pris à l'implémentation** (le document restait ouvert dessus) :
 
-- **Chapitres 2 et 8 en interlude.** L'Internationale Noire n'étant pas
-  implémentée et leur mécanique de scénario pas tranchée, ces deux chapitres
-  se lisent (texte seul, comme le prologue) et ouvrent la suite au lieu de
-  bloquer la campagne. Leur piste de condition est conservée dans le champ
-  `canonDraft`, prête à devenir un vrai `canon` le jour où la faction existe.
+- **Chapitres 2 et 8 jouables (v0.18).** L'Internationale Noire est
+  implémentée : `data/factions.js` (sans héros, ancrages #3/#20/#25/#40, La
+  Nage, ouvriers combattants, vol de mecha ×4), plateau dédié « Le Réseau »
+  (`MATS_CAMPAIGN`, id 200), réserve hors-plateau et réentrée près d'un
+  ancrage (`logic/player.js`). Elle n'a **aucune capacité de mecha en
+  propre** : ses slots ne portent que ce qu'elle arrache en combat
+  (`stolenCombat`/`stolenPosition`). Elle reste hors de la rotation
+  standard : `FACTION_IDS` l'exclut, aucun bot ne peut la tirer.
 - **Legs uniquement sur la voie canon.** Terminer un chapitre aux 6 étoiles le
   valide et ouvre le suivant, mais ne donne pas la récompense de Tesla — la
   voie narrative reste la seule à payer.

@@ -16,18 +16,39 @@ const POSITION_ABILITIES = {
   nations: { name: "Pack Up", desc: "Déplace un bâtiment pendant l'action Move (1×/tour)", icon: "📦" },
   acadiane: { name: "Batelier", desc: "Entre sur les lacs et bondit de lac en lac", icon: "〰" },
   bayou: { name: "Pirogue", desc: "Bond de marécage en marécage", icon: "≋" },
-  // Pas encore de capacité de position spécifique au Dominion (aucun effet codé)
-  dominion: { name: "Position", desc: "Aucun effet spécifique pour l'instant", icon: "📍" },
+  // v0.18 — le Dominion était la seule faction dont le slot 3 ne faisait RIEN
+  // (les bots débloquaient 3,3 capacités sur 4 : un mecha payé pour du vide).
+  // Bitume : le pétrole est la matière de la Couronne — ses routes goudronnées
+  // relient les gisements entre eux. Terrains à pétrole (toundra et désert),
+  // lu depuis TERRAINS[t].res : compatible cartes procédurales.
+  dominion: { name: "Bitume", desc: "Bond d'un gisement de pétrole à un autre (toundra ↔ désert)", icon: "🛢" },
 };
 
-export const getMechAbilities = (factionId) => {
+// Une faction qui ne déploie pas (Internationale Noire) n'a PAS de capacités
+// en propre : « les 4 slots classiques n'ont plus de sens — ils sont remplacés
+// par les capacités volées » (internationale_noire.md §7). Ses slots affichent
+// donc ce qu'elle a arraché à ses victimes ; le slot 1 (riverwalk) reste vide,
+// La Nage franchissant déjà toutes les rivières.
+// `player` (facultatif) porte la provenance des vols : `stolenCombat` et
+// `stolenPosition`.
+export const getMechAbilities = (factionId, player) => {
   const f = FACTIONS[factionId] || {};
-  const combat = COMBAT_ABILITIES[factionId];
+  const steals = !!f.stealMechs;
+  const combatFrom = steals ? (player?.stolenCombat || null) : factionId;
+  const posFrom = steals ? (player?.stolenPosition || null) : factionId;
+  const combat = combatFrom ? COMBAT_ABILITIES[combatFrom] : null;
   const rwTerrains = (f.riverwalk || []).map(t => TERRAINS[t]?.label || t).join(" & ");
+  const volé = (from, base) => from && from !== factionId
+    ? { ...base, name: `${base.name} (volé)`, desc: `${base.desc} — arraché à ${FACTIONS[from]?.name || "l'Empire"}` }
+    : base;
   return [
     { name: "Vitesse", desc: "Déplacement +1 hex", icon: "🏃" },
-    { name: f.rwName || "Riverwalk", desc: `Traverse les rivières vers ${rwTerrains || "certains terrains"}`, icon: "🌊" },
-    combat ? { name: combat.name, desc: combat.desc, icon: "⚔" } : { name: "Combat", desc: "Bonus de combat", icon: "⚔" },
-    POSITION_ABILITIES[factionId] || { name: "Position", desc: "Capacité de positionnement", icon: "📍" },
+    steals
+      ? { name: "—", desc: "Slot libre : La Nage franchit déjà toutes les rivières", icon: "🌊" }
+      : { name: f.rwName || "Riverwalk", desc: `Traverse les rivières vers ${rwTerrains || "certains terrains"}`, icon: "🌊" },
+    combat ? volé(combatFrom, { name: combat.name, desc: combat.desc, icon: "⚔" })
+      : { name: steals ? "Capacité à voler" : "Combat", desc: steals ? "Battez un mecha adverse pour lui arracher sa capacité de combat" : "Bonus de combat", icon: "⚔" },
+    posFrom && POSITION_ABILITIES[posFrom] ? volé(posFrom, POSITION_ABILITIES[posFrom])
+      : { name: steals ? "Capacité à voler" : "Position", desc: steals ? "Battez un mecha adverse pour lui arracher sa capacité de position" : "Capacité de positionnement", icon: "📍" },
   ];
 };
