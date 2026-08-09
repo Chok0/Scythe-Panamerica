@@ -144,7 +144,7 @@ douze ingénieurs qui ont juré le secret et qui ne sortent plus jamais à la
 surface. On les appelle les **Douze Apôtres**. Le treizième, c'est Claude
 lui-même. Il entre et sort de Meudon par les carrières, les catacombes et les
 égouts de Paris — le même réseau que l'Internationale Noire utilise, et ce
-n'est pas une coïncidence. Claude et le Horloger se sont croisés dans les
+n'est pas une coïncidence. Claude et l'Horloger se sont croisés dans les
 tunnels. Ils ne se sont pas parlé. Mais ils savent tous les deux que l'autre
 existe.
 

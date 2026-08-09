@@ -183,7 +183,7 @@ export const RULES = [
       },
       {
         title: "Transport et ravitaillement",
-        content: "Règle du jeu original : pendant une action Déplacement, une unité prend et dépose autant de ressources qu'elle veut — au départ, sur les hex qu'elle traverse et à l'arrivée. Le panneau 🚚 s'ouvre dès qu'il y a de quoi charger ou décharger sur le trajet. Les MECHS transportent en plus autant d'ouvriers qu'ils veulent (jamais le héros), et ce transport ne consomme PAS le déplacement des ouvriers : un ouvrier débarqué peut encore bouger de lui-même. Pensez à rapatrier vos ressources : au décompte final, seules comptent celles qui se trouvent sur un territoire que vous contrôlez."
+        content: "Règle du jeu original : pendant une action Déplacement, une unité prend et dépose autant de ressources qu'elle veut. Tout passe par la boîte de chargement 🚚, qui s'ouvre à chaque pas dès qu'il y a de quoi charger sur l'hex de départ : on y règle ce qu'on emporte et ce qu'on laisse. Pour ravitailler EN ROUTE, avancez d'une case, refaites votre chargement, puis repartez (avec Vitesse, il vous reste un pas). Les MECHS transportent en plus autant d'ouvriers qu'ils veulent (jamais le héros), et ce transport ne consomme PAS le déplacement des ouvriers : un ouvrier débarqué peut encore bouger de lui-même. Pensez à rapatrier vos ressources : au décompte final, seules comptent celles qui se trouvent sur un territoire que vous contrôlez."
       },
       {
         title: "Rails",
@@ -279,7 +279,7 @@ export const RULES = [
       },
       {
         title: "Règles de Construction",
-        content: "Construisez sur un hex où vous avez un ouvrier. Un seul bâtiment par hex. Les bâtiments comptent comme territoire pour le scoring final. Le bâtiment reste même si vos unités quittent l'hex."
+        content: "Construisez sur un hex où vous avez un ouvrier. Un seul bâtiment par hex — toutes factions confondues : un territoire qui porte déjà une structure, même adverse, n'en accueille pas de seconde. Les bâtiments comptent comme territoire pour le scoring final. Le bâtiment reste même si vos unités quittent l'hex. Pack Up (Nations) déménage un bâtiment : mêmes interdits, et jamais sur un hex tenu par l'ennemi."
       }
     ]
   },

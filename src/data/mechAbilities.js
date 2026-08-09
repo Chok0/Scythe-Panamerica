@@ -13,7 +13,7 @@ import { TERRAINS } from './terrains.js';
 const POSITION_ABILITIES = {
   confederation: { name: "Convoi", desc: "Bond entre villages contrôlés et la Rouge River", icon: "🏘" },
   frente: { name: "Guérilla", desc: "Bond de sierra en sierra", icon: "🏔" },
-  nations: { name: "Pack Up", desc: "Déplace un bâtiment pendant l'action Move (1×/tour)", icon: "📦" },
+  nations: { name: "Pack Up", desc: "Déplace un bâtiment d'un hex pendant l'action Move (1×/tour) — vers un hex libre ou à vous, sans bâtiment", icon: "📦" },
   acadiane: { name: "Batelier", desc: "Entre sur les lacs et bondit de lac en lac", icon: "〰" },
   bayou: { name: "Pirogue", desc: "Bond de marécage en marécage", icon: "≋" },
   // v0.18 — le Dominion était la seule faction dont le slot 3 ne faisait RIEN

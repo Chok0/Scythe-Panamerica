@@ -25,6 +25,7 @@ import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from 
 import { resolveBotEncounter } from './botEncounters.js';
 import { getValidMoves, marshToll, findPathWaypoints } from './movement.js';
 import { transportUnits } from './transport.js';
+import { buildingHexes } from './buildings.js';
 import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from './production.js';
 import { countRes, spendRes, getWorkerHexes, resFR } from './resources.js';
 import { reconcileHand, spendPickedCards, drawCardValue } from './cards.js';
@@ -235,9 +236,10 @@ export class HeadlessGame {
       const alt = FACTIONS[p.faction]?.deployAltRes;
       const payable = bc && (countRes(p, bc.res) >= bc.qty || (ba === 'Deploy' && alt && countRes(p, alt) >= bc.qty));
       if (payable) {
+        const built = this.builtHexes();
         if (ba === 'Upgrade' && (p.upgrades || 0) < 6) acts.push({ type: 'bottom_upgrade', from: '0-3 (col avec cube haut)', to: '0-3 (col bas non saturée)' });
         if (ba === 'Deploy' && p.mechs.length < 4) acts.push({ type: 'bottom_deploy', hex: getWorkerHexes(p).filter(h => !hMap[h]?.base), slot: [0, 1, 2, 3].filter(s => !(p.unlockedAbilities || []).includes(s)) });
-        if (ba === 'Build' && (p.buildings || []).length < 4) acts.push({ type: 'bottom_build', building: BUILDING_TYPES.filter(bt => !(p.buildings || []).some(b => b.type === bt.type)).map(bt => bt.type), hex: getWorkerHexes(p).filter(h => !hMap[h]?.base && !(p.buildings || []).some(b => b.hexId === h)) });
+        if (ba === 'Build' && (p.buildings || []).length < 4) acts.push({ type: 'bottom_build', building: BUILDING_TYPES.filter(bt => !(p.buildings || []).some(b => b.type === bt.type)).map(bt => bt.type), hex: getWorkerHexes(p).filter(h => !hMap[h]?.base && !built.has(h)) });
         if (ba === 'Enlist' && (p.recruits || 0) < 4) acts.push({ type: 'bottom_enlist', section: [0, 1, 2, 3].filter(c => (p.enlistMap || [])[c] == null), recruit: [0, 1, 2, 3].filter(r => !(p.enlistMap || []).includes(r)) });
       }
       return acts;
@@ -494,6 +496,11 @@ export class HeadlessGame {
     return s;
   }
 
+  // Hex déjà bâtis, TOUTES factions confondues : un territoire ne porte
+  // jamais deux structures (règle du jeu original — on ne regardait que
+  // celles du joueur courant).
+  builtHexes() { return buildingHexes(this.players); }
+
   moveUnit(a) {
     const p = this.me();
     const pd = this.pending;
@@ -705,7 +712,8 @@ export class HeadlessGame {
         break;
       }
       case 'building': {
-        const spots = factoryWorkerHexes(p).filter(h => !(p.buildings || []).some(b => b.hexId === h));
+        const built = this.builtHexes();
+        const spots = factoryWorkerHexes(p).filter(h => !built.has(h));
         const types = BUILDING_TYPES.filter(bt => !(p.buildings || []).some(b => b.type === bt.type));
         const hex = a.building?.hex ?? spots[0]; const type = a.building?.type ?? types.find(t => t.type !== 'gare')?.type ?? types[0]?.type;
         if (!spots.includes(hex) || !types.some(t => t.type === type)) { this.log('rr', '⚙ bâtiment impossible'); break; }
@@ -820,7 +828,8 @@ export class HeadlessGame {
     if ((p.buildings || []).length >= 4) return 'bâtiments au maximum';
     if ((p.buildings || []).some(b => b.type === a.building)) return `${a.building} déjà construit`;
     if (!BUILDING_TYPES.some(bt => bt.type === a.building)) return `type inconnu: ${a.building}`;
-    const spots = getWorkerHexes(p).filter(h => !hMap[h]?.base && !(p.buildings || []).some(b => b.hexId === h));
+    const built = this.builtHexes();
+    const spots = getWorkerHexes(p).filter(h => !hMap[h]?.base && !built.has(h));
     if (!spots.includes(a.hex)) return `#${a.hex} invalide (hex ouvrier sans bâtiment)`;
     const err = this.paidBottom(p, col); if (err) return err;
     p.buildings = [...(p.buildings || []), { type: a.building, hexId: a.hex }];

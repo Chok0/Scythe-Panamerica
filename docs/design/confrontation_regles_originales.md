@@ -58,15 +58,19 @@ aller les chercher. Or les ressources laissées derrière **ne rapportent rien
 au score** (règle du décompte ci-dessus) : la règle manquante était aussi une
 fuite de points.
 
-**Correctif** : le panneau devient bidirectionnel (« 🚚 Ravitaillement en
-route ») et s'ouvre pour **toute unité** — héros, ouvrier, mech — dès qu'il y
-a de quoi charger ou décharger sur le trajet. Chaque hex traversé propose
-« 📦 Déposer » et « 🫴 Ramasser ». Le dépôt d'ouvrier reste réservé au mech,
-conformément à la règle.
+**Correctif (04/08)** : un panneau bidirectionnel « 🚚 Ravitaillement en
+route » s'ouvrait après le déplacement, pour toute unité, et proposait
+« 📦 Déposer » / « 🫴 Ramasser » sur chaque hex traversé.
 
-À noter : le **déplacement décomposé** (v0.16) offrait déjà ce ramassage sans
-qu'on l'ait cherché — chaque étape rouvre le panneau de transport sur l'hex
-courant. L'écart ne concernait donc que les sauts directs de 2 hex.
+**Révision (09/08) — le panneau est supprimé.** Il faisait doublon avec la
+**boîte de chargement** du déplacement décomposé (v0.16), déjà relevée en
+note ci-dessous : chaque pas rouvre la boîte sur l'hex courant, où l'on
+recompose librement la cargaison dans les deux sens. Le panneau, lui,
+s'ouvrait *après coup* — une fenêtre de plus qui interrompait le déplacement
+pour refaire ce que la boîte venait de faire. La règle reste tenue : on
+avance d'une case, on recharge, on repart (avec Vitesse, il reste un pas).
+Seul cas non couvert : le **saut direct de 2 hex** — mais rien n'oblige à le
+faire d'un bloc, et le décomposer coûte exactement zéro pas.
 
 ### E2 — Combats résolus à la fin de l'action ✅ corrigé le 04/08
 

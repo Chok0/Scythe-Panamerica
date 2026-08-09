@@ -28,6 +28,7 @@ import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
 import { getValidMoves, getValidMoves1Step, getRailNetwork, findPathWaypoints, marshToll, marshFree } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer, retreatFromHex, reentryHexes } from '../logic/player.js';
+import { buildingHexes, packUpDestinations } from '../logic/buildings.js';
 import { botTurn, estimateScore } from '../logic/bot.js';
 import { BOT_PROFILES, assignBotProfile, BOT_NOISE, MAP_META_THREAT, playerStanding } from '../logic/botProfiles.js';
 import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../logic/pvpBots.js';
@@ -157,7 +158,6 @@ export default function App(){
   const[pendingEncs,setPendingEncs]=useState([]);         // [hexId]
   const[afterMoveCol,setAfterMoveCol]=useState(null);     // colonne dont le bas attend la fin de la file
 
-  const[routeDrop,setRouteDrop]=useState(null); // 📦 dépose en route: {mids,destHex,endAfter}
   const[preActionSnapshot,setPreActionSnapshot]=useState(null); // snapshot of player[0] before action, for undo
   const[undoStack,setUndoStack]=useState([]); // pile d'annulation (snapshots d'état, dans le tour humain)
   const[redoStack,setRedoStack]=useState([]); // pile de rétablissement
@@ -1050,7 +1050,7 @@ export default function App(){
     const moved=movedOverride??(me?.movedUnits||[]).length;
     if((myMat?.topRow||[])[col]==="Move"&&moved>0)addLog(`✅ Mouvement terminé (${moved}/${moveLimit})`);
     setPlayers(prev=>{const n=[...prev];n[0]={...n[0],lastCol:col,movesLeft:undefined,movedUnits:[],packUpUsed:false};return n;});
-    setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);setTradePicks([]);setRouteDrop(null);
+    setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);setTradePicks([]);
     // Combats puis rencontres en attente : ils passent AVANT l'action du bas
     // (règle du jeu original). L'effet `useEffect` de la file s'en charge et
     // ouvrira le bas quand tout sera résolu.
@@ -1170,14 +1170,14 @@ export default function App(){
   const finishFactoryMove=useCallback((moved)=>{
     if((moved??1)>0)addLog(`✅ Déplacement d'usine terminé`);
     setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:undefined,movedUnits:[],packUpUsed:false};return n;});
-    setMoveSource(null);setRouteDrop(null);setPreActionSnapshot(null);setTransportPick(null);
+    setMoveSource(null);setPreActionSnapshot(null);setTransportPick(null);
     setPendingBottom(null);
     requestEndTurn();
   },[addLog,requestEndTurn]);
 
   // Fin d'un déplacement : router vers la clôture du Move classique OU celle
   // du bas de carte d'usine — tous les points de reprise (combat, rencontre,
-  // Rouge River, dépose en route) passent par ici.
+  // Rouge River) passent par ici.
   const endMoveDone=useCallback((moved)=>{
     if(factoryMoveMode)finishFactoryMove(moved);
     else endHumanTurn(myMat.topRow.indexOf("Move"),moved);
@@ -1485,7 +1485,9 @@ export default function App(){
     // Garde de ré-entrée : pendant la pose de rails (Gare), le Build de ce
     // tour est déjà fait — pas de 2e bâtiment avant finishBottom
     if(!me||(me.buildings||[]).length>=4||railPlacement)return;
-    if((me.buildings||[]).some(b=>b.hexId===targetHex)){addLog(`⚠ Déjà un bâtiment sur #${targetHex}`);return;}
+    // Un territoire ne porte jamais deux structures — la sienne comme celle
+    // d'un adversaire (règle du jeu original). On ne regardait que les siennes.
+    if(buildingHexes(players).has(targetHex)){addLog(`⚠ Déjà un bâtiment sur #${targetHex}`);return;}
     if((me.buildings||[]).some(b=>b.type===buildingType)){addLog(`⚠ ${buildingType} déjà construit`);return;}
     const costs=getBottomCost(me);
     const cost=costs[2]; // Build is bottom col 2
@@ -1509,7 +1511,7 @@ export default function App(){
       return;
     }
     finishBottom(2);
-  },[me,addLog,finishBottom,railPlacement]);
+  },[me,addLog,finishBottom,railPlacement,players]);
 
   // ── PACK UP (Nations slot 3 — free building move during Move action) ──
   const doPackUpMove=useCallback((buildingIdx,targetHex)=>{
@@ -1518,7 +1520,16 @@ export default function App(){
     if(me.packUpUsed)return; // 1 per Move action
     const bld=(me.buildings||[])[buildingIdx];
     if(!bld)return;
-    if((me.buildings||[]).some(b=>b.hexId===targetHex&&b!==bld)){addLog(`⚠ Déjà un bâtiment sur #${targetHex}`);return;}
+    // Garde autoritaire : la carte et les boutons proposent déjà les seules
+    // destinations légales, mais la règle se vérifie ICI (un hex ennemi ou
+    // déjà bâti restait acceptable par ce chemin — bug du 09/08).
+    if(!packUpDestinations(me,bld.hexId,{players,empire}).has(targetHex)){
+      const occupied=players.some((op,pi)=>pi>0&&(op.hero===targetHex||op.mechs.some(m=>m.hexId===targetHex)||op.workers.some(w=>w.hexId===targetHex)))
+        ||Object.values(empire||{}).includes(targetHex);
+      addLog(occupied?`⚠ #${targetHex} est tenu par l'ennemi — un bâtiment ne déménage que sur un hex libre ou à vous`
+        :`⚠ Impossible de déménager sur #${targetHex} (déjà un bâtiment, ou terrain interdit)`);
+      return;
+    }
     const bt=BUILDING_TYPES.find(b=>b.type===bld.type);
     setPlayers(prev=>{
       const n=[...prev];const p={...n[0],buildings:[...(n[0].buildings||[])]};
@@ -1528,7 +1539,7 @@ export default function App(){
     });
     addLog(`📦 Pack Up! ${bt?bt.name:bld.type} #${bld.hexId} → #${targetHex} (gratuit)`);
     setBottomPick(null);
-  },[me,addLog]);
+  },[me,addLog,players,empire]);
 
   // ── BOTTOM-ROW: ENLIST (recrue sur une colonne → bonus immédiat + ongoing) ──
   // Règle Scythe : le bonus IMMÉDIAT (une fois) est d'un type DIFFÉRENT du
@@ -1693,7 +1704,7 @@ export default function App(){
     setSelAction(snap.selAction??null);setMoveSource(null);setPreActionSnapshot(snap.preActionSnapshot??null);setTradePicks([]);
     setPendingBottom(null);setBottomPick(null);setCombat(null);setEncounter(null);setRougeRiver(null);
     setEncounterBuild(false);setEncounterEnlist(null);setEncounterUpgrade(null);setEncounterResources(null);setFactoryFlow(null);setFactoryPreview(false);
-    setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);setEndOfTurn(false);
+    setRailPlacement(null);setPendingAbility(null);setEndOfTurn(false);
   },[cloneVal]);
   const pushHistory=useCallback(()=>{ setUndoStack(s=>[...s.slice(-40),snapshotGame()]); setRedoStack([]); },[snapshotGame]);
   const undo=useCallback(()=>{
@@ -1837,16 +1848,15 @@ export default function App(){
   // Comme tout autre déplacement, on doit pouvoir cliquer l'hex d'arrivée —
   // les boutons « → #n » du panneau restent en second recours. Sert aussi de
   // source unique à ces deux affichages, qui divergeaient.
-  // La base est exclue : c'est le point hors plateau, pas une destination.
+  // Règle : hex ADJACENT, LIBRE ou tenu par soi, et vierge de toute structure
+  // (logic/buildings.js — même règle pour le bot). La base est exclue : c'est
+  // le point hors plateau, pas une destination.
   const packUpTargets=useMemo(()=>{
     if(!me||!bottomPick?.packUp||me.packUpUsed)return new Set();
     const bld=(me.buildings||[])[bottomPick.buildingIdx];
     if(!bld)return new Set();
-    return new Set((ADJ[bld.hexId]||[]).filter(id=>{
-      const h=hMap[id];
-      return h&&!h.base&&h.t!=="lac"&&h.t!=="marecage"&&!(me.buildings||[]).some(b=>b.hexId===id);
-    }));
-  },[me,bottomPick]);
+    return packUpDestinations(me,bld.hexId,{players,empire});
+  },[me,bottomPick,players,empire]);
 
   // Cibles cliquables sur la carte pour les actions bottom Deploy/Build
   // (en plus des boutons du panneau : cliquer l'hex surligné place directement)
@@ -1873,10 +1883,12 @@ export default function App(){
     if(pendingBottom.action==="Build"&&bottomPick?.building&&(me.buildings||[]).length<4){
       const bc=getBottomCost(me)[2];
       if(countRes(me,bc.res)<bc.qty)return none;
-      return{type:"build",hexes:new Set(workerHexes.filter(h=>!(me.buildings||[]).some(b=>b.hexId===h)))};
+      // Jamais deux structures sur un même territoire, toutes factions confondues
+      const built=buildingHexes(players);
+      return{type:"build",hexes:new Set(workerHexes.filter(h=>!built.has(h)))};
     }
     return none;
-  },[me,pendingBottom,bottomPick,pendingAbility,railPlacement]);
+  },[me,pendingBottom,bottomPick,pendingAbility,railPlacement,players]);
 
   // Automatic stars for the human player (bots handle these in botTurn)
   useEffect(()=>{
@@ -2072,6 +2084,8 @@ export default function App(){
       // se marchaient dessus (bascule globale « emporter oui/non », panneau de
       // quantités réservé au mech, dépose en route) : il ne reste que le
       // panneau de quantités, ouvert dès qu'il y a quelque chose à charger.
+      // La « dépose en route » a fini par disparaître aussi (09/08) : un pas,
+      // une boîte — c'est là qu'on ravitaille.
       if(!transportOverride?.transport){
         const wOnHex=moveSource.unitType==="mech"
           ? me.workers.filter(w=>w.hexId===moveSource.fromHex).length : 0;
@@ -2281,41 +2295,14 @@ export default function App(){
         }
       }
       
-      // ── DÉPOSE EN ROUTE (mech) : le trajet a des hexes intermédiaires ? ──
-      // Permet les passe-passe : déposer un ouvrier à mi-chemin, laisser du
-      // matériel au passage et continuer (relais de mechas, expansion…)
-      let dropOffer=null;
-      // Règle du jeu original (« Voici quelques points importants concernant
-      // les déplacements — RESSOURCES ET UNITÉS : les unités peuvent PRENDRE
-      // ET DÉPOSER autant de pions Ressource que voulu lors d'une action
-      // Déplacement ») : le ravitaillement en route vaut pour TOUTE unité, et
-      // dans les deux sens. On ne proposait que la dépose, et seulement pour
-      // un mech chargé.
-      if(moveSource.unitType==="mech"||moveSource.unitType==="hero"||moveSource.unitType==="worker"){
-        // Jamais de dépose sur un hex ennemi : un ouvrier posé face à une
-        // unité de combat serait renvoyé à sa base (règle Scythe) — le
-        // trajet lui-même évite désormais les hexes occupés (blockedHexes)
-        const mids=findPathWaypoints(fromHex,hexId,me.faction,me.unlockedAbilities||[],me,rails,enemyOccupiedHexes)
-          .filter(hid=>{const h=hMap[hid];return h&&h.t!=="lac"&&h.t!=="marecage"&&!enemyOccupiedHexes.has(hid);});
-        // De quoi déposer (ce que l'unité vient d'amener) ou de quoi ramasser
-        // (des ressources à soi laissées sur un hex de passage)
-        const hasCargo=(moveSource.unitType==="mech"&&p.workers.some(w=>w.hexId===hexId))
-          ||Object.keys(p.resources[String(hexId)]||{}).length>0;
-        const pickable=mids.some(mid=>Object.values(p.resources[String(mid)]||{}).some(q=>q>0));
-        if(mids.length>0&&(hasCargo||pickable)){
-          // `unitType` mémorisé : `moveSource` est déjà remis à null quand le
-          // panneau s'affiche (seul un mech peut déposer un ouvrier).
-          dropOffer={mids,destHex:hexId,unitType:moveSource.unitType,endAfter:p.movedUnits.length>=effMoveLimit};
-          // La modale (routeDrop) porte l'affordance ; on ne LOGUE que la dépose
-          // réelle (« 📦 Ouvrier déposé … au passage ») — l'annonce du simple
-          // « possible » était du bruit au journal quand rien n'était déposé.
-          setRouteDrop(dropOffer);
-        }
-      }
       // ── DÉPLACEMENT DÉCOMPOSÉ (v0.16, note du 28/07) : il reste des pas ?
-      // L'unité RESTE sélectionnée et continue hex par hex — le cas d'école :
-      // mech chargé, 1er pas, déposer une partie des ouvriers (panneau 🚚 du
-      // pas suivant), repartir avec le reste.
+      // L'unité RESTE sélectionnée et continue hex par hex — et c'est LÀ que
+      // se règle le ravitaillement : on avance d'une case, la boîte de
+      // chargement 🚚 du pas suivant recompose la cargaison (ouvriers et
+      // ressources, dans les deux sens), puis on repart avec le reste.
+      // L'ancienne modale « Ravitaillement en route », qui rouvrait après coup
+      // sur les hexes traversés, faisait double emploi avec cette boîte et
+      // coupait le déplacement : supprimée (09/08).
       // Contact ennemi : le combat est mis en file (résolu à la fin de
       // l'action) et le déplacement de CETTE unité s'achève — règle du jeu
       // original, y compris avec la Vitesse.
@@ -2324,7 +2311,7 @@ export default function App(){
         addLog(`⚔ Contact sur #${hexId} — le combat se résoudra à la fin de vos déplacements`);
       }
       let contOffer=null;
-      if((moveSource.unitType==="hero"||moveSource.unitType==="mech")&&!dropOffer&&!opensCombat&&!encounterStop){
+      if((moveSource.unitType==="hero"||moveSource.unitType==="mech")&&!opensCombat&&!encounterStop){
         const budget=moveSource.continuation?(moveSource.stepsLeft||1)
           :(((me.unlockedAbilities||[]).includes(0)?2:1)+(factoryMoveMode?1:0));
         // Pas consommés par CE saut : 1 si la destination était à un pas
@@ -2338,7 +2325,7 @@ export default function App(){
         if(budget-used>0&&!marshStop)contOffer={unitType:moveSource.unitType,unitId:moveSource.unitId,fromHex:hexId,stepsLeft:budget-used,continuation:true};
       }
       if(contOffer)setMoveSource(contOffer);
-      if((p.movedUnits||[]).length>=effMoveLimit&&!dropOffer&&!contOffer)endMoveDone((p.movedUnits||[]).length);
+      if((p.movedUnits||[]).length>=effMoveLimit&&!contOffer)endMoveDone((p.movedUnits||[]).length);
       return;
     }
     // ── CIBLES D'ACTION BOTTOM : Deploy/Build en cliquant l'hex sur la carte ──
@@ -3856,8 +3843,8 @@ export default function App(){
           </g>
         </svg>
 
-        {/* ═══ MODAL OVERLAYS (combat/encounter/RR/dépose en route/pouvoir optionnel) ═══ */}
-        {(combat||encounter||encounterBuild||encounterEnlist||encounterUpgrade||encounterResources||rougeRiver||factoryPreview||routeDrop||abilityOffer||stealOffer)&&(
+        {/* ═══ MODAL OVERLAYS (combat/rencontre/Rouge River/pouvoir optionnel) ═══ */}
+        {(combat||encounter||encounterBuild||encounterEnlist||encounterUpgrade||encounterResources||rougeRiver||factoryPreview||abilityOffer||stealOffer)&&(
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
             <div style={{maxWidth:460,width:"92%",maxHeight:"80vh",overflow:"auto",borderRadius:12,border:"1px solid var(--border-light)",boxShadow:"0 10px 50px rgba(0,0,0,0.8)"}}>
 
@@ -3965,59 +3952,6 @@ export default function App(){
                   })()}
                 </div>
               )}
-
-              {/* 📦 DÉPOSE EN ROUTE (mech) — passe-passe stratégiques */}
-              {routeDrop&&!combat&&!encounter&&(()=>{
-                const destKey=String(routeDrop.destHex);
-                const wAtDest=(me?.workers||[]).filter(w=>w.hexId===routeDrop.destHex).length;
-                const resAtDest=Object.entries(me?.resources?.[destKey]||{}).filter(([,q])=>q>0);
-                const dropWorker=(mid)=>{
-                  setPlayers(prev=>{const n=[...prev];const p2={...n[0],workers:[...n[0].workers]};
-                    const wi=p2.workers.findIndex(w=>w.hexId===routeDrop.destHex);
-                    if(wi>=0)p2.workers[wi]={...p2.workers[wi],hexId:mid};
-                    n[0]=p2;return n;});
-                  addLog(`📦 Ouvrier déposé sur #${mid} au passage`);
-                };
-                // Ramassage en route : les ressources laissées sur un hex de
-                // passage montent dans l'unité, qui les a sous la main à
-                // l'arrivée (règle « prendre ET déposer »).
-                const pickRes=(mid)=>{
-                  setPlayers(prev=>{const n=[...prev];const p2={...n[0],resources:{...n[0].resources}};
-                    Object.keys(p2.resources).forEach(k=>{p2.resources[k]={...p2.resources[k]};});
-                    const src=p2.resources[String(mid)]||{};
-                    if(!p2.resources[destKey])p2.resources[destKey]={};
-                    Object.entries(src).forEach(([rt,q])=>{p2.resources[destKey][rt]=(p2.resources[destKey][rt]||0)+q;});
-                    delete p2.resources[String(mid)];
-                    n[0]=p2;return n;});
-                  addLog(`🫴 Ressources ramassées sur #${mid} au passage`);
-                };
-                const dropRes=(mid)=>{
-                  setPlayers(prev=>{const n=[...prev];const p2={...n[0],resources:{...n[0].resources}};
-                    Object.keys(p2.resources).forEach(k=>{p2.resources[k]={...p2.resources[k]};});
-                    const src=p2.resources[destKey]||{};
-                    if(!p2.resources[String(mid)])p2.resources[String(mid)]={};
-                    Object.entries(src).forEach(([rt,q])=>{p2.resources[String(mid)][rt]=(p2.resources[String(mid)][rt]||0)+q;});
-                    delete p2.resources[destKey];
-                    n[0]=p2;return n;});
-                  addLog(`📦 Ressources déposées sur #${mid} au passage`);
-                };
-                return(
-                <div style={{padding:"16px",background:"linear-gradient(180deg,#141a10,var(--bg2))",borderRadius:10,border:"1px solid var(--gold-dim)",animation:"slideUp 0.35s ease",marginBottom:10}}>
-                  <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,fontSize:15,marginBottom:6}}>🚚 Ravitaillement en route — passage par {routeDrop.mids.map(m=>`#${m}`).join(", ")}</div>
-                  <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:8,fontStyle:"italic"}}>Règle du jeu original : une unité prend et dépose autant de ressources qu'elle veut pendant son déplacement. Déposez pour tenir le terrain, ramassez pour rapatrier ce qui traîne (au score, seules comptent les ressources sur un hex que vous tenez).</div>
-                  {routeDrop.mids.map(mid=>{
-                    const onMid=Object.entries(me?.resources?.[String(mid)]||{}).filter(([,q])=>q>0);
-                    return(
-                    <div key={mid} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center",flexWrap:"wrap"}}>
-                      <span style={{fontSize:14,color:"var(--text)",minWidth:36}}>#{mid}</span>
-                      {routeDrop.unitType==="mech"&&<button disabled={wAtDest<1} onClick={()=>dropWorker(mid)} className="act-btn" style={{fontSize:13,opacity:wAtDest<1?0.4:1}}>● Déposer 1 ouvrier ({wAtDest} dispo)</button>}
-                      <button disabled={resAtDest.length===0} onClick={()=>dropRes(mid)} className="act-btn" style={{fontSize:13,opacity:resAtDest.length===0?0.4:1}}>📦 Déposer ({resAtDest.map(([rt,q])=>`${q}${resFR(rt)}`).join(", ")||"—"})</button>
-                      <button disabled={onMid.length===0} onClick={()=>pickRes(mid)} className="act-btn" style={{fontSize:13,opacity:onMid.length===0?0.4:1}}>🫴 Ramasser ({onMid.map(([rt,q])=>`${q}${resFR(rt)}`).join(", ")||"—"})</button>
-                    </div>
-                  );})}
-                  <button onClick={()=>{const end=routeDrop.endAfter;setRouteDrop(null);if(end)endMoveDone();}} className="act-btn" style={{marginTop:6,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Continuer ▶</button>
-                </div>);
-              })()}
 
               {/* VOL DE MECHA (Internationale Noire) — le mecha vaincu change de
                   camp contre le coût de Déploiement, et livre UNE de ses
@@ -4862,7 +4796,7 @@ export default function App(){
                       const bt=BUILDING_TYPES.find(t=>t.type===bld.type);
                       return <div style={{marginTop:8,padding:"8px 10px",borderRadius:6,border:"1px solid var(--nations)",background:"rgba(32,178,170,0.06)"}}>
                         <div style={{fontSize:14,color:"var(--nations)",marginBottom:6}}>📦 Pack Up — déplacer {bt?bt.icon:""} {bt?bt.name:""} depuis #{bld.hexId} <span style={{color:"var(--text-muted)"}}>— cliquez l'hex surligné sur la carte</span></div>
-                        {adjTargets.length>0?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{adjTargets.map(hid=><button key={hid} onClick={()=>doPackUpMove(bottomPick.buildingIdx,hid)} className="act-btn" style={{borderColor:"var(--nations)"}}>→ #{hid}</button>)}</div>:<div style={{fontSize:12,color:"var(--text-muted)"}}>Aucun hex adjacent libre</div>}
+                        {adjTargets.length>0?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{adjTargets.map(hid=><button key={hid} onClick={()=>doPackUpMove(bottomPick.buildingIdx,hid)} className="act-btn" style={{borderColor:"var(--nations)"}}>→ #{hid}</button>)}</div>:<div style={{fontSize:12,color:"var(--text-muted)"}}>Aucun hex adjacent recevable — il faut un hex libre ou à vous, sans bâtiment (ni lac, ni marécage)</div>}
                         <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Annuler</button>
                       </div>;
                     }
@@ -5044,7 +4978,7 @@ export default function App(){
                 return <button onClick={()=>{setTransportPick(null);endHumanTurn(colIdx);}} className="act-btn"
                   style={{marginTop:8,width:"100%",fontWeight:600,...(moved>0?{background:"#3a6a3a",color:"#fff",border:"none"}:{opacity:0.85})}}>{label}</button>;
               })()}
-              {!(selAction==="Factory"&&factoryFlow)&&<button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setTransportPick(null);setRouteDrop(null);setPreActionSnapshot(null);setTradePicks([]);setFactoryFlow(null);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>}
+              {!(selAction==="Factory"&&factoryFlow)&&<button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setTransportPick(null);setPreActionSnapshot(null);setTradePicks([]);setFactoryFlow(null);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>}
             </div>
           )}
 

@@ -28,21 +28,31 @@ en garde ici.
 de s'en servir. »*
 
 Ils n'ont pas de territoire, pas de capitale, pas de mecha de série. Nés dans
-les cendres de la Commune de Paris (1871), structurés pendant la Grande Guerre
-en cellules autonomes — Saboteurs (rouille rouge dans les usines), Passeurs
+les cendres de la Commune de Paris (1871), structurés au fil des guerres
+d'expansion — celles de l'Empire dans les Amériques, les coloniales ailleurs —
+en cellules autonomes : Saboteurs (rouille rouge dans les usines), Passeurs
 (réseau clandestin de fuite), Moissonneurs (mechas-Spectres rapiécés sur les
-champs de bataille) — ils ne cherchent pas à conquérir. Ils cherchent à
+champs de bataille). Ils ne cherchent pas à conquérir. Ils cherchent à
 **épuiser la guerre pour que la paix devienne la seule option**. Leur symbole :
-une faux brisée. Leur paradoxe : chaque sabotage sauve des vies à terme et en
-coûte tout de suite.
+une faux brisée — l'outil de la Mort qu'on a cessé de tourner contre les gens.
+Leur paradoxe : chaque sabotage sauve des vies à terme et en coûte tout de
+suite.
+
+> **Datation (correctif).** La version précédente les disait « structurés
+> pendant la Grande Guerre » : anachronisme côté Panamerica, où la campagne
+> ouvre le chapitre 2 en **1915** avec une cellule qui « attend cet instant
+> depuis le tournant du siècle ». Le réseau est donc antérieur à 14-18 ; ce
+> sont les guerres d'expansion (1865-1900, §III) qui l'ont structuré. La
+> Grande Guerre reste un événement d'Europa — §I et §III le rappellent : les
+> Amériques ne l'ont pas connue.
 
 **La boucle tragique.** Chaque sabotage produit deux effets simultanés : il
 affaiblit la machine de guerre visée (le but), et il nourrit la peur de ceux
 qui la subissent (le carburant du fascisme — voir section VI). Le patron
 d'usine dont la chaîne de montage a été sabotée ne se dit pas « la paix
 approche » : il se dit « on veut ma peau », et il appelle une milice. Leur
-théoricien le plus lucide, un ancien professeur de philo qu'on surnomme **le
-Horloger** (il passe son temps à démonter des mécanismes), a formulé le
+théoricien le plus lucide, un ancien professeur de philo qu'on surnomme
+**l'Horloger** (il passe son temps à démonter des mécanismes), a formulé le
 paradoxe en une phrase : « Chaque mecha que nous détruisons en crée deux dans
 la tête de ceux qui ont peur. » Il a proposé une autre voie : au lieu de
 détruire les mechas, les **libérer** — ouvrir les cockpits, apprendre à tout
