@@ -84,7 +84,7 @@ la fiche de faction, avec commentaire justifiant l'écart.
 
 ## 3. Les quatre points d'ancrage — hex 3, 20, 25, 40
 
-Pas de base de faction unique. Les 4 ouvriers de départ sont posés sur les
+Pas de base de faction unique. Les 4 ouvriers de départ sont rattachés aux
 hex **3, 20, 25 et 40**, chacun traité **comme une base de faction** au sens
 des règles (`hMap[id].base`).
 
@@ -96,6 +96,32 @@ des règles (`hMap[id].base`).
 | 20 | marécage | — |
 | 25 | marécage | — |
 | 40 | désert | ✦ lieu de rencontre |
+
+### Départ HORS PLATEAU (arbitrage du 09/08)
+
+Les quatre ouvriers ne sont **pas posés** à l'installation : ils démarrent dans
+la réserve hors-plateau et **s'infiltrent** par les ancrages, un déplacement
+chacun (`startsInReserve` dans `factions.js`, lu par `createPlayer`).
+
+La raison est dans le tableau ci-dessus : **deux des quatre ancrages portent un
+lieu de rencontre**, et une rencontre ne se déclenche qu'en **ENTRANT** sur
+l'hex. Les y poser à l'installation tuait ces deux rencontres pour la seule
+faction dont les ouvriers les déclenchent — elle n'a pas de héros (§10.1).
+Deux des dix rencontres de la carte étaient perdues d'avance, constaté en
+partie le 09/08.
+
+Ce que ça change au jeu :
+
+- Le réseau **arrive** au lieu d'être déjà là — c'est sa fiction même.
+- L'ouverture devient un choix : quels ancrages, dans quel ordre, avec quels
+  voisins (`reentryHexes` = ancrage **et** hex adjacents).
+- Les tours 1 et 2 voient leur action Déplacement absorbée par l'infiltration.
+  Le bas de plateau reste jouable, et l'infiltration **paie ses deux
+  rencontres** puisqu'elle entre sur les jetons — le garde-fou « une rencontre
+  par tour » les étale sur deux tours.
+
+Une remontée entre sur l'hex comme n'importe quel déplacement : jeton de
+rencontre déclenché, mis en file, résolu après les combats.
 
 Trois marécages sur quatre : c'est thématiquement juste (le réseau clandestin
 vit dans ce que personne ne veut traverser) **et mécaniquement défensif** — le

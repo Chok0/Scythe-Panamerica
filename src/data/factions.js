@@ -213,7 +213,7 @@ export const FACTIONS = {
     // combats, rencontres, visite de l'Usine).
     hero: null, companion: null, noHero: true,
     power: 2, cards: 1,
-    // 4 ouvriers au lieu de 2, sur les quatre points d'ancrage du réseau.
+    // 4 ouvriers au lieu de 2, rattachés aux quatre points d'ancrage du réseau.
     workerHex: [3, 20, 25, 40],
     // Points d'ancrage : PAS des hex de base (ce sont des hex de terrain
     // normaux, praticables par tout le monde — les transformer en base
@@ -221,6 +221,17 @@ export const FACTIONS = {
     // points de RÉENTRÉE : un ouvrier vaincu part hors-plateau, dans une
     // réserve jamais capturable, et revient adjacent à un ancrage.
     anchors: [3, 20, 25, 40],
+    // ── Départ HORS PLATEAU (09/08) ─────────────────────────────────────
+    // Les quatre ouvriers commençaient POSÉS sur les ancrages — or deux
+    // d'entre eux (#3 et #40) portent un jeton Rencontre, et une rencontre ne
+    // se déclenche qu'en ENTRANT sur l'hex : deux des dix rencontres de la
+    // carte étaient mortes dès l'installation, pour la seule faction dont les
+    // ouvriers les déclenchent (elle n'a pas de héros).
+    // Ils démarrent donc dans la réserve, comme après une défaite, et
+    // s'infiltrent par les ancrages — un déplacement chacun. Le réseau
+    // clandestin ARRIVE au lieu d'être déjà là, et l'infiltration paie
+    // elle-même ses deux rencontres puisqu'elle entre sur les jetons.
+    startsInReserve: true,
     campaignOnly: true,
     // Le plateau joueur est imposé (pas de tirage) : « Le Réseau », id 200.
     fixedMat: 200,
@@ -238,7 +249,7 @@ export const FACTIONS = {
     // Vol de mecha : elle n'en construit aucun, elle les prend (max 4).
     stealMechs: 4,
     ability: "La Nage",
-    abilityDesc: "Toutes vos unités, ouvriers compris, traversent toutes les rivières dès le tour 1 · vos ouvriers COMBATTENT (1 carte chacun) · vous ne déployez aucun mecha : vous les VOLEZ en battant un mecha adverse (max 4) · un ouvrier vaincu part en réserve hors-plateau et revient près d'un ancrage",
+    abilityDesc: "Vos 4 ouvriers démarrent HORS PLATEAU : faites-les remonter par vos ancrages (1 déplacement chacun) · toutes vos unités, ouvriers compris, traversent toutes les rivières dès le tour 1 · vos ouvriers COMBATTENT (1 carte chacun) · vous ne déployez aucun mecha : vous les VOLEZ en battant un mecha adverse (max 4) · un ouvrier vaincu repart en réserve et revient près d'un ancrage",
     // Objectif de faction — l'inverse exact de la manœuvre de masse : il
     // force l'étalement (l'Usine plus trois villages, répartis nord et sud).
     fObj: {

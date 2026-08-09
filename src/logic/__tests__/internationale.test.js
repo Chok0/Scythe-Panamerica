@@ -11,10 +11,19 @@ import { combatUnitCount, getCombatBonus } from '../../data/combat.js';
 import { getMechAbilities } from '../../data/mechAbilities.js';
 import { heldHexes } from '../../data/control.js';
 import { chapterById } from '../../data/campaign.js';
-import { hMap, ADJ, hasR } from '../../data/hexes.js';
+import { hMap, ADJ, hasR, CURRENT_MAP } from '../../data/hexes.js';
 
 const IN = 'internationale';
 const mk = () => createPlayer(IN, 200, false);
+// Le réseau une fois INFILTRÉ : ses quatre ouvriers remontés sur les ancrages.
+// C'est l'état des tests qui portent sur le jeu lui-même (La Nage, combat,
+// contrôle) — l'installation, elle, laisse le plateau vide (voir ci-dessous).
+const infiltre = () => {
+  const p = mk();
+  p.workers = FACTIONS[IN].anchors.map((hid, i) => ({ id: `${IN}_w${i}`, hexId: hid }));
+  p.reserve = 0;
+  return p;
+};
 
 describe('fiche de faction', () => {
   it('existe, mais hors de la rotation standard (jamais tirée par un bot)', () => {
@@ -23,13 +32,38 @@ describe('fiche de faction', () => {
     expect(FACTION_IDS).toHaveLength(6);
   });
 
-  it('sans héros, 4 ouvriers sur les points d\'ancrage, plateau imposé', () => {
+  it('sans héros, 4 ouvriers HORS PLATEAU, plateau imposé', () => {
     const p = mk();
     expect(p.hero).toBeNull();
-    expect(p.workers.map(w => w.hexId).sort((a, b) => a - b)).toEqual([3, 20, 25, 40]);
+    // Départ hors plateau (09/08) : rien n'est posé, tout est en réserve.
+    expect(p.workers).toEqual([]);
+    expect(p.reserve).toBe(4);
     expect(FACTIONS[IN].anchors).toEqual([3, 20, 25, 40]);
     expect(FACTIONS[IN].fixedMat).toBe(200);
     expect(matById(200).name).toBe('Le Réseau');
+  });
+
+  // Deux des quatre ancrages portent un jeton Rencontre. Y POSER un ouvrier à
+  // l'installation rendait ces deux rencontres injouables : elles ne se
+  // déclenchent qu'en ENTRANT, et l'Internationale est la seule faction dont
+  // les ouvriers les déclenchent (elle n'a pas de héros). Le départ hors
+  // plateau les rend au jeu — on remonte SUR l'ancrage, donc on y entre.
+  it('les ancrages qui portent une rencontre restent libres à l\'installation', () => {
+    const p = mk();
+    const surJeton = FACTIONS[IN].anchors.filter(id => CURRENT_MAP.encounterHexes.includes(id));
+    expect(surJeton).toEqual([3, 40]);       // l'état de la carte v3 qui motive la règle
+    surJeton.forEach(id => expect(p.workers.some(w => w.hexId === id)).toBe(false));
+    // …et ces hex restent des destinations de réentrée : on peut y entrer.
+    const portes = reentryHexes(p, new Set());
+    surJeton.forEach(id => expect(portes).toContain(id));
+  });
+
+  it('les six autres factions démarrent bien POSÉES sur la carte', () => {
+    FACTION_IDS.forEach(fid => {
+      const p = createPlayer(fid, 1, false);
+      expect(p.workers.length, fid).toBe(2);
+      expect(p.reserve, fid).toBe(0);
+    });
   });
 
   it('la plus faible en duel, la plus haute en popularité (fiche §2)', () => {
@@ -45,7 +79,8 @@ describe('fiche de faction', () => {
     FACTIONS[IN].anchors.forEach(id => expect(hMap[id].base).toBeFalsy());
     // …et un hex tenu par un `null` ne pollue pas le décompte de contrôle
     expect(heldHexes(mk()).has(null)).toBe(false);
-    expect(heldHexes(mk()).size).toBe(4);
+    expect(heldHexes(mk()).size).toBe(0);          // rien de posé à l'installation
+    expect(heldHexes(infiltre()).size).toBe(4);    // …quatre hex une fois remontés
   });
 });
 
@@ -145,7 +180,7 @@ describe('vol de mecha — la capacité volée est celle du vaincu', () => {
 
 describe('réserve hors-plateau et réentrée (fiche §3)', () => {
   it('un ouvrier vaincu part en réserve, pas sur une base', () => {
-    const p = mk();
+    const p = infiltre();
     const r = retreatFromHex(p, 20, null);
     expect(r.player.workers).toHaveLength(3);
     expect(r.player.reserve).toBe(1);

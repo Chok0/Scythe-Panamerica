@@ -21,7 +21,11 @@ export const createPlayer = (factionId, matId, isBot) => {
     // visite de l'Usine, retraite. Les autres factions démarrent sur leur
     // base (hex hors plateau, sous le drapeau).
     stars: 0, hero: f.noHero ? null : (base ? base.id : (CURRENT_MAP.starts?.[factionId]?.workerHex ?? f.workerHex)[0]),
-    workers: (CURRENT_MAP.starts?.[factionId]?.workerHex ?? f.workerHex).map((hid, i) => ({ id: `${factionId}_w${i}`, hexId: hid })),
+    // `startsInReserve` (Internationale Noire) : les ouvriers ne sont pas posés
+    // à l'installation, ils sont HORS PLATEAU et s'infiltrent par les ancrages
+    // (voir `reserve` plus bas, et data/factions.js pour le pourquoi).
+    workers: f.startsInReserve ? []
+      : (CURRENT_MAP.starts?.[factionId]?.workerHex ?? f.workerHex).map((hid, i) => ({ id: `${factionId}_w${i}`, hexId: hid })),
     mechs: [], resources: {}, lastCol: null, buildings: [], encounters: 0,
     unlockedAbilities: [],
     topRow: pm.topRow, matName: pm.name,
@@ -43,7 +47,9 @@ export const createPlayer = (factionId, matId, isBot) => {
     // `reserve` : ouvriers hors-plateau (jamais capturables). Un ouvrier
     // vaincu ou dispersé y retourne au lieu de rentrer sur une base — la
     // faction n'en a pas — et revient ensuite adjacent à un point d'ancrage.
-    reserve: 0,
+    // C'est aussi d'ICI que part la partie : `startsInReserve` y place les
+    // quatre ouvriers du réseau, qui s'infiltrent au lieu d'être déjà posés.
+    reserve: f.startsInReserve ? (CURRENT_MAP.starts?.[factionId]?.workerHex ?? f.workerHex).length : 0,
     // Capacités VOLÉES avec un mecha capturé : provenance des slots 2 et 3
     // (combat / position). Le slot 0 (Vitesse) est commun, sans provenance.
     stolenCombat: null, stolenPosition: null,

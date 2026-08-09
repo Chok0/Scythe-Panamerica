@@ -614,8 +614,11 @@ export default function App(){
       addLog(`${p.isBot?"🤖":"👤"} ${f.name} (${p.matName})${prof?` ${prof.icon} ${prof.name}`:""}  ⚡${p.power} 🃏${p.combatCards} ♥${p.pop} 💰${p.coins}`);
     });
     // Auto-center on player's hero
-    // Sans héros (Internationale Noire), on centre sur le premier ancrage
-    const heroHex=hMap[ps[0].hero!=null?ps[0].hero:ps[0].workers[0]?.hexId];
+    // Sans héros (Internationale Noire), on centre sur le premier ancrage —
+    // et ses ouvriers démarrant HORS PLATEAU, c'est l'ancrage lui-même qui
+    // sert de repère, pas un ouvrier posé (il n'y en a aucun au tour 1).
+    const heroHex=hMap[ps[0].hero!=null?ps[0].hero
+      :(ps[0].workers[0]?.hexId ?? FACTIONS[ps[0].faction]?.anchors?.[0])];
     if(heroHex){
       const zw=700,zh=700;
       const x=Math.max(MAP_BASE.x,Math.min(MAP_BASE.x+MAP_BASE.w-zw,heroHex.rx-zw/2));
@@ -1825,18 +1828,30 @@ export default function App(){
     if(!me)return;
     const isMech=kind==="mech";
     if(isMech?!(me.reserveMechs>0):!(me.reserve>0))return;
+    // Remonter, c'est ENTRER sur l'hex : un jeton de rencontre s'y déclenche
+    // comme sous n'importe quel déplacement. C'est ce qui rend leurs deux
+    // rencontres au réseau — ses ancrages #3 et #40 en portent une, et les y
+    // POSER à l'installation les rendait injouables (09/08). Même garde-fou
+    // qu'ailleurs : une seule rencontre par tour pour une faction sans héros.
+    const noHeroFaction=!!FACTIONS[me.faction]?.noHero;
+    const encHere=encounterTokens.has(hexId)&&!(noHeroFaction&&me.encounterTurn===turn);
     setPlayers(prev=>{
       const n=[...prev];const p={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs]};
       if(isMech){p.mechs.push({id:`${p.faction}_r${p.mechs.length}${Date.now()%97}`,hexId});p.reserveMechs=(p.reserveMechs||0)-1;}
       else{p.workers.push({id:`${p.faction}_w${p.workers.length}${Date.now()%97}`,hexId});p.reserve=(p.reserve||0)-1;}
       p.movesLeft=(p.movesLeft??effMoveLimit)-1;
       p.movedUnits=[...(p.movedUnits||[]),`reentry${(p.movedUnits||[]).length}`];
+      if(encHere&&noHeroFaction)p.encounterTurn=turn;
       n[0]=p;return n;
     });
     addLog(`🕳 Le réseau fait remonter ${isMech?"un mecha":"un ouvrier"} sur #${hexId}`);
+    if(encHere){
+      setPendingEncs(q=>q.includes(hexId)?q:[...q,hexId]);
+      addLog(`📜 Jeton de rencontre atteint sur #${hexId} — il se résoudra après les combats`);
+    }
     setReentryMode(false);setMoveSource(null);
     if((me.movedUnits||[]).length+1>=effMoveLimit)setTimeout(()=>endMoveDone((me.movedUnits||[]).length+1),60);
-  },[me,addLog,effMoveLimit,endMoveDone]);
+  },[me,addLog,effMoveLimit,endMoveDone,encounterTokens,turn]);
 
   // Déplacement au clic : hex → unités du joueur encore déplaçables ce tour.
   // Cliquer un hex surligné sélectionne l'unité (picker si plusieurs).
@@ -2376,7 +2391,13 @@ export default function App(){
     // tous, pour motiver la quête des fragments avant d'y aller ──
     if(hexId===FACTORY_RR_HEX&&!selAction&&!pendingBottom&&!rougeRiver)setFactoryPreview(true);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes,rougeRiver,packUpTargets,doPackUpMove]);
+  // `reentryMode`, `reentryTargets`, `doReentry` et `turn` MANQUAIENT ici
+  // (09/08) : basculer le bouton « Réserve du réseau » ne change aucune autre
+  // dépendance, donc `handleHexClick` n'était pas recréé et gardait
+  // `reentryMode = false` dans sa fermeture — cliquer un ancrage ne faisait
+  // RIEN. La réentrée par la carte n'avait jamais fonctionné ; on ne s'en
+  // apercevait pas tant que la faction démarrait posée sur le plateau.
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,turn,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes,rougeRiver,packUpTargets,doPackUpMove,reentryMode,reentryTargets,doReentry]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -4699,11 +4720,18 @@ export default function App(){
                   {(me.movedUnits||[]).length===0&&<button onClick={()=>{const g=1+topUpgradeCount(me,"Move","coins");setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+g};return n;});addLog(`💰 +${g}$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner {1+topUpgradeCount(me,"Move","coins")}$ (pas de déplacement)</button>}
                   {!moveSource&&(
                     <div style={{padding:"10px 12px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:14,color:"var(--gold)",lineHeight:1.5}}>
-                      👆 Cliquez le <b>pion</b> à déplacer (hexes surlignés en doré), puis l'<b>hex</b> de destination. Un clic sur un pion change toujours d'unité ; un clic sur un hex vise toujours l'hex.
+                      {/* Rien sur le plateau mais de quoi faire remonter : c'est
+                          l'ouverture de l'Internationale Noire, dont les quatre
+                          ouvriers démarrent hors plateau. Pointer un pion à
+                          déplacer n'aurait aucun sens tant qu'il n'y en a pas. */}
+                      {movableUnits.size===0&&reserveTotal>0
+                        ?<>🕳 Rien sur le plateau : votre réseau est <b>hors carte</b>. Faites remonter vos unités par un <b>ancrage</b> (bouton ci-dessous) — chaque remontée coûte un des déplacements du tour.</>
+                        :<>👆 Cliquez le <b>pion</b> à déplacer (hexes surlignés en doré), puis l'<b>hex</b> de destination. Un clic sur un pion change toujours d'unité ; un clic sur un hex vise toujours l'hex.</>}
                       <div style={{fontSize:13,color:"var(--text-dim)",marginTop:4}}>
-                        Disponibles : {!(me.movedUnits||[]).includes("hero")&&<span>★ {myFaction.hero} · </span>}
+                        Disponibles : {me.hero!=null&&!(me.movedUnits||[]).includes("hero")&&<span>★ {myFaction.hero} · </span>}
                         ● {me.workers.filter(w=>!(me.movedUnits||[]).includes(w.id)).length} ouvrier(s)
                         {me.mechs.length>0&&<span> · ⬡ {me.mechs.filter(m=>!(me.movedUnits||[]).includes(m.id)).length} mecha(s)</span>}
+                        {reserveTotal>0&&<span> · 🕳 {reserveTotal} en réserve</span>}
                       </div>
                     </div>
                   )}
