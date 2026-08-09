@@ -1,9 +1,9 @@
 import React from 'react';
-import { TERRAINS } from '../../data/terrains.js';
 import { hPts, HS } from '../../logic/hexMath.js';
 import { TerrainDecor } from './TerrainDecor.jsx';
 import { FACTION_ICON_MAP, HERO_ICON_MAP, WORKER_ICON_MAP } from './FactionIcons.jsx';
 import { RESOURCE_ICONS } from './ActionIcons.jsx';
+import { UNIT_R } from '../../logic/hexLayout.js';
 
 // DA: painted-board hex rendering — bright terrain fills, dark gutter between
 // hexes with a thin cream separation line like the printed Scythe board
@@ -21,8 +21,8 @@ export const RES_BADGE = {
   ouvriers:   { bg: "#e8dcc4", light: false },  // villages — crème neutre
 };
 
-const HexResIcon = React.memo(({ cx, cy, resType, light = false }) => {
-  const s = 22; // icône de ressource — renforcée (les hex sont désaturés dessous)
+const HexResIcon = React.memo(({ cx, cy, resType, light = false, size }) => {
+  const s = size || 22; // icône de ressource — renforcée (les hex sont désaturés dessous)
   const x = cx - s / 2, y = cy - s / 2;
   // Trait sombre sur fonds clairs, ivoire sur fonds saturés (bleu/marron)
   const col = light ? "rgba(255,251,240,0.96)" : "rgba(14,10,5,0.9)";
@@ -76,13 +76,22 @@ const HexResIcon = React.memo(({ cx, cy, resType, light = false }) => {
   return null;
 });
 
+/** Pastille « ce que produit ce terrain » — posée par la bande d'information
+ *  de l'hex (App.jsx + logic/hexLayout.js), plus au chausse-pied au-dessus du
+ *  centre où les pions lui montaient dessus. */
+export const TerrainResBadge = React.memo(({ cx, cy, resType, r = 12 }) => {
+  const badge = RES_BADGE[resType] || { bg: "rgba(232,220,196,0.82)", light: false };
+  return (<g style={{ pointerEvents: "none" }}>
+    <polygon points={hPts(cx, cy, r)} fill={badge.bg} stroke="rgba(14,10,5,0.55)" strokeWidth={1.2} opacity={0.94} />
+    <HexResIcon cx={cx} cy={cy} resType={resType} light={badge.light} size={r * 1.35} />
+  </g>);
+});
+
 // `isFar` : destination atteinte seulement au DERNIER pas (2e hex d'un mech
 // Vitesse, ou trajet ferroviaire). Surlignée plus discrètement — sans ça, la
 // portée d'une capacité de mouvement est illisible : « on dirait que le mecha
 // Speed n'a pas d'effet » (partie du 03/08), alors qu'il ouvrait bien un hex.
 export const HexTerrain = React.memo(({ hex, isV, isFar, isSel, isHov, isFactory, isSrc, controlColor, wireframe }) => {
-  const t = TERRAINS[hex.t];
-  const isWater = hex.t === "lac" || hex.t === "marecage";
   return (
     <g>
       {wireframe ? (
@@ -121,16 +130,6 @@ export const HexTerrain = React.memo(({ hex, isV, isFar, isSel, isHov, isFactory
         stroke={controlColor} strokeWidth={3.5} opacity={0.9}
         style={{ pointerEvents: "none" }}
       />}
-      {/* Resource SVG icon — top of hex so units don't cover it.
-          Badge HEXAGONAL (même logique formelle que le plateau) au fond couleur
-          de la ressource : bleu pétrole, jaune céréales, marron bois, gris métal */}
-      {t.res && (() => {
-        const badge = RES_BADGE[t.res] || { bg: "rgba(232,220,196,0.82)", light: false };
-        return <>
-          <polygon points={hPts(hex.rx, hex.ry - 24, 16)} fill={badge.bg} stroke="rgba(14,10,5,0.55)" strokeWidth={1.2} opacity={0.94} style={{ pointerEvents: "none" }} />
-          <HexResIcon cx={hex.rx} cy={hex.ry - 24} resType={t.res} light={badge.light} />
-        </>;
-      })()}
       {/* Factory special: subtle pulsing ring */}
       {isFactory && <>
         <polygon points={hPts(hex.rx, hex.ry, HS + 4)} fill="none" stroke="#8A2A2A" strokeWidth={0.6} opacity={0.2} strokeDasharray="5 3">
@@ -184,6 +183,10 @@ export const tokenRim = (color) => {
 
 export const UnitToken = React.memo(({ type, unitId, cx, cy, color, label, icon, factionId, onClick, selectable, selected, scale = 1 }) => {
   const rim = tokenRim(color);
+  // L'anneau de sélection suit la taille du pion (logic/hexLayout.js) : un
+  // anneau fixe de 23 débordait sur les pions voisins et donnait à croire que
+  // deux unités étaient sélectionnées.
+  const ringR = (UNIT_R[type] || UNIT_R.worker) + 4;
   // Wrapper animé : la position vit dans un transform CSS → le pion GLISSE
   // d'un hex à l'autre (transition) au lieu de téléporter.
   // onClick (action Move) : le pion redevient cliquable malgré le
@@ -197,7 +200,7 @@ export const UnitToken = React.memo(({ type, unitId, cx, cy, color, label, icon,
       style={{ transform: `translate(${cx}px, ${cy}px) scale(${scale})`, transition: "transform 0.55s cubic-bezier(0.22,0.61,0.36,1)",
         ...(onClick ? { pointerEvents: "auto", cursor: "pointer" } : {}) }}>
       {(selectable || selected) && (
-        <circle cx={0} cy={1} r={23} fill="none" stroke="#e6c96a" strokeWidth={selected ? 3 : 1.8}
+        <circle cx={0} cy={1} r={ringR} fill="none" stroke="#e6c96a" strokeWidth={selected ? 3 : 1.8}
           strokeDasharray={selected ? undefined : "4 3"}>
           {!selected && <animate attributeName="opacity" values="0.35;0.9;0.35" dur="1.4s" repeatCount="indefinite" />}
         </circle>
@@ -209,27 +212,27 @@ export const UnitToken = React.memo(({ type, unitId, cx, cy, color, label, icon,
     const HeroIcon = factionId ? HERO_ICON_MAP[factionId] : null;
     if (HeroIcon) {
       return wrap(<>
-        <circle cx={0} cy={1} r={19} fill="rgba(6,5,3,0.85)" stroke={rim} strokeWidth={2} />
-        <HeroIcon cx={0} cy={1} size={32} color={rim} />
-        <text x={0} y={30} textAnchor="middle" fontSize="9" fill={rim} fontWeight="700" stroke="rgba(6,5,3,0.8)" strokeWidth="2.5" paintOrder="stroke" style={{ fontFamily: "var(--font-map, 'IM Fell English SC', serif)" }}>{label}</text>
+        <circle cx={0} cy={1} r={15} fill="rgba(6,5,3,0.85)" stroke={rim} strokeWidth={2} />
+        <HeroIcon cx={0} cy={1} size={26} color={rim} />
+        <text x={0} y={26} textAnchor="middle" fontSize="9" fill={rim} fontWeight="700" stroke="rgba(6,5,3,0.8)" strokeWidth="2.5" paintOrder="stroke" style={{ fontFamily: "var(--font-map, 'IM Fell English SC', serif)" }}>{label}</text>
       </>);
     }
     // Fallback — generic star
-    const r = 15, ri = 6.5;
+    const r = 12.5, ri = 5.5;
     const pts = Array.from({ length: 10 }, (_, i) => {
       const a = (Math.PI / 5) * i - Math.PI / 2;
       const rad = i % 2 === 0 ? r : ri;
       return `${rad * Math.cos(a)},${rad * Math.sin(a)}`;
     }).join(" ");
     return wrap(<>
-      <circle cx={0} cy={0} r={17} fill="rgba(6,5,3,0.85)" />
+      <circle cx={0} cy={0} r={15} fill="rgba(6,5,3,0.85)" />
       <polygon points={pts} fill={color} stroke="rgba(255,255,240,0.9)" strokeWidth={1.5} />
-      <text x={0} y={28} textAnchor="middle" fontSize="9" fill={rim} fontWeight="700" stroke="rgba(6,5,3,0.8)" strokeWidth="2.5" paintOrder="stroke" style={{ fontFamily: "var(--font-map, 'IM Fell English SC', serif)" }}>{label}</text>
+      <text x={0} y={26} textAnchor="middle" fontSize="9" fill={rim} fontWeight="700" stroke="rgba(6,5,3,0.8)" strokeWidth="2.5" paintOrder="stroke" style={{ fontFamily: "var(--font-map, 'IM Fell English SC', serif)" }}>{label}</text>
     </>);
   }
   if (type === "mech") {
     const FactionIcon = factionId ? FACTION_ICON_MAP[factionId] : null;
-    const r = FactionIcon ? 20 : 17;
+    const r = 15;
     const pts = Array.from({ length: 6 }, (_, i) => {
       const a = (Math.PI / 3) * i - Math.PI / 6;
       return `${r * Math.cos(a)},${r * Math.sin(a)}`;
@@ -241,7 +244,7 @@ export const UnitToken = React.memo(({ type, unitId, cx, cy, color, label, icon,
       return wrap(<>
         <polygon points={pts} fill="rgba(6,5,3,0.9)" stroke={rim} strokeWidth={2.5} />
         <polygon points={pts} fill={color} opacity={0.28} stroke="none" />
-        <FactionIcon cx={0} cy={0} size={34} color={rim} />
+        <FactionIcon cx={0} cy={0} size={26} color={rim} />
       </>);
     }
     return wrap(<>
@@ -252,23 +255,23 @@ export const UnitToken = React.memo(({ type, unitId, cx, cy, color, label, icon,
   if (type === "building") {
     const bt = icon || "■";
     return wrap(<>
-      <rect x={-13} y={-13} width={26} height={26} rx={4} fill="rgba(6,5,3,0.85)" stroke={rim} strokeWidth={2} />
-      <rect x={-11.5} y={-11.5} width={23} height={23} rx={3} fill={color + "66"} stroke="none" />
-      <text x={0} y={5} textAnchor="middle" fontSize={14}>{bt}</text>
+      <rect x={-11} y={-11} width={22} height={22} rx={4} fill="rgba(6,5,3,0.85)" stroke={rim} strokeWidth={2} />
+      <rect x={-9.5} y={-9.5} width={19} height={19} rx={3} fill={color + "66"} stroke="none" />
+      <text x={0} y={4.5} textAnchor="middle" fontSize={12}>{bt}</text>
     </>);
   }
   // Worker — faction-specific silhouette
   const WorkerIcon = factionId ? WORKER_ICON_MAP[factionId] : null;
   if (WorkerIcon) {
     return wrap(<>
-      <circle cx={0} cy={0} r={12} fill="rgba(6,5,3,0.85)" stroke={rim} strokeWidth={1.5} />
-      <WorkerIcon cx={0} cy={0} size={20} color={rim} />
+      <circle cx={0} cy={0} r={10} fill="rgba(6,5,3,0.85)" stroke={rim} strokeWidth={1.5} />
+      <WorkerIcon cx={0} cy={0} size={17} color={rim} />
     </>);
   }
   // Fallback — filled circle
   return wrap(<>
     <circle cx={0} cy={0} r={10} fill="rgba(6,5,3,0.85)" stroke={rim} strokeWidth={1.5} />
-    <circle cx={0} cy={0} r={7.5} fill={color} stroke="rgba(255,255,240,0.8)" strokeWidth={1} />
+    <circle cx={0} cy={0} r={7} fill={color} stroke="rgba(255,255,240,0.8)" strokeWidth={1} />
   </>);
 });
 
@@ -278,27 +281,30 @@ export const FactionHalo = React.memo(({ cx, cy, color, r = 24 }) => (
 ));
 
 // Empire mecha — hexagon with X cross, navy blue
-export const EmpireMecha = React.memo(({ cx, cy, eid }) => {
-  const r = 15;
+export const EmpireMecha = React.memo(({ cx, cy, eid, scale = 1 }) => {
+  const r = UNIT_R.empire;
   const pts = Array.from({ length: 6 }, (_, i) => {
     const a = (Math.PI / 3) * i - Math.PI / 6;
     return `${r * Math.cos(a)},${r * Math.sin(a)}`;
   }).join(" ");
   return (
-    <g style={{ transform: `translate(${cx}px, ${cy}px)`, transition: "transform 0.55s cubic-bezier(0.22,0.61,0.36,1)" }}>
+    <g style={{ transform: `translate(${cx}px, ${cy}px) scale(${scale})`, transition: "transform 0.55s cubic-bezier(0.22,0.61,0.36,1)" }}>
       <polygon points={pts} fill="#0A1A3A" stroke="#1A3A6A" strokeWidth={1.5} opacity={0.95}>
         <animate attributeName="opacity" values="0.8;1;0.8" dur="3s" repeatCount="indefinite" />
       </polygon>
       <line x1={-6} y1={-6} x2={6} y2={6} stroke="#2A5A8A" strokeWidth={2} />
       <line x1={6} y1={-6} x2={-6} y2={6} stroke="#2A5A8A" strokeWidth={2} />
-      <text x={0} y={25} textAnchor="middle" fontSize={8} fill="#2A5A8A" fontWeight={700} opacity={0.8}>{eid}</text>
+      <text x={0} y={24} textAnchor="middle" fontSize={8} fill="#2A5A8A" fontWeight={700} opacity={0.8}>{eid}</text>
     </g>
   );
 });
 
 // Resource token — icône SVG de la ressource + quantité (le rectangle nu
 // avec un simple chiffre ne disait pas QUELLE ressource était posée là)
-export const ResourceToken = React.memo(({ cx, cy, resType, count }) => {
+// `w` : largeur imposée par la bande basse de l'hex. Trois tas de ressources
+// sur un même hex débordaient sur les hexes voisins à largeur fixe — la
+// pastille se resserre désormais autour de son icône et de son compte.
+export const ResourceToken = React.memo(({ cx, cy, resType, count, w = 34 }) => {
   const cfg = {
     metal: { bg: "#3A3A3A", border: "#8A8A8A", icon: "#c8c8d0" },
     bois: { bg: "#2D3A1A", border: "#5A7A3A", icon: "#9fc878" },
@@ -308,8 +314,8 @@ export const ResourceToken = React.memo(({ cx, cy, resType, count }) => {
   const Icon = RESOURCE_ICONS[resType];
   return (<g>
     <title>{`${count} ${resType}`}</title>
-    <rect x={cx - 20} y={cy - 9} width={40} height={18} rx={4} fill={cfg.bg} stroke={cfg.border} strokeWidth={1} opacity={0.95} />
-    {Icon && <g transform={`translate(${cx - 17}, ${cy - 7})`}><Icon size={14} color={cfg.icon} /></g>}
-    <text x={cx + 8} y={cy + 4.5} textAnchor="middle" fontSize={11} fill="#E8DCC8" fontWeight={700} style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{count}</text>
+    <rect x={cx - w / 2} y={cy - 9} width={w} height={18} rx={4} fill={cfg.bg} stroke={cfg.border} strokeWidth={1} opacity={0.95} />
+    {Icon && <g transform={`translate(${cx - w / 2 + 2}, ${cy - 6.5})`}><Icon size={13} color={cfg.icon} /></g>}
+    <text x={cx + w / 2 - 6} y={cy + 4.5} textAnchor="middle" fontSize={11} fill="#E8DCC8" fontWeight={700} style={{ fontFamily: "'IBM Plex Mono',monospace" }}>{count}</text>
   </g>);
 });

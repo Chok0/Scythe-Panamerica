@@ -35,7 +35,8 @@ import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from 
 import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { drawFactoryOffer, claimFactoryCard, canPayFactoryCost, payFactoryCost, factoryEffectPossible, factoryWorkerHexes, factoryProduceHexes, factoryResourceHex } from '../logic/factory.js';
 import { playSfx, sfxForLog } from '../logic/sfx.js';
-import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
+import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo, TerrainResBadge } from './svg/MapComponents.jsx';
+import { layoutUnits, layoutStrip, halfWidthAt, STRIP_TOP_Y, STRIP_BOTTOM_Y } from '../logic/hexLayout.js';
 import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, ProduceTrack, RESOURCE_ICONS, BUILDING_ICONS, Glyph } from './svg/ActionIcons.jsx';
 import { getMechAbilities } from '../data/mechAbilities.js';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
@@ -3076,13 +3077,29 @@ export default function App(){
       if(p.hero!=null)add(p.hero,{type:"hero",id:`${p.faction}_hero`,label:f.hero});
       p.workers.forEach(w=>add(w.hexId,{type:"worker",id:w.id,label:"Ouv."}));
       p.mechs.forEach(m=>add(m.hexId,{type:"mech",id:m.id,label:"Mech"}));
-      (p.buildings||[]).forEach(b=>{
-        const bt=BUILDING_TYPES.find(t=>t.type===b.type);
-        add(b.hexId,{type:"building",id:`${p.faction}_b_${b.type}`,label:bt?bt.name:b.type,icon:bt?bt.icon:"🏗"});
-      });
+      // Les BÂTIMENTS ne sont plus dans la grappe : ce sont des structures,
+      // jamais déplaçables pendant un Move, et elles écrasaient les ouvriers.
+      // Elles vivent dans la bande basse de l'hex (« posé au sol »).
+    });
+    // Patrouilles impériales : elles étaient dessinées à un décalage fixe
+    // au-dessus du centre, donc par-dessus la pastille du terrain ET par-dessus
+    // les pions du joueur en cas de contact. Elles passent par le même gabarit.
+    Object.entries(empire||{}).forEach(([eid,hid])=>{
+      if(hid==null)return;
+      (c[hid]=c[hid]||[]).push({type:"empire",id:eid,label:"Empire",empire:true});
     });
     return c;
-  },[players]);
+  },[players,empire]);
+
+  // Positions calculées une fois par hex (logic/hexLayout.js) : la grappe de
+  // pions ne se recouvre plus et ne monte plus dans les bandes d'information.
+  const hexUnitPos=useMemo(()=>{
+    const out={};
+    Object.entries(allHexContents).forEach(([hid,units])=>{
+      out[hid]=Object.fromEntries(layoutUnits(units).map(p=>[p.id,p]));
+    });
+    return out;
+  },[allHexContents]);
 
   // ══════════ RULES OVERLAY ══════════
   if(showRules) return <RulesPage onClose={()=>setShowRules(false)} />;
@@ -3690,9 +3707,13 @@ export default function App(){
             // n'est présente — cohérent avec le scoring (un ennemi campé sur
             // mon bâtiment me prend le territoire). Avant, le 1er contenu
             // (mes bâtiments, joueur 0, ajoutés en premier) gagnait à tort.
-            const hexContents=allHexContents[hex.id]||[];
-            const controlEntry=hexContents.find(u=>u.type!=="building")||hexContents[0];
-            const controlColor=!isBaseHex(hex.id)?(controlEntry?.color||null):null;
+            // Une UNITÉ prime sur un bâtiment ; les patrouilles impériales ne
+            // « contrôlent » rien au sens du score, elles contestent seulement.
+            const hexContents=(allHexContents[hex.id]||[]).filter(u=>!u.empire);
+            const bldHere=players.find(pl=>(pl.buildings||[]).some(b=>b.hexId===hex.id));
+            const controlEntry=hexContents[0];
+            const controlColor=isBaseHex(hex.id)?null
+              :(controlEntry?uiInk(FACTIONS[controlEntry.factionId]):bldHere?uiInk(FACTIONS[bldHere.faction]):null);
             // Tooltips natifs (note du 28/07 : « les icônes dollars sont
             // revenues, je ne sais pas à quoi elles correspondent ») : le
             // badge $ et la règle des rails s'expliquent au survol de l'hex
@@ -3709,57 +3730,94 @@ export default function App(){
             ].filter(Boolean).join("\n");
             return(<g key={hex.id} data-hex={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
               {hexTitle&&<title>{hexTitle}</title>}
+              <text x={hex.rx} y={hex.ry+53} textAnchor="middle" fontSize={6.5} fill="#4a4030" opacity={0.2} style={{fontFamily:"var(--font-map)",pointerEvents:"none"}}>#{hex.id}</text>
               <HexTerrain hex={hex} isV={isV} isFar={isFar} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc} controlColor={controlColor} wireframe={mapChoice!=="random"}/>
-              {/* Ancrage du réseau clandestin : pastille discrète */}
-              {isAnchor&&<g style={{pointerEvents:"none"}}>
-                <circle cx={hex.rx+26} cy={hex.ry+24} r={8} fill="rgba(6,5,3,0.75)" stroke="#9E3B4E" strokeWidth={1}/>
-                <text x={hex.rx+26} y={hex.ry+27.5} textAnchor="middle" fontSize={9} fill="#E08090" fontWeight={700}>⚑</text>
-              </g>}
-              {/* Bonus de construction : pastille $ sur les tuiles qualifiées */}
-              {isBonusTile&&<g style={{pointerEvents:"none"}}>
-                <circle cx={hex.rx-26} cy={hex.ry+24} r={8} fill="rgba(6,5,3,0.75)" stroke="#d4b254" strokeWidth={1}/>
-                <text x={hex.rx-26} y={hex.ry+27.5} textAnchor="middle" fontSize={10} fill="#d4b254" fontWeight={700}>$</text>
-              </g>}
-              {/* Terrain label removed — TerrainDecor provides visual identification */}
-              <text x={hex.rx} y={hex.ry+32} textAnchor="middle" fontSize={6.5} fill="#4a4030" opacity={0.2} style={{fontFamily:"var(--font-map)",pointerEvents:"none"}}>#{hex.id}</text>
+              {/* ── BANDE HAUTE : tout ce que dit la CARTE ────────────────
+                    Pastille du terrain, rencontre, ancrage, bonus de pose,
+                    pièges et comptoirs : une seule rangée, centrée, dont la
+                    largeur se répartit selon ce qui est réellement là
+                    (logic/hexLayout.js). Avant, chacun avait un coin fixe —
+                    l'ancrage et la rencontre partageaient le MÊME, et les
+                    pions montaient par-dessus la pastille du terrain. */}
               {(()=>{
-                const pRes=players.reduce((acc,pl)=>{const r=pl.resources[String(hex.id)];if(r)Object.entries(r).forEach(([rt,cnt])=>{acc[rt]=(acc[rt]||0)+cnt;});return acc;},{});
-                return Object.entries(pRes).map(([rt,cnt],ri)=>
-                  <ResourceToken key={rt} cx={hex.rx+26} cy={hex.ry-22+ri*18} resType={rt} count={cnt}/>
-                );
+                const terr=TERRAINS[hex.t];
+                const traps=players.flatMap(pl=>(pl.trapTokens||[]).filter(t=>t.hexId===hex.id).map(t=>({t,pl})));
+                const flags=players.flatMap(pl=>(pl.flagTokens||[]).filter(f=>f.hexId===hex.id).map(f=>({f,pl})));
+                const items=[
+                  ...(terr.res?[{k:"terr",w:24}]:[]),
+                  ...(encounterTokens.has(hex.id)?[{k:"enc",w:20}]:[]),
+                  ...(isAnchor?[{k:"anchor",w:17}]:[]),
+                  ...(isBonusTile?[{k:"bonus",w:17}]:[]),
+                  ...traps.map((tr,i)=>({k:`trap${i}`,w:18,tr})),
+                  ...flags.map((fl,i)=>({k:`flag${i}`,w:18,fl})),
+                ];
+                if(items.length===0)return null;
+                const xs=layoutStrip(items.map(i=>i.w),STRIP_TOP_Y);
+                const Y=hex.ry+STRIP_TOP_Y;
+                return <g style={{pointerEvents:"none"}}>{items.map((it,i)=>{
+                  const X=hex.rx+xs[i];
+                  if(it.k==="terr")return <TerrainResBadge key={it.k} cx={X} cy={Y} resType={terr.res}/>;
+                  if(it.k==="enc"){
+                    const star=Array.from({length:8},(_,j)=>{
+                      const a=(Math.PI/4)*j-Math.PI/2;const r=j%2===0?6:2.4;
+                      return `${X+r*Math.cos(a)},${Y+r*Math.sin(a)}`;
+                    }).join(" ");
+                    return <g key={it.k}>
+                      <circle cx={X} cy={Y} r={10} fill="#2e6b34" stroke="#d8c9a3" strokeWidth={1.5}/>
+                      <polygon points={star} fill="#e8e4d0" opacity={0.95}/>
+                    </g>;
+                  }
+                  if(it.k==="anchor")return <g key={it.k}>
+                    <circle cx={X} cy={Y} r={8.5} fill="rgba(6,5,3,0.8)" stroke="#D8CFB8" strokeWidth={1.2}/>
+                    <text x={X} y={Y+3.5} textAnchor="middle" fontSize={9} fill="#D8CFB8" fontWeight={700}>⚑</text>
+                  </g>;
+                  if(it.k==="bonus")return <g key={it.k}>
+                    <circle cx={X} cy={Y} r={8.5} fill="rgba(6,5,3,0.8)" stroke="#d4b254" strokeWidth={1.2}/>
+                    <text x={X} y={Y+3.5} textAnchor="middle" fontSize={10} fill="#d4b254" fontWeight={700}>$</text>
+                  </g>;
+                  if(it.tr){const {t,pl}=it.tr;return <g key={it.k}>
+                    <circle cx={X} cy={Y} r={9} fill="rgba(6,5,3,0.85)"/>
+                    <circle cx={X} cy={Y} r={8} fill={t.disarmed?"rgba(100,50,20,0.4)":"rgba(208,112,48,0.5)"} stroke={t.disarmed?"#6a4020":uiInk(FACTIONS[pl.faction])} strokeWidth={1.2}/>
+                    <text x={X} y={Y+3.5} textAnchor="middle" fontSize={10} fill={t.disarmed?"#6a4020":"#D07030"} fontWeight={700}>{t.disarmed?"✗":"💀"}</text>
+                  </g>;}
+                  const {pl}=it.fl;return <g key={it.k}>
+                    <circle cx={X} cy={Y} r={9} fill="rgba(6,5,3,0.85)"/>
+                    <circle cx={X} cy={Y} r={8} fill="rgba(51,170,51,0.4)" stroke={uiInk(FACTIONS[pl.faction])} strokeWidth={1.2}/>
+                    <text x={X} y={Y+3.5} textAnchor="middle" fontSize={11} fill="#33AA33" fontWeight={700}>⚑</text>
+                  </g>;
+                })}</g>;
               })()}
-              {/* Faction tokens: Traps (Frente) + Comptoirs (Acadiane) */}
-              {players.map(pl=>{
-                // Traps — hidden marker (skull if active, X if disarmed)
-                const traps=(pl.trapTokens||[]).filter(t=>t.hexId===hex.id);
-                const flags=(pl.flagTokens||[]).filter(f=>f.hexId===hex.id);
-                const fc=FACTIONS[pl.faction];
-                return <React.Fragment key={pl.faction+"tok"}>
-                  {traps.map((t,ti)=><g key={`trap${ti}`} style={{pointerEvents:"none"}}>
-                    <circle cx={hex.rx-26} cy={hex.ry-22+ti*16} r={9} fill="rgba(6,5,3,0.85)"/>
-                    <circle cx={hex.rx-26} cy={hex.ry-22+ti*16} r={8} fill={t.disarmed?"rgba(100,50,20,0.4)":"rgba(208,112,48,0.5)"} stroke={t.disarmed?"#6a4020":fc.color} strokeWidth={1.2}/>
-                    <text x={hex.rx-26} y={hex.ry-17+ti*16} textAnchor="middle" fontSize={10} fill={t.disarmed?"#6a4020":"#D07030"} fontWeight={700}>{t.disarmed?"✗":"💀"}</text>
-                  </g>)}
-                  {flags.map((f2,fi)=><g key={`flag${fi}`} style={{pointerEvents:"none"}}>
-                    <circle cx={hex.rx-26} cy={hex.ry-22+fi*16} r={9} fill="rgba(6,5,3,0.85)"/>
-                    <circle cx={hex.rx-26} cy={hex.ry-22+fi*16} r={8} fill="rgba(51,170,51,0.4)" stroke={fc.color} strokeWidth={1.2}/>
-                    <text x={hex.rx-26} y={hex.ry-17+fi*16} textAnchor="middle" fontSize={11} fill="#33AA33" fontWeight={700}>⚑</text>
-                  </g>)}
-                </React.Fragment>;
-              })}
-              {encounterTokens.has(hex.id)&&(()=>{
-                const ex=hex.rx+26,ey=hex.ry+24;
-                const star=Array.from({length:8},(_,i)=>{
-                  const a=(Math.PI/4)*i-Math.PI/2;const r=i%2===0?6.5:2.6;
-                  return `${ex+r*Math.cos(a)},${ey+r*Math.sin(a)}`;
-                }).join(" ");
-                return(
-                  <g style={{pointerEvents:"none"}}>
-                    <circle cx={ex} cy={ey} r={11} fill="rgba(6,5,3,0.6)"/>
-                    <circle cx={ex} cy={ey} r={10} fill="#2e6b34" stroke="#d8c9a3" strokeWidth={1.5}/>
-                    <polygon points={star} fill="#e8e4d0" opacity={0.95}/>
-                  </g>
-                );
+              {/* ── BANDE BASSE : ce qui est POSÉ AU SOL sur l'hex ─────────
+                    Le bâtiment (structure, jamais déplaçable pendant un Move :
+                    il n'a rien à faire dans la grappe de pions, où il écrasait
+                    les ouvriers) et les tas de ressources, qui remontaient
+                    jusque sous les pions et disparaissaient dessous. */}
+              {(()=>{
+                const bld=players.flatMap(pl=>(pl.buildings||[]).filter(b=>b.hexId===hex.id).map(b=>({b,pl})))[0];
+                const pRes=Object.entries(players.reduce((acc,pl)=>{const r=pl.resources[String(hex.id)];if(r)Object.entries(r).forEach(([rt,cnt])=>{if(cnt>0)acc[rt]=(acc[rt]||0)+cnt;});return acc;},{}));
+                if(!bld&&pRes.length===0)return null;
+                // Largeur des pastilles calculée pour tenir dans l'hexagone :
+                // trois tas de ressources à largeur fixe débordaient sur les
+                // voisins. On resserre les pastilles, jamais le jeu entre elles.
+                const room=2*(halfWidthAt(STRIP_BOTTOM_Y)-5);
+                const bw=bld?22:0, n=pRes.length, gaps=2*(n+(bld?1:0)-1);
+                const cw=n>0?Math.max(20,Math.min(34,(room-bw-gaps)/n)):0;
+                const items=[...(bld?[{k:"bld",w:bw}]:[]),...pRes.map(([rt,cnt])=>({k:rt,w:cw,rt,cnt}))];
+                const xs=layoutStrip(items.map(i=>i.w),STRIP_BOTTOM_Y,2);
+                const Y=hex.ry+STRIP_BOTTOM_Y;
+                return <g style={{pointerEvents:"none"}}>{items.map((it,i)=>{
+                  const X=hex.rx+xs[i];
+                  if(it.k==="bld"){
+                    const bt=BUILDING_TYPES.find(t=>t.type===bld.b.type);
+                    const col=FACTIONS[bld.pl.faction]?.color||"#888";
+                    return <g key="bld"><title>{`${bt?bt.name:bld.b.type} — ${FACTIONS[bld.pl.faction]?.name}`}</title>
+                      <rect x={X-10} y={Y-10} width={20} height={20} rx={4} fill="rgba(6,5,3,0.9)" stroke={uiInk(FACTIONS[bld.pl.faction])} strokeWidth={2}/>
+                      <rect x={X-8.5} y={Y-8.5} width={17} height={17} rx={3} fill={col+"66"} stroke="none"/>
+                      <text x={X} y={Y+4} textAnchor="middle" fontSize={11}>{bt?bt.icon:"🏗"}</text>
+                    </g>;
+                  }
+                  return <ResourceToken key={it.k} cx={X} cy={Y} resType={it.rt} count={it.cnt} w={it.w}/>;
+                })}</g>;
               })()}
             </g>);
           })}
@@ -3786,24 +3844,20 @@ export default function App(){
           <g style={{pointerEvents:"none"}}>
             {Object.entries(allHexContents).map(([hidStr,units])=>{
               const hex=hMap[hidStr];if(!hex||units.length===0)return null;
-              const c=uiInk(FACTIONS[units[0].factionId]);
-              return <FactionHalo key={`halo${hidStr}`} cx={hex.rx} cy={hex.ry+6} color={c} r={22}/>;
+              const owned=units.find(u=>!u.empire);
+              if(!owned)return null;                       // patrouille seule : pas de halo de faction
+              const c=uiInk(FACTIONS[owned.factionId]);
+              return <FactionHalo key={`halo${hidStr}`} cx={hex.rx} cy={hex.ry+4} color={c} r={26}/>;
             })}
             {Object.entries(allHexContents).flatMap(([hidStr,units])=>{
               const hex=hMap[hidStr];if(!hex)return [];
-              // Disposition en PACK : rangées compactes centrées (3 pions max
-              // par rangée, léger rétrécissement quand l'hex est bondé) au lieu
-              // d'une ligne qui débordait sur les hexes voisins dès 4 unités —
-              // chaque pion reste cliquable individuellement
-              const n=units.length;
-              const perRow=n<=2?2:3;
-              const nRows=Math.ceil(n/perRow);
-              const packScale=n>=7?0.8:n>=5?0.88:1;
-              return units.map((u,ui)=>{
-                const row=Math.floor(ui/perRow);
-                const inRow=(row===nRows-1)?(n-row*perRow):perRow;
-                const ox=((ui%perRow)-(inRow-1)/2)*24*packScale;
-                const oy=(row-(nRows-1)/2)*21*packScale;
+              const pos=hexUnitPos[hidStr]||{};
+              return units.map(u=>{
+                const p=pos[u.id];if(!p)return null;
+                const cx=hex.rx+p.cx,cy=hex.ry+p.cy;
+                // Patrouille impériale : même gabarit que les autres pions,
+                // rendu par son propre composant.
+                if(u.empire)return <EmpireMecha key={u.id} cx={cx} cy={cy} eid={u.id} scale={p.scale}/>;
                 // Action Move : cliquer directement le pion à déplacer (au lieu
                 // du picker de liste). Si le hex est une destination valide de
                 // l'unité déjà sélectionnée, le clic doit passer au hex.
@@ -3817,19 +3871,11 @@ export default function App(){
                 // déplacement séquentiel vers une case déjà occupée par les
                 // siens.
                 const clickable=isMovable&&!isSel;
-                return <UnitToken key={u.id} unitId={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6+oy} scale={packScale} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}
+                return <UnitToken key={u.id} unitId={u.id} type={u.type} cx={cx} cy={cy} scale={p.scale} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}
                   selectable={clickable} selected={isSel}
                   onClick={clickable?(e)=>{e.stopPropagation();doMove(u.type,movKey,hex.id);}:undefined}/>;
-              });
+              }).filter(Boolean);
             })}
-            {(()=>{
-              const byHex={};
-              Object.entries(empire).forEach(([eid,hid])=>{(byHex[hid]=byHex[hid]||[]).push(eid);});
-              return Object.entries(byHex).flatMap(([hidStr,eids])=>{
-                const hex=hMap[hidStr];if(!hex)return [];
-                return eids.map((eid,ei)=><EmpireMecha key={eid} cx={hex.rx-16+ei*16} cy={hex.ry-20} eid={eid}/>);
-              });
-            })()}
           </g>
           {/* Hex click ripple */}
           {clickRipple&&(()=>{
