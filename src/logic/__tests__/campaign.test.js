@@ -172,6 +172,35 @@ describe('conditions canon', () => {
     expect(canonMet(c, p, { players: [p] })).toBe(true);
   });
 
+  // Partie du 09/08 : une pile d'annulation survivant à la partie précédente a
+  // réinjecté un joueur Nations Souveraines dans le chapitre 2, et « Atteindre
+  // l'Empereur » s'est validé sur lui — 3 ouvriers sur l'Usine et un compteur
+  // `empireKills` hérité de l'autre partie. La condition canon décrit ce que
+  // fait LA faction du chapitre : elle refuse désormais tout autre joueur.
+  it('la condition canon refuse un joueur d\'une AUTRE faction que le chapitre', () => {
+    const c = chapterById('ch2'); // Internationale Noire — 3 ouvriers sur l'Usine + 2 patrouilles
+    const intern = createPlayer('internationale', 200, false);
+    intern.workers = [0, 1, 2].map(i => ({ id: `w${i}`, hexId: FACTORY_HEX }));
+    intern.empireKills = 2;
+    expect(canonMet(c, intern, { players: [intern] })).toBe(true);
+
+    // Le MÊME état, joué par une autre faction : refusé.
+    const usurpateur = { ...intern, faction: 'nations' };
+    expect(canonMet(c, usurpateur, { players: [usurpateur] })).toBe(false);
+  });
+
+  it('chaque chapitre jouable n\'accepte que sa propre faction', () => {
+    CHAPTERS.filter(c => c.canon && c.faction).forEach(c => {
+      const autre = FACTIONS[c.faction] ? Object.keys(FACTIONS).find(id => id !== c.faction) : null;
+      const p = createPlayer(c.faction, 1, false);
+      // On force la condition à « vraie » en trichant sur le check, puis on
+      // vérifie que seule la faction du chapitre passe la garde.
+      const stub = { ...c, canon: { ...c.canon, check: () => true } };
+      expect(canonMet(stub, p, { players: [p] }), `${c.id} refuse sa propre faction`).toBe(true);
+      expect(canonMet(stub, { ...p, faction: autre }, { players: [p] }), `${c.id} accepte ${autre}`).toBe(false);
+    });
+  });
+
   it('ch4 : contrôler l\'Usine ne suffit pas sans avoir chassé la garnison', () => {
     const c = chapterById('ch4');
     const p = createPlayer('confederation', 1, false);

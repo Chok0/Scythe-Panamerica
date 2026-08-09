@@ -476,7 +476,7 @@ s'arrête parce que plus personne ne la remet en marche) ET arracher 3 mechas
   rouillés » que le jeu de base décrit dans son texte de règles
   (`rules.js`, section Contexte). **La campagne se referme exactement là où
   commence une partie standard de Scythe Panamerica.** Dernier mot laissé en
-  suspens : le Horloger (lore §II) avait raison sur un point — détruire une
+  suspens : l'Horloger (lore §II) avait raison sur un point — détruire une
   machine de guerre n'a jamais suffi à empêcher la suivante. Reste à savoir
   ce que l'Internationale Noire compte faire de ce qu'elle vient de gagner.
 

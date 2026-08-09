@@ -6,6 +6,7 @@ import { countRes, spendRes, getWorkerHexes, resFR, resListFR, canPayMixed, spen
 import { canPayProduce, payProduce, getProduceCost } from './production.js';
 import { getValidMoves, findPathWaypoints, marshToll } from './movement.js';
 import { transportUnits } from './transport.js';
+import { buildingHexes, packUpDestinations } from './buildings.js';
 import { BOT_PROFILES, effectiveProfile } from './botProfiles.js';
 import { BALANCE } from '../data/balance.js';
 import { getMechAbilities } from '../data/mechAbilities.js';
@@ -17,6 +18,14 @@ import { canPayFactoryCost, payFactoryCost, factoryEffectPossible, factoryResour
 // Strategic Bot AI — based on Scythe competitive strategy
 // Priority: Enlist > Deploy Speed > 5 Workers > Produce+Bottom > Expand territory
 // ══════════════════════════════════════════════════════
+
+// ── Où le bot peut-il bâtir ? ──
+// Un territoire ne porte jamais deux structures, la sienne comme celle d'un
+// adversaire (règle du jeu original). Le bot ne regardait QUE les siennes : il
+// pouvait doubler la structure d'un voisin sur un hex partagé. `p` en tête de
+// liste — c'est la copie à jour du bot, les autres viennent de la table.
+const builtHexes = (p, ctx) =>
+  buildingHexes([p, ...(((ctx && ctx.allPlayers) || []).filter(op => op && op.faction !== p.faction))]);
 
 // ── Phase de partie ──
 // v0.16 : la phase ne lisait que SES étoiles — un bot bloqué à 0-2 étoiles
@@ -254,7 +263,8 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
       score += 8 + (prof.buildBoost || 0);
       const sb = ctx && ctx.structureBonus;
       if (sb) {
-        const spots = getWorkerHexes(p).filter(h => !hMap[h]?.base && !(p.buildings || []).some(b => b.hexId === h));
+        const built = builtHexes(p, ctx);
+        const spots = getWorkerHexes(p).filter(h => !hMap[h]?.base && !built.has(h));
         if (spots.length > 0) {
           const before = sb.score(sb.count(p, ctx.allPlayers), p);
           const gain = Math.max(...spots.map(hid => {
@@ -933,7 +943,8 @@ const applyFactoryGainsBot = (p, gains, rails, logs, f, prof, ctx) => {
         break;
       }
       case "building": {
-        const wh = getWorkerHexes(p).filter(h => hMap[h] && !hMap[h].base && !(p.buildings || []).some(b => b.hexId === h));
+        const built = builtHexes(p, ctx);
+        const wh = getWorkerHexes(p).filter(h => hMap[h] && !hMap[h].base && !built.has(h));
         const avail = BUILDING_TYPES.filter(bt => !(p.buildings || []).some(b => b.type === bt.type));
         if (wh.length === 0 || avail.length === 0) break;
         const building = pickBuilding(p, avail, prof);
@@ -1157,7 +1168,12 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
     if (p.faction === "nations" && (p.unlockedAbilities || []).includes(3) && (p.buildings || []).length > 0 && Math.random() < 0.3) {
       const bi = Math.floor(Math.random() * (p.buildings || []).length);
       const bld = p.buildings[bi];
-      const adjTargets = (ADJ[bld.hexId] || []).filter(id => { const h = hMap[id]; return h && h.t !== "lac" && h.t !== "marecage" && !(p.buildings || []).some(b => b.hexId === id); });
+      // Mêmes destinations légales que pour le joueur (logic/buildings.js) :
+      // hex adjacent LIBRE ou tenu par soi, vierge de toute structure.
+      // `p` en tête de liste : c'est la copie À JOUR de ce bot (ses propres
+      // bâtiments), les autres viennent de la table.
+      const others = ((ctx && ctx.allPlayers) || []).filter(op => op && op.faction !== p.faction);
+      const adjTargets = [...packUpDestinations(p, bld.hexId, { players: [p, ...others], empire })];
       if (adjTargets.length > 0) {
         const target = adjTargets[Math.floor(Math.random() * adjTargets.length)];
         p.buildings = [...(p.buildings || [])];
@@ -1603,7 +1619,8 @@ export const botTurn = (player, empire, enemyHexes, rails, ctx) => {
         if (p.mechs.length >= 4 && !p.starMechs) { p.stars++; p.starMechs = true; logs.push(`⭐ ${f.name}: 4 mechas !`); }
       }
     } else if (bottomAction === "Build" && (p.buildings || []).length < 4) {
-      const wh = getWorkerHexes(p).filter(h => !(p.buildings || []).some(b => b.hexId === h));
+      const built = builtHexes(p, ctx);
+      const wh = getWorkerHexes(p).filter(h => !built.has(h));
       const avail = BUILDING_TYPES.filter(bt => !(p.buildings || []).some(b => b.type === bt.type));
       if (wh.length > 0 && avail.length > 0) {
         const sp = spendRes(p, bc.res, bc.qty); Object.assign(p, { resources: sp.resources });

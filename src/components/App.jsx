@@ -3,7 +3,7 @@
 // choisi par le bot pendant son tour (voir « Idées libres » dans TODO_proto_fixes.md).
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { TERRAINS } from '../data/terrains.js';
-import { FACTIONS, FACTION_IDS } from '../data/factions.js';
+import { FACTIONS, FACTION_IDS, uiInk } from '../data/factions.js';
 import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, hasR, CURRENT_MAP, DEFAULT_MAP, CLASSIC_V2_MAP, loadMap, baseHexAt, homeBaseHex, isBaseHex } from '../data/hexes.js';
 import { generateAcceptedMap } from '../data/mapGen.js';
 import { getCombatBonus, combatUnitCount } from '../data/combat.js';
@@ -28,13 +28,15 @@ import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
 import { getValidMoves, getValidMoves1Step, getRailNetwork, findPathWaypoints, marshToll, marshFree } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
 import { createPlayer, retreatFromHex, reentryHexes } from '../logic/player.js';
+import { buildingHexes, packUpDestinations } from '../logic/buildings.js';
 import { botTurn, estimateScore } from '../logic/bot.js';
 import { BOT_PROFILES, assignBotProfile, BOT_NOISE, MAP_META_THREAT, playerStanding } from '../logic/botProfiles.js';
 import { applyBotPvpAfterMove, servitudeOnDisplace, transferHexResources } from '../logic/pvpBots.js';
 import { resolveBotEncounter } from '../logic/botEncounters.js';
 import { drawFactoryOffer, claimFactoryCard, canPayFactoryCost, payFactoryCost, factoryEffectPossible, factoryWorkerHexes, factoryProduceHexes, factoryResourceHex } from '../logic/factory.js';
 import { playSfx, sfxForLog } from '../logic/sfx.js';
-import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo } from './svg/MapComponents.jsx';
+import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo, TerrainResBadge } from './svg/MapComponents.jsx';
+import { layoutUnits, layoutStrip, halfWidthAt, STRIP_TOP_Y, STRIP_BOTTOM_Y } from '../logic/hexLayout.js';
 import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, ProduceTrack, RESOURCE_ICONS, BUILDING_ICONS, Glyph } from './svg/ActionIcons.jsx';
 import { getMechAbilities } from '../data/mechAbilities.js';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
@@ -157,7 +159,6 @@ export default function App(){
   const[pendingEncs,setPendingEncs]=useState([]);         // [hexId]
   const[afterMoveCol,setAfterMoveCol]=useState(null);     // colonne dont le bas attend la fin de la file
 
-  const[routeDrop,setRouteDrop]=useState(null); // 📦 dépose en route: {mids,destHex,endAfter}
   const[preActionSnapshot,setPreActionSnapshot]=useState(null); // snapshot of player[0] before action, for undo
   const[undoStack,setUndoStack]=useState([]); // pile d'annulation (snapshots d'état, dans le tour humain)
   const[redoStack,setRedoStack]=useState([]); // pile de rétablissement
@@ -447,6 +448,10 @@ export default function App(){
     setLog((data.log||[]).map(e=>({...e})));
     stepRef.current=data.step||(data.log||[]).length;
     turnRef.current=data.turn||1;
+    // Reprendre une sauvegarde, c'est changer de partie : les piles
+    // d'annulation de la partie quittée n'ont plus rien à annuler ici.
+    setUndoStack([]);setRedoStack([]);setPreActionSnapshot(null);
+    setSelAction(null);setMoveSource(null);setTransportPick(null);setSelHex(null);
     setTurn(data.turn||1);setCurrentP(0);setPhase("playing");
     addLog(`💾 Partie reprise (tour ${data.turn||1})`);
   },[addLog,campaignProgress]);
@@ -506,6 +511,19 @@ export default function App(){
     const empOn=cfg?cfg.empireEnabled:empireEnabled;
     if(!facId||!matPick)return;
     setChapter(ch);setSteelPile(0);setChapterOutcome(null);
+    // ── Table rase (09/08) ──────────────────────────────────────────────
+    // Partie constatée : partie terminée → retour au menu → chapitre 2 →
+    // « Annuler » restaure LA PARTIE PRÉCÉDENTE — autre faction, autres bots,
+    // autres compteurs — et la condition canon du chapitre s'est validée
+    // dessus dans la foulée. Les piles d'annulation ne survivaient à RIEN :
+    // ni au retour au menu, ni au lancement d'une partie. Elles meurent ici,
+    // avec le journal et son compteur d'étapes (une partie neuve repart de
+    // l'étape 1, au lieu de continuer la numérotation de la précédente).
+    setUndoStack([]);setRedoStack([]);setPreActionSnapshot(null);
+    setSelAction(null);setMoveSource(null);setTransportPick(null);setSelHex(null);
+    setPendingBottom(null);setBottomPick(null);setPendingCombats([]);setPendingEncs([]);
+    setCombat(null);setEncounter(null);setEndOfTurn(false);setAfterMoveCol(null);
+    setLog([]);stepRef.current=0;
     try{localStorage.removeItem('pa-save');}catch{/* rien */}
     // Carte : v3 (défaut), configuration initiale (v2), ou procédurale
     if(mapChoice==="random"){
@@ -597,8 +615,11 @@ export default function App(){
       addLog(`${p.isBot?"🤖":"👤"} ${f.name} (${p.matName})${prof?` ${prof.icon} ${prof.name}`:""}  ⚡${p.power} 🃏${p.combatCards} ♥${p.pop} 💰${p.coins}`);
     });
     // Auto-center on player's hero
-    // Sans héros (Internationale Noire), on centre sur le premier ancrage
-    const heroHex=hMap[ps[0].hero!=null?ps[0].hero:ps[0].workers[0]?.hexId];
+    // Sans héros (Internationale Noire), on centre sur le premier ancrage —
+    // et ses ouvriers démarrant HORS PLATEAU, c'est l'ancrage lui-même qui
+    // sert de repère, pas un ouvrier posé (il n'y en a aucun au tour 1).
+    const heroHex=hMap[ps[0].hero!=null?ps[0].hero
+      :(ps[0].workers[0]?.hexId ?? FACTIONS[ps[0].faction]?.anchors?.[0])];
     if(heroHex){
       const zw=700,zh=700;
       const x=Math.max(MAP_BASE.x,Math.min(MAP_BASE.x+MAP_BASE.w-zw,heroHex.rx-zw/2));
@@ -1050,7 +1071,7 @@ export default function App(){
     const moved=movedOverride??(me?.movedUnits||[]).length;
     if((myMat?.topRow||[])[col]==="Move"&&moved>0)addLog(`✅ Mouvement terminé (${moved}/${moveLimit})`);
     setPlayers(prev=>{const n=[...prev];n[0]={...n[0],lastCol:col,movesLeft:undefined,movedUnits:[],packUpUsed:false};return n;});
-    setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);setTradePicks([]);setRouteDrop(null);
+    setSelAction(null);setMoveSource(null);setPreActionSnapshot(null);setTradePicks([]);
     // Combats puis rencontres en attente : ils passent AVANT l'action du bas
     // (règle du jeu original). L'effet `useEffect` de la file s'en charge et
     // ouvrira le bas quand tout sera résolu.
@@ -1170,14 +1191,14 @@ export default function App(){
   const finishFactoryMove=useCallback((moved)=>{
     if((moved??1)>0)addLog(`✅ Déplacement d'usine terminé`);
     setPlayers(prev=>{const n=[...prev];n[0]={...n[0],movesLeft:undefined,movedUnits:[],packUpUsed:false};return n;});
-    setMoveSource(null);setRouteDrop(null);setPreActionSnapshot(null);setTransportPick(null);
+    setMoveSource(null);setPreActionSnapshot(null);setTransportPick(null);
     setPendingBottom(null);
     requestEndTurn();
   },[addLog,requestEndTurn]);
 
   // Fin d'un déplacement : router vers la clôture du Move classique OU celle
   // du bas de carte d'usine — tous les points de reprise (combat, rencontre,
-  // Rouge River, dépose en route) passent par ici.
+  // Rouge River) passent par ici.
   const endMoveDone=useCallback((moved)=>{
     if(factoryMoveMode)finishFactoryMove(moved);
     else endHumanTurn(myMat.topRow.indexOf("Move"),moved);
@@ -1485,7 +1506,9 @@ export default function App(){
     // Garde de ré-entrée : pendant la pose de rails (Gare), le Build de ce
     // tour est déjà fait — pas de 2e bâtiment avant finishBottom
     if(!me||(me.buildings||[]).length>=4||railPlacement)return;
-    if((me.buildings||[]).some(b=>b.hexId===targetHex)){addLog(`⚠ Déjà un bâtiment sur #${targetHex}`);return;}
+    // Un territoire ne porte jamais deux structures — la sienne comme celle
+    // d'un adversaire (règle du jeu original). On ne regardait que les siennes.
+    if(buildingHexes(players).has(targetHex)){addLog(`⚠ Déjà un bâtiment sur #${targetHex}`);return;}
     if((me.buildings||[]).some(b=>b.type===buildingType)){addLog(`⚠ ${buildingType} déjà construit`);return;}
     const costs=getBottomCost(me);
     const cost=costs[2]; // Build is bottom col 2
@@ -1509,7 +1532,7 @@ export default function App(){
       return;
     }
     finishBottom(2);
-  },[me,addLog,finishBottom,railPlacement]);
+  },[me,addLog,finishBottom,railPlacement,players]);
 
   // ── PACK UP (Nations slot 3 — free building move during Move action) ──
   const doPackUpMove=useCallback((buildingIdx,targetHex)=>{
@@ -1518,7 +1541,16 @@ export default function App(){
     if(me.packUpUsed)return; // 1 per Move action
     const bld=(me.buildings||[])[buildingIdx];
     if(!bld)return;
-    if((me.buildings||[]).some(b=>b.hexId===targetHex&&b!==bld)){addLog(`⚠ Déjà un bâtiment sur #${targetHex}`);return;}
+    // Garde autoritaire : la carte et les boutons proposent déjà les seules
+    // destinations légales, mais la règle se vérifie ICI (un hex ennemi ou
+    // déjà bâti restait acceptable par ce chemin — bug du 09/08).
+    if(!packUpDestinations(me,bld.hexId,{players,empire}).has(targetHex)){
+      const occupied=players.some((op,pi)=>pi>0&&(op.hero===targetHex||op.mechs.some(m=>m.hexId===targetHex)||op.workers.some(w=>w.hexId===targetHex)))
+        ||Object.values(empire||{}).includes(targetHex);
+      addLog(occupied?`⚠ #${targetHex} est tenu par l'ennemi — un bâtiment ne déménage que sur un hex libre ou à vous`
+        :`⚠ Impossible de déménager sur #${targetHex} (déjà un bâtiment, ou terrain interdit)`);
+      return;
+    }
     const bt=BUILDING_TYPES.find(b=>b.type===bld.type);
     setPlayers(prev=>{
       const n=[...prev];const p={...n[0],buildings:[...(n[0].buildings||[])]};
@@ -1528,7 +1560,7 @@ export default function App(){
     });
     addLog(`📦 Pack Up! ${bt?bt.name:bld.type} #${bld.hexId} → #${targetHex} (gratuit)`);
     setBottomPick(null);
-  },[me,addLog]);
+  },[me,addLog,players,empire]);
 
   // ── BOTTOM-ROW: ENLIST (recrue sur une colonne → bonus immédiat + ongoing) ──
   // Règle Scythe : le bonus IMMÉDIAT (une fois) est d'un type DIFFÉRENT du
@@ -1693,7 +1725,7 @@ export default function App(){
     setSelAction(snap.selAction??null);setMoveSource(null);setPreActionSnapshot(snap.preActionSnapshot??null);setTradePicks([]);
     setPendingBottom(null);setBottomPick(null);setCombat(null);setEncounter(null);setRougeRiver(null);
     setEncounterBuild(false);setEncounterEnlist(null);setEncounterUpgrade(null);setEncounterResources(null);setFactoryFlow(null);setFactoryPreview(false);
-    setRailPlacement(null);setPendingAbility(null);setRouteDrop(null);setEndOfTurn(false);
+    setRailPlacement(null);setPendingAbility(null);setEndOfTurn(false);
   },[cloneVal]);
   const pushHistory=useCallback(()=>{ setUndoStack(s=>[...s.slice(-40),snapshotGame()]); setRedoStack([]); },[snapshotGame]);
   const undo=useCallback(()=>{
@@ -1797,18 +1829,30 @@ export default function App(){
     if(!me)return;
     const isMech=kind==="mech";
     if(isMech?!(me.reserveMechs>0):!(me.reserve>0))return;
+    // Remonter, c'est ENTRER sur l'hex : un jeton de rencontre s'y déclenche
+    // comme sous n'importe quel déplacement. C'est ce qui rend leurs deux
+    // rencontres au réseau — ses ancrages #3 et #40 en portent une, et les y
+    // POSER à l'installation les rendait injouables (09/08). Même garde-fou
+    // qu'ailleurs : une seule rencontre par tour pour une faction sans héros.
+    const noHeroFaction=!!FACTIONS[me.faction]?.noHero;
+    const encHere=encounterTokens.has(hexId)&&!(noHeroFaction&&me.encounterTurn===turn);
     setPlayers(prev=>{
       const n=[...prev];const p={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs]};
       if(isMech){p.mechs.push({id:`${p.faction}_r${p.mechs.length}${Date.now()%97}`,hexId});p.reserveMechs=(p.reserveMechs||0)-1;}
       else{p.workers.push({id:`${p.faction}_w${p.workers.length}${Date.now()%97}`,hexId});p.reserve=(p.reserve||0)-1;}
       p.movesLeft=(p.movesLeft??effMoveLimit)-1;
       p.movedUnits=[...(p.movedUnits||[]),`reentry${(p.movedUnits||[]).length}`];
+      if(encHere&&noHeroFaction)p.encounterTurn=turn;
       n[0]=p;return n;
     });
     addLog(`🕳 Le réseau fait remonter ${isMech?"un mecha":"un ouvrier"} sur #${hexId}`);
+    if(encHere){
+      setPendingEncs(q=>q.includes(hexId)?q:[...q,hexId]);
+      addLog(`📜 Jeton de rencontre atteint sur #${hexId} — il se résoudra après les combats`);
+    }
     setReentryMode(false);setMoveSource(null);
     if((me.movedUnits||[]).length+1>=effMoveLimit)setTimeout(()=>endMoveDone((me.movedUnits||[]).length+1),60);
-  },[me,addLog,effMoveLimit,endMoveDone]);
+  },[me,addLog,effMoveLimit,endMoveDone,encounterTokens,turn]);
 
   // Déplacement au clic : hex → unités du joueur encore déplaçables ce tour.
   // Cliquer un hex surligné sélectionne l'unité (picker si plusieurs).
@@ -1837,16 +1881,15 @@ export default function App(){
   // Comme tout autre déplacement, on doit pouvoir cliquer l'hex d'arrivée —
   // les boutons « → #n » du panneau restent en second recours. Sert aussi de
   // source unique à ces deux affichages, qui divergeaient.
-  // La base est exclue : c'est le point hors plateau, pas une destination.
+  // Règle : hex ADJACENT, LIBRE ou tenu par soi, et vierge de toute structure
+  // (logic/buildings.js — même règle pour le bot). La base est exclue : c'est
+  // le point hors plateau, pas une destination.
   const packUpTargets=useMemo(()=>{
     if(!me||!bottomPick?.packUp||me.packUpUsed)return new Set();
     const bld=(me.buildings||[])[bottomPick.buildingIdx];
     if(!bld)return new Set();
-    return new Set((ADJ[bld.hexId]||[]).filter(id=>{
-      const h=hMap[id];
-      return h&&!h.base&&h.t!=="lac"&&h.t!=="marecage"&&!(me.buildings||[]).some(b=>b.hexId===id);
-    }));
-  },[me,bottomPick]);
+    return packUpDestinations(me,bld.hexId,{players,empire});
+  },[me,bottomPick,players,empire]);
 
   // Cibles cliquables sur la carte pour les actions bottom Deploy/Build
   // (en plus des boutons du panneau : cliquer l'hex surligné place directement)
@@ -1873,10 +1916,12 @@ export default function App(){
     if(pendingBottom.action==="Build"&&bottomPick?.building&&(me.buildings||[]).length<4){
       const bc=getBottomCost(me)[2];
       if(countRes(me,bc.res)<bc.qty)return none;
-      return{type:"build",hexes:new Set(workerHexes.filter(h=>!(me.buildings||[]).some(b=>b.hexId===h)))};
+      // Jamais deux structures sur un même territoire, toutes factions confondues
+      const built=buildingHexes(players);
+      return{type:"build",hexes:new Set(workerHexes.filter(h=>!built.has(h)))};
     }
     return none;
-  },[me,pendingBottom,bottomPick,pendingAbility,railPlacement]);
+  },[me,pendingBottom,bottomPick,pendingAbility,railPlacement,players]);
 
   // Automatic stars for the human player (bots handle these in botTurn)
   useEffect(()=>{
@@ -2072,6 +2117,8 @@ export default function App(){
       // se marchaient dessus (bascule globale « emporter oui/non », panneau de
       // quantités réservé au mech, dépose en route) : il ne reste que le
       // panneau de quantités, ouvert dès qu'il y a quelque chose à charger.
+      // La « dépose en route » a fini par disparaître aussi (09/08) : un pas,
+      // une boîte — c'est là qu'on ravitaille.
       if(!transportOverride?.transport){
         const wOnHex=moveSource.unitType==="mech"
           ? me.workers.filter(w=>w.hexId===moveSource.fromHex).length : 0;
@@ -2281,41 +2328,14 @@ export default function App(){
         }
       }
       
-      // ── DÉPOSE EN ROUTE (mech) : le trajet a des hexes intermédiaires ? ──
-      // Permet les passe-passe : déposer un ouvrier à mi-chemin, laisser du
-      // matériel au passage et continuer (relais de mechas, expansion…)
-      let dropOffer=null;
-      // Règle du jeu original (« Voici quelques points importants concernant
-      // les déplacements — RESSOURCES ET UNITÉS : les unités peuvent PRENDRE
-      // ET DÉPOSER autant de pions Ressource que voulu lors d'une action
-      // Déplacement ») : le ravitaillement en route vaut pour TOUTE unité, et
-      // dans les deux sens. On ne proposait que la dépose, et seulement pour
-      // un mech chargé.
-      if(moveSource.unitType==="mech"||moveSource.unitType==="hero"||moveSource.unitType==="worker"){
-        // Jamais de dépose sur un hex ennemi : un ouvrier posé face à une
-        // unité de combat serait renvoyé à sa base (règle Scythe) — le
-        // trajet lui-même évite désormais les hexes occupés (blockedHexes)
-        const mids=findPathWaypoints(fromHex,hexId,me.faction,me.unlockedAbilities||[],me,rails,enemyOccupiedHexes)
-          .filter(hid=>{const h=hMap[hid];return h&&h.t!=="lac"&&h.t!=="marecage"&&!enemyOccupiedHexes.has(hid);});
-        // De quoi déposer (ce que l'unité vient d'amener) ou de quoi ramasser
-        // (des ressources à soi laissées sur un hex de passage)
-        const hasCargo=(moveSource.unitType==="mech"&&p.workers.some(w=>w.hexId===hexId))
-          ||Object.keys(p.resources[String(hexId)]||{}).length>0;
-        const pickable=mids.some(mid=>Object.values(p.resources[String(mid)]||{}).some(q=>q>0));
-        if(mids.length>0&&(hasCargo||pickable)){
-          // `unitType` mémorisé : `moveSource` est déjà remis à null quand le
-          // panneau s'affiche (seul un mech peut déposer un ouvrier).
-          dropOffer={mids,destHex:hexId,unitType:moveSource.unitType,endAfter:p.movedUnits.length>=effMoveLimit};
-          // La modale (routeDrop) porte l'affordance ; on ne LOGUE que la dépose
-          // réelle (« 📦 Ouvrier déposé … au passage ») — l'annonce du simple
-          // « possible » était du bruit au journal quand rien n'était déposé.
-          setRouteDrop(dropOffer);
-        }
-      }
       // ── DÉPLACEMENT DÉCOMPOSÉ (v0.16, note du 28/07) : il reste des pas ?
-      // L'unité RESTE sélectionnée et continue hex par hex — le cas d'école :
-      // mech chargé, 1er pas, déposer une partie des ouvriers (panneau 🚚 du
-      // pas suivant), repartir avec le reste.
+      // L'unité RESTE sélectionnée et continue hex par hex — et c'est LÀ que
+      // se règle le ravitaillement : on avance d'une case, la boîte de
+      // chargement 🚚 du pas suivant recompose la cargaison (ouvriers et
+      // ressources, dans les deux sens), puis on repart avec le reste.
+      // L'ancienne modale « Ravitaillement en route », qui rouvrait après coup
+      // sur les hexes traversés, faisait double emploi avec cette boîte et
+      // coupait le déplacement : supprimée (09/08).
       // Contact ennemi : le combat est mis en file (résolu à la fin de
       // l'action) et le déplacement de CETTE unité s'achève — règle du jeu
       // original, y compris avec la Vitesse.
@@ -2324,7 +2344,7 @@ export default function App(){
         addLog(`⚔ Contact sur #${hexId} — le combat se résoudra à la fin de vos déplacements`);
       }
       let contOffer=null;
-      if((moveSource.unitType==="hero"||moveSource.unitType==="mech")&&!dropOffer&&!opensCombat&&!encounterStop){
+      if((moveSource.unitType==="hero"||moveSource.unitType==="mech")&&!opensCombat&&!encounterStop){
         const budget=moveSource.continuation?(moveSource.stepsLeft||1)
           :(((me.unlockedAbilities||[]).includes(0)?2:1)+(factoryMoveMode?1:0));
         // Pas consommés par CE saut : 1 si la destination était à un pas
@@ -2338,7 +2358,7 @@ export default function App(){
         if(budget-used>0&&!marshStop)contOffer={unitType:moveSource.unitType,unitId:moveSource.unitId,fromHex:hexId,stepsLeft:budget-used,continuation:true};
       }
       if(contOffer)setMoveSource(contOffer);
-      if((p.movedUnits||[]).length>=effMoveLimit&&!dropOffer&&!contOffer)endMoveDone((p.movedUnits||[]).length);
+      if((p.movedUnits||[]).length>=effMoveLimit&&!contOffer)endMoveDone((p.movedUnits||[]).length);
       return;
     }
     // ── CIBLES D'ACTION BOTTOM : Deploy/Build en cliquant l'hex sur la carte ──
@@ -2372,7 +2392,13 @@ export default function App(){
     // tous, pour motiver la quête des fragments avant d'y aller ──
     if(hexId===FACTORY_RR_HEX&&!selAction&&!pendingBottom&&!rougeRiver)setFactoryPreview(true);
     setSelHex(hexId);
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes,rougeRiver,packUpTargets,doPackUpMove]);
+  // `reentryMode`, `reentryTargets`, `doReentry` et `turn` MANQUAIENT ici
+  // (09/08) : basculer le bouton « Réserve du réseau » ne change aucune autre
+  // dépendance, donc `handleHexClick` n'était pas recréé et gardait
+  // `reentryMode = false` dans sa fermeture — cliquer un ancrage ne faisait
+  // RIEN. La réentrée par la carte n'avait jamais fonctionné ; on ne s'en
+  // apercevait pas tant que la faction démarrait posée sur le plateau.
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,turn,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes,rougeRiver,packUpTargets,doPackUpMove,reentryMode,reentryTargets,doReentry]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -2400,8 +2426,8 @@ export default function App(){
       addLog(`⚔ ${af.name}: ${attackerTotal} (${combat.botSpend}⚡+${combat.botCards}🃏) vs vous: ${playerTotal} (${combat.powerSpend}⚡+${combat.cardsSpend}🃏)`);
       setCombatReveal({
         title:`Défense de #${combat.hexId}`,
-        left:{name:af.name,color:af.color,total:attackerTotal,detail:`${combat.botSpend}⚡${atkCB.powerBonus>0?` +${atkCB.powerBonus}⚡`:""} + ${combat.botCards}🃏`},
-        right:{name:myFaction.name,color:myFaction.color,total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
+        left:{name:af.name,color:uiInk(af),total:attackerTotal,detail:`${combat.botSpend}⚡${atkCB.powerBonus>0?` +${atkCB.powerBonus}⚡`:""} + ${combat.botCards}🃏`},
+        right:{name:myFaction.name,color:uiInk(myFaction),total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
         winner:win?"right":"left",
         verdict:win?`Vous repoussez ${af.name} ! ⭐`:`${af.name} prend le territoire...`,
       });
@@ -2493,7 +2519,7 @@ export default function App(){
 
       setCombatReveal({
         title:combat.empireCard.name,
-        left:{name:myFaction.name,color:myFaction.color,total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
+        left:{name:myFaction.name,color:uiInk(myFaction),total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
         right:{name:combat.empireCard.name,color:"#2A5A8A",total:empireTotal,detail:`Force Empire ${empireTotal}`},
         winner:win?"left":"right",
         verdict:win?"Mecha de l'Empire détruit !":"L'Empire vous repousse...",
@@ -2592,8 +2618,8 @@ export default function App(){
       addLog(`⚔ ${myFaction.name}: ${playerTotal} (${combat.powerSpend}${playerCBonus.powerBonus>0?`+${playerCBonus.powerBonus}`:""}⚡+${combat.cardsSpend}🃏) vs ${ef.name}: ${enemyTotal} (${botPower}⚡+${botCards}🃏)${bonusLog}`);
       setCombatReveal({
         title:`Assaut sur #${combat.hexId}`,
-        left:{name:myFaction.name,color:myFaction.color,total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
-        right:{name:ef.name,color:ef.color,total:enemyTotal,detail:botFold?"ne mise rien (fold)":`${botPower}⚡${enemyCBonus.powerBonus>0?` +${enemyCBonus.powerBonus}⚡`:""} + ${botCards}🃏`},
+        left:{name:myFaction.name,color:uiInk(myFaction),total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
+        right:{name:ef.name,color:uiInk(ef),total:enemyTotal,detail:botFold?"ne mise rien (fold)":`${botPower}⚡${enemyCBonus.powerBonus>0?` +${enemyCBonus.powerBonus}⚡`:""} + ${botCards}🃏`},
         winner:win?"left":"right",
         verdict:win?`${ef.name} bat en retraite !`:"Vos forces battent en retraite...",
       });
@@ -3051,13 +3077,29 @@ export default function App(){
       if(p.hero!=null)add(p.hero,{type:"hero",id:`${p.faction}_hero`,label:f.hero});
       p.workers.forEach(w=>add(w.hexId,{type:"worker",id:w.id,label:"Ouv."}));
       p.mechs.forEach(m=>add(m.hexId,{type:"mech",id:m.id,label:"Mech"}));
-      (p.buildings||[]).forEach(b=>{
-        const bt=BUILDING_TYPES.find(t=>t.type===b.type);
-        add(b.hexId,{type:"building",id:`${p.faction}_b_${b.type}`,label:bt?bt.name:b.type,icon:bt?bt.icon:"🏗"});
-      });
+      // Les BÂTIMENTS ne sont plus dans la grappe : ce sont des structures,
+      // jamais déplaçables pendant un Move, et elles écrasaient les ouvriers.
+      // Elles vivent dans la bande basse de l'hex (« posé au sol »).
+    });
+    // Patrouilles impériales : elles étaient dessinées à un décalage fixe
+    // au-dessus du centre, donc par-dessus la pastille du terrain ET par-dessus
+    // les pions du joueur en cas de contact. Elles passent par le même gabarit.
+    Object.entries(empire||{}).forEach(([eid,hid])=>{
+      if(hid==null)return;
+      (c[hid]=c[hid]||[]).push({type:"empire",id:eid,label:"Empire",empire:true});
     });
     return c;
-  },[players]);
+  },[players,empire]);
+
+  // Positions calculées une fois par hex (logic/hexLayout.js) : la grappe de
+  // pions ne se recouvre plus et ne monte plus dans les bandes d'information.
+  const hexUnitPos=useMemo(()=>{
+    const out={};
+    Object.entries(allHexContents).forEach(([hid,units])=>{
+      out[hid]=Object.fromEntries(layoutUnits(units).map(p=>[p.id,p]));
+    });
+    return out;
+  },[allHexContents]);
 
   // ══════════ RULES OVERLAY ══════════
   if(showRules) return <RulesPage onClose={()=>setShowRules(false)} />;
@@ -3123,7 +3165,7 @@ export default function App(){
       // (v0.12 : levier structurel mesuré, sa trésorerie était la pire du jeu)
       const flagCoins=(p.flagTokens||[]).length*2;
       const total=starScore+terScore+resScore+p.coins+sbDetail.coins+flagCoins;
-      return{faction:p.faction,name:f.name,color:f.color,hero:f.hero,isBot:p.isBot,
+      return{faction:p.faction,name:f.name,color:uiInk(f),hero:f.hero,isBot:p.isBot,
         stars:p.stars,pop:p.pop,popTier,territories,factoryBonus,flagBonus,totalRes,resPairs,coins:p.coins,
         starScore,terScore,resScore,total,starMult,terMult,resMult,
         sbCount:sbDetail.count,sbCoins:sbDetail.coins,flagCoins};
@@ -3341,11 +3383,11 @@ export default function App(){
       <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",padding:"6px 16px",gap:10,background:"linear-gradient(180deg,#282013,#1c150c)",borderBottom:"1px solid var(--panel-edge)",boxShadow:"inset 0 -1px 0 rgba(216,201,163,0.07)",flexShrink:0,height:"var(--top-h)",overflow:"hidden"}}>
         {/* Faction badge — logo agrandi */}
         <div style={{display:"flex",alignItems:"center",gap:10,marginRight:4,flexShrink:0}}>
-          <div style={{width:54,height:54,borderRadius:"50%",background:myFaction.color+"22",border:`2px solid ${myFaction.color}`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0,boxShadow:`0 0 10px ${myFaction.color}33`}}>
+          <div style={{width:54,height:54,borderRadius:"50%",background:uiInk(myFaction)+"22",border:`2px solid ${uiInk(myFaction)}`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0,boxShadow:`0 0 10px ${uiInk(myFaction)}33`}}>
             <img src={FACTION_LOGOS[me.faction]} alt="" style={{width:"86%",height:"86%",objectFit:"contain"}}/>
           </div>
           <div style={{lineHeight:1.2}}>
-            <div style={{fontSize:18,fontWeight:700,color:myFaction.color,fontFamily:"var(--font-title)"}}>{myFaction.name}</div>
+            <div style={{fontSize:18,fontWeight:700,color:uiInk(myFaction),fontFamily:"var(--font-title)"}}>{myFaction.name}</div>
             <div style={{fontSize:13,color:"var(--text-dim)",fontFamily:"var(--font-body)"}}>{myMat.name} · T{turn}</div>
           </div>
         </div>
@@ -3427,13 +3469,13 @@ export default function App(){
             return(
               <div key={op.faction} style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",
                 padding:"6px 10px",borderRadius:8,background:active?"rgba(200,112,64,0.08)":"rgba(255,255,255,0.02)",
-                borderLeft:`4px solid ${of.color}`}}>
+                borderLeft:`4px solid ${uiInk(of)}`}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,minWidth:150}}>
-                  <div style={{width:30,height:30,borderRadius:"50%",background:of.color+"22",border:`2px solid ${of.color}`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
+                  <div style={{width:30,height:30,borderRadius:"50%",background:uiInk(of)+"22",border:`2px solid ${uiInk(of)}`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
                     <img src={FACTION_LOGOS[op.faction]} alt="" style={{width:"82%",height:"82%",objectFit:"contain"}}/>
                   </div>
                   <div style={{lineHeight:1.2}}>
-                    <div style={{fontSize:15,fontWeight:700,color:of.color,fontFamily:"var(--font-title)"}}>{of.name}{op.isBot?" 🤖":""}{active?" ◀":""}</div>
+                    <div style={{fontSize:15,fontWeight:700,color:uiInk(of),fontFamily:"var(--font-title)"}}>{of.name}{op.isBot?" 🤖":""}{active?" ◀":""}</div>
                     <div style={{fontSize:12,color:"var(--text-dim)"}}>{op.matName} · ⭐{op.stars}/6</div>
                   </div>
                 </div>
@@ -3488,7 +3530,7 @@ export default function App(){
                 }}>
                   {v===18&&<span style={{position:"absolute",left:3,top:"50%",transform:"translateY(-50%)",display:"flex"}}><TrackStar size={12} earned={me.pop>=18}/></span>}
                   {isCur
-                    ?<HeartMarker color={myFaction.color} value={v}/>
+                    ?<HeartMarker color={uiInk(myFaction)} value={v}/>
                     :<span style={{fontSize:10,fontWeight:600,fontFamily:"var(--font-mono)",color:"var(--text-ghost)"}}>{v}</span>}
                 </div>
               );
@@ -3665,9 +3707,13 @@ export default function App(){
             // n'est présente — cohérent avec le scoring (un ennemi campé sur
             // mon bâtiment me prend le territoire). Avant, le 1er contenu
             // (mes bâtiments, joueur 0, ajoutés en premier) gagnait à tort.
-            const hexContents=allHexContents[hex.id]||[];
-            const controlEntry=hexContents.find(u=>u.type!=="building")||hexContents[0];
-            const controlColor=!isBaseHex(hex.id)?(controlEntry?.color||null):null;
+            // Une UNITÉ prime sur un bâtiment ; les patrouilles impériales ne
+            // « contrôlent » rien au sens du score, elles contestent seulement.
+            const hexContents=(allHexContents[hex.id]||[]).filter(u=>!u.empire);
+            const bldHere=players.find(pl=>(pl.buildings||[]).some(b=>b.hexId===hex.id));
+            const controlEntry=hexContents[0];
+            const controlColor=isBaseHex(hex.id)?null
+              :(controlEntry?uiInk(FACTIONS[controlEntry.factionId]):bldHere?uiInk(FACTIONS[bldHere.faction]):null);
             // Tooltips natifs (note du 28/07 : « les icônes dollars sont
             // revenues, je ne sais pas à quoi elles correspondent ») : le
             // badge $ et la règle des rails s'expliquent au survol de l'hex
@@ -3684,57 +3730,94 @@ export default function App(){
             ].filter(Boolean).join("\n");
             return(<g key={hex.id} data-hex={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
               {hexTitle&&<title>{hexTitle}</title>}
+              <text x={hex.rx} y={hex.ry+53} textAnchor="middle" fontSize={6.5} fill="#4a4030" opacity={0.2} style={{fontFamily:"var(--font-map)",pointerEvents:"none"}}>#{hex.id}</text>
               <HexTerrain hex={hex} isV={isV} isFar={isFar} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc} controlColor={controlColor} wireframe={mapChoice!=="random"}/>
-              {/* Ancrage du réseau clandestin : pastille discrète */}
-              {isAnchor&&<g style={{pointerEvents:"none"}}>
-                <circle cx={hex.rx+26} cy={hex.ry+24} r={8} fill="rgba(6,5,3,0.75)" stroke="#9E3B4E" strokeWidth={1}/>
-                <text x={hex.rx+26} y={hex.ry+27.5} textAnchor="middle" fontSize={9} fill="#E08090" fontWeight={700}>⚑</text>
-              </g>}
-              {/* Bonus de construction : pastille $ sur les tuiles qualifiées */}
-              {isBonusTile&&<g style={{pointerEvents:"none"}}>
-                <circle cx={hex.rx-26} cy={hex.ry+24} r={8} fill="rgba(6,5,3,0.75)" stroke="#d4b254" strokeWidth={1}/>
-                <text x={hex.rx-26} y={hex.ry+27.5} textAnchor="middle" fontSize={10} fill="#d4b254" fontWeight={700}>$</text>
-              </g>}
-              {/* Terrain label removed — TerrainDecor provides visual identification */}
-              <text x={hex.rx} y={hex.ry+32} textAnchor="middle" fontSize={6.5} fill="#4a4030" opacity={0.2} style={{fontFamily:"var(--font-map)",pointerEvents:"none"}}>#{hex.id}</text>
+              {/* ── BANDE HAUTE : tout ce que dit la CARTE ────────────────
+                    Pastille du terrain, rencontre, ancrage, bonus de pose,
+                    pièges et comptoirs : une seule rangée, centrée, dont la
+                    largeur se répartit selon ce qui est réellement là
+                    (logic/hexLayout.js). Avant, chacun avait un coin fixe —
+                    l'ancrage et la rencontre partageaient le MÊME, et les
+                    pions montaient par-dessus la pastille du terrain. */}
               {(()=>{
-                const pRes=players.reduce((acc,pl)=>{const r=pl.resources[String(hex.id)];if(r)Object.entries(r).forEach(([rt,cnt])=>{acc[rt]=(acc[rt]||0)+cnt;});return acc;},{});
-                return Object.entries(pRes).map(([rt,cnt],ri)=>
-                  <ResourceToken key={rt} cx={hex.rx+26} cy={hex.ry-22+ri*18} resType={rt} count={cnt}/>
-                );
+                const terr=TERRAINS[hex.t];
+                const traps=players.flatMap(pl=>(pl.trapTokens||[]).filter(t=>t.hexId===hex.id).map(t=>({t,pl})));
+                const flags=players.flatMap(pl=>(pl.flagTokens||[]).filter(f=>f.hexId===hex.id).map(f=>({f,pl})));
+                const items=[
+                  ...(terr.res?[{k:"terr",w:24}]:[]),
+                  ...(encounterTokens.has(hex.id)?[{k:"enc",w:20}]:[]),
+                  ...(isAnchor?[{k:"anchor",w:17}]:[]),
+                  ...(isBonusTile?[{k:"bonus",w:17}]:[]),
+                  ...traps.map((tr,i)=>({k:`trap${i}`,w:18,tr})),
+                  ...flags.map((fl,i)=>({k:`flag${i}`,w:18,fl})),
+                ];
+                if(items.length===0)return null;
+                const xs=layoutStrip(items.map(i=>i.w),STRIP_TOP_Y);
+                const Y=hex.ry+STRIP_TOP_Y;
+                return <g style={{pointerEvents:"none"}}>{items.map((it,i)=>{
+                  const X=hex.rx+xs[i];
+                  if(it.k==="terr")return <TerrainResBadge key={it.k} cx={X} cy={Y} resType={terr.res}/>;
+                  if(it.k==="enc"){
+                    const star=Array.from({length:8},(_,j)=>{
+                      const a=(Math.PI/4)*j-Math.PI/2;const r=j%2===0?6:2.4;
+                      return `${X+r*Math.cos(a)},${Y+r*Math.sin(a)}`;
+                    }).join(" ");
+                    return <g key={it.k}>
+                      <circle cx={X} cy={Y} r={10} fill="#2e6b34" stroke="#d8c9a3" strokeWidth={1.5}/>
+                      <polygon points={star} fill="#e8e4d0" opacity={0.95}/>
+                    </g>;
+                  }
+                  if(it.k==="anchor")return <g key={it.k}>
+                    <circle cx={X} cy={Y} r={8.5} fill="rgba(6,5,3,0.8)" stroke="#D8CFB8" strokeWidth={1.2}/>
+                    <text x={X} y={Y+3.5} textAnchor="middle" fontSize={9} fill="#D8CFB8" fontWeight={700}>⚑</text>
+                  </g>;
+                  if(it.k==="bonus")return <g key={it.k}>
+                    <circle cx={X} cy={Y} r={8.5} fill="rgba(6,5,3,0.8)" stroke="#d4b254" strokeWidth={1.2}/>
+                    <text x={X} y={Y+3.5} textAnchor="middle" fontSize={10} fill="#d4b254" fontWeight={700}>$</text>
+                  </g>;
+                  if(it.tr){const {t,pl}=it.tr;return <g key={it.k}>
+                    <circle cx={X} cy={Y} r={9} fill="rgba(6,5,3,0.85)"/>
+                    <circle cx={X} cy={Y} r={8} fill={t.disarmed?"rgba(100,50,20,0.4)":"rgba(208,112,48,0.5)"} stroke={t.disarmed?"#6a4020":uiInk(FACTIONS[pl.faction])} strokeWidth={1.2}/>
+                    <text x={X} y={Y+3.5} textAnchor="middle" fontSize={10} fill={t.disarmed?"#6a4020":"#D07030"} fontWeight={700}>{t.disarmed?"✗":"💀"}</text>
+                  </g>;}
+                  const {pl}=it.fl;return <g key={it.k}>
+                    <circle cx={X} cy={Y} r={9} fill="rgba(6,5,3,0.85)"/>
+                    <circle cx={X} cy={Y} r={8} fill="rgba(51,170,51,0.4)" stroke={uiInk(FACTIONS[pl.faction])} strokeWidth={1.2}/>
+                    <text x={X} y={Y+3.5} textAnchor="middle" fontSize={11} fill="#33AA33" fontWeight={700}>⚑</text>
+                  </g>;
+                })}</g>;
               })()}
-              {/* Faction tokens: Traps (Frente) + Comptoirs (Acadiane) */}
-              {players.map(pl=>{
-                // Traps — hidden marker (skull if active, X if disarmed)
-                const traps=(pl.trapTokens||[]).filter(t=>t.hexId===hex.id);
-                const flags=(pl.flagTokens||[]).filter(f=>f.hexId===hex.id);
-                const fc=FACTIONS[pl.faction];
-                return <React.Fragment key={pl.faction+"tok"}>
-                  {traps.map((t,ti)=><g key={`trap${ti}`} style={{pointerEvents:"none"}}>
-                    <circle cx={hex.rx-26} cy={hex.ry-22+ti*16} r={9} fill="rgba(6,5,3,0.85)"/>
-                    <circle cx={hex.rx-26} cy={hex.ry-22+ti*16} r={8} fill={t.disarmed?"rgba(100,50,20,0.4)":"rgba(208,112,48,0.5)"} stroke={t.disarmed?"#6a4020":fc.color} strokeWidth={1.2}/>
-                    <text x={hex.rx-26} y={hex.ry-17+ti*16} textAnchor="middle" fontSize={10} fill={t.disarmed?"#6a4020":"#D07030"} fontWeight={700}>{t.disarmed?"✗":"💀"}</text>
-                  </g>)}
-                  {flags.map((f2,fi)=><g key={`flag${fi}`} style={{pointerEvents:"none"}}>
-                    <circle cx={hex.rx-26} cy={hex.ry-22+fi*16} r={9} fill="rgba(6,5,3,0.85)"/>
-                    <circle cx={hex.rx-26} cy={hex.ry-22+fi*16} r={8} fill="rgba(51,170,51,0.4)" stroke={fc.color} strokeWidth={1.2}/>
-                    <text x={hex.rx-26} y={hex.ry-17+fi*16} textAnchor="middle" fontSize={11} fill="#33AA33" fontWeight={700}>⚑</text>
-                  </g>)}
-                </React.Fragment>;
-              })}
-              {encounterTokens.has(hex.id)&&(()=>{
-                const ex=hex.rx+26,ey=hex.ry+24;
-                const star=Array.from({length:8},(_,i)=>{
-                  const a=(Math.PI/4)*i-Math.PI/2;const r=i%2===0?6.5:2.6;
-                  return `${ex+r*Math.cos(a)},${ey+r*Math.sin(a)}`;
-                }).join(" ");
-                return(
-                  <g style={{pointerEvents:"none"}}>
-                    <circle cx={ex} cy={ey} r={11} fill="rgba(6,5,3,0.6)"/>
-                    <circle cx={ex} cy={ey} r={10} fill="#2e6b34" stroke="#d8c9a3" strokeWidth={1.5}/>
-                    <polygon points={star} fill="#e8e4d0" opacity={0.95}/>
-                  </g>
-                );
+              {/* ── BANDE BASSE : ce qui est POSÉ AU SOL sur l'hex ─────────
+                    Le bâtiment (structure, jamais déplaçable pendant un Move :
+                    il n'a rien à faire dans la grappe de pions, où il écrasait
+                    les ouvriers) et les tas de ressources, qui remontaient
+                    jusque sous les pions et disparaissaient dessous. */}
+              {(()=>{
+                const bld=players.flatMap(pl=>(pl.buildings||[]).filter(b=>b.hexId===hex.id).map(b=>({b,pl})))[0];
+                const pRes=Object.entries(players.reduce((acc,pl)=>{const r=pl.resources[String(hex.id)];if(r)Object.entries(r).forEach(([rt,cnt])=>{if(cnt>0)acc[rt]=(acc[rt]||0)+cnt;});return acc;},{}));
+                if(!bld&&pRes.length===0)return null;
+                // Largeur des pastilles calculée pour tenir dans l'hexagone :
+                // trois tas de ressources à largeur fixe débordaient sur les
+                // voisins. On resserre les pastilles, jamais le jeu entre elles.
+                const room=2*(halfWidthAt(STRIP_BOTTOM_Y)-5);
+                const bw=bld?22:0, n=pRes.length, gaps=2*(n+(bld?1:0)-1);
+                const cw=n>0?Math.max(20,Math.min(34,(room-bw-gaps)/n)):0;
+                const items=[...(bld?[{k:"bld",w:bw}]:[]),...pRes.map(([rt,cnt])=>({k:rt,w:cw,rt,cnt}))];
+                const xs=layoutStrip(items.map(i=>i.w),STRIP_BOTTOM_Y,2);
+                const Y=hex.ry+STRIP_BOTTOM_Y;
+                return <g style={{pointerEvents:"none"}}>{items.map((it,i)=>{
+                  const X=hex.rx+xs[i];
+                  if(it.k==="bld"){
+                    const bt=BUILDING_TYPES.find(t=>t.type===bld.b.type);
+                    const col=FACTIONS[bld.pl.faction]?.color||"#888";
+                    return <g key="bld"><title>{`${bt?bt.name:bld.b.type} — ${FACTIONS[bld.pl.faction]?.name}`}</title>
+                      <rect x={X-10} y={Y-10} width={20} height={20} rx={4} fill="rgba(6,5,3,0.9)" stroke={uiInk(FACTIONS[bld.pl.faction])} strokeWidth={2}/>
+                      <rect x={X-8.5} y={Y-8.5} width={17} height={17} rx={3} fill={col+"66"} stroke="none"/>
+                      <text x={X} y={Y+4} textAnchor="middle" fontSize={11}>{bt?bt.icon:"🏗"}</text>
+                    </g>;
+                  }
+                  return <ResourceToken key={it.k} cx={X} cy={Y} resType={it.rt} count={it.cnt} w={it.w}/>;
+                })}</g>;
               })()}
             </g>);
           })}
@@ -3761,24 +3844,20 @@ export default function App(){
           <g style={{pointerEvents:"none"}}>
             {Object.entries(allHexContents).map(([hidStr,units])=>{
               const hex=hMap[hidStr];if(!hex||units.length===0)return null;
-              const c=FACTIONS[units[0].factionId]?.color||"#888";
-              return <FactionHalo key={`halo${hidStr}`} cx={hex.rx} cy={hex.ry+6} color={c} r={22}/>;
+              const owned=units.find(u=>!u.empire);
+              if(!owned)return null;                       // patrouille seule : pas de halo de faction
+              const c=uiInk(FACTIONS[owned.factionId]);
+              return <FactionHalo key={`halo${hidStr}`} cx={hex.rx} cy={hex.ry+4} color={c} r={26}/>;
             })}
             {Object.entries(allHexContents).flatMap(([hidStr,units])=>{
               const hex=hMap[hidStr];if(!hex)return [];
-              // Disposition en PACK : rangées compactes centrées (3 pions max
-              // par rangée, léger rétrécissement quand l'hex est bondé) au lieu
-              // d'une ligne qui débordait sur les hexes voisins dès 4 unités —
-              // chaque pion reste cliquable individuellement
-              const n=units.length;
-              const perRow=n<=2?2:3;
-              const nRows=Math.ceil(n/perRow);
-              const packScale=n>=7?0.8:n>=5?0.88:1;
-              return units.map((u,ui)=>{
-                const row=Math.floor(ui/perRow);
-                const inRow=(row===nRows-1)?(n-row*perRow):perRow;
-                const ox=((ui%perRow)-(inRow-1)/2)*24*packScale;
-                const oy=(row-(nRows-1)/2)*21*packScale;
+              const pos=hexUnitPos[hidStr]||{};
+              return units.map(u=>{
+                const p=pos[u.id];if(!p)return null;
+                const cx=hex.rx+p.cx,cy=hex.ry+p.cy;
+                // Patrouille impériale : même gabarit que les autres pions,
+                // rendu par son propre composant.
+                if(u.empire)return <EmpireMecha key={u.id} cx={cx} cy={cy} eid={u.id} scale={p.scale}/>;
                 // Action Move : cliquer directement le pion à déplacer (au lieu
                 // du picker de liste). Si le hex est une destination valide de
                 // l'unité déjà sélectionnée, le clic doit passer au hex.
@@ -3792,19 +3871,11 @@ export default function App(){
                 // déplacement séquentiel vers une case déjà occupée par les
                 // siens.
                 const clickable=isMovable&&!isSel;
-                return <UnitToken key={u.id} unitId={u.id} type={u.type} cx={hex.rx+ox} cy={hex.ry+6+oy} scale={packScale} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}
+                return <UnitToken key={u.id} unitId={u.id} type={u.type} cx={cx} cy={cy} scale={p.scale} color={u.color} label={u.label} icon={u.icon} factionId={u.factionId}
                   selectable={clickable} selected={isSel}
                   onClick={clickable?(e)=>{e.stopPropagation();doMove(u.type,movKey,hex.id);}:undefined}/>;
-              });
+              }).filter(Boolean);
             })}
-            {(()=>{
-              const byHex={};
-              Object.entries(empire).forEach(([eid,hid])=>{(byHex[hid]=byHex[hid]||[]).push(eid);});
-              return Object.entries(byHex).flatMap(([hidStr,eids])=>{
-                const hex=hMap[hidStr];if(!hex)return [];
-                return eids.map((eid,ei)=><EmpireMecha key={eid} cx={hex.rx-16+ei*16} cy={hex.ry-20} eid={eid}/>);
-              });
-            })()}
           </g>
           {/* Hex click ripple */}
           {clickRipple&&(()=>{
@@ -3856,8 +3927,8 @@ export default function App(){
           </g>
         </svg>
 
-        {/* ═══ MODAL OVERLAYS (combat/encounter/RR/dépose en route/pouvoir optionnel) ═══ */}
-        {(combat||encounter||encounterBuild||encounterEnlist||encounterUpgrade||encounterResources||rougeRiver||factoryPreview||routeDrop||abilityOffer||stealOffer)&&(
+        {/* ═══ MODAL OVERLAYS (combat/rencontre/Rouge River/pouvoir optionnel) ═══ */}
+        {(combat||encounter||encounterBuild||encounterEnlist||encounterUpgrade||encounterResources||rougeRiver||factoryPreview||abilityOffer||stealOffer)&&(
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
             <div style={{maxWidth:460,width:"92%",maxHeight:"80vh",overflow:"auto",borderRadius:12,border:"1px solid var(--border-light)",boxShadow:"0 10px 50px rgba(0,0,0,0.8)"}}>
 
@@ -3890,9 +3961,9 @@ export default function App(){
                 return(
                   <div className="combat-panel" style={{padding:"24px",background:"linear-gradient(180deg,#200e0a,var(--bg2))",borderRadius:12}}>
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
-                      <div style={{width:50,height:50,borderRadius:"50%",background:isPve?"rgba(180,30,15,0.2)":"rgba(200,100,30,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,border:isPve?"2px solid #1A3A6A":"2px solid "+(ef?ef.color:"#888"),flexShrink:0}}>⚔</div>
+                      <div style={{width:50,height:50,borderRadius:"50%",background:isPve?"rgba(180,30,15,0.2)":"rgba(200,100,30,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,border:isPve?"2px solid #1A3A6A":"2px solid "+(ef?uiInk(ef):"#888"),flexShrink:0}}>⚔</div>
                       <div>
-                        <div style={{fontFamily:"var(--font-title)",color:isPve?"#2A5A8A":ef.color,fontSize:21,fontWeight:700}}>{isPve?(empireCount>1?`${empireCount} patrouilles impériales liguées`:"Patrouille impériale"):combat.type==="pvp_defense"?`${ef.name} vous attaque !`:`Combat vs ${ef.name}`}</div>
+                        <div style={{fontFamily:"var(--font-title)",color:isPve?"#2A5A8A":uiInk(ef),fontSize:21,fontWeight:700}}>{isPve?(empireCount>1?`${empireCount} patrouilles impériales liguées`:"Patrouille impériale"):combat.type==="pvp_defense"?`${ef.name} vous attaque !`:`Combat vs ${ef.name}`}</div>
                         <div style={{fontSize:14,color:"var(--text-muted)",marginTop:3}}>{isPve?`Force inconnue — entre ${empirePowerRange(empireCount)} (révélée à la résolution)`:combat.type==="pvp_defense"?"Ses forces sont engagées en secret — défendez le territoire":"L'adversaire choisit secrètement…"}</div>
                       </div>
                     </div>
@@ -3965,59 +4036,6 @@ export default function App(){
                   })()}
                 </div>
               )}
-
-              {/* 📦 DÉPOSE EN ROUTE (mech) — passe-passe stratégiques */}
-              {routeDrop&&!combat&&!encounter&&(()=>{
-                const destKey=String(routeDrop.destHex);
-                const wAtDest=(me?.workers||[]).filter(w=>w.hexId===routeDrop.destHex).length;
-                const resAtDest=Object.entries(me?.resources?.[destKey]||{}).filter(([,q])=>q>0);
-                const dropWorker=(mid)=>{
-                  setPlayers(prev=>{const n=[...prev];const p2={...n[0],workers:[...n[0].workers]};
-                    const wi=p2.workers.findIndex(w=>w.hexId===routeDrop.destHex);
-                    if(wi>=0)p2.workers[wi]={...p2.workers[wi],hexId:mid};
-                    n[0]=p2;return n;});
-                  addLog(`📦 Ouvrier déposé sur #${mid} au passage`);
-                };
-                // Ramassage en route : les ressources laissées sur un hex de
-                // passage montent dans l'unité, qui les a sous la main à
-                // l'arrivée (règle « prendre ET déposer »).
-                const pickRes=(mid)=>{
-                  setPlayers(prev=>{const n=[...prev];const p2={...n[0],resources:{...n[0].resources}};
-                    Object.keys(p2.resources).forEach(k=>{p2.resources[k]={...p2.resources[k]};});
-                    const src=p2.resources[String(mid)]||{};
-                    if(!p2.resources[destKey])p2.resources[destKey]={};
-                    Object.entries(src).forEach(([rt,q])=>{p2.resources[destKey][rt]=(p2.resources[destKey][rt]||0)+q;});
-                    delete p2.resources[String(mid)];
-                    n[0]=p2;return n;});
-                  addLog(`🫴 Ressources ramassées sur #${mid} au passage`);
-                };
-                const dropRes=(mid)=>{
-                  setPlayers(prev=>{const n=[...prev];const p2={...n[0],resources:{...n[0].resources}};
-                    Object.keys(p2.resources).forEach(k=>{p2.resources[k]={...p2.resources[k]};});
-                    const src=p2.resources[destKey]||{};
-                    if(!p2.resources[String(mid)])p2.resources[String(mid)]={};
-                    Object.entries(src).forEach(([rt,q])=>{p2.resources[String(mid)][rt]=(p2.resources[String(mid)][rt]||0)+q;});
-                    delete p2.resources[destKey];
-                    n[0]=p2;return n;});
-                  addLog(`📦 Ressources déposées sur #${mid} au passage`);
-                };
-                return(
-                <div style={{padding:"16px",background:"linear-gradient(180deg,#141a10,var(--bg2))",borderRadius:10,border:"1px solid var(--gold-dim)",animation:"slideUp 0.35s ease",marginBottom:10}}>
-                  <div style={{color:"var(--gold)",fontFamily:"var(--font-title)",fontWeight:700,fontSize:15,marginBottom:6}}>🚚 Ravitaillement en route — passage par {routeDrop.mids.map(m=>`#${m}`).join(", ")}</div>
-                  <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:8,fontStyle:"italic"}}>Règle du jeu original : une unité prend et dépose autant de ressources qu'elle veut pendant son déplacement. Déposez pour tenir le terrain, ramassez pour rapatrier ce qui traîne (au score, seules comptent les ressources sur un hex que vous tenez).</div>
-                  {routeDrop.mids.map(mid=>{
-                    const onMid=Object.entries(me?.resources?.[String(mid)]||{}).filter(([,q])=>q>0);
-                    return(
-                    <div key={mid} style={{display:"flex",gap:6,marginBottom:6,alignItems:"center",flexWrap:"wrap"}}>
-                      <span style={{fontSize:14,color:"var(--text)",minWidth:36}}>#{mid}</span>
-                      {routeDrop.unitType==="mech"&&<button disabled={wAtDest<1} onClick={()=>dropWorker(mid)} className="act-btn" style={{fontSize:13,opacity:wAtDest<1?0.4:1}}>● Déposer 1 ouvrier ({wAtDest} dispo)</button>}
-                      <button disabled={resAtDest.length===0} onClick={()=>dropRes(mid)} className="act-btn" style={{fontSize:13,opacity:resAtDest.length===0?0.4:1}}>📦 Déposer ({resAtDest.map(([rt,q])=>`${q}${resFR(rt)}`).join(", ")||"—"})</button>
-                      <button disabled={onMid.length===0} onClick={()=>pickRes(mid)} className="act-btn" style={{fontSize:13,opacity:onMid.length===0?0.4:1}}>🫴 Ramasser ({onMid.map(([rt,q])=>`${q}${resFR(rt)}`).join(", ")||"—"})</button>
-                    </div>
-                  );})}
-                  <button onClick={()=>{const end=routeDrop.endAfter;setRouteDrop(null);if(end)endMoveDone();}} className="act-btn" style={{marginTop:6,background:"#3a6a3a",color:"#fff",border:"none",width:"100%",fontWeight:700}}>Continuer ▶</button>
-                </div>);
-              })()}
 
               {/* VOL DE MECHA (Internationale Noire) — le mecha vaincu change de
                   camp contre le coût de Déploiement, et livre UNE de ses
@@ -4451,13 +4469,13 @@ export default function App(){
           {players.map((p,i)=>{const fc=FACTIONS[p.faction];const isActive=i===currentP;return(
             <div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 6px",borderRadius:4,
               background:isActive?"rgba(200,112,64,0.06)":"transparent",
-              borderLeft:isActive?`3px solid ${fc.color}`:"3px solid transparent",
+              borderLeft:isActive?`3px solid ${uiInk(fc)}`:"3px solid transparent",
               animation:isActive&&i>0?"botPulse 1.5s ease infinite":"none",
               marginBottom:2,
             }}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:fc.color,flexShrink:0}}/>
+              <div style={{width:8,height:8,borderRadius:"50%",background:uiInk(fc),flexShrink:0}}/>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:14,fontWeight:700,color:fc.color,fontFamily:"var(--font-title)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{fc.name.slice(0,8)}{isActive&&<span style={{color:"var(--gold)",marginLeft:4}}>◀</span>}</div>
+                <div style={{fontSize:14,fontWeight:700,color:uiInk(fc),fontFamily:"var(--font-title)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{fc.name.slice(0,8)}{isActive&&<span style={{color:"var(--gold)",marginLeft:4}}>◀</span>}</div>
               </div>
               <div style={{fontSize:14,color:"var(--text-dim)",whiteSpace:"nowrap",fontFamily:"var(--font-mono)"}}>⚡{p.power} ♥{p.pop} ⭐{p.stars}</div>
             </div>
@@ -4609,7 +4627,7 @@ export default function App(){
                 return(
                   <React.Fragment key={action}>
                   <button onClick={()=>{if(upgradePicking)return;if(!disabled){pushHistory();setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
-                    onMouseEnter={e=>{if(!disabled&&!upgradePicking)e.currentTarget.style.borderColor=myFaction?.color||"var(--rust)";}}
+                    onMouseEnter={e=>{if(!disabled&&!upgradePicking)e.currentTarget.style.borderColor=myFaction?uiInk(myFaction):"var(--rust)";}}
                     onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border-dark)";}}
                     style={{
                     padding:0,margin:"0 8px 8px",borderRadius:8,overflow:"hidden",textAlign:"left",
@@ -4748,11 +4766,18 @@ export default function App(){
                   {(me.movedUnits||[]).length===0&&<button onClick={()=>{const g=1+topUpgradeCount(me,"Move","coins");setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+g};return n;});addLog(`💰 +${g}$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner {1+topUpgradeCount(me,"Move","coins")}$ (pas de déplacement)</button>}
                   {!moveSource&&(
                     <div style={{padding:"10px 12px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:14,color:"var(--gold)",lineHeight:1.5}}>
-                      👆 Cliquez le <b>pion</b> à déplacer (hexes surlignés en doré), puis l'<b>hex</b> de destination. Un clic sur un pion change toujours d'unité ; un clic sur un hex vise toujours l'hex.
+                      {/* Rien sur le plateau mais de quoi faire remonter : c'est
+                          l'ouverture de l'Internationale Noire, dont les quatre
+                          ouvriers démarrent hors plateau. Pointer un pion à
+                          déplacer n'aurait aucun sens tant qu'il n'y en a pas. */}
+                      {movableUnits.size===0&&reserveTotal>0
+                        ?<>🕳 Rien sur le plateau : votre réseau est <b>hors carte</b>. Faites remonter vos unités par un <b>ancrage</b> (bouton ci-dessous) — chaque remontée coûte un des déplacements du tour.</>
+                        :<>👆 Cliquez le <b>pion</b> à déplacer (hexes surlignés en doré), puis l'<b>hex</b> de destination. Un clic sur un pion change toujours d'unité ; un clic sur un hex vise toujours l'hex.</>}
                       <div style={{fontSize:13,color:"var(--text-dim)",marginTop:4}}>
-                        Disponibles : {!(me.movedUnits||[]).includes("hero")&&<span>★ {myFaction.hero} · </span>}
+                        Disponibles : {me.hero!=null&&!(me.movedUnits||[]).includes("hero")&&<span>★ {myFaction.hero} · </span>}
                         ● {me.workers.filter(w=>!(me.movedUnits||[]).includes(w.id)).length} ouvrier(s)
                         {me.mechs.length>0&&<span> · ⬡ {me.mechs.filter(m=>!(me.movedUnits||[]).includes(m.id)).length} mecha(s)</span>}
+                        {reserveTotal>0&&<span> · 🕳 {reserveTotal} en réserve</span>}
                       </div>
                     </div>
                   )}
@@ -4862,7 +4887,7 @@ export default function App(){
                       const bt=BUILDING_TYPES.find(t=>t.type===bld.type);
                       return <div style={{marginTop:8,padding:"8px 10px",borderRadius:6,border:"1px solid var(--nations)",background:"rgba(32,178,170,0.06)"}}>
                         <div style={{fontSize:14,color:"var(--nations)",marginBottom:6}}>📦 Pack Up — déplacer {bt?bt.icon:""} {bt?bt.name:""} depuis #{bld.hexId} <span style={{color:"var(--text-muted)"}}>— cliquez l'hex surligné sur la carte</span></div>
-                        {adjTargets.length>0?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{adjTargets.map(hid=><button key={hid} onClick={()=>doPackUpMove(bottomPick.buildingIdx,hid)} className="act-btn" style={{borderColor:"var(--nations)"}}>→ #{hid}</button>)}</div>:<div style={{fontSize:12,color:"var(--text-muted)"}}>Aucun hex adjacent libre</div>}
+                        {adjTargets.length>0?<div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{adjTargets.map(hid=><button key={hid} onClick={()=>doPackUpMove(bottomPick.buildingIdx,hid)} className="act-btn" style={{borderColor:"var(--nations)"}}>→ #{hid}</button>)}</div>:<div style={{fontSize:12,color:"var(--text-muted)"}}>Aucun hex adjacent recevable — il faut un hex libre ou à vous, sans bâtiment (ni lac, ni marécage)</div>}
                         <button onClick={()=>setBottomPick(null)} className="act-btn" style={{marginTop:6,fontSize:14,opacity:0.7,minHeight:36}}>← Annuler</button>
                       </div>;
                     }
@@ -5044,7 +5069,7 @@ export default function App(){
                 return <button onClick={()=>{setTransportPick(null);endHumanTurn(colIdx);}} className="act-btn"
                   style={{marginTop:8,width:"100%",fontWeight:600,...(moved>0?{background:"#3a6a3a",color:"#fff",border:"none"}:{opacity:0.85})}}>{label}</button>;
               })()}
-              {!(selAction==="Factory"&&factoryFlow)&&<button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setTransportPick(null);setRouteDrop(null);setPreActionSnapshot(null);setTradePicks([]);setFactoryFlow(null);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>}
+              {!(selAction==="Factory"&&factoryFlow)&&<button onClick={()=>{if(preActionSnapshot){setPlayers(prev=>{const n=[...prev];n[0]=preActionSnapshot;return n;});}setSelAction(null);setMoveSource(null);setTransportPick(null);setPreActionSnapshot(null);setTradePicks([]);setFactoryFlow(null);addLog("↩ Action annulée");}} style={{marginTop:8,padding:"8px 16px",fontSize:14,background:"transparent",border:`1px solid var(--border)`,color:"var(--text-muted)",borderRadius:5,cursor:"pointer"}}>← Annuler</button>}
             </div>
           )}
 
@@ -5278,7 +5303,7 @@ export default function App(){
             <div style={{padding:"6px 16px",fontSize:14,color:"var(--text-dim)",borderTop:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}}>
               {selHexData.base ? (<>
                 <span style={{fontSize:18}}>🏳</span>
-                <span style={{fontWeight:600,color:FACTIONS[selHexData.faction]?.color||"var(--text)"}}>Base — {FACTIONS[selHexData.faction]?.name}</span>
+                <span style={{fontWeight:600,color:uiInk(FACTIONS[selHexData.faction])}}>Base — {FACTIONS[selHexData.faction]?.name}</span>
                 <span style={{color:"var(--text-muted)"}}>#{selHexData.id}</span>
               </>) : (<>
                 <span style={{fontSize:18}}>{TERRAINS[selHexData.t].icon}</span>
@@ -5369,11 +5394,11 @@ export default function App(){
                 {!isCur&&<span style={{fontSize:10,fontWeight:isCombatCap?800:600,fontFamily:"var(--font-mono)",color:isCombatCap?"var(--rust)":"var(--text-ghost)"}}>{v}</span>}
                 {isCombatCap&&!isCur&&<span style={{fontSize:9,opacity:0.75}}>⚔</span>}
                 {v===16&&<span style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)",display:"flex"}}><TrackStar size={12} earned={me.power>=16}/></span>}
-                {isCur&&<div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",zIndex:2}}><BoltMarker color={myFaction.color} value={v}/></div>}
+                {isCur&&<div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",zIndex:2}}><BoltMarker color={uiInk(myFaction)} value={v}/></div>}
                 {opponentsHere.length>0&&(
                   <div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",display:"flex",gap:2,zIndex:3}}>
                     {opponentsHere.map(op=>(
-                      <div key={op.faction} title={`${FACTIONS[op.faction].name} : ${op.power}⚡`} style={{width:7,height:7,borderRadius:"50%",background:FACTIONS[op.faction].color,border:"1px solid rgba(6,5,3,0.9)"}}/>
+                      <div key={op.faction} title={`${FACTIONS[op.faction].name} : ${op.power}⚡`} style={{width:7,height:7,borderRadius:"50%",background:uiInk(FACTIONS[op.faction]),border:"1px solid rgba(6,5,3,0.9)"}}/>
                     ))}
                   </div>
                 )}

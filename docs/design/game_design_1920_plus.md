@@ -248,13 +248,13 @@ Iskra (« Étincelle ») a perdu un œil dans une explosion d'atelier à Lyon. E
 
 **Capacité — Rouille Rouge :** Nadia peut poser un marqueur « Sabotage » sur un mecha ennemi sans être révélée. Le sabotage ne se déclenche pas immédiatement — il se déclenche au moment le plus inopportun : quand le mecha entre en combat, quand il traverse un terrain difficile, ou quand le joueur en a le plus besoin. Le joueur ciblé tire une carte Avarie qui détermine l'effet (perte de puissance, immobilisation, retour à la base).
 
-### **Le Horloger & Rouage** (un rat d'égout savant) — Les Passeurs
+### **L'Horloger & Rouage** (un rat d'égout savant) — Les Passeurs
 
-Le Horloger. Personne ne connaît son vrai nom. Ancien professeur de philosophie mécanique à la Sorbonne, il a disparu après la publication d'un traité intitulé « De la servitude mécanique » qui lui a valu une condamnation par contumace. Il vit dans les interstices — les tunnels, les canaux, les wagons de marchandises. Il pense en systèmes, parle en métaphores, et démonte tout ce qu'il touche pour comprendre comment ça marche avant de le remonter légèrement différent.
+L'Horloger. Personne ne connaît son vrai nom. Ancien professeur de philosophie mécanique à la Sorbonne, il a disparu après la publication d'un traité intitulé « De la servitude mécanique » qui lui a valu une condamnation par contumace. Il vit dans les interstices — les tunnels, les canaux, les wagons de marchandises. Il pense en systèmes, parle en métaphores, et démonte tout ce qu'il touche pour comprendre comment ça marche avant de le remonter légèrement différent.
 
-Rouage est un rat gris qui vit dans la poche intérieure du manteau du Horloger. Il sait ouvrir les serrures.
+Rouage est un rat gris qui vit dans la poche intérieure du manteau de l'Horloger. Il sait ouvrir les serrures.
 
-**Capacité — Réseau :** Le Horloger peut déplacer n'importe quel pion de l'Internationale (Cellule, Spectre, autre héros) de 2 cases supplémentaires par tour en utilisant les tunnels, les voies ferrées ou les voies fluviales — même celles contrôlées par d'autres factions. De plus, il peut « exfiltrer » un ouvrier ennemi et le convertir en Cellule (l'ouvrier déserte et rejoint l'Internationale).
+**Capacité — Réseau :** L'Horloger peut déplacer n'importe quel pion de l'Internationale (Cellule, Spectre, autre héros) de 2 cases supplémentaires par tour en utilisant les tunnels, les voies ferrées ou les voies fluviales — même celles contrôlées par d'autres factions. De plus, il peut « exfiltrer » un ouvrier ennemi et le convertir en Cellule (l'ouvrier déserte et rejoint l'Internationale).
 
 ### **Rosa & Sturmvogel** (un faucon pèlerin) — Les Moissonneurs
 
@@ -403,11 +403,11 @@ Même format que Scythe : le joueur tire une carte, lit la situation, choisit en
 *Un pilote de mecha saxon se présente à votre cellule, en pleine nuit. Il veut déserter. Il dit qu'il sait des choses — les codes de fréquence des mechas de la Ruhr, les horaires de patrouille, l'emplacement des dépôts de carburant. Il dit aussi qu'il est suivi.*
 
 - **L'accueillir** — Gagnez 1 carte Sabotage gratuite et les informations (regardez la main de combat du joueur Saxon). Mais le joueur Saxon sait maintenant qu'une de vos Cellules est dans sa zone — il peut la chercher.
-- **L'exfiltrer vers un autre pays** — Dépensez 1 mouvement du Horloger. Gagnez 1 Cellule dans une nouvelle faction (le déserteur devient agent double).
+- **L'exfiltrer vers un autre pays** — Dépensez 1 mouvement de l'Horloger. Gagnez 1 Cellule dans une nouvelle faction (le déserteur devient agent double).
 - **Le renvoyer** — Gagnez 1 popularité (vous n'êtes pas des kidnappeurs). Mais le pilote retourne chez lui et devient un fasciste convaincu (Fièvre Saxon +1).
 
-### Rencontre : Le Choix du Horloger
-*Un atelier clandestin à Toulouse. Trois Spectres en cours d'assemblage. Le Horloger pose la question qu'il pose toujours : « Que fait-on de ces machines ? » Sur la table, trois options.*
+### Rencontre : Le Choix de l'Horloger
+*Un atelier clandestin à Toulouse. Trois Spectres en cours d'assemblage. L'Horloger pose la question qu'il pose toujours : « Que fait-on de ces machines ? » Sur la table, trois options.*
 
 - **Les armer** — 3 Spectres deviennent opérationnels immédiatement avec des composants aléatoires.
 - **Les convertir en tracteurs** — Perdez 3 Spectres potentiels. Gagnez 3 ouvriers (les paysans locaux vous sont redevables) et 2 popularité. La Fièvre de la faction française baisse de 1.
