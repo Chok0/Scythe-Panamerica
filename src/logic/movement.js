@@ -30,7 +30,11 @@ export const getRailNetwork = (fromId, rails, blockedHexes) => {
 // ni péage ni arrêt forcé, et ce dès le tour 1 (capacité de FACTION, pas de
 // mecha : c'est l'analogue du « Seaworthy » nordique du jeu original).
 // Le mecha Pirogue (slot 3) reste l'étage au-dessus : le bond marais↔marais.
-export const marshFree = (factionId) => factionId === "bayou";
+// Le Bayou par le Sang du Marais, l'Internationale Noire par Résilience :
+// son réseau vit précisément dans ce que personne ne veut traverser, et trois
+// de ses quatre sorties de base SONT des marécages — les taxer revenait à lui
+// faire payer sa propre géographie. Lu depuis la fiche : `marshFree`.
+export const marshFree = (factionId) => factionId === "bayou" || !!FACTIONS[factionId]?.marshFree;
 
 // 1-step movement from a single hex (no rail — rail handled in getValidMoves)
 export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) => {
@@ -86,7 +90,7 @@ export const getValidMoves1Step = (fromId, factionId, abilities, player, rails) 
       // rivières (aucune faction n'a « factory » dans son riverwalk, sinon
       // l'approche par l'hex 26 était un cul-de-sac)
       if (to.t === "factory") return true;
-      // La Nage (Internationale Noire) : capacité de FACTION, active dès le
+      // Résilience (Internationale Noire) : capacité de FACTION, active dès le
       // tour 1, ouvriers compris — toutes les rivières, sans condition de
       // terrain. Elle REMPLACE le riverwalk : le slot 1 reste vide, et les
       // capacités de la faction sont celles qu'elle VOLE (fiche §6-§7).

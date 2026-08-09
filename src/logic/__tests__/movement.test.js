@@ -130,7 +130,7 @@ describe('Sang du Marais (Bayou)', () => {
 // L'audit détaillé est dans scripts/riverwalkAudit.mjs (même fonction).
 describe('riverwalks : aucune capacité morte', () => {
   // FACTION_IDS = rotation standard : l'Internationale Noire (campagne) n'a
-  // pas de riverwalk du tout — La Nage franchit toutes les rivières.
+  // pas de riverwalk du tout — Résilience franchit toutes les rivières.
   for (const fid of FACTION_IDS) {
     const f = FACTIONS[fid];
     it(`${f.name} (${f.rwName}) ouvre une sortie par terrain listé`, () => {

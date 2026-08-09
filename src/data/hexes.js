@@ -54,6 +54,24 @@ export const HOME_BASES = {
   dominion: { rx: 395, ry: 65 },
 };
 
+// ── Les QUATRE bases de l'Internationale Noire ────────────────────────────
+// Un réseau clandestin n'a pas de capitale : là où les six autres factions
+// tiennent un drapeau, elle en tient quatre, un par cellule. Chacune porte un
+// ouvrier au départ et donne sur son hex de sortie — le tour 1 sert à entrer
+// sur le plateau, exactement comme un héros qui quitte sa base.
+//
+// (Ça remplace le système d'« ancrages » du 09/08, où la faction démarrait
+// sans un seul pion visible sur la carte : les ouvriers étaient en réserve
+// hors-plateau et « remontaient ». Les hex de sortie restent les mêmes ; ce
+// sont eux qui portent les deux jetons Rencontre qu'il ne faut pas écraser.)
+export const NETWORK_BASES = [
+  { rx: 61, ry: 130, exit: 3 },    // marécage du nord-ouest
+  { rx: 940, ry: 420, exit: 20 },  // marécage de l'est
+  { rx: 61, ry: 620, exit: 25 },   // marécage de l'ouest
+  { rx: 330, ry: 950, exit: 40 },  // désert du sud
+];
+export const NETWORK_FACTION = "internationale";
+
 // Hexes touchés par chaque base sur les cartes par défaut (miroir des
 // workerHex de factions.js — pas importé d'ici pour éviter un cycle).
 // Les cartes générées fournissent map.starts[fid].workerHex à la place.
@@ -145,12 +163,22 @@ export let CURRENT_MAP = DEFAULT_MAP;
 // Hex de base (« drapeau ») par faction : { faction: hexId }. Ids ≥ 900 pour
 // ne jamais entrer en collision avec les hexes du plateau (0-47).
 export let HOME_BASE_HEX = {};
+// Les quatre bases de l'Internationale Noire (ids 910+), dans l'ordre de
+// NETWORK_BASES : un ouvrier par base au départ.
+export let NETWORK_BASE_HEX = [];
 
 export const hasR = (a, b) => RSET.has(`${Math.min(a, b)}-${Math.max(a, b)}`);
 // L'hex de base est-il un vrai hex de plateau ? Non → invisible, non-scoré.
 export const isBaseHex = (id) => !!hMap[id]?.base;
 // Hex de base d'une faction (retraite / départ du héros)
 export const homeBaseHex = (faction) => hMap[HOME_BASE_HEX[faction]] || null;
+/** TOUS les hex de base d'une faction : un seul pour six d'entre elles, quatre
+ *  pour l'Internationale Noire (un réseau n'a pas de capitale). */
+export const factionBaseHexes = (faction) => faction === NETWORK_FACTION
+  ? [...NETWORK_BASE_HEX]
+  : (HOME_BASE_HEX[faction] != null ? [HOME_BASE_HEX[faction]] : []);
+/** Tous les hex de base du plateau, toutes factions confondues. */
+export const allBaseHexes = () => [...Object.values(HOME_BASE_HEX), ...NETWORK_BASE_HEX];
 // Hex de base à des coordonnées de drapeau données (HOME_BASES[fac] → base hex)
 export const baseHexAt = (hb) => Object.values(hMap).find(h => h.base && h.rx === hb.rx && h.ry === hb.ry) || null;
 
@@ -189,6 +217,24 @@ export const loadMap = (map) => {
       if (near) links = [near.id];
     }
     links.forEach(sid => { ADJ[id].push(sid); (ADJ[sid] = ADJ[sid] || []).push(id); });
+  });
+
+  // ── Les quatre bases de l'Internationale Noire (ids 910+) ──
+  // Même nature que les autres : hex invisible sous un drapeau, hors du
+  // plateau donc hors du score, relié à SON hex de sortie. La faction n'entre
+  // qu'en campagne, mais les hex existent toujours — le coût est nul et le
+  // moteur (déplacement, retraite, rendu des drapeaux) n'a pas de cas
+  // particulier à connaître.
+  NETWORK_BASE_HEX = [];
+  NETWORK_BASES.forEach((nb, i) => {
+    const id = 910 + i;
+    hMap[id] = { id, rx: nb.rx, ry: nb.ry, t: "base", base: true, faction: NETWORK_FACTION };
+    NETWORK_BASE_HEX.push(id);
+    ADJ[id] = [];
+    if (hMap[nb.exit] && !hMap[nb.exit].base) {
+      ADJ[id].push(nb.exit);
+      (ADJ[nb.exit] = ADJ[nb.exit] || []).push(id);
+    }
   });
 };
 

@@ -221,25 +221,29 @@ export const FACTIONS = {
     // points de RÉENTRÉE : un ouvrier vaincu part hors-plateau, dans une
     // réserve jamais capturable, et revient adjacent à un ancrage.
     anchors: [3, 20, 25, 40],
-    // ── Départ HORS PLATEAU (09/08) ─────────────────────────────────────
-    // Les quatre ouvriers commençaient POSÉS sur les ancrages — or deux
+    // ── Départ sur SES QUATRE BASES ─────────────────────────────────────
+    // Les quatre ouvriers commençaient posés sur les hex d'ancrage — or deux
     // d'entre eux (#3 et #40) portent un jeton Rencontre, et une rencontre ne
     // se déclenche qu'en ENTRANT sur l'hex : deux des dix rencontres de la
     // carte étaient mortes dès l'installation, pour la seule faction dont les
     // ouvriers les déclenchent (elle n'a pas de héros).
-    // Ils démarrent donc dans la réserve, comme après une défaite, et
-    // s'infiltrent par les ancrages — un déplacement chacun. Le réseau
-    // clandestin ARRIVE au lieu d'être déjà là, et l'infiltration paie
-    // elle-même ses deux rencontres puisqu'elle entre sur les jetons.
-    startsInReserve: true,
+    // Correctif du 09/08 (v2) : elle démarre comme TOUT LE MONDE, sur des
+    // bases — mais elle en a QUATRE, une par cellule (hexes.js,
+    // NETWORK_BASES). Un ouvrier par base, visible dès l'installation, et le
+    // tour 1 sert à entrer sur le plateau par la sortie de chaque base.
+    // (Une première version les mettait en réserve hors-plateau : le joueur
+    // ouvrait la partie sans un seul pion sur la carte — illisible.)
+    startsOnBases: true,
     campaignOnly: true,
     // Le plateau joueur est imposé (pas de tirage) : « Le Réseau », id 200.
     fixedMat: 200,
-    // La Nage REMPLACE le riverwalk : toutes les unités, ouvriers compris,
-    // traversent toutes les rivières dès le tour 1. Le slot 1 de mecha reste
-    // VIDE — cette faction n'a aucune capacité en propre, seulement celles
-    // qu'elle vole (fiche §7, correctif du 04/08).
-    riverwalk: null, rwName: null, swim: true,
+    // RÉSILIENCE remplace le riverwalk : toutes les unités, ouvriers compris,
+    // traversent toutes les rivières dès le tour 1 ET ignorent le péage comme
+    // l'arrêt forcé des marécages (movement.js, `marshFree`) — le réseau vit
+    // précisément dans ce que personne ne veut traverser, ses trois marécages
+    // d'ancrage compris. Le slot 1 de mecha reste VIDE : cette faction n'a
+    // aucune capacité en propre, seulement celles qu'elle vole (fiche §7).
+    riverwalk: null, rwName: null, swim: true, marshFree: true,
     // Ouvriers combattants : chaque ouvrier présent autorise une carte de
     // combat de plus (voir combatUnitCount, data/combat.js). C'est le pic de
     // puissance le plus haut du jeu — freiné par la lenteur du regroupement,
@@ -248,8 +252,8 @@ export const FACTIONS = {
     workersFight: true,
     // Vol de mecha : elle n'en construit aucun, elle les prend (max 4).
     stealMechs: 4,
-    ability: "La Nage",
-    abilityDesc: "Vos 4 ouvriers démarrent HORS PLATEAU : faites-les remonter par vos ancrages (1 déplacement chacun) · toutes vos unités, ouvriers compris, traversent toutes les rivières dès le tour 1 · vos ouvriers COMBATTENT (1 carte chacun) · vous ne déployez aucun mecha : vous les VOLEZ en battant un mecha adverse (max 4) · un ouvrier vaincu repart en réserve et revient près d'un ancrage",
+    ability: "Résilience",
+    abilityDesc: "Toutes vos unités, ouvriers compris, traversent toutes les rivières dès le tour 1 et ignorent les marécages (ni péage ni arrêt) · vos 4 ouvriers démarrent chacun sur UNE de vos quatre bases : sortez-les sur le plateau au premier tour · vos ouvriers COMBATTENT (1 carte chacun) · vous ne déployez aucun mecha : vous les VOLEZ en battant un mecha adverse (max 4) · un ouvrier vaincu repart en réserve hors-plateau et revient près d'une base",
     // Objectif de faction — l'inverse exact de la manœuvre de masse : il
     // force l'étalement (l'Usine plus trois villages, répartis nord et sud).
     fObj: {

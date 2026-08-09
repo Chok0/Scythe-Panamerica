@@ -657,6 +657,89 @@ export const WorkerDominion = React.memo(({ cx, cy, size = 16, color = "#CC2222"
 // ═══════════════════════════════════════════════════════════════════
 
 // Map faction id to mech icon component
+// ═══ INTERNATIONALE NOIRE ═══════════════════════════════════════════════
+// Elle n'avait AUCUN dessin : ni blason, ni ouvrier, ni mecha — ses pions
+// tombaient sur le cercle plein de secours (« des points », 09/08). Son
+// identité graphique est celle de son drapeau : noir, emblème clair, une FAUX
+// BRISÉE — « l'outil de la Mort qu'on a cessé de tourner contre les gens ».
+// Les trois dessins ci-dessous ne se peignent qu'au trait : la couleur reçue
+// est l'os de l'emblème (uiInk), le corps reste le noir du drapeau.
+
+// Emblème — la faux brisée. Sert de blason (drapeaux de base, identité).
+export const EmblemInternationale = React.memo(({ cx, cy, size = 20, color = "#D8CFB8" }) => (
+  <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
+      {/* Manche rompu : les deux tronçons ne sont NI alignés NI jointifs —
+          c'est la fracture qui doit se lire, pas une simple encoche. */}
+      <path d="M7.5,28.5 L14,18.5" stroke={color} strokeWidth="2.6" strokeLinecap="round" fill="none" />
+      <path d="M19.5,13 L22,9" stroke={color} strokeWidth="2.6" strokeLinecap="round" fill="none" />
+      {/* Éclats de bois aux deux lèvres de la cassure */}
+      <path d="M14,18.5 L15.8,17.6 M14.6,19.4 L16.8,18.8" stroke={color} strokeWidth="0.8" strokeLinecap="round" opacity="0.8" />
+      <path d="M19.5,13 L17.8,13.4 M20,14 L18.4,14.9" stroke={color} strokeWidth="0.8" strokeLinecap="round" opacity="0.8" />
+      {/* Lame — courbe qui part du haut du manche et retombe */}
+      <path d="M22,9 C27,8.5 29.5,11.5 28.5,16.5 C26.5,12.5 24.5,11 21.5,11 Z" fill={color} opacity="0.92" stroke={color} strokeWidth="0.6" strokeLinejoin="round" />
+      {/* Poignée */}
+      <path d="M10,25 L13.5,26.5" stroke={color} strokeWidth="1.7" strokeLinecap="round" />
+    </svg>
+  </g>
+));
+
+// Ouvrier — la cellule : casquette, foulard sur le visage, faux brisée en main.
+// Pas de héros dans cette faction : l'ouvrier EST la figure de la faction.
+export const WorkerInternationale = React.memo(({ cx, cy, size = 16, color = "#D8CFB8" }) => (
+  <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
+      {/* Jambes */}
+      <rect x="12" y="22" width="3" height="7" rx="0.5" fill="#1a1820" stroke={color} strokeWidth="0.5" />
+      <rect x="17" y="22" width="3" height="7" rx="0.5" fill="#1a1820" stroke={color} strokeWidth="0.5" />
+      {/* Bleu de travail */}
+      <path d="M11,13 L16,11.8 L21,13 L20.2,23 L11.8,23Z" fill="#15141a" stroke={color} strokeWidth="0.6" />
+      {/* Bretelles */}
+      <path d="M13,13 L13.6,22.5 M19,13 L18.4,22.5" stroke={color} strokeWidth="0.4" opacity="0.7" />
+      {/* Tête + casquette plate */}
+      <circle cx="16" cy="8.6" r="3" fill="#26242c" stroke={color} strokeWidth="0.55" />
+      <path d="M12.6,7.4 C13,5.2 19,5.2 19.4,7.4 L20.8,7.9 L12.6,7.9Z" fill="#15141a" stroke={color} strokeWidth="0.5" strokeLinejoin="round" />
+      {/* Foulard remonté sur le bas du visage — la cellule n'a pas de visage */}
+      <path d="M13.1,9.3 L18.9,9.3 L18.3,11.9 L13.7,11.9Z" fill={color} stroke={color} strokeWidth="0.3" strokeLinejoin="round" />
+      <path d="M18.9,9.5 L20.6,11.2" stroke={color} strokeWidth="1" strokeLinecap="round" />
+      {/* Faux brisée en bandoulière */}
+      <path d="M22,21 L25,14" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M25.5,12.6 L26.4,10.8" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M26.4,10.8 C29,10.8 30,12.6 29.2,14.8 C28.2,12.8 27.4,12.2 26,12.2 Z" fill={color} opacity="0.85" />
+    </svg>
+  </g>
+));
+
+// Mecha — le Spectre : une machine ARRACHÉE puis rapiécée. Silhouette de
+// Model M dont le blindage est refait de tôles dépareillées et de rivets, et
+// dont le cockpit est OUVERT — la thèse de l'Horloger, appliquée de force.
+export const IconInternationale = React.memo(({ cx, cy, size = 28, color = "#D8CFB8" }) => (
+  <g transform={`translate(${cx - size / 2},${cy - size / 2})`}>
+    <svg width={size} height={size} viewBox="0 0 32 32" overflow="visible">
+      {/* Jambes dépareillées — l'une d'origine, l'autre bricolée */}
+      <path d="M11,20 L9.5,26 L7,29.5" stroke={color} strokeWidth="1.8" fill="none" strokeLinecap="round" />
+      <path d="M21,20 L23.5,25 L21.5,29.5" stroke={color} strokeWidth="2.4" fill="none" strokeLinecap="round" />
+      <rect x="5" y="29" width="5" height="1.8" rx="0.6" fill={color} opacity="0.85" />
+      <rect x="19.5" y="29" width="5.5" height="1.8" rx="0.6" fill={color} opacity="0.85" />
+      {/* Caisse — tôles rapiécées */}
+      <path d="M9,10 L23,10 L21.5,21 L10.5,21Z" fill="#15141a" stroke={color} strokeWidth="1" strokeLinejoin="round" />
+      <path d="M9.6,14.5 L22.4,14.5" stroke={color} strokeWidth="0.5" opacity="0.6" />
+      <path d="M16,10 L16,21" stroke={color} strokeWidth="0.4" opacity="0.45" />
+      {/* Rustine boulonnée, en travers de la soudure */}
+      <path d="M12,12.5 L19,13.6 L18.6,17.4 L11.6,16.3Z" fill="none" stroke={color} strokeWidth="0.7" opacity="0.8" />
+      <circle cx="12.6" cy="13.4" r="0.55" fill={color} /><circle cx="18.3" cy="14.3" r="0.55" fill={color} />
+      <circle cx="12.2" cy="16" r="0.55" fill={color} /><circle cx="18" cy="16.7" r="0.55" fill={color} />
+      {/* Cockpit OUVERT : la verrière relevée, la place vide */}
+      <path d="M12.5,10 L12.5,6.5 L19.5,6.5 L19.5,10" fill="none" stroke={color} strokeWidth="0.9" />
+      <path d="M12.5,6.5 L10,3.5" stroke={color} strokeWidth="0.9" strokeLinecap="round" />
+      {/* Bras — un vérin, et une faux brisée montée en outil */}
+      <path d="M9,11.5 L5.5,16 L6.5,20" stroke={color} strokeWidth="1.6" fill="none" strokeLinecap="round" />
+      <path d="M23,11.5 L26.5,15" stroke={color} strokeWidth="1.6" fill="none" strokeLinecap="round" />
+      <path d="M26.5,15 C29.5,14.4 30.5,16.6 29.4,19 C28.6,16.6 27.8,16 26.2,16.2 Z" fill={color} opacity="0.85" />
+    </svg>
+  </g>
+));
+
 export const FACTION_ICON_MAP = {
   confederation: IconConfederation,
   frente: IconFrente,
@@ -664,6 +747,7 @@ export const FACTION_ICON_MAP = {
   acadiane: IconAcadiane,
   bayou: IconBayou,
   dominion: IconDominion,
+  internationale: IconInternationale,
 };
 
 // Map faction id to hero icon component
@@ -684,4 +768,5 @@ export const WORKER_ICON_MAP = {
   acadiane: WorkerAcadiane,
   bayou: WorkerBayou,
   dominion: WorkerDominion,
+  internationale: WorkerInternationale,
 };

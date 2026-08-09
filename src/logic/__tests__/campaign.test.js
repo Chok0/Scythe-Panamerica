@@ -178,10 +178,10 @@ describe('conditions canon', () => {
   // `empireKills` hérité de l'autre partie. La condition canon décrit ce que
   // fait LA faction du chapitre : elle refuse désormais tout autre joueur.
   it('la condition canon refuse un joueur d\'une AUTRE faction que le chapitre', () => {
-    const c = chapterById('ch2'); // Internationale Noire — 3 ouvriers sur l'Usine + 2 patrouilles
+    const c = chapterById('ch2'); // Internationale Noire — 3 ouvriers sur l'Usine + 2 mechas volés
     const intern = createPlayer('internationale', 200, false);
     intern.workers = [0, 1, 2].map(i => ({ id: `w${i}`, hexId: FACTORY_HEX }));
-    intern.empireKills = 2;
+    intern.capturedMech = 2;
     expect(canonMet(c, intern, { players: [intern] })).toBe(true);
 
     // Le MÊME état, joué par une autre faction : refusé.
