@@ -201,7 +201,13 @@ export const FACTIONS = {
   // popularité (plateau « Le Réseau », 4♥/3$) qui est sa monnaie de survie —
   // elle perd des ouvriers en permanence.
   internationale: {
-    name: "Internationale Noire", color: "#9E3B4E",
+    // Elle s'appelle NOIRE, et ses pions sortaient bordeaux (#9E3B4E) — des
+    // points rouges, à une nuance du Dominion (#CC2222), constaté en partie
+    // le 09/08. Son drapeau est noir à faux blanche : `color` est l'encre du
+    // drapeau (le corps du pion), `uiColor` l'os de l'emblème — le liseré sur
+    // la carte, et la couleur lisible partout où une encre noire disparaîtrait
+    // dans un fond sombre (nom de faction, bordures, halo). Voir `uiInk`.
+    name: "Internationale Noire", color: "#131218", uiColor: "#D8CFB8",
     // Sans héros : c'est LA singularité de la faction. `hero: null` est lu
     // partout comme « cette faction n'en a pas » (createPlayer, contrôle,
     // combats, rencontres, visite de l'Usine).
@@ -251,3 +257,10 @@ export const FACTIONS = {
 // scénario. `ALL_FACTION_IDS` reste disponible pour l'UI de campagne.
 export const ALL_FACTION_IDS = Object.keys(FACTIONS);
 export const FACTION_IDS = ALL_FACTION_IDS.filter(id => !FACTIONS[id].campaignOnly);
+
+/** Couleur LISIBLE d'une faction sur fond sombre : son encre, sauf quand
+ *  celle-ci est trop noire pour servir de texte ou de bordure — l'os de son
+ *  emblème prend alors le relais (Internationale Noire). À utiliser partout
+ *  dans l'interface ; la carte, elle, peint l'encre (`f.color`) et fait son
+ *  propre liseré (svg/MapComponents.jsx, `tokenRim`). */
+export const uiInk = (f) => (f && (f.uiColor || f.color)) || "#888";

@@ -85,9 +85,19 @@ export const campaignComplete = (progress) => CHAPTERS.every(c => isChapterDone(
 // ── Condition canon ───────────────────────────────────────────────────────
 /** Le joueur remplit-il la condition canon du chapitre ?
  *  Un chapitre sans condition (interlude) renvoie toujours false : sa seule
- *  voie mécanique reste les 6 étoiles. */
+ *  voie mécanique reste les 6 étoiles.
+ *
+ *  GARDE DE FACTION (09/08) : la condition canon décrit ce que fait LA faction
+ *  du chapitre — « 3 ouvriers de l'Internationale sur l'Usine », pas « trois
+ *  ouvriers quelconques ». Partie constatée : une pile d'annulation survivant
+ *  à la partie précédente a réinjecté un joueur Nations Souveraines dans le
+ *  chapitre 2, et « Atteindre l'Empereur » s'est validé sur lui — chapitre
+ *  remporté avec la mauvaise faction et des compteurs d'une autre partie.
+ *  La cause est corrigée à la source (App.jsx, `startGame`) ; ce contrôle est
+ *  le filet : un état qui ne vient pas du chapitre ne peut plus le valider. */
 export const canonMet = (chapter, player, ctx) => {
   if (!chapter?.canon || !player) return false;
+  if (chapter.faction && player.faction !== chapter.faction) return false;
   try { return !!chapter.canon.check(player, ctx || {}); }
   catch { return false; }
 };

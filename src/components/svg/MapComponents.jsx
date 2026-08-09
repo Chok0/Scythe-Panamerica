@@ -164,7 +164,26 @@ export const HexTerrain = React.memo(({ hex, isV, isFar, isSel, isHov, isFactory
 // ═══════════════════════════════════════════════════════════════════
 // Unit tokens — bigger, fully opaque, high contrast on map
 // ═══════════════════════════════════════════════════════════════════
+// ── Liseré d'un pion ──────────────────────────────────────────────────────
+// Les pions sont peints sur un disque quasi noir (rgba(6,5,3,0.85)) : une
+// encre de faction très sombre y disparaîtrait entièrement — c'est le cas de
+// l'Internationale Noire, qui EST noire par identité, pas par accident. Son
+// corps reste donc noir, et c'est le TRAIT (liseré, glyphe, étiquette) qui
+// passe à l'os : un drapeau noir à emblème blanc. Les six autres factions,
+// assez claires, se dessinent dans leur propre encre — rien ne change pour
+// elles.
+const BONE = "#D8CFB8";
+export const tokenRim = (color) => {
+  const m = /^#([0-9a-f]{6})$/i.exec(String(color || ""));
+  if (!m) return color;
+  const n = parseInt(m[1], 16);
+  // Luminance perçue (Rec. 601) sur 255 — en dessous de 70, l'encre est noire.
+  const lum = ((n >> 16 & 255) * 299 + (n >> 8 & 255) * 587 + (n & 255) * 114) / 1000;
+  return lum < 70 ? BONE : color;
+};
+
 export const UnitToken = React.memo(({ type, unitId, cx, cy, color, label, icon, factionId, onClick, selectable, selected, scale = 1 }) => {
+  const rim = tokenRim(color);
   // Wrapper animé : la position vit dans un transform CSS → le pion GLISSE
   // d'un hex à l'autre (transition) au lieu de téléporter.
   // onClick (action Move) : le pion redevient cliquable malgré le
@@ -190,9 +209,9 @@ export const UnitToken = React.memo(({ type, unitId, cx, cy, color, label, icon,
     const HeroIcon = factionId ? HERO_ICON_MAP[factionId] : null;
     if (HeroIcon) {
       return wrap(<>
-        <circle cx={0} cy={1} r={19} fill="rgba(6,5,3,0.85)" stroke={color} strokeWidth={2} />
-        <HeroIcon cx={0} cy={1} size={32} color={color} />
-        <text x={0} y={30} textAnchor="middle" fontSize="9" fill={color} fontWeight="700" stroke="rgba(6,5,3,0.8)" strokeWidth="2.5" paintOrder="stroke" style={{ fontFamily: "var(--font-map, 'IM Fell English SC', serif)" }}>{label}</text>
+        <circle cx={0} cy={1} r={19} fill="rgba(6,5,3,0.85)" stroke={rim} strokeWidth={2} />
+        <HeroIcon cx={0} cy={1} size={32} color={rim} />
+        <text x={0} y={30} textAnchor="middle" fontSize="9" fill={rim} fontWeight="700" stroke="rgba(6,5,3,0.8)" strokeWidth="2.5" paintOrder="stroke" style={{ fontFamily: "var(--font-map, 'IM Fell English SC', serif)" }}>{label}</text>
       </>);
     }
     // Fallback — generic star
@@ -205,7 +224,7 @@ export const UnitToken = React.memo(({ type, unitId, cx, cy, color, label, icon,
     return wrap(<>
       <circle cx={0} cy={0} r={17} fill="rgba(6,5,3,0.85)" />
       <polygon points={pts} fill={color} stroke="rgba(255,255,240,0.9)" strokeWidth={1.5} />
-      <text x={0} y={28} textAnchor="middle" fontSize="9" fill={color} fontWeight="700" stroke="rgba(6,5,3,0.8)" strokeWidth="2.5" paintOrder="stroke" style={{ fontFamily: "var(--font-map, 'IM Fell English SC', serif)" }}>{label}</text>
+      <text x={0} y={28} textAnchor="middle" fontSize="9" fill={rim} fontWeight="700" stroke="rgba(6,5,3,0.8)" strokeWidth="2.5" paintOrder="stroke" style={{ fontFamily: "var(--font-map, 'IM Fell English SC', serif)" }}>{label}</text>
     </>);
   }
   if (type === "mech") {
@@ -220,20 +239,20 @@ export const UnitToken = React.memo(({ type, unitId, cx, cy, color, label, icon,
       // un disque nettement coloré, distinguable même quand l'art interne de
       // l'icône utilise des couleurs de matériau (bois/cuivre) peu contrastées
       return wrap(<>
-        <polygon points={pts} fill="rgba(6,5,3,0.9)" stroke={color} strokeWidth={2.5} />
+        <polygon points={pts} fill="rgba(6,5,3,0.9)" stroke={rim} strokeWidth={2.5} />
         <polygon points={pts} fill={color} opacity={0.28} stroke="none" />
-        <FactionIcon cx={0} cy={0} size={34} color={color} />
+        <FactionIcon cx={0} cy={0} size={34} color={rim} />
       </>);
     }
     return wrap(<>
-      <polygon points={pts} fill="rgba(6,5,3,0.8)" stroke={color} strokeWidth={2} />
+      <polygon points={pts} fill="rgba(6,5,3,0.8)" stroke={rim} strokeWidth={2} />
       <polygon points={pts} fill={color + "88"} stroke="rgba(255,255,240,0.8)" strokeWidth={1.2} />
     </>);
   }
   if (type === "building") {
     const bt = icon || "■";
     return wrap(<>
-      <rect x={-13} y={-13} width={26} height={26} rx={4} fill="rgba(6,5,3,0.85)" stroke={color} strokeWidth={2} />
+      <rect x={-13} y={-13} width={26} height={26} rx={4} fill="rgba(6,5,3,0.85)" stroke={rim} strokeWidth={2} />
       <rect x={-11.5} y={-11.5} width={23} height={23} rx={3} fill={color + "66"} stroke="none" />
       <text x={0} y={5} textAnchor="middle" fontSize={14}>{bt}</text>
     </>);
@@ -242,13 +261,13 @@ export const UnitToken = React.memo(({ type, unitId, cx, cy, color, label, icon,
   const WorkerIcon = factionId ? WORKER_ICON_MAP[factionId] : null;
   if (WorkerIcon) {
     return wrap(<>
-      <circle cx={0} cy={0} r={12} fill="rgba(6,5,3,0.85)" stroke={color} strokeWidth={1.5} />
-      <WorkerIcon cx={0} cy={0} size={20} color={color} />
+      <circle cx={0} cy={0} r={12} fill="rgba(6,5,3,0.85)" stroke={rim} strokeWidth={1.5} />
+      <WorkerIcon cx={0} cy={0} size={20} color={rim} />
     </>);
   }
   // Fallback — filled circle
   return wrap(<>
-    <circle cx={0} cy={0} r={10} fill="rgba(6,5,3,0.85)" stroke={color} strokeWidth={1.5} />
+    <circle cx={0} cy={0} r={10} fill="rgba(6,5,3,0.85)" stroke={rim} strokeWidth={1.5} />
     <circle cx={0} cy={0} r={7.5} fill={color} stroke="rgba(255,255,240,0.8)" strokeWidth={1} />
   </>);
 });

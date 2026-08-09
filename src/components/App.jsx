@@ -3,7 +3,7 @@
 // choisi par le bot pendant son tour (voir « Idées libres » dans TODO_proto_fixes.md).
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { TERRAINS } from '../data/terrains.js';
-import { FACTIONS, FACTION_IDS } from '../data/factions.js';
+import { FACTIONS, FACTION_IDS, uiInk } from '../data/factions.js';
 import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, hasR, CURRENT_MAP, DEFAULT_MAP, CLASSIC_V2_MAP, loadMap, baseHexAt, homeBaseHex, isBaseHex } from '../data/hexes.js';
 import { generateAcceptedMap } from '../data/mapGen.js';
 import { getCombatBonus, combatUnitCount } from '../data/combat.js';
@@ -447,6 +447,10 @@ export default function App(){
     setLog((data.log||[]).map(e=>({...e})));
     stepRef.current=data.step||(data.log||[]).length;
     turnRef.current=data.turn||1;
+    // Reprendre une sauvegarde, c'est changer de partie : les piles
+    // d'annulation de la partie quittée n'ont plus rien à annuler ici.
+    setUndoStack([]);setRedoStack([]);setPreActionSnapshot(null);
+    setSelAction(null);setMoveSource(null);setTransportPick(null);setSelHex(null);
     setTurn(data.turn||1);setCurrentP(0);setPhase("playing");
     addLog(`💾 Partie reprise (tour ${data.turn||1})`);
   },[addLog,campaignProgress]);
@@ -506,6 +510,19 @@ export default function App(){
     const empOn=cfg?cfg.empireEnabled:empireEnabled;
     if(!facId||!matPick)return;
     setChapter(ch);setSteelPile(0);setChapterOutcome(null);
+    // ── Table rase (09/08) ──────────────────────────────────────────────
+    // Partie constatée : partie terminée → retour au menu → chapitre 2 →
+    // « Annuler » restaure LA PARTIE PRÉCÉDENTE — autre faction, autres bots,
+    // autres compteurs — et la condition canon du chapitre s'est validée
+    // dessus dans la foulée. Les piles d'annulation ne survivaient à RIEN :
+    // ni au retour au menu, ni au lancement d'une partie. Elles meurent ici,
+    // avec le journal et son compteur d'étapes (une partie neuve repart de
+    // l'étape 1, au lieu de continuer la numérotation de la précédente).
+    setUndoStack([]);setRedoStack([]);setPreActionSnapshot(null);
+    setSelAction(null);setMoveSource(null);setTransportPick(null);setSelHex(null);
+    setPendingBottom(null);setBottomPick(null);setPendingCombats([]);setPendingEncs([]);
+    setCombat(null);setEncounter(null);setEndOfTurn(false);setAfterMoveCol(null);
+    setLog([]);stepRef.current=0;
     try{localStorage.removeItem('pa-save');}catch{/* rien */}
     // Carte : v3 (défaut), configuration initiale (v2), ou procédurale
     if(mapChoice==="random"){
@@ -2387,8 +2404,8 @@ export default function App(){
       addLog(`⚔ ${af.name}: ${attackerTotal} (${combat.botSpend}⚡+${combat.botCards}🃏) vs vous: ${playerTotal} (${combat.powerSpend}⚡+${combat.cardsSpend}🃏)`);
       setCombatReveal({
         title:`Défense de #${combat.hexId}`,
-        left:{name:af.name,color:af.color,total:attackerTotal,detail:`${combat.botSpend}⚡${atkCB.powerBonus>0?` +${atkCB.powerBonus}⚡`:""} + ${combat.botCards}🃏`},
-        right:{name:myFaction.name,color:myFaction.color,total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
+        left:{name:af.name,color:uiInk(af),total:attackerTotal,detail:`${combat.botSpend}⚡${atkCB.powerBonus>0?` +${atkCB.powerBonus}⚡`:""} + ${combat.botCards}🃏`},
+        right:{name:myFaction.name,color:uiInk(myFaction),total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
         winner:win?"right":"left",
         verdict:win?`Vous repoussez ${af.name} ! ⭐`:`${af.name} prend le territoire...`,
       });
@@ -2480,7 +2497,7 @@ export default function App(){
 
       setCombatReveal({
         title:combat.empireCard.name,
-        left:{name:myFaction.name,color:myFaction.color,total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
+        left:{name:myFaction.name,color:uiInk(myFaction),total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
         right:{name:combat.empireCard.name,color:"#2A5A8A",total:empireTotal,detail:`Force Empire ${empireTotal}`},
         winner:win?"left":"right",
         verdict:win?"Mecha de l'Empire détruit !":"L'Empire vous repousse...",
@@ -2579,8 +2596,8 @@ export default function App(){
       addLog(`⚔ ${myFaction.name}: ${playerTotal} (${combat.powerSpend}${playerCBonus.powerBonus>0?`+${playerCBonus.powerBonus}`:""}⚡+${combat.cardsSpend}🃏) vs ${ef.name}: ${enemyTotal} (${botPower}⚡+${botCards}🃏)${bonusLog}`);
       setCombatReveal({
         title:`Assaut sur #${combat.hexId}`,
-        left:{name:myFaction.name,color:myFaction.color,total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
-        right:{name:ef.name,color:ef.color,total:enemyTotal,detail:botFold?"ne mise rien (fold)":`${botPower}⚡${enemyCBonus.powerBonus>0?` +${enemyCBonus.powerBonus}⚡`:""} + ${botCards}🃏`},
+        left:{name:myFaction.name,color:uiInk(myFaction),total:playerTotal,detail:`${combat.powerSpend}⚡${playerCBonus.powerBonus>0?` +${playerCBonus.powerBonus}⚡`:""} + ${combat.cardsSpend}🃏 (${playerCardVal})`},
+        right:{name:ef.name,color:uiInk(ef),total:enemyTotal,detail:botFold?"ne mise rien (fold)":`${botPower}⚡${enemyCBonus.powerBonus>0?` +${enemyCBonus.powerBonus}⚡`:""} + ${botCards}🃏`},
         winner:win?"left":"right",
         verdict:win?`${ef.name} bat en retraite !`:"Vos forces battent en retraite...",
       });
@@ -3110,7 +3127,7 @@ export default function App(){
       // (v0.12 : levier structurel mesuré, sa trésorerie était la pire du jeu)
       const flagCoins=(p.flagTokens||[]).length*2;
       const total=starScore+terScore+resScore+p.coins+sbDetail.coins+flagCoins;
-      return{faction:p.faction,name:f.name,color:f.color,hero:f.hero,isBot:p.isBot,
+      return{faction:p.faction,name:f.name,color:uiInk(f),hero:f.hero,isBot:p.isBot,
         stars:p.stars,pop:p.pop,popTier,territories,factoryBonus,flagBonus,totalRes,resPairs,coins:p.coins,
         starScore,terScore,resScore,total,starMult,terMult,resMult,
         sbCount:sbDetail.count,sbCoins:sbDetail.coins,flagCoins};
@@ -3328,11 +3345,11 @@ export default function App(){
       <div style={{gridColumn:"1/-1",display:"flex",alignItems:"center",padding:"6px 16px",gap:10,background:"linear-gradient(180deg,#282013,#1c150c)",borderBottom:"1px solid var(--panel-edge)",boxShadow:"inset 0 -1px 0 rgba(216,201,163,0.07)",flexShrink:0,height:"var(--top-h)",overflow:"hidden"}}>
         {/* Faction badge — logo agrandi */}
         <div style={{display:"flex",alignItems:"center",gap:10,marginRight:4,flexShrink:0}}>
-          <div style={{width:54,height:54,borderRadius:"50%",background:myFaction.color+"22",border:`2px solid ${myFaction.color}`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0,boxShadow:`0 0 10px ${myFaction.color}33`}}>
+          <div style={{width:54,height:54,borderRadius:"50%",background:uiInk(myFaction)+"22",border:`2px solid ${uiInk(myFaction)}`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0,boxShadow:`0 0 10px ${uiInk(myFaction)}33`}}>
             <img src={FACTION_LOGOS[me.faction]} alt="" style={{width:"86%",height:"86%",objectFit:"contain"}}/>
           </div>
           <div style={{lineHeight:1.2}}>
-            <div style={{fontSize:18,fontWeight:700,color:myFaction.color,fontFamily:"var(--font-title)"}}>{myFaction.name}</div>
+            <div style={{fontSize:18,fontWeight:700,color:uiInk(myFaction),fontFamily:"var(--font-title)"}}>{myFaction.name}</div>
             <div style={{fontSize:13,color:"var(--text-dim)",fontFamily:"var(--font-body)"}}>{myMat.name} · T{turn}</div>
           </div>
         </div>
@@ -3414,13 +3431,13 @@ export default function App(){
             return(
               <div key={op.faction} style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",
                 padding:"6px 10px",borderRadius:8,background:active?"rgba(200,112,64,0.08)":"rgba(255,255,255,0.02)",
-                borderLeft:`4px solid ${of.color}`}}>
+                borderLeft:`4px solid ${uiInk(of)}`}}>
                 <div style={{display:"flex",alignItems:"center",gap:8,minWidth:150}}>
-                  <div style={{width:30,height:30,borderRadius:"50%",background:of.color+"22",border:`2px solid ${of.color}`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
+                  <div style={{width:30,height:30,borderRadius:"50%",background:uiInk(of)+"22",border:`2px solid ${uiInk(of)}`,display:"flex",alignItems:"center",justifyContent:"center",overflow:"hidden",flexShrink:0}}>
                     <img src={FACTION_LOGOS[op.faction]} alt="" style={{width:"82%",height:"82%",objectFit:"contain"}}/>
                   </div>
                   <div style={{lineHeight:1.2}}>
-                    <div style={{fontSize:15,fontWeight:700,color:of.color,fontFamily:"var(--font-title)"}}>{of.name}{op.isBot?" 🤖":""}{active?" ◀":""}</div>
+                    <div style={{fontSize:15,fontWeight:700,color:uiInk(of),fontFamily:"var(--font-title)"}}>{of.name}{op.isBot?" 🤖":""}{active?" ◀":""}</div>
                     <div style={{fontSize:12,color:"var(--text-dim)"}}>{op.matName} · ⭐{op.stars}/6</div>
                   </div>
                 </div>
@@ -3475,7 +3492,7 @@ export default function App(){
                 }}>
                   {v===18&&<span style={{position:"absolute",left:3,top:"50%",transform:"translateY(-50%)",display:"flex"}}><TrackStar size={12} earned={me.pop>=18}/></span>}
                   {isCur
-                    ?<HeartMarker color={myFaction.color} value={v}/>
+                    ?<HeartMarker color={uiInk(myFaction)} value={v}/>
                     :<span style={{fontSize:10,fontWeight:600,fontFamily:"var(--font-mono)",color:"var(--text-ghost)"}}>{v}</span>}
                 </div>
               );
@@ -3748,7 +3765,7 @@ export default function App(){
           <g style={{pointerEvents:"none"}}>
             {Object.entries(allHexContents).map(([hidStr,units])=>{
               const hex=hMap[hidStr];if(!hex||units.length===0)return null;
-              const c=FACTIONS[units[0].factionId]?.color||"#888";
+              const c=uiInk(FACTIONS[units[0].factionId]);
               return <FactionHalo key={`halo${hidStr}`} cx={hex.rx} cy={hex.ry+6} color={c} r={22}/>;
             })}
             {Object.entries(allHexContents).flatMap(([hidStr,units])=>{
@@ -3877,9 +3894,9 @@ export default function App(){
                 return(
                   <div className="combat-panel" style={{padding:"24px",background:"linear-gradient(180deg,#200e0a,var(--bg2))",borderRadius:12}}>
                     <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:18}}>
-                      <div style={{width:50,height:50,borderRadius:"50%",background:isPve?"rgba(180,30,15,0.2)":"rgba(200,100,30,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,border:isPve?"2px solid #1A3A6A":"2px solid "+(ef?ef.color:"#888"),flexShrink:0}}>⚔</div>
+                      <div style={{width:50,height:50,borderRadius:"50%",background:isPve?"rgba(180,30,15,0.2)":"rgba(200,100,30,0.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:28,border:isPve?"2px solid #1A3A6A":"2px solid "+(ef?uiInk(ef):"#888"),flexShrink:0}}>⚔</div>
                       <div>
-                        <div style={{fontFamily:"var(--font-title)",color:isPve?"#2A5A8A":ef.color,fontSize:21,fontWeight:700}}>{isPve?(empireCount>1?`${empireCount} patrouilles impériales liguées`:"Patrouille impériale"):combat.type==="pvp_defense"?`${ef.name} vous attaque !`:`Combat vs ${ef.name}`}</div>
+                        <div style={{fontFamily:"var(--font-title)",color:isPve?"#2A5A8A":uiInk(ef),fontSize:21,fontWeight:700}}>{isPve?(empireCount>1?`${empireCount} patrouilles impériales liguées`:"Patrouille impériale"):combat.type==="pvp_defense"?`${ef.name} vous attaque !`:`Combat vs ${ef.name}`}</div>
                         <div style={{fontSize:14,color:"var(--text-muted)",marginTop:3}}>{isPve?`Force inconnue — entre ${empirePowerRange(empireCount)} (révélée à la résolution)`:combat.type==="pvp_defense"?"Ses forces sont engagées en secret — défendez le territoire":"L'adversaire choisit secrètement…"}</div>
                       </div>
                     </div>
@@ -4385,13 +4402,13 @@ export default function App(){
           {players.map((p,i)=>{const fc=FACTIONS[p.faction];const isActive=i===currentP;return(
             <div key={i} style={{display:"flex",alignItems:"center",gap:6,padding:"3px 6px",borderRadius:4,
               background:isActive?"rgba(200,112,64,0.06)":"transparent",
-              borderLeft:isActive?`3px solid ${fc.color}`:"3px solid transparent",
+              borderLeft:isActive?`3px solid ${uiInk(fc)}`:"3px solid transparent",
               animation:isActive&&i>0?"botPulse 1.5s ease infinite":"none",
               marginBottom:2,
             }}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:fc.color,flexShrink:0}}/>
+              <div style={{width:8,height:8,borderRadius:"50%",background:uiInk(fc),flexShrink:0}}/>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontSize:14,fontWeight:700,color:fc.color,fontFamily:"var(--font-title)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{fc.name.slice(0,8)}{isActive&&<span style={{color:"var(--gold)",marginLeft:4}}>◀</span>}</div>
+                <div style={{fontSize:14,fontWeight:700,color:uiInk(fc),fontFamily:"var(--font-title)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{fc.name.slice(0,8)}{isActive&&<span style={{color:"var(--gold)",marginLeft:4}}>◀</span>}</div>
               </div>
               <div style={{fontSize:14,color:"var(--text-dim)",whiteSpace:"nowrap",fontFamily:"var(--font-mono)"}}>⚡{p.power} ♥{p.pop} ⭐{p.stars}</div>
             </div>
@@ -4543,7 +4560,7 @@ export default function App(){
                 return(
                   <React.Fragment key={action}>
                   <button onClick={()=>{if(upgradePicking)return;if(!disabled){pushHistory();setPreActionSnapshot({...players[0],workers:[...players[0].workers.map(w=>({...w}))],mechs:[...players[0].mechs.map(m=>({...m}))],buildings:[...(players[0].buildings||[]).map(b=>({...b}))],resources:{...Object.fromEntries(Object.entries(players[0].resources).map(([k,v])=>[k,{...v}]))},movedUnits:[...(players[0].movedUnits||[])]});setSelAction(action);}}}
-                    onMouseEnter={e=>{if(!disabled&&!upgradePicking)e.currentTarget.style.borderColor=myFaction?.color||"var(--rust)";}}
+                    onMouseEnter={e=>{if(!disabled&&!upgradePicking)e.currentTarget.style.borderColor=myFaction?uiInk(myFaction):"var(--rust)";}}
                     onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border-dark)";}}
                     style={{
                     padding:0,margin:"0 8px 8px",borderRadius:8,overflow:"hidden",textAlign:"left",
@@ -5212,7 +5229,7 @@ export default function App(){
             <div style={{padding:"6px 16px",fontSize:14,color:"var(--text-dim)",borderTop:"1px solid var(--border)",display:"flex",alignItems:"center",gap:8}}>
               {selHexData.base ? (<>
                 <span style={{fontSize:18}}>🏳</span>
-                <span style={{fontWeight:600,color:FACTIONS[selHexData.faction]?.color||"var(--text)"}}>Base — {FACTIONS[selHexData.faction]?.name}</span>
+                <span style={{fontWeight:600,color:uiInk(FACTIONS[selHexData.faction])}}>Base — {FACTIONS[selHexData.faction]?.name}</span>
                 <span style={{color:"var(--text-muted)"}}>#{selHexData.id}</span>
               </>) : (<>
                 <span style={{fontSize:18}}>{TERRAINS[selHexData.t].icon}</span>
@@ -5303,11 +5320,11 @@ export default function App(){
                 {!isCur&&<span style={{fontSize:10,fontWeight:isCombatCap?800:600,fontFamily:"var(--font-mono)",color:isCombatCap?"var(--rust)":"var(--text-ghost)"}}>{v}</span>}
                 {isCombatCap&&!isCur&&<span style={{fontSize:9,opacity:0.75}}>⚔</span>}
                 {v===16&&<span style={{position:"absolute",right:4,top:"50%",transform:"translateY(-50%)",display:"flex"}}><TrackStar size={12} earned={me.power>=16}/></span>}
-                {isCur&&<div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",zIndex:2}}><BoltMarker color={myFaction.color} value={v}/></div>}
+                {isCur&&<div style={{position:"absolute",left:"50%",top:"50%",transform:"translate(-50%,-50%)",zIndex:2}}><BoltMarker color={uiInk(myFaction)} value={v}/></div>}
                 {opponentsHere.length>0&&(
                   <div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",display:"flex",gap:2,zIndex:3}}>
                     {opponentsHere.map(op=>(
-                      <div key={op.faction} title={`${FACTIONS[op.faction].name} : ${op.power}⚡`} style={{width:7,height:7,borderRadius:"50%",background:FACTIONS[op.faction].color,border:"1px solid rgba(6,5,3,0.9)"}}/>
+                      <div key={op.faction} title={`${FACTIONS[op.faction].name} : ${op.power}⚡`} style={{width:7,height:7,borderRadius:"50%",background:uiInk(FACTIONS[op.faction]),border:"1px solid rgba(6,5,3,0.9)"}}/>
                     ))}
                   </div>
                 )}
