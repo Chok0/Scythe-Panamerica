@@ -12,7 +12,7 @@
 //
 // v0.18 — les HUIT chapitres se jouent. L'Internationale Noire (chapitres 2
 // et 8) est implémentée : sans héros ni base, 4 ouvriers sur ses points
-// d'ancrage, La Nage, ouvriers combattants, vol de mecha. Voir
+// quatre bases, Résilience, ouvriers combattants, vol de mecha. Voir
 // docs/design/internationale_noire.md et data/factions.js. Seul le prologue
 // reste un interlude (texte seul).
 import { FACTIONS } from './factions.js';
@@ -109,21 +109,28 @@ export const CHAPTERS = [
     title: "Le Régicide",
     subtitle: "Internationale Noire — la cellule de Rouge River",
     variant: { empire: true, steel: false, bonusTile: null,
-      label: "L'Internationale Noire selon sa fiche : aucun héros, aucune base, et vos 4 ouvriers HORS PLATEAU au départ — ils s'infiltrent par les points d'ancrage #3/#20/#25/#40, un déplacement chacun (deux de ces ancrages portent une rencontre : entrer dessus la déclenche). La Nage (toutes les rivières dès le tour 1), ouvriers COMBATTANTS, aucun mecha au départ — on les VOLE en battant un mecha adverse. Patrouilles impériales ACTIVES : ce sont les dernières unités opérationnelles de Cyrus II, et votre seule source d'armes." },
+      label: "L'Internationale Noire selon sa fiche : aucun héros, et QUATRE bases au lieu d'une — un ouvrier sur chacune, à sortir sur le plateau au premier tour par #3/#20/#25/#40. Résilience (toutes les rivières dès le tour 1, marécages sans péage ni arrêt), ouvriers COMBATTANTS, aucun mecha au départ — on les VOLE en battant un mecha adverse. Patrouilles impériales ACTIVES : ce sont les dernières unités opérationnelles de Cyrus II, et le gibier le plus accessible." },
     before: [
       "L'Internationale Noire n'a ni drapeau, ni capitale, ni mecha de série. Née dans les cendres de la Commune de Paris (1871), structurée au fil des guerres d'expansion de l'Empire en cellules qui ne se connaissent pas entre elles — Saboteurs, Passeurs, Moissonneurs —, elle ne cherche pas à conquérir quoi que ce soit. Elle cherche à épuiser la guerre jusqu'à ce que la paix devienne la seule option qui reste. Son emblème est une faux brisée : l'outil de la Mort qu'on a cessé de tourner contre les gens.",
       "La cellule panaméricaine, elle, n'a pas été parachutée. Elle est née à l'intérieur même de Rouge River. Ce sont des ouvriers de la chaîne — des monteurs, des soudeurs, des femmes du contrôle qualité — qui ont appris le sabotage bien avant d'apprendre à viser. Ils savent exactement où une bielle se fend, quelle soudure lâche à froid, combien de temps un Model M tient sans son circuit de refroidissement. Ils construisent les mechas de l'Empereur depuis dix ans. Ils savent où frapper parce que ce sont eux qui les assemblent.",
       "1915. Cyrus II règne sur un empire à son sommet territorial et exsangue financièrement : des provinces occupées qui n'ont jamais accepté l'autorité de la capitale, un Sénat d'apparat, une armée devenue dépendante d'une seule usine parce que le Consortium ne prête plus. On annonce une visite d'inspection dans un atelier ferroviaire. La cellule attend cet instant depuis le tournant du siècle.",
       "Il y a une voix contre. On la surnomme l'Horloger — un ancien professeur de philosophie qui passe son temps à démonter des mécanismes pour comprendre ce qui les fait tenir. Sa thèse tient en une phrase : « Chaque mecha que nous détruisons en crée deux dans la tête de ceux qui ont peur. » Il propose autre chose — ouvrir les cockpits, apprendre à tout le monde à les piloter, jusqu'à ce qu'ils cessent d'être des instruments de pouvoir et deviennent des outils : des tracteurs géants, des grues communales. L'idée terrifie absolument tout le monde, y compris une partie de l'Internationale.",
-      "La cellule a tranché sans lui. Vous n'avez pas de héros à envoyer devant, et rien sur la carte au premier jour : vous avez quatre groupes d'ouvriers planqués, qui remonteront un par un par les marais et le désert. Une popularité qui vous tient lieu de bouclier, et le savoir de ceux qui ont monté ces machines. Vous n'irez pas acheter des mechas. Vous prendrez ceux qui viendront vous chercher.",
+      "La cellule a tranché sans lui. Vous n'avez pas de héros à envoyer devant : vous avez quatre groupes d'ouvriers, un par planque, qui sortiront chacun de son côté par les marais et le désert. Une popularité qui vous tient lieu de bouclier, et le savoir de ceux qui ont monté ces machines. Vous n'irez pas acheter des mechas. Vous prendrez ceux qui viendront vous chercher.",
     ],
-    // Condition canon : la foule qui submerge la garde de l'atelier, et le
-    // cordon impérial percé avant d'y arriver. Trois ouvriers sur l'Usine =
+    // Condition canon : la foule qui submerge la garde de l'atelier, et deux
+    // machines retournées avant d'y arriver. Trois ouvriers sur l'Usine =
     // contrôle de l'hex (règle du contrôle territorial, data/control.js) —
     // c'est littéralement « atteindre l'Empereur en nombre ».
+    //
+    // Le second membre demandait deux patrouilles DÉTRUITES : détruire est
+    // exactement ce que la faction ne veut pas faire (« chaque mecha que nous
+    // détruisons en crée deux dans la tête de ceux qui ont peur »), et ça
+    // dépendait d'une seule source d'adversaires. Il demande maintenant deux
+    // mechas VOLÉS, à n'importe qui — Empire ou joueur : `capturedMech` est le
+    // compteur de sa mécanique propre, celle qui la définit.
     canon: canon("Atteindre l'Empereur", [
       compte("ouvriers sur l'Usine (hex 22)", p => (p.workers || []).filter(w => w.hexId === FACTORY_HEX).length, 3),
-      compte("patrouilles impériales détruites", p => p.empireKills || 0, 2),
+      compte("mechas volés (à n'importe quelle faction)", p => p.capturedMech || 0, 2),
     ]),
     unlock: null,
     after: [
@@ -248,7 +255,7 @@ export const CHAPTERS = [
     title: "Le Sabotage Final",
     subtitle: "Internationale Noire — la chaîne qu'on arrête",
     variant: { empire: false, steel: true, bonusTile: null,
-      label: "Même faction qu'au chapitre 2 — 4 ouvriers hors plateau qui s'infiltrent par les ancrages — dans un monde saturé de mechas Ford : le vol de mecha (jusqu'à 4) y trouve enfin sa pleine mesure, puisque tout le monde en a. Acier Brut ACTIF sur Rouge River — chaque tour, l'Usine fabrique un métal de plus, et la pile revient entière à qui la tient seul : c'est très exactement la chaîne qu'il s'agit de tarir." },
+      label: "Même faction qu'au chapitre 2 — quatre bases, un ouvrier sur chacune — dans un monde saturé de mechas Ford : le vol de mecha (jusqu'à 4) y trouve enfin sa pleine mesure, puisque tout le monde en a. Acier Brut ACTIF sur Rouge River — chaque tour, l'Usine fabrique un métal de plus, et la pile revient entière à qui la tient seul : c'est très exactement la chaîne qu'il s'agit de tarir." },
     before: [
       "Dix ans ont passé. Six factions armées jusqu'aux dents par Ford s'entredéchirent, se défendent, se conquièrent tour à tour — et aucune ne l'emporte jamais vraiment. Ce n'est pas un accident de l'Histoire : c'est un marché. Ford vend à tout le monde, entretient les promotions, remplace les pertes. Une guerre qui ne finit pas est le meilleur carnet de commandes jamais écrit.",
       "L'Internationale Noire a mis dix ans à formuler ce que l'Horloger avait dit en une phrase le soir du régicide : le trône n'était pas la cible. Tuer Cyrus II n'a pas arrêté la machine, ça l'a seulement déplacée de Washington à Dearborn. Le pouvoir n'était pas assis sur un fauteuil ; il était boulonné à une chaîne de montage.",

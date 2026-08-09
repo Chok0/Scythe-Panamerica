@@ -4,7 +4,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { TERRAINS } from '../data/terrains.js';
 import { FACTIONS, FACTION_IDS, uiInk } from '../data/factions.js';
-import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, hasR, CURRENT_MAP, DEFAULT_MAP, CLASSIC_V2_MAP, loadMap, baseHexAt, homeBaseHex, isBaseHex } from '../data/hexes.js';
+import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, hasR, CURRENT_MAP, DEFAULT_MAP, CLASSIC_V2_MAP, loadMap, baseHexAt, homeBaseHex, isBaseHex, allBaseHexes, factionBaseHexes } from '../data/hexes.js';
 import { generateAcceptedMap } from '../data/mapGen.js';
 import { getCombatBonus, combatUnitCount } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
@@ -39,6 +39,7 @@ import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo, Terrain
 import { layoutUnits, layoutStrip, halfWidthAt, STRIP_TOP_Y, STRIP_BOTTOM_Y } from '../logic/hexLayout.js';
 import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, ProduceTrack, RESOURCE_ICONS, BUILDING_ICONS, Glyph } from './svg/ActionIcons.jsx';
 import { getMechAbilities } from '../data/mechAbilities.js';
+import { EmblemInternationale } from './svg/FactionIcons.jsx';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 import { TERRAIN_TEXTURES, TERRAIN_TILE } from '../assets/terrains/index.js';
 import { BOARD_IMAGE } from '../assets/map/index.js';
@@ -615,11 +616,10 @@ export default function App(){
       addLog(`${p.isBot?"🤖":"👤"} ${f.name} (${p.matName})${prof?` ${prof.icon} ${prof.name}`:""}  ⚡${p.power} 🃏${p.combatCards} ♥${p.pop} 💰${p.coins}`);
     });
     // Auto-center on player's hero
-    // Sans héros (Internationale Noire), on centre sur le premier ancrage —
-    // et ses ouvriers démarrant HORS PLATEAU, c'est l'ancrage lui-même qui
-    // sert de repère, pas un ouvrier posé (il n'y en a aucun au tour 1).
+    // Sans héros (Internationale Noire), on centre sur son premier ouvrier —
+    // il est posé sur l'une de ses quatre bases, comme un héros sur la sienne.
     const heroHex=hMap[ps[0].hero!=null?ps[0].hero
-      :(ps[0].workers[0]?.hexId ?? FACTIONS[ps[0].faction]?.anchors?.[0])];
+      :(ps[0].workers[0]?.hexId ?? factionBaseHexes(ps[0].faction)[0])];
     if(heroHex){
       const zw=700,zh=700;
       const x=Math.max(MAP_BASE.x,Math.min(MAP_BASE.x+MAP_BASE.w-zw,heroHex.rx-zw/2));
@@ -3725,7 +3725,7 @@ export default function App(){
             const isAnchor=(myFaction?.anchors||[]).includes(hex.id);
             const hexTitle=[
               isBonusTile?`🏦 ${structureBonus.icon} ${structureBonus.name} — hex éligible au bonus de pose (${structureBonus.scale})`:null,
-              isAnchor?"🕳 Point d'ancrage du réseau — vos unités en réserve rentrent ici ou sur un hex adjacent. Un ennemi posté dessus ferme cette porte, pas les trois autres.":null,
+              isAnchor?"🕳 Sortie de base du réseau — un de vos ouvriers en sort au premier tour, et vos unités en réserve rentrent ici ou sur un hex adjacent. Un ennemi posté dessus ferme cette porte, pas les trois autres.":null,
               hexHasRail?"🛤 Rail : depuis un hex du réseau, un PAS de déplacement mène à tout nœud relié. Vrai à chaque pas — avec Vitesse, on peut embarquer puis rouler, ou rouler puis sortir d'un pas. Le réseau est coupé aux nœuds occupés par l'ennemi (destination possible, jamais passage).":null,
             ].filter(Boolean).join("\n");
             return(<g key={hex.id} data-hex={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
@@ -3825,8 +3825,11 @@ export default function App(){
                 Le héros y démarre et les unités vaincues y reviennent. On rend un
                 hexagone cliquable discret pour pouvoir sélectionner l'unité qui
                 en sort (surbrillance dorée/verte comme les autres hexes). ── */}
-          {Object.values(HOME_BASES).map((hb,bi)=>{
-            const baseH=baseHexAt(hb);if(!baseH)return null;
+          {allBaseHexes().map(bid=>{
+            const baseH=hMap[bid];if(!baseH)return null;
+            const bf=FACTIONS[baseH.faction];
+            if(bf?.campaignOnly&&!players.some(p=>p.faction===baseH.faction))return null;
+            const bi=bid;
             const isMineBase=baseH.faction===me.faction;
             const isV=validMoves.has(baseH.id);const isSrc=!moveSource&&movableUnits.has(baseH.id);
             return(
@@ -3905,18 +3908,29 @@ export default function App(){
                 </g>);})}
             </g>);
           })}
-          {/* Home Bases — purement décoratif : pointerEvents none pour que
-              l'hex de base interactif en dessous reçoive bien les clics */}
-          {Object.entries(HOME_BASES).map(([fid,hb])=>{
-            const fc=FACTIONS[fid];if(!fc)return null;const isMe=fid===me.faction;
-            return(<g key={fid} opacity={isMe?1:0.55} style={{pointerEvents:"none"}}>
-              <line x1={hb.rx} y1={hb.ry-18} x2={hb.rx} y2={hb.ry+14} stroke="#d8c9a3" strokeWidth={1.2} opacity={0.6}/>
-              <path d={`M${hb.rx} ${hb.ry-17} L${hb.rx+34} ${hb.ry-10} L${hb.rx+32} ${hb.ry-1} L${hb.rx} ${hb.ry+5} Z`} fill={fc.color} opacity={isMe?0.9:0.55} stroke="#0e0c08" strokeWidth={1}/>
-              <text x={hb.rx+16} y={hb.ry-4} textAnchor="middle" fontSize={8} fill="#fff" fontWeight={700} stroke="rgba(0,0,0,0.5)" strokeWidth={2} paintOrder="stroke" style={{fontFamily:"var(--font-title)"}}>{fc.name.slice(0,8)}</text>
+          {/* Drapeaux de base — purement décoratif : pointerEvents none pour
+              que l'hex de base interactif en dessous reçoive bien les clics.
+              On parcourt les HEX de base et non HOME_BASES : l'Internationale
+              Noire en a QUATRE (un réseau n'a pas de capitale), et ses
+              drapeaux ne s'affichent que lorsqu'elle est en jeu — elle est
+              réservée à la campagne. */}
+          {allBaseHexes().map(bid=>{
+            const bh=hMap[bid];if(!bh)return null;
+            const fid=bh.faction;const fc=FACTIONS[fid];if(!fc)return null;
+            if(fc.campaignOnly&&!players.some(p=>p.faction===fid))return null;
+            const isMe=fid===me.faction;
+            const ink=uiInk(fc);const Logo=FACTION_LOGOS[fid];
+            const Emblem=fid==="internationale"?EmblemInternationale:null;
+            return(<g key={`flag${bid}`} opacity={isMe?1:0.55} style={{pointerEvents:"none"}}>
+              <line x1={bh.rx} y1={bh.ry-18} x2={bh.rx} y2={bh.ry+14} stroke="#d8c9a3" strokeWidth={1.2} opacity={0.6}/>
+              <path d={`M${bh.rx} ${bh.ry-17} L${bh.rx+34} ${bh.ry-10} L${bh.rx+32} ${bh.ry-1} L${bh.rx} ${bh.ry+5} Z`} fill={fc.color} opacity={isMe?0.9:0.55} stroke="#0e0c08" strokeWidth={1}/>
+              <text x={bh.rx+16} y={bh.ry-4} textAnchor="middle" fontSize={8} fill="#fff" fontWeight={700} stroke="rgba(0,0,0,0.5)" strokeWidth={2} paintOrder="stroke" style={{fontFamily:"var(--font-title)"}}>{fc.name.slice(0,8)}</text>
               {/* Blason de faction — identifie la base au premier coup d'œil,
-                  à la place du simple point de couleur */}
-              <circle cx={hb.rx} cy={hb.ry-18} r={13} fill="rgba(6,5,3,0.85)" stroke={fc.color} strokeWidth={1.5}/>
-              <image href={FACTION_LOGOS[fid]} x={hb.rx-11} y={hb.ry-29} width={22} height={22}/>
+                  à la place du simple point de couleur. À défaut d'image
+                  (Internationale Noire), son emblème vectoriel. */}
+              <circle cx={bh.rx} cy={bh.ry-18} r={13} fill="rgba(6,5,3,0.85)" stroke={ink} strokeWidth={1.5}/>
+              {Logo?<image href={Logo} x={bh.rx-11} y={bh.ry-29} width={22} height={22}/>
+                :Emblem?<Emblem cx={bh.rx} cy={bh.ry-18} size={20} color={ink}/>:null}
             </g>);
           })}
           {/* Watermark — pointerEvents none : le texte est rendu au-dessus des
@@ -4039,7 +4053,7 @@ export default function App(){
 
               {/* VOL DE MECHA (Internationale Noire) — le mecha vaincu change de
                   camp contre le coût de Déploiement, et livre UNE de ses
-                  capacités. Slot 1 jamais proposé (La Nage franchit déjà
+                  capacités. Slot 1 jamais proposé (Résilience franchit déjà
                   toutes les rivières) ; l'Empire n'a ni Position ni Passeurs. */}
               {stealOffer&&!combat&&(()=>{
                 const o=stealOffer;
@@ -4771,7 +4785,7 @@ export default function App(){
                           ouvriers démarrent hors plateau. Pointer un pion à
                           déplacer n'aurait aucun sens tant qu'il n'y en a pas. */}
                       {movableUnits.size===0&&reserveTotal>0
-                        ?<>🕳 Rien sur le plateau : votre réseau est <b>hors carte</b>. Faites remonter vos unités par un <b>ancrage</b> (bouton ci-dessous) — chaque remontée coûte un des déplacements du tour.</>
+                        ?<>🕳 Rien sur le plateau : tout votre réseau est <b>hors carte</b>. Faites-le remonter près d'une de vos bases (bouton ci-dessous) — chaque remontée coûte un des déplacements du tour.</>
                         :<>👆 Cliquez le <b>pion</b> à déplacer (hexes surlignés en doré), puis l'<b>hex</b> de destination. Un clic sur un pion change toujours d'unité ; un clic sur un hex vise toujours l'hex.</>}
                       <div style={{fontSize:13,color:"var(--text-dim)",marginTop:4}}>
                         Disponibles : {me.hero!=null&&!(me.movedUnits||[]).includes("hero")&&<span>★ {myFaction.hero} · </span>}

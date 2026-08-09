@@ -1,6 +1,6 @@
 // ── L'Internationale Noire (v0.18) — faction de campagne, chapitres 2 et 8 ──
 // Spec : docs/design/internationale_noire.md. Chaque test verrouille une des
-// dérogations de la fiche : sans héros, sans base, La Nage, ouvriers
+// dérogations de la fiche : sans héros, quatre bases, Résilience, ouvriers
 // combattants, vol de mecha avec capacité volée, réserve hors-plateau.
 import { describe, it, expect } from 'vitest';
 import { FACTIONS, FACTION_IDS, ALL_FACTION_IDS } from '../../data/factions.js';
@@ -11,17 +11,17 @@ import { combatUnitCount, getCombatBonus } from '../../data/combat.js';
 import { getMechAbilities } from '../../data/mechAbilities.js';
 import { heldHexes } from '../../data/control.js';
 import { chapterById } from '../../data/campaign.js';
-import { hMap, ADJ, hasR, CURRENT_MAP } from '../../data/hexes.js';
+import { hMap, ADJ, hasR, CURRENT_MAP, factionBaseHexes } from '../../data/hexes.js';
 
 const IN = 'internationale';
 const mk = () => createPlayer(IN, 200, false);
-// Le réseau une fois INFILTRÉ : ses quatre ouvriers remontés sur les ancrages.
-// C'est l'état des tests qui portent sur le jeu lui-même (La Nage, combat,
-// contrôle) — l'installation, elle, laisse le plateau vide (voir ci-dessous).
-const infiltre = () => {
+// Le réseau une fois SORTI de ses bases : ses quatre ouvriers sur leurs hex
+// de sortie. C'est l'état des tests qui portent sur le jeu lui-même
+// (Résilience, combat, contrôle) — l'installation, elle, les laisse sur les
+// bases (voir ci-dessous).
+const sorti = () => {
   const p = mk();
   p.workers = FACTIONS[IN].anchors.map((hid, i) => ({ id: `${IN}_w${i}`, hexId: hid }));
-  p.reserve = 0;
   return p;
 };
 
@@ -32,15 +32,32 @@ describe('fiche de faction', () => {
     expect(FACTION_IDS).toHaveLength(6);
   });
 
-  it('sans héros, 4 ouvriers HORS PLATEAU, plateau imposé', () => {
+  it('sans héros, un ouvrier sur chacune de ses QUATRE bases, plateau imposé', () => {
     const p = mk();
     expect(p.hero).toBeNull();
-    // Départ hors plateau (09/08) : rien n'est posé, tout est en réserve.
-    expect(p.workers).toEqual([]);
-    expect(p.reserve).toBe(4);
+    // Quatre bases au lieu d'une : un réseau n'a pas de capitale. Les ouvriers
+    // sont visibles dès l'installation, posés dessus, et sortent au tour 1.
+    const bases = factionBaseHexes(IN);
+    expect(bases).toHaveLength(4);
+    expect(p.workers.map(w => w.hexId)).toEqual(bases);
+    expect(p.reserve).toBe(0);
+    bases.forEach(id => expect(hMap[id].base).toBe(true));
     expect(FACTIONS[IN].anchors).toEqual([3, 20, 25, 40]);
     expect(FACTIONS[IN].fixedMat).toBe(200);
     expect(matById(200).name).toBe('Le Réseau');
+  });
+
+  it('chaque base donne sur SON hex de sortie, et un pas suffit', () => {
+    const p = mk();
+    factionBaseHexes(IN).forEach((bid, i) => {
+      const sortie = FACTIONS[IN].anchors[i];
+      expect(ADJ[bid], `base ${bid}`).toEqual([sortie]);
+      expect(getValidMoves1Step(bid, IN, [], p, []), `sortie de ${bid}`).toContain(sortie);
+    });
+  });
+
+  it('les six autres factions gardent UNE base', () => {
+    FACTION_IDS.forEach(fid => expect(factionBaseHexes(fid), fid).toHaveLength(1));
   });
 
   // Deux des quatre ancrages portent un jeton Rencontre. Y POSER un ouvrier à
@@ -79,12 +96,11 @@ describe('fiche de faction', () => {
     FACTIONS[IN].anchors.forEach(id => expect(hMap[id].base).toBeFalsy());
     // …et un hex tenu par un `null` ne pollue pas le décompte de contrôle
     expect(heldHexes(mk()).has(null)).toBe(false);
-    expect(heldHexes(mk()).size).toBe(0);          // rien de posé à l'installation
-    expect(heldHexes(infiltre()).size).toBe(4);    // …quatre hex une fois remontés
+    expect(heldHexes(sorti()).size).toBe(4);       // les quatre sorties une fois investies
   });
 });
 
-describe('La Nage — toutes les rivières, dès le tour 1, ouvriers compris', () => {
+describe('Résilience — rivières et marécages, dès le tour 1, ouvriers compris', () => {
   const p = mk();
   // #40 (désert, ancrage) est séparé des villages #36 et #46 par une rivière.
   it('un ouvrier franchit une rivière sans aucune capacité débloquée', () => {
@@ -99,7 +115,7 @@ describe('La Nage — toutes les rivières, dès le tour 1, ouvriers compris', (
     expect(getValidMoves1Step(40, 'frente', [], other, [])).not.toContain(36);
   });
 
-  it('les lacs restent infranchissables — La Nage n\'est pas un passe-partout', () => {
+  it('les lacs restent infranchissables — Résilience n\'est pas un passe-partout', () => {
     const lake = ADJ[20].find(id => hMap[id].t === 'lac');
     expect(lake).toBeDefined();
     expect(getValidMoves1Step(20, IN, [], p, [])).not.toContain(lake);
@@ -110,7 +126,7 @@ describe('capacités : aucune en propre, uniquement les volées (fiche §7)', ()
   it('les quatre slots sont vides au départ — rien à débloquer sans un vol', () => {
     const abil = getMechAbilities(IN, mk());
     expect(abil[0].name).toBe('Vitesse');            // commune à tout le roster
-    expect(abil[1].name).toBe('—');                  // libéré par La Nage
+    expect(abil[1].name).toBe('—');                  // libéré par Résilience
     expect(abil[2].name).toBe('Capacité à voler');
     expect(abil[3].name).toBe('Capacité à voler');
     expect(FACTIONS[IN].riverwalk).toBeNull();
@@ -180,7 +196,7 @@ describe('vol de mecha — la capacité volée est celle du vaincu', () => {
 
 describe('réserve hors-plateau et réentrée (fiche §3)', () => {
   it('un ouvrier vaincu part en réserve, pas sur une base', () => {
-    const p = infiltre();
+    const p = sorti();
     const r = retreatFromHex(p, 20, null);
     expect(r.player.workers).toHaveLength(3);
     expect(r.player.reserve).toBe(1);
@@ -207,17 +223,23 @@ describe('réserve hors-plateau et réentrée (fiche §3)', () => {
 });
 
 describe('chapitres 2 et 8 — jouables, conditions canon', () => {
-  it('« Atteindre l\'Empereur » exige la foule sur l\'Usine et le cordon percé', () => {
+  // Le second membre ne demande plus de DÉTRUIRE deux patrouilles — détruire
+  // est ce que la faction refuse de faire — mais de VOLER deux mechas, à
+  // n'importe qui : c'est sa mécanique propre (`capturedMech`).
+  it('« Atteindre l\'Empereur » exige la foule sur l\'Usine et deux mechas volés', () => {
     const ch = chapterById('ch2');
     expect(ch.kind).toBe('game');
     expect(ch.faction).toBe(IN);
     const p = mk();
-    p.empireKills = 2;
+    p.capturedMech = 2;
     expect(ch.canon.check(p, {})).toBe(false);            // aucun ouvrier sur l'Usine
     p.workers = [22, 22, 22].map((hexId, i) => ({ id: `w${i}`, hexId }));
     expect(ch.canon.check(p, {})).toBe(true);
-    p.empireKills = 1;
-    expect(ch.canon.check(p, {})).toBe(false);            // cordon pas percé
+    p.capturedMech = 1;
+    expect(ch.canon.check(p, {})).toBe(false);            // un seul mecha arraché
+    // …et tuer des patrouilles ne remplace plus le vol
+    p.capturedMech = 0; p.empireKills = 5;
+    expect(ch.canon.check(p, {})).toBe(false);
   });
 
   it('« Arrêter la chaîne » exige la durée ET les mechas arrachés', () => {

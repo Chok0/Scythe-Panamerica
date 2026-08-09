@@ -23,17 +23,19 @@
 > | 5 | Nom de l'objectif de faction | **« L'Usine aux Ouvriers »** — Usine (hex 22) + 3 villages. |
 > | 6 | Capacité de combat propre (slot 2) | **Sabotage** : +1 carte si ≥2 ouvriers alliés sur l'hex — elle prolonge la dérogation des ouvriers combattants au lieu de la doubler. |
 > | 7 | Winrate & fréquence des stacks | **Non mesuré** : la faction est réservée au joueur humain en campagne, aucun bot ne la joue — `simulate.mjs` ne peut donc pas la mesurer. À reprendre le jour où un profil de bot existera. |
-> | 8 | Mécanique de scénario des chapitres 2 et 8 | **Tranchée** : ch2 = 3 ouvriers sur l'Usine + 2 patrouilles détruites ; ch8 = 3 tours consécutifs sur l'Usine + 3 mechas arrachés. |
+> | 8 | Mécanique de scénario des chapitres 2 et 8 | **Tranchée** : ch2 = 3 ouvriers sur l'Usine + **2 mechas VOLÉS** (à n'importe quelle faction — détruire est ce que cette faction refuse de faire, et son compteur propre est `capturedMech`) ; ch8 = 3 tours consécutifs sur l'Usine + 3 mechas arrachés. |
 >
 > **Écarts assumés par rapport à la spec ci-dessous :**
-> - **Les ancrages ne sont PAS des hex de base** (§3 proposait `hMap[id].base`).
->   Ce sont des hex de terrain normaux, praticables par les six autres
->   factions : les marquer `base` aurait interdit #3/#20/#25/#40 à tout le
->   monde et cassé la carte. Ils servent uniquement de portes de réentrée.
+> - **Les hex #3/#20/#25/#40 ne sont PAS des hex de base** (§3 proposait
+>   `hMap[id].base`). Ce sont des hex de terrain normaux, praticables par les
+>   six autres factions : les marquer `base` aurait interdit ces quatre hex à
+>   tout le monde et cassé la carte. Ce sont les **sorties** des quatre vraies
+>   bases de la faction (hexes 910-913, hors plateau), et les portes de
+>   réentrée de sa réserve.
 > - **Vol de capacité** : le mecha capturé apporte la capacité de combat ou de
 >   position de SA faction (`stolenCombat` / `stolenPosition`), Vitesse restant
 >   commune. Un nouveau vol remplace le précédent — le patchwork se refait.
->   Le riverwalk volé n'est jamais proposé : La Nage le rend inutile.
+>   Le riverwalk volé n'est jamais proposé : Résilience le rend inutile.
 >
 > **Correctif du 04/08 — deux capacités inventées, retirées.** Une première
 > passe avait meublé les slots libres avec des capacités MAISON (« Passeurs »,
@@ -82,11 +84,11 @@ invariant explicite documenté en tête de `factions.js`. L'Internationale Noire
 l'implémentation, décider : plateau dédié (id 200 ?) ou surcharge assumée dans
 la fiche de faction, avec commentaire justifiant l'écart.
 
-## 3. Les quatre points d'ancrage — hex 3, 20, 25, 40
+## 3. Quatre bases, quatre sorties — hex 3, 20, 25, 40
 
-Pas de base de faction unique. Les 4 ouvriers de départ sont rattachés aux
-hex **3, 20, 25 et 40**, chacun traité **comme une base de faction** au sens
-des règles (`hMap[id].base`).
+Pas de base de faction unique : elle en a **quatre**, et les hex **3, 20, 25
+et 40** sont leurs **sorties** — les portes par lesquelles le réseau entre sur
+le plateau et par lesquelles ses unités vaincues y reviennent.
 
 **Ce que la carte dit de ces quatre hex** (vérifié dans `hexes.js`) :
 
@@ -97,31 +99,43 @@ des règles (`hMap[id].base`).
 | 25 | marécage | — |
 | 40 | désert | ✦ lieu de rencontre |
 
-### Départ HORS PLATEAU (arbitrage du 09/08)
+### QUATRE bases, pas une (arbitrage du 09/08)
 
-Les quatre ouvriers ne sont **pas posés** à l'installation : ils démarrent dans
-la réserve hors-plateau et **s'infiltrent** par les ancrages, un déplacement
-chacun (`startsInReserve` dans `factions.js`, lu par `createPlayer`).
+Un réseau clandestin n'a pas de capitale : là où les six autres factions
+tiennent **un** drapeau, elle en tient **quatre**, un par cellule
+(`NETWORK_BASES` dans `hexes.js` — hexes 910 à 913, invisibles et hors du
+score comme toutes les bases). Un ouvrier démarre sur chacune, et le tour 1
+sert à les sortir sur le plateau : chaque base donne sur SON hex, et les
+règles de déplacement normales prennent le relais.
 
-La raison est dans le tableau ci-dessus : **deux des quatre ancrages portent un
-lieu de rencontre**, et une rencontre ne se déclenche qu'en **ENTRANT** sur
-l'hex. Les y poser à l'installation tuait ces deux rencontres pour la seule
-faction dont les ouvriers les déclenchent — elle n'a pas de héros (§10.1).
-Deux des dix rencontres de la carte étaient perdues d'avance, constaté en
-partie le 09/08.
+| Base | Drapeau | Sortie |
+|---|---|---|
+| 910 | nord-ouest | **#3** (marécage) |
+| 911 | est | **#20** (marécage) |
+| 912 | ouest | **#25** (marécage) |
+| 913 | sud | **#40** (désert) |
+
+Pourquoi les ouvriers ne sont **pas** posés directement sur #3/#20/#25/#40 :
+**deux de ces hex portent un lieu de rencontre**, et une rencontre ne se
+déclenche qu'en **ENTRANT** sur l'hex. Les y poser à l'installation tuait ces
+deux rencontres pour la seule faction dont les ouvriers les déclenchent — elle
+n'a pas de héros (§10.1). Deux des dix rencontres de la carte étaient perdues
+d'avance, constaté en partie le 09/08. En sortant de sa base, l'ouvrier ENTRE
+sur l'hex : la rencontre se joue.
 
 Ce que ça change au jeu :
 
-- Le réseau **arrive** au lieu d'être déjà là — c'est sa fiction même.
-- L'ouverture devient un choix : quels ancrages, dans quel ordre, avec quels
-  voisins (`reentryHexes` = ancrage **et** hex adjacents).
-- Les tours 1 et 2 voient leur action Déplacement absorbée par l'infiltration.
-  Le bas de plateau reste jouable, et l'infiltration **paie ses deux
-  rencontres** puisqu'elle entre sur les jetons — le garde-fou « une rencontre
-  par tour » les étale sur deux tours.
+- Le réseau **arrive** au lieu d'être déjà là — c'est sa fiction même — mais
+  ses pions sont **visibles dès l'installation**, sur leurs drapeaux.
+- Les tours 1 et 2 voient leur action Déplacement absorbée par les sorties
+  (deux unités par Move). Le bas de plateau reste jouable.
+- Ses deux rencontres de départ lui reviennent, une par tour (garde-fou §10.1).
 
-Une remontée entre sur l'hex comme n'importe quel déplacement : jeton de
-rencontre déclenché, mis en file, résolu après les combats.
+> **Version abandonnée.** Un premier essai mettait les quatre ouvriers en
+> **réserve hors-plateau** avec remontée payante : le joueur ouvrait la partie
+> sans un seul pion sur la carte, et devait comprendre un mécanisme propre à
+> la faction avant d'avoir joué un coup. La réserve reste — mais pour ce
+> qu'elle sait faire de mieux : encaisser les défaites (voir ci-dessous).
 
 Trois marécages sur quatre : c'est thématiquement juste (le réseau clandestin
 vit dans ce que personne ne veut traverser) **et mécaniquement défensif** — le
@@ -151,21 +165,27 @@ Résultat net : l'Internationale Noire est **plus résiliente au blocage** que
 n'importe quelle faction normale, pas moins. C'est voulu — c'est sa
 compensation pour l'absence de héros et d'économie propre.
 
-## 4. Capacité de faction — La Nage
+## 4. Capacité de faction — Résilience
 
-**La Nage** remplace **entièrement** le Riverwalk (il n'y a pas de riverwalk
+**Résilience** remplace **entièrement** le Riverwalk (il n'y a pas de riverwalk
 en plus : le slot 1 de mecha est libéré, voir §7).
 
 > Toutes les unités de l'Internationale Noire — **ouvriers comme mechas** —
 > traversent **toutes** les rivières, sans restriction de terrain, dès le
-> tour 1.
+> tour 1, **et ignorent les marécages** : ni péage (-1♥/-1⚡), ni arrêt forcé.
 
-C'est le pendant direct du « Seaworthy » nordique du jeu original, et l'analogue
-du Sang du Marais du Bayou : une capacité de faction active immédiatement, pas
-un déblocage de mecha. Là où chaque autre faction paie un mecha pour ouvrir
-deux terrains de franchissement, l'Internationale Noire circule librement sur
-tout le réseau hydrographique du plateau — c'est sa mobilité qui compense sa
-faiblesse en combat individuel.
+C'est le pendant direct du « Seaworthy » nordique du jeu original, et elle
+absorbe au passage l'équivalent du Sang du Marais du Bayou : une capacité de
+faction active immédiatement, pas un déblocage de mecha. Là où chaque autre
+faction paie un mecha pour ouvrir deux terrains de franchissement,
+l'Internationale Noire circule librement sur tout le réseau hydrographique du
+plateau — c'est sa mobilité qui compense sa faiblesse en combat individuel.
+
+L'immunité aux marécages n'est pas un bonus gratuit : **trois de ses quatre
+sorties de base SONT des marécages** (§3). Les lui taxer revenait à lui faire
+payer sa propre géographie à chaque entrée en jeu, alors que le marécage est
+précisément ce qui la protège — l'ennemi, lui, paie toujours pour venir la
+chercher (sauf le Bayou, §3).
 
 ## 5. Combat — les ouvriers sont des combattants
 
@@ -250,7 +270,7 @@ qui contredit toute son identité.
 
 ### Slots de mecha
 
-Le slot 1 (Riverwalk) est libéré, La Nage étant déjà une capacité de faction
+Le slot 1 (Riverwalk) est libéré, Résilience étant déjà une capacité de faction
 (§4). Les 4 slots de capacité classiques n'ont plus de sens pour une faction
 qui ne déploie pas — ils sont remplacés par les **capacités volées** (§6).
 
@@ -311,7 +331,7 @@ Les points de code à toucher, repérés :
 
 - **`src/data/factions.js`** — nouvelle entrée `internationale` : `power: 2`,
   `cards: 1`, `workerHex: [3, 20, 25, 40]` (4 valeurs au lieu de 2), pas de
-  `riverwalk`/`rwName` (La Nage les remplace), `ability: "La Nage"`, `fObj`
+  `riverwalk`/`rwName` (Résilience les remplace), `ability: "Résilience"`, `fObj`
   (usine + 3 villages), `isExtension`/flag campagne pour l'exclure du setup
   standard.
 - **Compte d'unités combattantes** — la dérogation des ouvriers-combattants
@@ -321,7 +341,7 @@ Les points de code à toucher, repérés :
   avant d'y ajouter la règle — sinon elle dérivera entre l'UI et le moteur
   headless, exactement la désynchronisation que `rules.js` documente avoir déjà
   subie en v0.15.
-- **`movement.js`** — La Nage : bypass complet du test de rivière
+- **`movement.js`** — Résilience : bypass complet du test de rivière, et `marshFree` lu depuis la fiche
   (`hasR`/`riverwalk`) pour cette faction, sur ouvriers **et** mechas.
 - **Bases multiples** — `hexes.js` doit accepter 4 hex `base: true` pour une
   même faction ; vérifier `homeBaseHex()` / `baseHexAt()` / `HOME_BASES`, qui

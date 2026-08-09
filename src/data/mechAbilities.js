@@ -28,7 +28,7 @@ const POSITION_ABILITIES = {
 // en propre : « les 4 slots classiques n'ont plus de sens — ils sont remplacés
 // par les capacités volées » (internationale_noire.md §7). Ses slots affichent
 // donc ce qu'elle a arraché à ses victimes ; le slot 1 (riverwalk) reste vide,
-// La Nage franchissant déjà toutes les rivières.
+// Résilience franchissant déjà toutes les rivières.
 // `player` (facultatif) porte la provenance des vols : `stolenCombat` et
 // `stolenPosition`.
 export const getMechAbilities = (factionId, player) => {
@@ -44,7 +44,7 @@ export const getMechAbilities = (factionId, player) => {
   return [
     { name: "Vitesse", desc: "Déplacement +1 hex", icon: "🏃" },
     steals
-      ? { name: "—", desc: "Slot libre : La Nage franchit déjà toutes les rivières", icon: "🌊" }
+      ? { name: "—", desc: "Slot libre : Résilience franchit déjà toutes les rivières", icon: "🌊" }
       : { name: f.rwName || "Riverwalk", desc: `Traverse les rivières vers ${rwTerrains || "certains terrains"}`, icon: "🌊" },
     combat ? volé(combatFrom, { name: combat.name, desc: combat.desc, icon: "⚔" })
       : { name: steals ? "Capacité à voler" : "Combat", desc: steals ? "Battez un mecha adverse pour lui arracher sa capacité de combat" : "Bonus de combat", icon: "⚔" },
