@@ -16,7 +16,7 @@
 >
 > | # | Question | Décision |
 > |---|---|---|
-> | 1 | Les ouvriers déclenchent-ils les rencontres ? | **Oui, mais UNE par tour** — sans ce garde-fou, quatre groupes d'ouvriers valaient quatre fois l'accès du reste du roster, et deux ancrages sont eux-mêmes des lieux de rencontre. |
+> | 1 | Les ouvriers déclenchent-ils les rencontres ? | **Oui, sans plafond** (révisé le 11/08). Le garde-fou « une par tour » a été essayé puis retiré au premier test réel : atteindre deux jetons dans le même tour coûte déjà deux déplacements, et n'en résoudre qu'un laissait le second sur la carte sans le dire. Les rencontres se jouent l'une après l'autre dans la file de fin de déplacement. |
 > | 2 | pop/pièces hors `mats.js` | **Plateau dédié « Le Réseau » (id 200)**, 4♥/3$ — l'invariant « la fiche de faction ne porte que le militaire » est préservé. Grammaire du jeu de base respectée (Σ13, Σ6$, 6 cases). |
 > | 3 | Étoile des mechas via Deploy ou captures | **Captures uniquement.** L'action Deploy paie son coût, encaisse son bonus $, et ne pose rien. |
 > | 4 | Sort du slot 0 (Vitesse) | **Reste un slot à débloquer.** Le donner d'emblée n'aurait rien fait : la faction n'a ni héros ni mecha au départ, et Vitesse n'affecte pas les ouvriers. |
@@ -164,6 +164,20 @@ simultanément** — un coût de coordination réel, jamais un accident.
 Résultat net : l'Internationale Noire est **plus résiliente au blocage** que
 n'importe quelle faction normale, pas moins. C'est voulu — c'est sa
 compensation pour l'absence de héros et d'économie propre.
+
+**Coût de la remontée** (arbitrage d'implémentation, mesuré le 11/08) : une
+unité par déplacement — exactement ce que coûte à une faction normale de faire
+ressortir une unité de sa base, hex de plateau ou pas. La symétrie est donc
+réelle ; ce qui ne l'était pas, c'est la **lisibilité** : les unités
+disparaissaient de la carte sans un mot au journal, et les ouvriers remontaient
+d'office avant les mechas capturés, sans choix. Les deux sont corrigés (ligne
+de journal au repli, sélection du type à la remontée).
+
+Ce qui reste vrai et qu'il faut jouer en connaissance de cause : un mecha qui
+transporte six ouvriers et perd sa bataille envoie **sept unités** en réserve
+d'un coup, soit ~4 tours de remontée. C'est légal et symétrique — mais c'est le
+coup le plus cher de la faction, et il ne se voit pas venir depuis la boîte de
+chargement.
 
 ## 4. Capacité de faction — Résilience
 

@@ -7,7 +7,7 @@ import { FACTIONS, FACTION_IDS, ALL_FACTION_IDS } from '../../data/factions.js';
 import { matById } from '../../data/mats.js';
 import { createPlayer, retreatFromHex, reentryHexes } from '../player.js';
 import { getValidMoves, getValidMoves1Step } from '../movement.js';
-import { combatUnitCount, getCombatBonus } from '../../data/combat.js';
+import { combatUnitCount, getCombatBonus, isCombatUnit } from '../../data/combat.js';
 import { getMechAbilities } from '../../data/mechAbilities.js';
 import { heldHexes } from '../../data/control.js';
 import { chapterById } from '../../data/campaign.js';
@@ -390,5 +390,73 @@ describe('fiche : la capacité affichée ne porte QUE la capacité', () => {
     expect(rules.join(' ')).toMatch(/VOLEZ|vol/i);
     // Aucune autre faction n'a besoin de cette liste
     FACTION_IDS.forEach(fid => expect(FACTIONS[fid].rules).toBeUndefined());
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// Deuxième test du chapitre 2 (11/08, soir) — les ouvriers SONT des soldats
+// ══════════════════════════════════════════════════════════════════════════
+
+describe('un ouvrier de l\'Internationale est une unité de combat à part entière', () => {
+  // « J'ai pu aller sur le mech pour combattre, je pense que c'est parce que
+  // j'avais un mecha : le soft n'a pas dû comprendre que les ouvriers
+  // valaient pour unité de combat. » L'UI décidait en dur que seuls héros et
+  // mechas se battent — trois endroits, tous alignés sur `isCombatUnit`.
+  it('le type « ouvrier » compte comme combattant pour elle, et pour elle seule', () => {
+    expect(isCombatUnit(IN, 'worker')).toBe(true);
+    expect(isCombatUnit(IN, 'mech')).toBe(true);
+    expect(isCombatUnit(IN, 'hero')).toBe(true);
+    FACTION_IDS.forEach(fid => {
+      expect(isCombatUnit(fid, 'worker')).toBe(false);
+      expect(isCombatUnit(fid, 'mech')).toBe(true);
+    });
+  });
+
+  it('cohérent avec le décompte de cartes de combat : même dérogation', () => {
+    const p = sorti();
+    // Trois ouvriers réunis = trois unités combattantes sur l'hex
+    p.workers = [3, 3, 3].map((hexId, i) => ({ id: `w${i}`, hexId }));
+    expect(combatUnitCount(p, 3)).toBe(3);
+    const frente = createPlayer('frente', 1, false);
+    frente.workers = [41, 41].map((hexId, i) => ({ id: `w${i}`, hexId }));
+    expect(combatUnitCount(frente, 41)).toBe(0);
+    expect(isCombatUnit('frente', 'worker')).toBe(false);
+  });
+
+  it('un hex tenu par ses seuls ouvriers est DÉFENDU, pas dispersable', () => {
+    // Le test du moteur : `combatUnitCount > 0` décide qui défend. Un mecha
+    // adverse qui arrive doit livrer bataille, pas chasser les ouvriers.
+    const p = sorti();
+    expect(combatUnitCount(p, 3)).toBeGreaterThan(0);
+    const bayou = createPlayer('bayou', 1, false);
+    bayou.workers = [{ id: 'w0', hexId: 35 }];
+    bayou.hero = 28;
+    expect(combatUnitCount(bayou, 35)).toBe(0);   // ouvriers seuls : dispersables
+  });
+});
+
+describe('réserve du réseau : ce qui remonte est un CHOIX', () => {
+  it('ouvriers et mechas vaincus sont comptés séparément', () => {
+    const p = sorti();
+    p.mechs = [{ id: 'm0', hexId: 20 }];
+    p.workers = [{ id: 'w0', hexId: 20 }, { id: 'w1', hexId: 20 }, { id: 'w2', hexId: 3 }];
+    const r = retreatFromHex(p, 20, null);
+    expect(r.toReserve).toBe(2);
+    expect(r.mechsToReserve).toBe(1);
+    expect(r.player.reserve).toBe(2);
+    expect(r.player.reserveMechs).toBe(1);
+    // L'ouvrier resté sur #3 n'a pas bougé
+    expect(r.player.workers.map(w => w.hexId)).toEqual([3]);
+  });
+
+  it('les points de remontée restent ouverts tant qu\'un ancrage est libre', () => {
+    const p = sorti();
+    // Trois ancrages étouffés : la quatrième porte suffit à rentrer
+    const foes = new Set([3, 20, 25]);
+    const targets = reentryHexes(p, foes);
+    expect(targets.length).toBeGreaterThan(0);
+    expect(targets).toContain(40);
+    // Les quatre étouffés simultanément : plus aucune porte (règle assumée)
+    expect(reentryHexes(p, new Set([3, 20, 25, 40, ...ADJ[40], ...ADJ[3], ...ADJ[20], ...ADJ[25]]))).toHaveLength(0);
   });
 });

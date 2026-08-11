@@ -61,6 +61,17 @@ export const COMBAT_ABILITIES = {
 // duplication qui a déjà dérivé en v0.15.
 // `extra` : unité entrante pas encore posée sur l'hex (l'attaquant en cours
 // de déplacement) — 0 ou 1.
+/** Ce TYPE d'unité livre-t-il bataille pour cette faction ? Héros et mechas
+ *  partout ; les OUVRIERS aussi pour l'Internationale Noire (fiche §5).
+ *  Même dérogation que `combatUnitCount`, et pour les mêmes raisons un seul
+ *  point de vérité : l'UI décidait ailleurs, en dur, que seuls héros et mechas
+ *  se battent — ses ouvriers ne pouvaient donc ni attaquer un mecha adverse,
+ *  ni défendre leur hex (constaté en partie le 11/08 : « le soft n'a pas dû
+ *  comprendre que les ouvriers valaient pour unité de combat »). */
+export const isCombatUnit = (factionId, unitType) =>
+  unitType === "hero" || unitType === "mech"
+  || (unitType === "worker" && !!FACTIONS[factionId]?.workersFight);
+
 export const combatUnitCount = (player, hexId, extra = 0) => {
   if (!player) return extra;
   let n = extra;
