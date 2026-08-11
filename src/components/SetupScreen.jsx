@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FACTIONS, FACTION_IDS } from '../data/factions.js';
-import { MATS } from '../data/mats.js';
+import { MATS, frTop } from '../data/mats.js';
 import { TERRAINS } from '../data/terrains.js';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 import { Glyph } from './svg/ActionIcons.jsx';
@@ -31,13 +31,18 @@ const frameStyle = (selected) => ({
   boxShadow: bevel(selected),
 });
 
-export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, mapChoice, setMapChoice, difficulty, setDifficulty, empireEnabled, setEmpireEnabled, startGame, onShowRules, savedGame, onResume, onShowCampaign, campaignProgress }) {
+export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelMat, numBots, setNumBots, mapChoice, setMapChoice, difficulty, setDifficulty, empireEnabled, setEmpireEnabled, startGame, onShowRules, savedGame, onResume, onShowCampaign, campaignProgress, workshopMats = [], onShowWorkshop }) {
   const [hoverFaction, setHoverFaction] = useState(null);
   const doneCount = Object.keys(campaignProgress?.done || {}).length;
   const previewId = hoverFaction || selFaction;
   const preview = previewId ? FACTIONS[previewId] : null;
+  // Les plateaux forgés en atelier rejoignent le choix, à la suite des six
+  // plateaux du jeu — ils sont structurellement valides, donc jouables tels
+  // quels (data/matGen.js).
+  const allMats = [...MATS, ...workshopMats];
+  const adoptedWorkshop = workshopMats.find(m => m.id === selMat) || null;
   const randomFaction = () => setSelFaction(FACTION_IDS[Math.floor(Math.random() * FACTION_IDS.length)]);
-  const randomMat = () => setSelMat(MATS[Math.floor(Math.random() * MATS.length)].id);
+  const randomMat = () => setSelMat(allMats[Math.floor(Math.random() * allMats.length)].id);
   const diceBtnStyle = {
     padding: "4px 12px", fontSize: 11, letterSpacing: 1, borderRadius: 4,
     background: "transparent", color: "var(--gold-dim)", border: "1px solid var(--border)",
@@ -68,7 +73,29 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
                 borderRadius:4,fontWeight:700,fontFamily:"'Bitter',serif",boxShadow:bevel(false),
               }}>📖 Campagne{doneCount>0?` · ${doneCount}/8`:""}</button>
           )}
+          {onShowWorkshop&&(
+            <button onClick={onShowWorkshop} title="Forge des plateaux joueur inédits : même grammaire que les treize plateaux du jeu, mais des configurations que personne n'a encore jouées"
+              style={{
+                padding:"8px 28px",fontSize:12,letterSpacing:3,textTransform:"uppercase",
+                background:"transparent",color:"var(--gold-dim)",border:"1px solid var(--border)",
+                borderRadius:4,fontWeight:700,fontFamily:"'Bitter',serif",boxShadow:bevel(false),
+              }}>⚒ Atelier{workshopMats.length>0?` · ${workshopMats.length}`:""}</button>
+          )}
         </div>
+
+        {/* Plateau sorti de l'atelier : la grille des plateaux ne s'affiche
+            qu'une fois la faction choisie — sans ce rappel, l'adoption n'aurait
+            aucun retour visible au retour sur l'accueil. */}
+        {!selFaction&&adoptedWorkshop&&(
+          <div className="fade-in" style={{
+            marginBottom:24,padding:"9px 18px",borderRadius:5,textAlign:"center",
+            border:"1px solid var(--gold-dim)",background:"rgba(201,168,76,0.08)",
+            fontSize:12.5,color:"var(--text-dim)",boxShadow:bevel(false),
+          }}>
+            <Glyph icon={adoptedWorkshop.icon||"⬆"} size={15} color="var(--gold)"/>{" "}
+            <b style={{color:"var(--gold)"}}>{adoptedWorkshop.name}</b> sort de l'atelier — choisissez une faction pour l'emmener en partie.
+          </div>
+        )}
 
         {/* Partie sauvegardée (autosave à chaque tour) : reprise en un clic */}
         {savedGame&&(
@@ -207,23 +234,27 @@ export default function SetupScreen({ selFaction, setSelFaction, selMat, setSelM
             <button onClick={randomMat} style={diceBtnStyle}>🎲 Aléatoire</button>
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))",gap:8,width:"100%",marginBottom:32}}>
-            {MATS.map(pm=>{const sel=selMat===pm.id;return(
+            {allMats.map(pm=>{const sel=selMat===pm.id;return(
               <button key={pm.id} onClick={()=>setSelMat(pm.id)} className="fade-in" style={{
                 ...frameStyle(sel),
                 padding:"12px 12px",color:"var(--text)",textAlign:"left",display:"flex",flexDirection:"column",gap:6,
               }}>
                 {/* En-tête identique aux cartes de faction : emblème + nom en accent doré */}
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <div style={{width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,opacity:sel?1:0.9,filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.6))"}}>{MAT_ICONS[pm.id]}</div>
+                  <div style={{width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,flexShrink:0,opacity:sel?1:0.9,filter:"drop-shadow(0 1px 2px rgba(0,0,0,0.6))"}}>
+                    {pm.workshop?<Glyph icon={pm.icon||"⬆"} size={22} color="var(--gold)"/>:MAT_ICONS[pm.id]}
+                  </div>
                   <div style={{fontFamily:"'Bitter',serif",fontWeight:700,fontSize:18,color:"var(--gold)",lineHeight:1.2}}>{pm.name}</div>
                 </div>
+                {pm.workshop&&<div style={{fontSize:10,fontWeight:700,color:"var(--gold-dim)",letterSpacing:2,textTransform:"uppercase",marginTop:-4}}>⚒ Atelier</div>}
                 {/* Stats de départ — même motif « icône + valeur en gras blanc » que les factions */}
                 <div style={{display:"flex",flexWrap:"wrap",gap:"4px 10px",fontSize:15,fontFamily:"'IBM Plex Mono',monospace"}}>
                   <span>♥ <span style={{color:"var(--text)",fontWeight:600}}>{pm.pop}</span></span>
                   <span>💰 <span style={{color:"var(--text)",fontWeight:600}}>{pm.coins}$</span></span>
                 </div>
-                {/* Ordre des actions du haut — info secondaire, style atténué (comme le lore) */}
-                <div style={{fontSize:12,color:"var(--text-dim)",fontStyle:"italic"}}>{pm.topRow.join(" · ")}</div>
+                {/* Ordre des actions du haut — info secondaire, style atténué (comme le lore).
+                    Libellés FR (mats.js FR_TOP), comme partout ailleurs dans l'UI. */}
+                <div style={{fontSize:12,color:"var(--text-dim)",fontStyle:"italic"}}>{pm.topRow.map(frTop).join(" · ")}</div>
                 {/* Coûts des actions du bas — mono, atténué */}
                 <div style={{fontSize:12,color:"var(--text-dim)",fontFamily:"'IBM Plex Mono',monospace",display:"flex",flexWrap:"wrap",gap:"2px 8px"}} title="Coûts des actions bottom : Améliorer / Déployer / Construire / Enrôler (+bonus $ gagné à chaque exécution de l'action)">
                   {pm.bottomCosts.map((bc,i)=><span key={i} style={{whiteSpace:"nowrap"}}><Glyph icon={BOTTOM_EMOJI[i]} size={12} color="#b8a878"/>{bc.base}<Glyph icon={RES_EMOJI[bc.res]} size={12} color="#b8a878"/>{bc.bonus>0?<span style={{color:"#8fc26a"}}>+{bc.bonus}$</span>:""}</span>)}

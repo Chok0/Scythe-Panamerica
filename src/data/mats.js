@@ -118,7 +118,31 @@ export const MATS_CAMPAIGN = [
 
 // matById pour qu'un plateau original assigné en campagne fonctionne partout.
 export const ALL_MATS = [...MATS, ...MATS_ORIGINAL, ...MATS_CAMPAIGN];
-export const matById = (id) => ALL_MATS.find(m => m.id === id);
+
+// ═══ PLATEAUX D'ATELIER (ids 900+) — FORGÉS EN COURS DE SESSION ═══
+// Le mode Atelier (data/matGen.js) tire des plateaux inédits dans l'espace
+// décrit par la grammaire du jeu. Ils n'ont rien à faire dans ALL_MATS — qui
+// est la liste des plateaux ÉCRITS, celle que les tests d'invariants
+// parcourent — mais tout le moteur les lit par `matById` (createPlayer,
+// coûts du bas, piste de Produire, IA…). D'où ce registre séparé, alimenté
+// à l'exécution et consulté en second par `matById`.
+const WORKSHOP_MATS = [];
+
+/** Rend un plateau d'atelier visible de tout le moteur. Idempotent : reforger
+ *  ou recharger la même sauvegarde ne duplique pas l'entrée, elle la remplace
+ *  (l'id fait foi). */
+export const registerWorkshopMat = (mat) => {
+  if (!mat || mat.id == null) return null;
+  const i = WORKSHOP_MATS.findIndex(m => m.id === mat.id);
+  if (i >= 0) WORKSHOP_MATS[i] = mat; else WORKSHOP_MATS.push(mat);
+  return mat;
+};
+
+/** Les plateaux d'atelier actuellement en mémoire (copie : le registre reste
+ *  privé, on n'y écrit que par `registerWorkshopMat`). */
+export const workshopMats = () => [...WORKSHOP_MATS];
+
+export const matById = (id) => ALL_MATS.find(m => m.id === id) || WORKSHOP_MATS.find(m => m.id === id);
 
 // Libellés FR des actions (source unique pour l'UI ET les logs — avant, les
 // noms d'action apparaissaient en anglais dans le journal alors que l'UI les
