@@ -11,7 +11,9 @@ import { combatUnitCount, getCombatBonus } from '../../data/combat.js';
 import { getMechAbilities } from '../../data/mechAbilities.js';
 import { heldHexes } from '../../data/control.js';
 import { chapterById } from '../../data/campaign.js';
-import { hMap, ADJ, hasR, CURRENT_MAP, factionBaseHexes } from '../../data/hexes.js';
+import { hMap, ADJ, hasR, CURRENT_MAP, factionBaseHexes, HOME_BASES, baseHexAt, homeBaseHex } from '../../data/hexes.js';
+import { ENCOUNTERS } from '../../data/encounters.js';
+import { getProduceCost, canPayProduce, produceTrackOf } from '../production.js';
 
 const IN = 'internationale';
 const mk = () => createPlayer(IN, 200, false);
@@ -270,5 +272,123 @@ describe('chapitres 2 et 8 — jouables, conditions canon', () => {
     expect(FACTIONS[IN].fObj.check(p2, {})).toBe(true);
     const foe = { faction: 'dominion', hero: 14, workers: [], mechs: [] };
     expect(FACTIONS[IN].fObj.check(p2, { players: [p2, foe] })).toBe(false);
+  });
+});
+
+// ══════════════════════════════════════════════════════════════════════════
+// Correctifs de la partie du 11/08 (premier test du chapitre 2)
+// ══════════════════════════════════════════════════════════════════════════
+
+describe('pas de base de retraite : la sortie est la RÉSERVE, jamais un crash', () => {
+  // L'écran noir du 11/08 : `HOME_BASES` ne contient pas l'Internationale
+  // Noire (ses quatre bases vivent dans NETWORK_BASES), et `baseHexAt(undefined)`
+  // lisait `.rx` sur `undefined` — l'exception traversait tout l'arbre React
+  // au moment de résoudre le combat contre une patrouille impériale.
+  it('baseHexAt tolère une faction sans drapeau unique', () => {
+    expect(() => baseHexAt(HOME_BASES[IN])).not.toThrow();
+    expect(baseHexAt(HOME_BASES[IN])).toBeNull();
+    expect(homeBaseHex(IN)).toBeNull();
+  });
+
+  it('les six autres factions gardent leur hex de base', () => {
+    FACTION_IDS.forEach(fid => {
+      expect(homeBaseHex(fid)).not.toBeNull();
+      expect(baseHexAt(HOME_BASES[fid])?.id).toBe(homeBaseHex(fid).id);
+    });
+  });
+
+  it('battue sur un hex, elle part en réserve au lieu de rentrer à la base', () => {
+    const p = sorti();
+    p.mechs = [{ id: 'm0', hexId: 3 }];
+    const r = retreatFromHex(p, 3, homeBaseHex(IN)?.id ?? null);
+    expect(r.toReserve).toBe(1);
+    expect(r.mechsToReserve).toBe(1);
+    expect(r.player.workers.some(w => w.hexId === 3)).toBe(false);
+    expect(r.player.reserve).toBe(1);
+    expect(r.player.reserveMechs).toBe(1);
+  });
+});
+
+describe('récompenses de rencontre : elles se posent sur le hex ATTEINT', () => {
+  // Sans héros, `p.hero` vaut null : les gains partaient sur la clé "null",
+  // hors du plateau — payés (jusqu'à -2$ ou -3 pop), jamais reçus.
+  const card = ENCOUNTERS.find(c => c.id === 1);   // « L'Épave Fumante »
+
+  it('les ressources gagnées atterrissent sur l\'hex de la rencontre', () => {
+    const p = sorti();
+    p.encHex = 25;
+    card.choices[0].effect(p);                     // +1 pop, +2 métal
+    delete p.encHex;
+    expect(p.resources['25'].metal).toBe(2);
+    expect(p.resources.null).toBeUndefined();
+  });
+
+  it('un mecha gagné en rencontre se pose sur l\'hex, pas sur `null`', () => {
+    const p = sorti();
+    p.pop = 6; p.encHex = 20;
+    card.choices[2].effect(p);                     // -3 pop, +1 mecha
+    delete p.encHex;
+    expect(p.mechs).toHaveLength(1);
+    expect(p.mechs[0].hexId).toBe(20);
+  });
+
+  it('les six autres factions restent sur le hex de leur héros', () => {
+    const p = createPlayer('frente', 1, false);
+    p.hero = 41;
+    card.choices[0].effect(p);
+    expect(p.resources['41'].metal).toBe(2);
+  });
+});
+
+describe('piste des ouvriers : elle démarre à QUATRE, pas à deux', () => {
+  // Partie du 11/08 : « production requiert 1 de puissance à chaque fois dès
+  // le début de partie ». Le coût lisait le total absolu d'ouvriers, calibré
+  // sur un départ à 2 — les quatre ouvriers du réseau franchissaient d'office
+  // le premier palier, sur la trésorerie la plus basse du jeu (3$).
+  const reseau = matById(200);
+
+  it('quatre ouvriers au départ, et Produire est gratuit', () => {
+    const p = mk();
+    expect(p.workers).toHaveLength(4);
+    expect(getProduceCost(p.workers.length, reseau)).toEqual({ pui: 0, pop: 0, coins: 0 });
+    expect(canPayProduce({ ...p, power: 0, coins: 0 })).toBe(true);
+  });
+
+  it('sa piste ne compte que 4 cases — le palier ⚡ tombe au 6e ouvrier', () => {
+    const t = produceTrackOf(reseau);
+    expect(t.start).toBe(4);
+    expect(t.slots).toBe(4);
+    expect(getProduceCost(5, reseau).pui).toBe(0);
+    expect(getProduceCost(6, reseau)).toEqual({ pui: 1, pop: 0, coins: 0 });
+    expect(getProduceCost(8, reseau)).toEqual({ pui: 1, pop: 1, coins: 0 });
+  });
+
+  it('les plateaux standard ne bougent pas d\'un iota', () => {
+    const std = matById(1);
+    expect(produceTrackOf(std)).toEqual({ start: 2, costs: { 1: 'pui', 3: 'pop', 5: 'coins' }, slots: 6 });
+    expect(getProduceCost(3, std)).toEqual({ pui: 0, pop: 0, coins: 0 });
+    expect(getProduceCost(4, std)).toEqual({ pui: 1, pop: 0, coins: 0 });
+    expect(getProduceCost(6, std)).toEqual({ pui: 1, pop: 1, coins: 0 });
+    expect(getProduceCost(8, std)).toEqual({ pui: 1, pop: 1, coins: 1 });
+  });
+});
+
+describe('fiche : la capacité affichée ne porte QUE la capacité', () => {
+  it('Résilience tient en une phrase, comme les six autres', () => {
+    const f = FACTIONS[IN];
+    expect(f.ability).toBe('Résilience');
+    // Le pavé de six clauses de l'ancien texte débordait du panneau de jeu.
+    expect(f.abilityDesc.length).toBeLessThan(160);
+    expect(f.abilityDesc).toMatch(/rivière/i);
+    expect(f.abilityDesc).toMatch(/marécage/i);
+  });
+
+  it('les dérogations structurelles sont listées à part', () => {
+    const rules = FACTIONS[IN].rules;
+    expect(rules.length).toBeGreaterThanOrEqual(4);
+    expect(rules.join(' ')).toMatch(/héros/i);
+    expect(rules.join(' ')).toMatch(/VOLEZ|vol/i);
+    // Aucune autre faction n'a besoin de cette liste
+    FACTION_IDS.forEach(fid => expect(FACTIONS[fid].rules).toBeUndefined());
   });
 });

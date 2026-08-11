@@ -253,7 +253,22 @@ export const FACTIONS = {
     // Vol de mecha : elle n'en construit aucun, elle les prend (max 4).
     stealMechs: 4,
     ability: "Résilience",
-    abilityDesc: "Toutes vos unités, ouvriers compris, traversent toutes les rivières dès le tour 1 et ignorent les marécages (ni péage ni arrêt) · vos 4 ouvriers démarrent chacun sur UNE de vos quatre bases : sortez-les sur le plateau au premier tour · vos ouvriers COMBATTENT (1 carte chacun) · vous ne déployez aucun mecha : vous les VOLEZ en battant un mecha adverse (max 4) · un ouvrier vaincu repart en réserve hors-plateau et revient près d'une base",
+    // Le rappel permanent en jeu ne porte que la CAPACITÉ, au même format que
+    // les six autres factions (une phrase, un effet). Les dérogations
+    // structurelles — quatre bases, ouvriers combattants, vol de mecha,
+    // réserve hors-plateau — sont des règles de faction, pas la capacité :
+    // elles vivent dans `rules` ci-dessous et dans le bandeau de chapitre.
+    abilityDesc: "Toutes vos unités, ouvriers compris, franchissent toutes les rivières et traversent les marécages sans péage ni arrêt, dès le tour 1",
+    // Règles propres à la faction, listées à part (écran de campagne + panneau
+    // de jeu) : l'ancien `abilityDesc` les empilait toutes en un pavé de six
+    // lignes, illisible en cours de partie.
+    rules: [
+      "Aucun héros : vos ouvriers déclenchent rencontres et Usine",
+      "4 bases au lieu d'une, un ouvrier sur chacune — sortez-les au tour 1",
+      "Vos ouvriers COMBATTENT : chacun autorise 1 carte de plus",
+      "Aucun mecha déployé : vous les VOLEZ en battant un mecha adverse (max 4)",
+      "Unité vaincue → réserve hors-plateau, jamais capturable ; elle remonte près d'une base",
+    ],
     // Objectif de faction — l'inverse exact de la manœuvre de masse : il
     // force l'étalement (l'Usine plus trois villages, répartis nord et sud).
     fObj: {

@@ -1,4 +1,5 @@
 import React from 'react';
+import { produceTrackOf } from '../../logic/production.js';
 
 // ═══ SVG Resource Icons (16-18px, monochrome, stroke 1-1.5px) ═══
 
@@ -282,23 +283,27 @@ export function ActionRow({ pay = [], gain = [], altGain, compact = false, size,
   );
 }
 
-// ═══ ProduceTrack — la piste des 6 ouvriers du plateau joueur (règle Scythe).
+// ═══ ProduceTrack — la piste des ouvriers du plateau joueur (règle Scythe).
 // Chaque ouvrier produit au village quitte sa case et RÉVÈLE le coût imprimé
 // dessous : ⚡ sous la 2e case, ♥ sous la 4e, 💰 sous la 6e. Le coût de
 // Produire = la somme des icônes révélées (logique : getProduceCost). Un
-// ouvrier perdu revient couvrir sa case — le coût se réduit d'autant. ═══
-const PRODUCE_TRACK_COSTS = { 1: "power", 3: "pop", 5: "coins" };
-export function ProduceTrack({ nWorkers = 2, size = 20 }) {
-  const freed = Math.max(0, Math.min(6, nWorkers - 2));
+// ouvrier perdu revient couvrir sa case — le coût se réduit d'autant.
+// La piste vient du PLATEAU (`produceTrackOf`) : « Le Réseau » démarre à 4
+// ouvriers et n'a donc que 4 cases — la rendre en dur à 6 affichait deux
+// cases fantômes et un coût qui ne correspondait pas au moteur. ═══
+const PRODUCE_COST_ICON = { pui: "power", pop: "pop", coins: "coins" };
+export function ProduceTrack({ nWorkers = 2, mat = null, size = 20 }) {
+  const { start, costs, slots } = produceTrackOf(mat);
+  const freed = Math.max(0, Math.min(slots, nWorkers - start));
   const WIcon = RESOURCE_ICONS.worker;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 3, flexWrap: "wrap" }}>
-      {Array.from({ length: 6 }).map((_, k) => {
-        const costRes = PRODUCE_TRACK_COSTS[k];
+      {Array.from({ length: slots }).map((_, k) => {
+        const costRes = PRODUCE_COST_ICON[costs[k]];
         if (k >= freed) {
           // Ouvrier encore parqué : il couvre le coût imprimé sous sa case
           return (
-            <div key={k} title={`Ouvrier ${k + 1}/6 à sortir (Produire sur un village)${costRes ? " — sa sortie révélera un coût" : ""}`} style={{
+            <div key={k} title={`Ouvrier ${k + 1}/${slots} à sortir (Produire sur un village)${costRes ? " — sa sortie révélera un coût" : ""}`} style={{
               width: size, height: size, borderRadius: 3, flexShrink: 0,
               display: "flex", alignItems: "center", justifyContent: "center",
               background: "var(--gain-bg)", border: "1.5px solid var(--gain-border)",
