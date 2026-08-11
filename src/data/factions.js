@@ -215,11 +215,11 @@ export const FACTIONS = {
     power: 2, cards: 1,
     // 4 ouvriers au lieu de 2, rattachés aux quatre points d'ancrage du réseau.
     workerHex: [3, 20, 25, 40],
-    // Points d'ancrage : PAS des hex de base (ce sont des hex de terrain
-    // normaux, praticables par tout le monde — les transformer en base
-    // casserait la carte pour les six autres factions). Ils servent de
-    // points de RÉENTRÉE : un ouvrier vaincu part hors-plateau, dans une
-    // réserve jamais capturable, et revient adjacent à un ancrage.
+    // SORTIES des quatre planques : PAS des hex de base (ce sont des hex de
+    // terrain normaux, praticables par tout le monde — les transformer en base
+    // casserait la carte pour les six autres factions). C'est par là que sortent
+    // ses ouvriers au tour 1, et par là que ressortent ses unités repliées après
+    // une défaite. En occuper un ne ferme que cette porte.
     anchors: [3, 20, 25, 40],
     // ── Départ sur SES QUATRE BASES ─────────────────────────────────────
     // Les quatre ouvriers commençaient posés sur les hex d'ancrage — or deux
@@ -256,7 +256,7 @@ export const FACTIONS = {
     // Le rappel permanent en jeu ne porte que la CAPACITÉ, au même format que
     // les six autres factions (une phrase, un effet). Les dérogations
     // structurelles — quatre bases, ouvriers combattants, vol de mecha,
-    // réserve hors-plateau — sont des règles de faction, pas la capacité :
+    // repli au choix — sont des règles de faction, pas la capacité :
     // elles vivent dans `rules` ci-dessous et dans le bandeau de chapitre.
     abilityDesc: "Toutes vos unités, ouvriers compris, franchissent toutes les rivières et traversent les marécages sans péage ni arrêt, dès le tour 1",
     // Règles propres à la faction, listées à part (écran de campagne + panneau
@@ -267,7 +267,7 @@ export const FACTIONS = {
       "4 bases au lieu d'une, un ouvrier sur chacune — sortez-les au tour 1",
       "Vos ouvriers COMBATTENT : chacun autorise 1 carte de plus",
       "Aucun mecha déployé : vous les VOLEZ en battant un mecha adverse (max 4)",
-      "Unité vaincue → réserve hors-plateau, jamais capturable ; elle remonte près d'une base",
+      "Unité vaincue : elle se replie sur UNE de vos quatre bases, à vous de choisir laquelle",
     ],
     // Objectif de faction — l'inverse exact de la manœuvre de masse : il
     // force l'étalement (l'Usine plus trois villages, répartis nord et sud).

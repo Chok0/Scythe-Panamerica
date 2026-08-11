@@ -1,11 +1,11 @@
 // ── L'Internationale Noire (v0.18) — faction de campagne, chapitres 2 et 8 ──
 // Spec : docs/design/internationale_noire.md. Chaque test verrouille une des
 // dérogations de la fiche : sans héros, quatre bases, Résilience, ouvriers
-// combattants, vol de mecha avec capacité volée, réserve hors-plateau.
+// combattants, vol de mecha avec capacité volée, repli sur une base au choix.
 import { describe, it, expect } from 'vitest';
 import { FACTIONS, FACTION_IDS, ALL_FACTION_IDS } from '../../data/factions.js';
 import { matById } from '../../data/mats.js';
-import { createPlayer, retreatFromHex, reentryHexes } from '../player.js';
+import { createPlayer, retreatFromHex, retreatBaseIds, defaultRetreatBase, baseExits } from '../player.js';
 import { getValidMoves, getValidMoves1Step } from '../movement.js';
 import { combatUnitCount, getCombatBonus, isCombatUnit } from '../../data/combat.js';
 import { getMechAbilities } from '../../data/mechAbilities.js';
@@ -72,8 +72,8 @@ describe('fiche de faction', () => {
     const surJeton = FACTIONS[IN].anchors.filter(id => CURRENT_MAP.encounterHexes.includes(id));
     expect(surJeton).toEqual([3, 40]);       // l'état de la carte v3 qui motive la règle
     surJeton.forEach(id => expect(p.workers.some(w => w.hexId === id)).toBe(false));
-    // …et ces hex restent des destinations de réentrée : on peut y entrer.
-    const portes = reentryHexes(p, new Set());
+    // …et ces hex restent les SORTIES de leurs planques : on y entre au tour 1.
+    const portes = baseExits(IN);
     surJeton.forEach(id => expect(portes).toContain(id));
   });
 
@@ -196,31 +196,64 @@ describe('vol de mecha — la capacité volée est celle du vaincu', () => {
   });
 });
 
-describe('réserve hors-plateau et réentrée (fiche §3)', () => {
-  it('un ouvrier vaincu part en réserve, pas sur une base', () => {
-    const p = sorti();
-    const r = retreatFromHex(p, 20, null);
-    expect(r.player.workers).toHaveLength(3);
-    expect(r.player.reserve).toBe(1);
+describe('repli après défaite : une planque, AU CHOIX (arbitrage du 11/08)', () => {
+  // Elle se replie comme tout le monde — sur une base. La seule différence
+  // est qu'elle en a quatre et que le joueur désigne laquelle. La réserve
+  // hors-plateau de la première version ne survit que comme filet interne.
+  it('quatre bases de repli au lieu d\'une', () => {
+    expect(retreatBaseIds(IN)).toHaveLength(4);
+    FACTION_IDS.forEach(fid => expect(retreatBaseIds(fid)).toHaveLength(1));
   });
 
-  it('les autres factions rentrent bien sur leur base', () => {
+  it('les unités vaincues atterrissent SUR une base, jamais hors carte', () => {
+    const p = sorti();
+    p.mechs = [{ id: 'm0', hexId: 20 }];
+    const base = defaultRetreatBase(IN, 20);
+    expect(retreatBaseIds(IN)).toContain(base);
+    const r = retreatFromHex(p, 20, base);
+    expect(r.toReserve).toBe(0);
+    expect(r.mechsToReserve).toBe(0);
+    expect(r.player.reserve).toBe(0);
+    expect(r.player.workers).toHaveLength(4);          // aucune ne disparaît
+    expect(r.player.workers.some(w => w.hexId === base)).toBe(true);
+    expect(r.player.mechs[0].hexId).toBe(base);
+  });
+
+  it('la planque proposée par défaut est la plus proche du hex perdu', () => {
+    // #20 est l'ancrage de l'est : sa planque est celle qui y donne
+    expect((ADJ[defaultRetreatBase(IN, 20)] || [])).toContain(20);
+    expect((ADJ[defaultRetreatBase(IN, 3)] || [])).toContain(3);
+    // Et pour une faction à base unique, c'est toujours la sienne
+    FACTION_IDS.forEach(fid => {
+      expect(defaultRetreatBase(fid, 22)).toBe(homeBaseHex(fid).id);
+    });
+  });
+
+  it('chaque planque a sa sortie : quatre portes, pas une', () => {
+    const exits = baseExits(IN);
+    expect(exits.sort((a, b) => a - b)).toEqual([3, 20, 25, 40]);
+    // Une unité posée sur une planque en sort par CETTE porte, comme le héros
+    // d'une autre faction quitte sa base.
+    retreatBaseIds(IN).forEach(bid => {
+      const sorties = (ADJ[bid] || []).filter(id => !hMap[id]?.base);
+      expect(sorties).toHaveLength(1);
+      expect(exits).toContain(sorties[0]);
+    });
+  });
+
+  it('les autres factions rentrent bien sur leur base unique', () => {
     const nat = createPlayer('nations', 1, false);
     const hex = nat.workers[0].hexId;
-    const r = retreatFromHex(nat, hex, 900);
+    const r = retreatFromHex(nat, hex, homeBaseHex('nations').id);
     expect(r.player.reserve).toBe(0);
-    expect(r.player.workers.some(w => w.hexId === 900)).toBe(true);
+    expect(r.player.workers.some(w => w.hexId === homeBaseHex('nations').id)).toBe(true);
   });
 
-  it('occuper UN ancrage ne ferme que cette porte', () => {
-    const p = mk();
-    const libre = reentryHexes(p, new Set());
-    const bloque = reentryHexes(p, new Set([3]));
-    expect(bloque.length).toBeLessThan(libre.length);
-    expect(bloque).not.toContain(3);
-    expect(bloque.length).toBeGreaterThan(0); // les trois autres restent ouvertes
-    // Étouffer la faction exige les quatre simultanément
-    expect(reentryHexes(p, new Set([3, 20, 25, 40, ...ADJ[3], ...ADJ[20], ...ADJ[25], ...ADJ[40]]))).toEqual([]);
+  it('le filet « sans base » existe encore, mais aucune faction n\'y tombe', () => {
+    // `retreatFromHex(p, hex, null)` laisserait sinon les unités sur l'hex perdu
+    const p = sorti();
+    expect(retreatFromHex(p, 20, null).toReserve).toBe(1);
+    ALL_FACTION_IDS.forEach(fid => expect(retreatBaseIds(fid).length).toBeGreaterThan(0));
   });
 });
 
@@ -432,31 +465,5 @@ describe('un ouvrier de l\'Internationale est une unité de combat à part enti�
     bayou.workers = [{ id: 'w0', hexId: 35 }];
     bayou.hero = 28;
     expect(combatUnitCount(bayou, 35)).toBe(0);   // ouvriers seuls : dispersables
-  });
-});
-
-describe('réserve du réseau : ce qui remonte est un CHOIX', () => {
-  it('ouvriers et mechas vaincus sont comptés séparément', () => {
-    const p = sorti();
-    p.mechs = [{ id: 'm0', hexId: 20 }];
-    p.workers = [{ id: 'w0', hexId: 20 }, { id: 'w1', hexId: 20 }, { id: 'w2', hexId: 3 }];
-    const r = retreatFromHex(p, 20, null);
-    expect(r.toReserve).toBe(2);
-    expect(r.mechsToReserve).toBe(1);
-    expect(r.player.reserve).toBe(2);
-    expect(r.player.reserveMechs).toBe(1);
-    // L'ouvrier resté sur #3 n'a pas bougé
-    expect(r.player.workers.map(w => w.hexId)).toEqual([3]);
-  });
-
-  it('les points de remontée restent ouverts tant qu\'un ancrage est libre', () => {
-    const p = sorti();
-    // Trois ancrages étouffés : la quatrième porte suffit à rentrer
-    const foes = new Set([3, 20, 25]);
-    const targets = reentryHexes(p, foes);
-    expect(targets.length).toBeGreaterThan(0);
-    expect(targets).toContain(40);
-    // Les quatre étouffés simultanément : plus aucune porte (règle assumée)
-    expect(reentryHexes(p, new Set([3, 20, 25, 40, ...ADJ[40], ...ADJ[3], ...ADJ[20], ...ADJ[25]]))).toHaveLength(0);
   });
 });

@@ -3,7 +3,7 @@
 > **Statut : IMPLÉMENTÉE (v0.18).** Entrée `internationale` dans
 > `src/data/factions.js`, plateau dédié « Le Réseau » (id 200,
 > `MATS_CAMPAIGN`), capacités dans `combat.js` / `mechAbilities.js` /
-> `movement.js`, réserve hors-plateau et réentrée dans `logic/player.js`,
+> `movement.js`, bases de repli dans `logic/player.js`,
 > interface et vol de mecha dans `App.jsx`. Les chapitres 2 (Le Régicide) et
 > 8 (Le Sabotage Final) de `docs/campagne.md` sont jouables.
 > Tests : `src/logic/__tests__/internationale.test.js` (20 cas).
@@ -30,8 +30,8 @@
 >   `hMap[id].base`). Ce sont des hex de terrain normaux, praticables par les
 >   six autres factions : les marquer `base` aurait interdit ces quatre hex à
 >   tout le monde et cassé la carte. Ce sont les **sorties** des quatre vraies
->   bases de la faction (hexes 910-913, hors plateau), et les portes de
->   réentrée de sa réserve.
+>   bases de la faction (hexes 910-913, hors plateau) : c'est par là qu'elle
+>   entre au tour 1, et par là que ressortent ses unités repliées.
 > - **Vol de capacité** : le mecha capturé apporte la capacité de combat ou de
 >   position de SA faction (`stolenCombat` / `stolenPosition`), Vitesse restant
 >   commune. Un nouveau vol remplace le précédent — le patchwork se refait.
@@ -129,13 +129,14 @@ Ce que ça change au jeu :
   ses pions sont **visibles dès l'installation**, sur leurs drapeaux.
 - Les tours 1 et 2 voient leur action Déplacement absorbée par les sorties
   (deux unités par Move). Le bas de plateau reste jouable.
-- Ses deux rencontres de départ lui reviennent, une par tour (garde-fou §10.1).
+- Ses deux rencontres de départ lui reviennent, sans plafond (§10.1, révisé).
 
 > **Version abandonnée.** Un premier essai mettait les quatre ouvriers en
 > **réserve hors-plateau** avec remontée payante : le joueur ouvrait la partie
 > sans un seul pion sur la carte, et devait comprendre un mécanisme propre à
-> la faction avant d'avoir joué un coup. La réserve reste — mais pour ce
-> qu'elle sait faire de mieux : encaisser les défaites (voir ci-dessous).
+> la faction avant d'avoir joué un coup. La réserve a d'abord survécu pour
+> encaisser les défaites — puis a été retirée de là aussi le 11/08 (voir
+> « Repli sur une planque » ci-dessous). Elle n'est plus qu'un filet interne.
 
 Trois marécages sur quatre : c'est thématiquement juste (le réseau clandestin
 vit dans ce que personne ne veut traverser) **et mécaniquement défensif** — le
@@ -146,38 +147,39 @@ le monde…
 …**sauf au Bayou**, dont le Sang du Marais annule péage et arrêt forcé
 (`marshFree`, `movement.js:32`). Le Bayou est donc le prédateur naturel de
 l'Internationale Noire, gratuitement. Émergence heureuse à conserver — mais à
-mesurer : trois des quatre ancrages sont en accès libre pour cette faction.
+mesurer : trois des quatre sorties sont en accès libre pour cette faction.
 
-### Repop hors-plateau
+### Repli sur une planque, au choix
 
-Quand un ouvrier est vaincu, il ne va pas sur un hex du plateau : il retourne
-**hors-plateau**, dans la réserve. Il rentre ensuite en jeu **adjacent à l'un
-des quatre hex d'ancrage**, au choix du joueur.
+Quand une unité est vaincue, elle se replie **sur une base**, comme dans toute
+autre faction. La seule différence : l'Internationale Noire en a **quatre**, et
+c'est le **joueur qui désigne laquelle** — les six autres n'ont pas ce choix
+parce qu'elles n'ont qu'une base.
 
-Cette réserve hors-plateau n'est **jamais capturable** — ce qui ferme le trou
-de règle qu'aurait créé une faction sans base fixe (un adversaire ne peut pas
-« tuer » l'Internationale Noire en occupant ses points de départ). Occuper un
-hex d'ancrage bloque uniquement la **réentrée par ce point précis**. Étouffer
-la faction exige donc d'immobiliser des unités sur **quatre hex dispersés
+> **Révisé le 11/08.** La première implémentation envoyait les unités vaincues
+> dans une *réserve hors-plateau* avec remontée payante près d'un ancrage.
+> Verdict de playtest : « ce n'est pas le comportement attendu ». Les pions
+> disparaissaient de la carte, la mécanique était parallèle à celle de tout le
+> reste du jeu, et rien ne la justifiait — une base est une base. La réserve ne
+> subsiste que comme **filet interne** de `retreatFromHex` (une faction sans
+> aucune base laisserait sinon ses unités sur l'hex qu'elle vient de perdre) ;
+> aucune faction du jeu n'y tombe.
+
+Une unité posée sur une planque en ressort **par la sortie de cette planque**,
+au prix d'un déplacement — exactement comme le héros d'une autre faction quitte
+sa base. Occuper une sortie bloque uniquement **cette porte-là**. Étouffer la
+faction exige donc d'immobiliser des unités sur **quatre hex dispersés
 simultanément** — un coût de coordination réel, jamais un accident.
 
 Résultat net : l'Internationale Noire est **plus résiliente au blocage** que
 n'importe quelle faction normale, pas moins. C'est voulu — c'est sa
 compensation pour l'absence de héros et d'économie propre.
 
-**Coût de la remontée** (arbitrage d'implémentation, mesuré le 11/08) : une
-unité par déplacement — exactement ce que coûte à une faction normale de faire
-ressortir une unité de sa base, hex de plateau ou pas. La symétrie est donc
-réelle ; ce qui ne l'était pas, c'est la **lisibilité** : les unités
-disparaissaient de la carte sans un mot au journal, et les ouvriers remontaient
-d'office avant les mechas capturés, sans choix. Les deux sont corrigés (ligne
-de journal au repli, sélection du type à la remontée).
-
-Ce qui reste vrai et qu'il faut jouer en connaissance de cause : un mecha qui
-transporte six ouvriers et perd sa bataille envoie **sept unités** en réserve
-d'un coup, soit ~4 tours de remontée. C'est légal et symétrique — mais c'est le
-coup le plus cher de la faction, et il ne se voit pas venir depuis la boîte de
-chargement.
+**Le coup le plus cher de la faction**, et il ne se voit pas venir : un mecha
+qui transporte six ouvriers et perd sa bataille replie **sept unités** d'un
+coup sur la même planque, à un déplacement chacune pour ressortir. C'est légal
+et symétrique — une faction normale paie le même prix depuis sa base — mais
+c'est un tour de jeu entier effacé, décidé au moment où l'on charge le mecha.
 
 ## 4. Capacité de faction — Résilience
 
@@ -360,8 +362,8 @@ Les points de code à toucher, repérés :
 - **Bases multiples** — `hexes.js` doit accepter 4 hex `base: true` pour une
   même faction ; vérifier `homeBaseHex()` / `baseHexAt()` / `HOME_BASES`, qui
   supposent aujourd'hui **une seule** base par faction.
-- **Repop hors-plateau** — nouvel état : une réserve d'ouvriers hors-plateau,
-  et un choix de réentrée adjacent aux ancrages. Rien d'équivalent n'existe
+- **Repli sur une base AU CHOIX** — quatre bases au lieu d'une, donc une
+  décision là où les autres n'en ont pas. Rien d'équivalent n'existe
   aujourd'hui (toutes les retraites renvoient sur un hex de base existant).
 - **Vol de mecha** — étendre la logique Chimère du Bayou
   (`App.jsx:1940-1943`) : 4 captures au lieu d'1, + choix d'une capacité du

@@ -226,3 +226,47 @@ précisément dans la configuration de cette fin de partie — quelques ouvriers
 isolés, des bots mobiles. S'il s'agissait de ça, c'est corrigé. Si la partie
 recale malgré tout, exporter le journal au moment du blocage permettra de
 trancher.
+
+---
+
+## 7. Correction de règle — le repli se fait sur une base, pas dans une réserve
+
+Verdict de playtest sur le §6 : *« ce n'est pas le comportement attendu — ils se
+replient sur une base au choix comme pour les autres factions, sauf que les
+autres n'ont pas le choix de leur base de repli, ils n'en ont qu'une. »*
+
+La réserve hors-plateau était une **mécanique parallèle que rien ne justifiait**.
+Une base est une base ; la seule singularité de l'Internationale Noire est d'en
+avoir **quatre**, donc de devoir **choisir**.
+
+### Ce qui change
+
+| | Avant | Maintenant |
+|---|---|---|
+| Où vont les unités vaincues | réserve hors-plateau (invisibles) | **sur une de ses quatre bases**, posées sur le drapeau |
+| Choix du joueur | aucun au moment de la défaite | **la planque**, à la défaite |
+| Retour en jeu | « remontée » près d'un ancrage, 1 déplacement | sortie normale de la base, 1 déplacement — **exactement comme le héros d'une autre faction** |
+| Ordre imposé | ouvriers d'abord, mechas ensuite | aucun : ce sont des pions sur un hex |
+
+Le repli pose d'office les pions sur la planque **la plus proche du hex perdu**
+— il faut bien qu'ils soient quelque part — puis une modale liste les quatre
+avec leur sortie et permet de rediriger le groupe. Gratuit : c'est le même
+repli, pas un déplacement.
+
+### Ce que ça supprime
+
+Tout le second système disparaît : `reentryHexes`, `doReentry`, le mode
+« réserve du réseau » sur la carte, les compteurs `reserve`/`reserveMechs` du
+panneau. `retreatFromHex(p, hex, null)` reste comme **filet** — une faction sans
+aucune base laisserait sinon ses unités sur l'hex qu'elle vient de perdre — mais
+plus aucune faction du jeu n'y tombe.
+
+Effet de bord bienvenu : la faction devient **plus lisible**. Ses pions ne
+quittent jamais la carte, et un adversaire voit où le réseau s'est replié.
+
+### Ce qui reste vrai
+
+Le coup coûteux du §6 ne change pas de prix : un mecha chargé de six ouvriers
+qui perd sa bataille replie sept unités sur la même planque, à un déplacement
+chacune pour ressortir. C'est le tarif de toutes les factions depuis leur base
+— la différence est qu'on le voit maintenant sur la carte.
