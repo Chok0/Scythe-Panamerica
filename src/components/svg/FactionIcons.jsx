@@ -1,4 +1,5 @@
 import React from 'react';
+import { FACTION_LOGOS } from '../../assets/factions/index.js';
 
 // Faction mech SVG icons — designed to fill a hex (~54px radius)
 // Each icon is thematic: industrial, handbuilt, etc.
@@ -739,6 +740,22 @@ export const IconInternationale = React.memo(({ cx, cy, size = 28, color = "#D8C
     </svg>
   </g>
 ));
+
+// ═══ BLASON DE FACTION (HTML) ═══════════════════════════════════════════
+// Point unique pour « affiche le blason de cette faction » hors carte : les
+// six factions territoriales ont une image, l'Internationale Noire n'en a pas
+// et rend sa faux brisée. Sans ce repli, un `<img src={undefined}>` cassé
+// remplaçait le blason en haut à gauche pendant toute la campagne (ch. 2/8).
+export const FactionCrest = ({ factionId, size = 22, color = "#D8CFB8", style }) => {
+  const logo = FACTION_LOGOS[factionId];
+  if (logo) return <img src={logo} alt="" style={{ width: size, height: size, objectFit: "contain", ...style }} />;
+  if (factionId === "internationale") return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={style} aria-hidden="true">
+      <EmblemInternationale cx={size / 2} cy={size / 2} size={size * 0.92} color={color} />
+    </svg>
+  );
+  return null;
+};
 
 export const FACTION_ICON_MAP = {
   confederation: IconConfederation,

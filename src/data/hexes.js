@@ -179,8 +179,15 @@ export const factionBaseHexes = (faction) => faction === NETWORK_FACTION
   : (HOME_BASE_HEX[faction] != null ? [HOME_BASE_HEX[faction]] : []);
 /** Tous les hex de base du plateau, toutes factions confondues. */
 export const allBaseHexes = () => [...Object.values(HOME_BASE_HEX), ...NETWORK_BASE_HEX];
-// Hex de base à des coordonnées de drapeau données (HOME_BASES[fac] → base hex)
-export const baseHexAt = (hb) => Object.values(hMap).find(h => h.base && h.rx === hb.rx && h.ry === hb.ry) || null;
+// Hex de base à des coordonnées de drapeau données (HOME_BASES[fac] → base hex).
+// `hb` peut être absent : `HOME_BASES` ne contient PAS l'Internationale Noire
+// (ses quatre bases vivent dans NETWORK_BASES), et un `hb.rx` sur `undefined`
+// faisait tomber tout l'arbre React — écran noir au premier combat de la
+// campagne chapitre 2. Sans drapeau unique, il n'y a pas de base de retraite :
+// on renvoie `null`, ce que `retreatFromHex` lit comme « repli en réserve ».
+export const baseHexAt = (hb) => (hb
+  ? Object.values(hMap).find(h => h.base && h.rx === hb.rx && h.ry === hb.ry) || null
+  : null);
 
 /** Charge une carte (par défaut ou générée) — toute la logique suit via les bindings. */
 export const loadMap = (map) => {

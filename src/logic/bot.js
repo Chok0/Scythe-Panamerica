@@ -3,7 +3,7 @@ import { TERRAINS } from '../data/terrains.js';
 import { hMap, ADJ, HEXES, HOME_BASES, homeBaseHex } from '../data/hexes.js';
 import { matById, BOTTOM, BUILDING_TYPES, ENLIST_ONGOING, ENLIST_IMMEDIATE, getBottomCost, topUpgradeCount, maxBottomCubes, frBot } from '../data/mats.js';
 import { countRes, spendRes, getWorkerHexes, resFR, resListFR, canPayMixed, spendMixed } from './resources.js';
-import { canPayProduce, payProduce, getProduceCost } from './production.js';
+import { canPayProduce, payProduce, produceCostOf } from './production.js';
 import { getValidMoves, findPathWaypoints, marshToll } from './movement.js';
 import { transportUnits } from './transport.js';
 import { buildingHexes, packUpDestinations } from './buildings.js';
@@ -359,7 +359,7 @@ const scoreColumn = (p, col, empire, enemyHexes, rails, prof, ctx) => {
       // saigne de 13 popularité — c'est la vraie cause des derniers à pop 0
       // (mesuré : 29 % des derniers finissent au palier ×1). Un humain
       // n'échange jamais un palier de score contre 2 ressources.
-      const pc = getProduceCost(p.workers.length);
+      const pc = produceCostOf(p);
       if (pc.pop > 0) {
         // Franchir un palier VERS LE BAS (7→6 ou 13→12) ampute tout le score
         if (p.pop - pc.pop < 7 && p.pop >= 7) score -= 18;

@@ -26,7 +26,7 @@ import { resolveBotEncounter } from './botEncounters.js';
 import { getValidMoves, marshToll, findPathWaypoints } from './movement.js';
 import { transportUnits } from './transport.js';
 import { buildingHexes } from './buildings.js';
-import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from './production.js';
+import { canPayProduce, payProduce, produceCostLabel } from './production.js';
 import { countRes, spendRes, getWorkerHexes, resFR } from './resources.js';
 import { reconcileHand, spendPickedCards, drawCardValue } from './cards.js';
 import { claimFactoryCard, canPayFactoryCost, payFactoryCost, factoryEffectPossible, factoryWorkerHexes, factoryProduceHexes, factoryResourceHex } from './factory.js';
@@ -452,7 +452,7 @@ export class HeadlessGame {
     const p = this.me();
     const col = p.topRow.indexOf('Produce');
     if (col === p.lastCol) return 'Produire joué au tour précédent';
-    if (!canPayProduce(p)) return `coût de production impayable (${produceCostLabel(p.workers.length)})`;
+    if (!canPayProduce(p)) return `coût de production impayable (${produceCostLabel(p.workers.length, matById(p.matId))})`;
     const byHex = {}; p.workers.forEach(w => { (byHex[String(w.hexId)] ??= []).push(w); });
     const moulinHex = (p.buildings || []).find(b => b.type === 'moulin')?.hexId;
     const maxN = 2 + topUpgradeCount(p, 'Produce', 'nourriture');
@@ -460,7 +460,7 @@ export class HeadlessGame {
     if (picks.length === 0) return 'hexes requis';
     for (const h of picks) if (!byHex[String(h)] && h !== moulinHex) return `#${h}: ni ouvrier ni moulin`;
     if (picks.filter(h => h !== moulinHex).length > maxN) return `max ${maxN} hexes (+ moulin en bonus)`;
-    const label = produceCostLabel(p.workers.length);
+    const label = produceCostLabel(p.workers.length, matById(p.matId));
     payProduce(p);
     if (label !== 'Gratuit') this.log('resource', `💳 ${label}`);
     picks.forEach(h => {

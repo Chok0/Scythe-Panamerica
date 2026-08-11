@@ -30,19 +30,28 @@
 // `grantsResources: N` : N ressources AU CHOIX, prises une par une (picker
 // côté joueur, tirage côté bot), posées sur le hex de la rencontre.
 
+// ── Hex d'ARRIVÉE de la rencontre ─────────────────────────────────────────
+// « Les gains atterrissent sur le territoire de la rencontre » : c'est celui
+// du héros… sauf pour l'Internationale Noire, qui n'en a pas (`hero: null`).
+// Ce sont ses OUVRIERS qui déclenchent les rencontres, et l'appelant lui passe
+// le hex atteint via `p.encHex`. Sans ça, ressources, ouvriers et mechas
+// gagnés partaient sur la clé `"null"` : payés, jamais reçus (partie du
+// 11/08 — une option à -2$ pour 4 ressources évaporées).
+export const encAnchor = (p) => p.encHex ?? p.hero;
+
 const addRes = (p, res, n) => {
-  const h = String(p.hero);
+  const h = String(encAnchor(p));
   if (!p.resources[h]) p.resources[h] = {};
   p.resources[h][res] = (p.resources[h][res] || 0) + n;
 };
 const addWorkers = (p, n) => {
-  for (let i = 0; i < n && p.workers.length < 8; i++) p.workers.push({ id: `${p.faction}_w${p.workers.length}`, hexId: p.hero });
+  for (let i = 0; i < n && p.workers.length < 8; i++) p.workers.push({ id: `${p.faction}_w${p.workers.length}`, hexId: encAnchor(p) });
 };
 // Mecha gagné en rencontre : pose sur le hex du héros + étoile à 4 (comme un Deploy).
 // L'ability est débloquée ensuite (picker joueur / auto côté bot).
 const addMech = (p) => {
   if (p.mechs.length < 4) {
-    p.mechs.push({ id: `${p.faction}_m${p.mechs.length}`, hexId: p.hero });
+    p.mechs.push({ id: `${p.faction}_m${p.mechs.length}`, hexId: encAnchor(p) });
     if (p.mechs.length >= 4 && !p.starMechs) { p.stars++; p.starMechs = true; }
   }
 };
@@ -58,11 +67,11 @@ const canGainUpg = (p) => (p.upgrades || 0) < 6;
 // Bâtiment : posé sur le hex du héros → il faut un type non-Gare encore libre
 // (la Gare implique la pose de rails, hors flux rencontre) et le hex libre.
 const NON_GARE = ["arsenal", "memorial", "moulin"];
-const canEncBuild = (p) => NON_GARE.some(t => !(p.buildings || []).some(b => b.type === t)) && !(p.buildings || []).some(b => b.hexId === p.hero);
+const canEncBuild = (p) => NON_GARE.some(t => !(p.buildings || []).some(b => b.type === t)) && !(p.buildings || []).some(b => b.hexId === encAnchor(p));
 const canEncRecruit = (p) => (p.recruits || 0) < 4;
 // Gare gratuite (cartes « Chantier ferroviaire », option 3) — seule dérogation :
 // ici c'est justement la Gare qu'on pose, pas un autre type.
-const canEncGare = (p) => (p.buildings || []).length < 4 && !(p.buildings || []).some(b => b.type === "gare" || b.hexId === p.hero);
+const canEncGare = (p) => (p.buildings || []).length < 4 && !(p.buildings || []).some(b => b.type === "gare" || b.hexId === encAnchor(p));
 
 export const ENCOUNTERS = [
   { id: 1, name: "L'Épave Fumante", desc: "Un mecha gît au bord de la route, fumant encore.",

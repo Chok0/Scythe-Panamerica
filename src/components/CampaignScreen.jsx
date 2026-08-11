@@ -4,7 +4,7 @@ import { LEGACIES, LEGACY_IDS } from '../data/legacies.js';
 import { chapterStates, unlockedLegacies, campaignComplete } from '../logic/campaign.js';
 import { FACTIONS } from '../data/factions.js';
 import { MATS, matById } from '../data/mats.js';
-import { FACTION_LOGOS } from '../assets/factions/index.js';
+import { FactionCrest } from './svg/FactionIcons.jsx';
 
 // Écran de campagne — sélection de chapitre, histoire avant/après, variantes.
 // Même grammaire visuelle que l'écran de setup (grain, biseau, or) : les deux
@@ -88,9 +88,17 @@ export default function CampaignScreen({ progress, onPlay, onRead, onBack, onRes
           <SectionTitle>Plateau joueur — {faction?.name}</SectionTitle>
           {/* L'Internationale Noire impose son plateau : son économie (4♥/3$,
               un Déployer qui paie sans rien poser) n'existe sur aucun autre. */}
-          {faction?.fixedMat ? (
-            <Para>⚑ Plateau imposé par la faction : <b style={{ color: "var(--gold)" }}>{matById(faction.fixedMat)?.name}</b> — ♥{matById(faction.fixedMat)?.pop} 💰{matById(faction.fixedMat)?.coins}. {faction.abilityDesc}</Para>
-          ) : (
+          {faction?.fixedMat ? (<>
+            <Para>⚑ Plateau imposé par la faction : <b style={{ color: "var(--gold)" }}>{matById(faction.fixedMat)?.name}</b> — ♥{matById(faction.fixedMat)?.pop} 💰{matById(faction.fixedMat)?.coins}. <b style={{ color: "var(--rust)" }}>{faction.ability}</b> : {faction.abilityDesc}.</Para>
+            {/* Les dérogations de la fiche, une par ligne — l'écran de briefing
+                est l'endroit où on les lit à tête reposée, pas le rappel
+                compact en cours de partie. */}
+            {faction.rules?.length > 0 && (
+              <ul style={{ margin: "0 0 14px 18px", padding: 0, color: "var(--text-dim)", fontSize: 13, lineHeight: 1.7 }}>
+                {faction.rules.map((r, i) => <li key={i}>{r}</li>)}
+              </ul>
+            )}
+          </>) : (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
             {MATS.map(m => (
               <button key={m.id} onClick={() => setMatId(m.id)} style={{
@@ -163,7 +171,7 @@ export default function CampaignScreen({ progress, onPlay, onRead, onBack, onRes
 
         {states.map(s => {
           const c = s.chapter, b = badge(s), open = openId === c.id;
-          const logo = c.faction && FACTION_LOGOS[c.faction];
+          const fc = c.faction && FACTIONS[c.faction];
           return (
             <div key={c.id} style={{ ...frame(open), marginBottom: 10, opacity: s.unlocked ? 1 : 0.55 }}>
               <button onClick={() => s.unlocked && setOpenId(open ? null : c.id)} style={{
@@ -171,8 +179,10 @@ export default function CampaignScreen({ progress, onPlay, onRead, onBack, onRes
                 cursor: s.unlocked ? "pointer" : "not-allowed", display: "flex", alignItems: "center", gap: 12,
               }}>
                 <span style={{ fontFamily: "var(--font-title)", fontSize: 22, fontWeight: 900, color: s.done ? "var(--gold)" : "var(--text-muted)", width: 30 }}>{c.num}</span>
-                {logo
-                  ? <img src={logo} alt="" style={{ width: 30, height: 30, flexShrink: 0, opacity: s.unlocked ? 1 : 0.5 }} />
+                {c.faction
+                  ? <span style={{ flexShrink: 0, display: "flex", opacity: s.unlocked ? 1 : 0.5 }}>
+                      <FactionCrest factionId={c.faction} size={30} color={fc?.uiColor || fc?.color} />
+                    </span>
                   : <span style={{ width: 30, textAlign: "center", fontSize: 20 }}>🕳</span>}
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block", fontFamily: "'Bitter',serif", fontWeight: 700, fontSize: 17, color: "var(--gold)" }}>{c.title}</span>

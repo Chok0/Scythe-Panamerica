@@ -101,10 +101,18 @@ export const MATS_ORIGINAL = [
 // Identité : Déployer paie et rapporte (+2$) mais ne pose AUCUN mecha — la
 // faction les vole ; Construire est bon marché (le réseau s'installe partout)
 // et Enrôler cher (on ne recrute pas une clandestinité en un jour).
+// La piste des ouvriers est IMPRIMÉE sur le plateau (logic/production.js) :
+// « Le Réseau » démarre avec QUATRE ouvriers, un par base, donc sa piste ne
+// compte que 4 cases au lieu de 6 — les coûts restent aux mêmes positions
+// relatives (⚡ sous la 2e case libérée, ♥ sous la 4e ; pas de case 💰, il n'y
+// en a pas la place). Sans cette piste dédiée, la faction lisait celle des
+// plateaux standard, calibrée pour un départ à 2 : elle payait 1⚡ à chaque
+// Produire dès le tour 1, sur la trésorerie la plus basse du jeu.
 export const MATS_CAMPAIGN = [
   { id: 200, name: "Le Réseau", campaign: true, pop: 4, coins: 3,
     topRow: ["Move", "Produce", "Trade", "Bolster"],
     topCubes: [2, 1, 1, 2], bottomSlots: [1, 2, 2, 1],
+    produceStart: 4, produceCosts: { 1: "pui", 3: "pop" },
     bottomCosts: [{ res: "petrole", base: 3, bonus: 1 }, { res: "metal", base: 3, bonus: 2 }, { res: "bois", base: 3, bonus: 3 }, { res: "nourriture", base: 4, bonus: 0 }] },
 ];
 
