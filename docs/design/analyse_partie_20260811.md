@@ -157,3 +157,116 @@ C'est très probablement **la moitié manquante du symptôme du §1** : la
 rencontre à -2$ du playtest a bien coûté 2$ et n'a **rien** rendu. Les gains
 sont désormais ancrés sur le hex de la rencontre (`encAnchor`,
 `data/encounters.js`).
+
+---
+
+## 6. Deuxième session du 11 août — les ouvriers n'étaient pas des soldats
+
+Partie relancée sur le build corrigé (Internationale Noire vs Frente Libre et
+Bayou, 20 tours joués). Trois nouvelles notes, une seule cause profonde.
+
+### « Le soft n'a pas dû comprendre que les ouvriers valaient pour unité de combat »
+
+Exact, et à **quatre endroits**. `combatUnitCount` portait bien la dérogation
+« ses ouvriers combattent » — mais l'interface et le tour des bots décidaient
+ailleurs, **en dur**, que seuls héros et mechas se battent :
+
+| Endroit | Effet du défaut |
+|---|---|
+| Destinations valides | Un ouvrier ne pouvait pas **entrer** sur un hex adverse — donc jamais attaquer. C'est ce que le joueur a contourné en récupérant un mecha. |
+| Déclenchement du combat | Même avec l'accès, l'arrivée n'aurait rien mis en file. |
+| Dispersion des ouvriers adverses | Un ouvrier de l'Internationale ne chassait pas ceux d'en face. |
+| **Défense** (tour des bots) | Un mecha de bot arrivant sur ses ouvriers les **dispersait sans combat** au lieu de livrer bataille — et visait `ohbHex.id` sur une faction sans base : **écran noir**. |
+
+Les quatre lisent désormais `isCombatUnit(faction, type)` (`data/combat.js`),
+même point de vérité que `combatUnitCount`.
+
+C'est structurant : sans ça, la faction ne pouvait **pas voler son premier
+mecha**, puisque voler exige de battre un mecha — et pour le battre, il faut
+pouvoir l'attaquer. Toute sa montée en puissance était fermée tant qu'un mecha
+ne lui tombait pas dessus par hasard.
+
+### « Tous mes ouvriers et mechs ont disparu, je n'ai pas pu choisir où les renvoyer »
+
+Deux choses distinctes.
+
+**Le repli lui-même est conforme** : sans base, les unités vaincues partent en
+réserve hors-plateau et remontent près d'un des quatre ancrages, **au choix du
+joueur** — mais plus tard, au prix d'un déplacement chacun. C'est exactement ce
+que coûte à une faction normale de ressortir ses unités de sa base. La symétrie
+est réelle.
+
+**La lisibilité ne l'était pas.** La défaite en défense PvP ne journalisait
+rien : les pions quittaient la carte en silence. Et la remontée sortait les
+ouvriers **d'office**, avant tout mecha capturé — impossible de rappeler son
+mecha tant que la file d'ouvriers n'était pas vide. Corrigés tous les deux :
+ligne de journal explicite au repli (avec le rappel de comment les faire
+revenir), et deux boutons ● / ⬡ pour choisir ce qui remonte.
+
+### « Du coup je ne peux pas finir la partie »
+
+Le journal ne montre **pas** de blocage dur : au tour 20 la faction dispose
+encore d'un ouvrier sur la carte, 7$, et Produire est redevenu gratuit (§3).
+Déplacer, Soutien, Commerce et les actions du bas restent tous jouables.
+
+Ce qui s'est passé est plus simple, et parfaitement légal : au tour 18, un mecha
+transportant **six ouvriers** perd sa bataille sur #34. Sept unités partent en
+réserve d'un coup, soit ~4 tours de remontée à deux déplacements par tour. La
+partie n'est pas bloquée, elle est **cassée en deux** par un seul jet.
+
+C'est le coup le plus cher de la faction et il ne se voit pas venir depuis la
+boîte de chargement. Deux leviers si les prochaines parties confirment :
+plafonner le nombre d'ouvriers transportables par un mecha, ou faire remonter
+deux unités par déplacement au lieu d'une. Aucun des deux n'est appliqué —
+c'est un arbitrage de design, pas un défaut.
+
+Reste une hypothèse que le journal ne peut ni confirmer ni écarter : l'écran
+noir du tableau ci-dessus (mecha de bot sur ses ouvriers) se déclenchait
+précisément dans la configuration de cette fin de partie — quelques ouvriers
+isolés, des bots mobiles. S'il s'agissait de ça, c'est corrigé. Si la partie
+recale malgré tout, exporter le journal au moment du blocage permettra de
+trancher.
+
+---
+
+## 7. Correction de règle — le repli se fait sur une base, pas dans une réserve
+
+Verdict de playtest sur le §6 : *« ce n'est pas le comportement attendu — ils se
+replient sur une base au choix comme pour les autres factions, sauf que les
+autres n'ont pas le choix de leur base de repli, ils n'en ont qu'une. »*
+
+La réserve hors-plateau était une **mécanique parallèle que rien ne justifiait**.
+Une base est une base ; la seule singularité de l'Internationale Noire est d'en
+avoir **quatre**, donc de devoir **choisir**.
+
+### Ce qui change
+
+| | Avant | Maintenant |
+|---|---|---|
+| Où vont les unités vaincues | réserve hors-plateau (invisibles) | **sur une de ses quatre bases**, posées sur le drapeau |
+| Choix du joueur | aucun au moment de la défaite | **la planque**, à la défaite |
+| Retour en jeu | « remontée » près d'un ancrage, 1 déplacement | sortie normale de la base, 1 déplacement — **exactement comme le héros d'une autre faction** |
+| Ordre imposé | ouvriers d'abord, mechas ensuite | aucun : ce sont des pions sur un hex |
+
+Le repli pose d'office les pions sur la planque **la plus proche du hex perdu**
+— il faut bien qu'ils soient quelque part — puis une modale liste les quatre
+avec leur sortie et permet de rediriger le groupe. Gratuit : c'est le même
+repli, pas un déplacement.
+
+### Ce que ça supprime
+
+Tout le second système disparaît : `reentryHexes`, `doReentry`, le mode
+« réserve du réseau » sur la carte, les compteurs `reserve`/`reserveMechs` du
+panneau. `retreatFromHex(p, hex, null)` reste comme **filet** — une faction sans
+aucune base laisserait sinon ses unités sur l'hex qu'elle vient de perdre — mais
+plus aucune faction du jeu n'y tombe.
+
+Effet de bord bienvenu : la faction devient **plus lisible**. Ses pions ne
+quittent jamais la carte, et un adversaire voit où le réseau s'est replié.
+
+### Ce qui reste vrai
+
+Le coup coûteux du §6 ne change pas de prix : un mecha chargé de six ouvriers
+qui perd sa bataille replie sept unités sur la même planque, à un déplacement
+chacune pour ressortir. C'est le tarif de toutes les factions depuis leur base
+— la différence est qu'on le voit maintenant sur la carte.

@@ -6,7 +6,7 @@ import { TERRAINS } from '../data/terrains.js';
 import { FACTIONS, FACTION_IDS, uiInk } from '../data/factions.js';
 import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, hasR, CURRENT_MAP, DEFAULT_MAP, CLASSIC_V2_MAP, loadMap, baseHexAt, homeBaseHex, isBaseHex, allBaseHexes, factionBaseHexes } from '../data/hexes.js';
 import { generateAcceptedMap } from '../data/mapGen.js';
-import { getCombatBonus, combatUnitCount } from '../data/combat.js';
+import { getCombatBonus, combatUnitCount, isCombatUnit } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
 import { EMPIRE_START, EMPIRE_RAILS, EMPIRE_RAIL_CHANCE, EMPIRE_HUNT_CHANCE, drawEmpireCombat, empirePowerRange } from '../data/empire.js';
 import { ENCOUNTERS, ALL_ENCOUNTERS } from '../data/encounters.js';
@@ -29,7 +29,7 @@ import { canPayProduce, payProduce, getProduceCost, produceCostLabel } from '../
 import { hPts, HS, edgeGeo, shuffleArray } from '../logic/hexMath.js';
 import { getValidMoves, getValidMoves1Step, getRailNetwork, findPathWaypoints, marshToll, marshFree } from '../logic/movement.js';
 import { transportUnits } from '../logic/transport.js';
-import { createPlayer, retreatFromHex, reentryHexes } from '../logic/player.js';
+import { createPlayer, retreatFromHex, retreatBaseIds, defaultRetreatBase } from '../logic/player.js';
 import { buildingHexes, packUpDestinations } from '../logic/buildings.js';
 import { botTurn, estimateScore } from '../logic/bot.js';
 import { BOT_PROFILES, assignBotProfile, BOT_NOISE, MAP_META_THREAT, playerStanding } from '../logic/botProfiles.js';
@@ -186,9 +186,9 @@ export default function App(){
   // Vol de mecha (Internationale Noire) : {hexId, fromFaction} — proposé
   // après une victoire contre un mecha adverse ou une patrouille impériale.
   const[stealOffer,setStealOffer]=useState(null);
-  // Réentrée d'une unité de la réserve hors-plateau (Internationale Noire) :
-  // true = on attend le clic sur un hex adjacent à un point d'ancrage.
-  const[reentryMode,setReentryMode]=useState(false);
+  // Choix de la planque de repli après une défaite (Internationale Noire,
+  // quatre bases) : {fromHex, baseId, unitIds}
+  const[retreatChoice,setRetreatChoice]=useState(null);
   const[hovHex,setHovHex]=useState(null);
   const[clickRipple,setClickRipple]=useState(null); // {hexId, key} for ripple animation
   const[showOpponents,setShowOpponents]=useState(false); // barre du haut dépliée : ressources + étoiles adverses
@@ -546,7 +546,7 @@ export default function App(){
     setUndoStack([]);setRedoStack([]);setPreActionSnapshot(null);
     setSelAction(null);setMoveSource(null);setTransportPick(null);setSelHex(null);
     setPendingBottom(null);setBottomPick(null);setPendingCombats([]);setPendingEncs([]);
-    setCombat(null);setEncounter(null);setEndOfTurn(false);setAfterMoveCol(null);
+    setCombat(null);setEncounter(null);setEndOfTurn(false);setAfterMoveCol(null);setRetreatChoice(null);
     clearTimeout(empireCombatTimer.current);
     setLog([]);stepRef.current=0;
     try{localStorage.removeItem('pa-save');}catch{/* rien */}
@@ -670,9 +670,13 @@ export default function App(){
     try{window.scrollTo({top:0});}catch{/* environnement sans fenêtre */}
   },[]);
 
-  // Hex de base d'une faction, ou null pour l'Internationale Noire qui n'en
-  // a pas : `retreatFromHex` bascule alors sur la réserve hors-plateau.
+  // Hex du drapeau UNIQUE d'une faction (null pour l'Internationale Noire, qui
+  // en a quatre — voir `retreatBaseFor` juste en dessous).
   const baseHexIdOf=useCallback((fac)=>homeBaseHex(fac)?.id??null,[]);
+  // Base de repli d'une défaite : l'unique drapeau pour six factions, la
+  // planque la plus proche pour l'Internationale Noire — que le joueur peut
+  // ensuite déplacer vers l'une des trois autres (modale `retreatChoice`).
+  const retreatBaseFor=useCallback((fac,fromHex)=>defaultRetreatBase(fac,fromHex),[]);
 
   // ── Fin de chapitre : progression + déblocage du legs ──
   // Les deux voies du document de campagne : `victory` vaut "canon" (condition
@@ -820,8 +824,8 @@ export default function App(){
               if(humanCard&&pi===defIdx)return;
               const hit=pl.workers.filter(w=>w.hexId===toId);
               if(hit.length===0)return;
-              const r=retreatFromHex(pl,toId,homeBaseHex(pl.faction)?.id??null,{units:false});
-              empireLogs.push(`🔴👷 L'Empire disperse ${hit.length} ouvrier${hit.length>1?"s":""} de ${FACTIONS[pl.faction].name} sur #${toId} → ${r.toReserve>0?"réserve du réseau":"base"}`);
+              const r=retreatFromHex(pl,toId,retreatBaseFor(pl.faction,toId),{units:false});
+              empireLogs.push(`🔴👷 L'Empire disperse ${hit.length} ouvrier${hit.length>1?"s":""} de ${FACTIONS[pl.faction].name} sur #${toId} → base`);
               nextPlayers[pi]=r.player;playersTouched=true;
             });
           }
@@ -991,9 +995,9 @@ export default function App(){
         } else {
           logs.push(`⚔🤖 ${bf.name} échoue vs ${card.name} (${botTotal} vs ${card.power})`);
           // Bot retreats hero to HB
-          const bhb=HOME_BASES[p.faction];
-          const bhbHex=baseHexAt(bhb);
-          p.hero=bhbHex.id;
+          // `retreatFromHex` couvre aussi une faction sans base (réserve) —
+          // aucun bot n'en est une aujourd'hui, mais plus un seul `.id` nu.
+          Object.assign(p,retreatFromHex(p,botHeroHex,retreatBaseFor(p.faction,botHeroHex)).player);
         }
       }
       // Copie locale des joueurs : déplacements, pièges, PvP bot↔bot, rencontre, enlist
@@ -1007,14 +1011,19 @@ export default function App(){
       for(let oi=0;oi<n.length;oi++){
         if(oi===cp)continue;
         // Rule: workers retreat only when ALONE on the hex — if their hero/mechs
-        // defend it, a combat resolves instead (they retreat with the loser)
-        const defended=(hid)=>n[oi].hero===hid||n[oi].mechs.some(m=>m.hexId===hid);
+        // defend it, a combat resolves instead (they retreat with the loser).
+        // `combatUnitCount` porte la dérogation de l'Internationale Noire :
+        // ses ouvriers DÉFENDENT leur hex. Sans ça, un mecha de bot les
+        // dispersait au lieu de livrer bataille (11/08) — et la retraite
+        // visait `ohbHex.id` sur une faction sans base : écran noir.
+        const defended=(hid)=>combatUnitCount(n[oi],hid)>0;
         const displaced=n[oi].workers.filter(w=>botHexes.has(w.hexId)&&!defended(w.hexId));
         if(displaced.length>0){
-          const ohb=HOME_BASES[n[oi].faction];
-          const ohbHex=baseHexAt(ohb);
           const dispHexes=[...new Set(displaced.map(w=>w.hexId))];
-          n[oi]={...n[oi],workers:n[oi].workers.map(w=>botHexes.has(w.hexId)&&!defended(w.hexId)?{...w,hexId:ohbHex.id}:w)};
+          let disp={...n[oi]};
+          // Chaque hex chassé renvoie vers SA base la plus proche
+          dispHexes.forEach(hid=>{disp=retreatFromHex(disp,hid,retreatBaseFor(n[oi].faction,hid),{units:false}).player;});
+          n[oi]=disp;
           // Bot loses pop for displacing workers
           n[cp]={...n[cp],pop:Math.max(0,(n[cp].pop||0)-displaced.length),scaredWorkers:(n[cp].scaredWorkers||0)+displaced.length};
           // Pillage : le magot des hexes pris passe au nouvel occupant
@@ -1839,13 +1848,15 @@ export default function App(){
       const rn=getRailNetwork(moveSource.fromHex,rails,enemyOccupiedHexes);
       if(rn)rn.forEach(id=>{if(id!==moveSource.fromHex)stepSet.add(id);});
       let moves=[...stepSet].filter(id=>!combatTriggers.has(id));
-      if(moveSource.unitType==="worker")moves=moves.filter(id=>!enemyOccupiedHexes.has(id));
+      if(!isCombatUnit(me.faction,moveSource.unitType))moves=moves.filter(id=>!enemyOccupiedHexes.has(id));
       return new Set(moves);
     }
     // Bas de carte d'usine : 2 hex de base (+1 avec Vitesse) → bonusSteps=1
     let moves=getValidMoves(moveSource.fromHex,me.faction,me.unlockedAbilities||[],me,rails,moveSource.unitType,enemyOccupiedHexes,factoryMoveMode?1:0);
-    // Workers cannot enter hexes with any enemy units
-    if(moveSource.unitType==="worker"){
+    // Un ouvrier n'entre pas sur un hex tenu par l'adversaire — SAUF quand
+    // ses ouvriers sont des unités combattantes (Internationale Noire) : il s'y
+    // engage alors comme un mecha, et le combat se met en file.
+    if(!isCombatUnit(me.faction,moveSource.unitType)){
       moves=moves.filter(id=>!enemyOccupiedHexes.has(id));
     }
     return new Set(moves);
@@ -1884,43 +1895,6 @@ export default function App(){
     if(foes>0)out.push(`⚔ ${foes} hex occupé${foes>1?"s":""} : on peut y entrer, jamais le traverser`);
     return out;
   },[moveSource,me,rails,enemyOccupiedHexes,myFaction]);
-
-  // ── RÉENTRÉE DU RÉSEAU (Internationale Noire) ──────────────────────────
-  // Les unités vaincues partent hors-plateau, dans une réserve JAMAIS
-  // capturable, et reviennent adjacent à l'un des quatre points d'ancrage —
-  // au prix d'un déplacement de l'action Move. Occuper un ancrage ne ferme
-  // que CETTE porte : étouffer la faction demande de tenir les quatre.
-  const reserveTotal=(me?.reserve||0)+(me?.reserveMechs||0);
-  const reentryTargets=useMemo(()=>{
-    if(!me||!reentryMode||reserveTotal<=0)return new Set();
-    return new Set(reentryHexes(me,enemyOccupiedHexes));
-  },[me,reentryMode,reserveTotal,enemyOccupiedHexes]);
-
-  const doReentry=useCallback((hexId,kind)=>{
-    if(!me)return;
-    const isMech=kind==="mech";
-    if(isMech?!(me.reserveMechs>0):!(me.reserve>0))return;
-    // Remonter, c'est ENTRER sur l'hex : un jeton de rencontre s'y déclenche
-    // comme sous n'importe quel déplacement. C'est ce qui rend leurs deux
-    // rencontres au réseau — ses ancrages #3 et #40 en portent une, et les y
-    // POSER à l'installation les rendait injouables (09/08).
-    const encHere=encounterTokens.has(hexId);
-    setPlayers(prev=>{
-      const n=[...prev];const p={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs]};
-      if(isMech){p.mechs.push({id:`${p.faction}_r${p.mechs.length}${Date.now()%97}`,hexId});p.reserveMechs=(p.reserveMechs||0)-1;}
-      else{p.workers.push({id:`${p.faction}_w${p.workers.length}${Date.now()%97}`,hexId});p.reserve=(p.reserve||0)-1;}
-      p.movesLeft=(p.movesLeft??effMoveLimit)-1;
-      p.movedUnits=[...(p.movedUnits||[]),`reentry${(p.movedUnits||[]).length}`];
-      n[0]=p;return n;
-    });
-    addLog(`🕳 Le réseau fait remonter ${isMech?"un mecha":"un ouvrier"} sur #${hexId}`);
-    if(encHere){
-      setPendingEncs(q=>q.includes(hexId)?q:[...q,hexId]);
-      addLog(`📜 Jeton de rencontre atteint sur #${hexId} — il se résoudra après les combats`);
-    }
-    setReentryMode(false);setMoveSource(null);
-    if((me.movedUnits||[]).length+1>=effMoveLimit)setTimeout(()=>endMoveDone((me.movedUnits||[]).length+1),60);
-  },[me,addLog,effMoveLimit,endMoveDone,encounterTokens]);
 
   // Déplacement au clic : hex → unités du joueur encore déplaçables ce tour.
   // Cliquer un hex surligné sélectionne l'unité (picker si plusieurs).
@@ -2137,13 +2111,6 @@ export default function App(){
       }
     }
     
-    // ── RÉENTRÉE DU RÉSEAU : cliquer un hex adjacent à un ancrage ──
-    if(reentryMode&&reentryTargets.has(hexId)){
-      pushHistory();
-      doReentry(hexId,(me?.reserve||0)>0?"worker":"mech");
-      return;
-    }
-
     // ── PACK UP : cliquer l'hex de destination sur la carte ──
     // Placé ici, avant la sélection d'unité : tant qu'un bâtiment est choisi,
     // le clic sert la pose — même précédence que le mode de pose de rails.
@@ -2170,7 +2137,7 @@ export default function App(){
       // combat a lieu. » L'unité entre donc pour de bon, et deux mechas
       // peuvent converger sur la même cible pour livrer UNE bataille à deux —
       // ce que l'ancien déclenchement immédiat rendait impossible.
-      const movingCombatUnit=moveSource.unitType==="hero"||moveSource.unitType==="mech";
+      const movingCombatUnit=isCombatUnit(me.faction,moveSource.unitType);
       const empireOnHex=Object.entries(empire).filter(([_,hid])=>hid===hexId);
       const enemyIdxHere=movingCombatUnit
         ? players.findIndex((ep,pi)=>pi>0&&(ep.hero===hexId||ep.mechs.some(m=>m.hexId===hexId)))
@@ -2271,15 +2238,14 @@ export default function App(){
       if(!moveSource.continuation){p.movesLeft=(me.movesLeft||effMoveLimit)-1;p.movedUnits=[...(me.movedUnits||[]),moveSource.unitId];}
 
       // ── SCYTHE RULE: displace enemy workers when hero/mech enters (no combat) ──
-      const movingCombat2=moveSource.unitType==="hero"||moveSource.unitType==="mech";
+      const movingCombat2=isCombatUnit(me.faction,moveSource.unitType);
       if(movingCombat2){
         let displaced=0;
         for(let pi=1;pi<players.length;pi++){
           const ep=players[pi];
           const enemyWorkersHere=ep.workers.filter(w=>w.hexId===hexId);
           if(enemyWorkersHere.length>0){
-            const ehb=HOME_BASES[ep.faction];
-            const ehbHex=baseHexAt(ehb);
+            const ehbId=retreatBaseFor(ep.faction,hexId);
             displaced+=enemyWorkersHere.length;
             // Retreat enemy workers to their home base + PILLAGE : leur magot
             // sur le hex passe au joueur (motivation au combat du design)
@@ -2287,7 +2253,7 @@ export default function App(){
             setPlayers(prev=>{
               const n=[...prev];
               const deepResH=(pl)=>{const r={};Object.entries(pl.resources).forEach(([k,v])=>{r[k]={...v};});return r;};
-              const loserH={...n[pi],workers:n[pi].workers.map(w=>w.hexId===hexId?{...w,hexId:ehbHex.id}:w),resources:deepResH(n[pi])};
+              const loserH={...retreatFromHex(n[pi],hexId,ehbId,{units:false}).player,resources:deepResH(n[pi])};
               Object.entries(loserH.resources[String(hexId)]||{}).forEach(([rt,q])=>{looted[rt]=q;});
               transferHexResources(loserH,p,hexId);
               n[pi]=loserH;
@@ -2462,13 +2428,51 @@ export default function App(){
     // tous, pour motiver la quête des fragments avant d'y aller ──
     if(hexId===FACTORY_RR_HEX&&!selAction&&!pendingBottom&&!rougeRiver)setFactoryPreview(true);
     setSelHex(hexId);
-  // `reentryMode`, `reentryTargets`, `doReentry` et `turn` MANQUAIENT ici
-  // (09/08) : basculer le bouton « Réserve du réseau » ne change aucune autre
-  // dépendance, donc `handleHexClick` n'était pas recréé et gardait
-  // `reentryMode = false` dans sa fermeture — cliquer un ancrage ne faisait
-  // RIEN. La réentrée par la carte n'avait jamais fonctionné ; on ne s'en
-  // apercevait pas tant que la faction démarrait posée sur le plateau.
-  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,turn,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes,rougeRiver,packUpTargets,doPackUpMove,reentryMode,reentryTargets,doReentry]);
+  },[phase,botRunning,moveSource,validMoves,me,myFaction,myMat,addLog,endHumanTurn,endMoveDone,finishBottom,continueFactoryQueue,combat,empire,players,turn,encounterTokens,factoryOffer,teslaOffer,railPlacement,rails,selAction,factoryMoveMode,effMoveLimit,movableUnits,pendingBottom,actionTargets,bottomPick,doDeploy,doBuild,pushHistory,produceEligible,producePicks,enemyOccupiedHexes,rougeRiver,packUpTargets,doPackUpMove]);
+
+  // ── Repli après défaite : la PLANQUE se choisit ────────────────────────
+  // Une faction se replie sur SA base ; l'Internationale Noire en a quatre,
+  // donc un choix (11/08 : « ils se replient sur une base au choix comme pour
+  // les autres factions, sauf que les autres n'en ont qu'une »). Les pions
+  // sont posés d'office sur la plus proche — il faut bien qu'ils soient
+  // quelque part — puis la modale permet de les envoyer sur une autre.
+  const retreatLabel=useCallback((fac,baseId)=>{
+    if(baseId==null)return "Repli hors carte.";
+    const idx=retreatBaseIds(fac).indexOf(baseId);
+    return retreatBaseIds(fac).length>1
+      ? `Repli sur la planque ${idx+1} (sortie #${(ADJ[baseId]||[]).find(h=>!hMap[h]?.base)}).`
+      : "Retraite vers la base.";
+  },[]);
+
+  // Ouvre le choix de planque quand la faction en a plusieurs ET qu'il y a
+  // bien eu du monde à replier. Appelée APRÈS l'updater, avec l'état d'AVANT.
+  const offerRetreatChoice=useCallback((hexId,baseId)=>{
+    if(!me||baseId==null||retreatBaseIds(me.faction).length<2)return;
+    const unitIds=[...(me.workers||[]),...(me.mechs||[])].filter(u=>u.hexId===hexId).map(u=>u.id);
+    if(unitIds.length===0)return;
+    setRetreatChoice({fromHex:hexId,baseId,unitIds});
+  },[me]);
+
+  // Déplace le groupe replié vers une autre planque (gratuit : c'est le même
+  // repli, pas un déplacement — le choix aurait dû être fait à la défaite).
+  const pickRetreatBase=useCallback((baseId)=>{
+    setRetreatChoice(rc=>{
+      if(!rc)return null;
+      if(baseId!==rc.baseId){
+        const ids=new Set(rc.unitIds);
+        setPlayers(prev=>{
+          const n=[...prev];
+          n[0]={...n[0],
+            workers:n[0].workers.map(w=>ids.has(w.id)?{...w,hexId:baseId}:w),
+            mechs:n[0].mechs.map(m=>ids.has(m.id)?{...m,hexId:baseId}:m)};
+          return n;
+        });
+        const idx=retreatBaseIds(players[0]?.faction).indexOf(baseId);
+        addLog(`🏴 Le réseau redirige ${rc.unitIds.length} unité${rc.unitIds.length>1?"s":""} vers la planque ${idx+1}`);
+      }
+      return null;
+    });
+  },[players,addLog]);
 
   // ── COMBAT RESOLUTION ──
   const resolveCombat=useCallback(()=>{
@@ -2501,10 +2505,8 @@ export default function App(){
         winner:win?"right":"left",
         verdict:win?`Vous repoussez ${af.name} ! ⭐`:`${af.name} prend le territoire...`,
       });
-      const myHb=HOME_BASES[me.faction];
-      const myHbHex=baseHexAt(myHb);
-      const atkHb=HOME_BASES[attacker.faction];
-      const atkHbHex=baseHexAt(atkHb);
+      const myBaseId=retreatBaseFor(me.faction,combat.hexId);
+      const atkBaseId=retreatBaseFor(attacker.faction,combat.hexId);
       setPlayers(prev=>{
         const n=[...prev];
         n[0]={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
@@ -2516,20 +2518,14 @@ export default function App(){
         n[atkIdx].power-=combat.botSpend;n[atkIdx].combatCards-=combat.botCards;
         if(win){
           // Le joueur repousse l'attaquant : retraite totale du bot + étoile défenseur
-          if(n[atkIdx].hero===combat.hexId)n[atkIdx].hero=atkHbHex.id;
-          n[atkIdx].mechs=n[atkIdx].mechs.map(m=>m.hexId===combat.hexId?{...m,hexId:atkHbHex.id}:m);
-          n[atkIdx].workers=n[atkIdx].workers.map(w=>w.hexId===combat.hexId?{...w,hexId:atkHbHex.id}:w);
+          n[atkIdx]=retreatFromHex(n[atkIdx],combat.hexId,atkBaseId).player;
           n[0].combatWins=(n[0].combatWins||0)+1;
           if(n[0].combatWins<=2&&!n[0][`starCombat${n[0].combatWins}`]){n[0].stars++;n[0][`starCombat${n[0].combatWins}`]=true;}
           if(attackerTotal>=1)n[atkIdx].combatCards++;
         } else {
           // Le bot prend le hex : retraite totale du joueur, ressources transférées.
-          // `retreatFromHex` porte les DEUX cas : base pour les six factions
-          // territoriales, réserve hors-plateau pour l'Internationale Noire
-          // (qui n'a pas de capitale — `myHbHex` y vaut null).
           const displaced=n[0].workers.filter(w=>w.hexId===combat.hexId).length;
-          const rrDef=retreatFromHex(n[0],combat.hexId,myHbHex?.id??null);
-          n[0]=rrDef.player;
+          n[0]=retreatFromHex(n[0],combat.hexId,myBaseId).player;
           const key=String(combat.hexId);const lostRes=n[0].resources[key];
           if(lostRes){
             if(!n[atkIdx].resources[key])n[atkIdx].resources[key]={};
@@ -2557,7 +2553,8 @@ export default function App(){
         }
         return n;
       });
-      addLog(win?`🛡 Vous repoussez ${af.name} ! ⭐ Étoile de combat.`:`❌ ${af.name} prend #${combat.hexId}... ${myHbHex?"Retraite vers la base.":"Repli en réserve du réseau."}`);
+      addLog(win?`🛡 Vous repoussez ${af.name} ! ⭐ Étoile de combat.`:`❌ ${af.name} prend #${combat.hexId}... ${retreatLabel(me.faction,myBaseId)}`);
+      if(!win)offerRetreatChoice(combat.hexId,myBaseId);
       setCombat(null);
       // Reprise de la chaîne des bots
       setCurrentP(combat.resumeCp);setBotRunning(true);
@@ -2566,6 +2563,7 @@ export default function App(){
 
     if(combat.type==="pve"){
       const empireTotal=combat.empireCard.power;
+      const hbIdPve=retreatBaseFor(me.faction,combat.hexId);
       // Attacker wins ties when player attacks; defender (player) wins ties when Empire attacks
       const win=isDefender?playerTotal>=empireTotal:playerTotal>=empireTotal;
       // Spend resources
@@ -2580,14 +2578,13 @@ export default function App(){
           // Défaite : TOUTES nos unités présentes sur l'hex battent en
           // retraite (règle du jeu original) — attaquant comme défenseur, car
           // depuis v0.18 l'unité attaquante est DÉJÀ entrée sur l'hex.
-          const hbId=homeBaseHex(p.faction)?.id??null;
-          const r=retreatFromHex(p,combat.hexId,hbId);
-          Object.assign(p,r.player);
-          if(r.toReserve+r.mechsToReserve>0)addLog(`🕳 ${r.toReserve} ouvrier(s)${r.mechsToReserve>0?` et ${r.mechsToReserve} mecha(s)`:""} repliés dans la réserve du réseau`);
+          Object.assign(p,retreatFromHex(p,combat.hexId,hbIdPve).player);
         }
         // Le déplacement a déjà été compté par le mouvement lui-même
         n[0]=p;return n;
       });
+
+      if(!win)offerRetreatChoice(combat.hexId,hbIdPve);
 
       setCombatReveal({
         title:combat.empireCard.name,
@@ -2638,8 +2635,7 @@ export default function App(){
       if(enemy.faction==="acadiane"&&(enemy.unlockedAbilities||[]).includes(2)&&Math.random()<0.5){
         // Acadiane refuses combat: retreat + 2 pop, attacker gets hex + resources + star for free
         addLog(`🏳 ${ef.name} active White Flag ! Retraite volontaire + ${BALANCE.whiteFlagPop} Pop.`);
-        const ehb=HOME_BASES[enemy.faction];
-        const ehbHex=baseHexAt(ehb);
+        const ehbIdWF=retreatBaseFor(enemy.faction,combat.hexId);
         setPlayers(prev=>{
           const n=[...prev];
           // L'attaquant est déjà entré sur l'hex (combat résolu après les
@@ -2654,9 +2650,7 @@ export default function App(){
           // Defender retreats + gains 2 pop
           n[combat.enemyIdx]={...n[combat.enemyIdx],workers:[...n[combat.enemyIdx].workers],mechs:[...n[combat.enemyIdx].mechs],resources:{...n[combat.enemyIdx].resources}};
           Object.keys(prev[combat.enemyIdx].resources).forEach(k=>{n[combat.enemyIdx].resources[k]={...prev[combat.enemyIdx].resources[k]};});
-          if(n[combat.enemyIdx].hero===combat.hexId)n[combat.enemyIdx].hero=ehbHex.id;
-          n[combat.enemyIdx].mechs=n[combat.enemyIdx].mechs.map(m=>m.hexId===combat.hexId?{...m,hexId:ehbHex.id}:m);
-          n[combat.enemyIdx].workers=n[combat.enemyIdx].workers.map(w=>w.hexId===combat.hexId?{...w,hexId:ehbHex.id}:w);
+          n[combat.enemyIdx]=retreatFromHex(n[combat.enemyIdx],combat.hexId,ehbIdWF).player;
           delete n[combat.enemyIdx].resources[String(combat.hexId)];
           n[combat.enemyIdx].pop=Math.min((n[combat.enemyIdx].pop||0)+BALANCE.whiteFlagPop,18);
           return n;
@@ -2696,10 +2690,8 @@ export default function App(){
         verdict:win?`${ef.name} bat en retraite !`:"Vos forces battent en retraite...",
       });
       
-      const hb=HOME_BASES[me.faction];
-      const hbHex=baseHexAt(hb);
-      const ehb=HOME_BASES[enemy.faction];
-      const ehbHex=baseHexAt(ehb);
+      const hbId2=retreatBaseFor(me.faction,combat.hexId);
+      const ehbId2=retreatBaseFor(enemy.faction,combat.hexId);
       // Pre-count enemy units on hex (before retreat) for faction abilities
       const preEnemyMechs=enemy.mechs.filter(m=>m.hexId===combat.hexId);
       const preEnemyWorkers=enemy.workers.filter(w=>w.hexId===combat.hexId);
@@ -2724,9 +2716,7 @@ export default function App(){
           const enemyWorkersOnHex=n[combat.enemyIdx].workers.filter(w=>w.hexId===combat.hexId).length;
           if(enemyWorkersOnHex>0)n[0].pop=Math.max(0,n[0].pop-enemyWorkersOnHex);
           // Loser: retreat ALL units to HB
-          if(n[combat.enemyIdx].hero===combat.hexId)n[combat.enemyIdx].hero=ehbHex.id;
-          n[combat.enemyIdx].mechs=n[combat.enemyIdx].mechs.map(m=>m.hexId===combat.hexId?{...m,hexId:ehbHex.id}:m);
-          n[combat.enemyIdx].workers=n[combat.enemyIdx].workers.map(w=>w.hexId===combat.hexId?{...w,hexId:ehbHex.id}:w);
+          n[combat.enemyIdx]=retreatFromHex(n[combat.enemyIdx],combat.hexId,ehbId2).player;
           // Rule: the winner takes control of the resources on the hex
           const lostRes=n[combat.enemyIdx].resources[String(combat.hexId)];
           if(lostRes){
@@ -2739,7 +2729,7 @@ export default function App(){
           if(enemyTotal>=1)n[combat.enemyIdx].combatCards++;
         } else {
           // Défaite : toutes mes unités présentes battent en retraite
-          const rr=retreatFromHex(n[0],combat.hexId,hbHex?.id??null);
+          const rr=retreatFromHex(n[0],combat.hexId,hbId2);
           n[0]=rr.player;
           // Rule: the loser (player) draws 1 combat card if they revealed at least 1 power
           if(playerTotal>=1)n[0].combatCards++;
@@ -2786,7 +2776,8 @@ export default function App(){
           setAbilityOffer({type:"servitude",hexId:combat.hexId});
         }
       } else {
-        addLog(`❌ Défaite PvP... ${hbHex?"Retraite vers la base.":"Repli en réserve du réseau."}`);
+        addLog(`❌ Défaite PvP... ${retreatLabel(me.faction,hbId2)}`);
+        offerRetreatChoice(combat.hexId,hbId2);
         // Flibuste: Bayou bot defender wins → takes 2 coins from player
         if(enemy.faction==="bayou"&&(enemy.unlockedAbilities||[]).includes(2)){
           setPlayers(prev=>{
@@ -2807,15 +2798,14 @@ export default function App(){
     if(!combat.postMove&&(me.movedUnits||[]).length+1>=effMoveLimit){
       setTimeout(()=>endMoveDone(),100);
     }
-  },[combat,me,players,empire,myFaction,myMat,addLog,effMoveLimit,endMoveDone]);
+  },[combat,me,players,empire,myFaction,myMat,addLog,effMoveLimit,endMoveDone,offerRetreatChoice,retreatLabel,retreatBaseFor]);
 
   // ── WHITE FLAG (Acadiane défenseur, slot 2) : céder le hex sans combattre ──
   const resolveWhiteFlag=useCallback(()=>{
     if(!combat||combat.type!=="pvp_defense"||!me)return;
     const atkIdx=combat.enemyIdx;
     const af=FACTIONS[players[atkIdx].faction];
-    const myHb=HOME_BASES[me.faction];
-    const myHbHex=baseHexAt(myHb);
+    const myBaseId=retreatBaseFor(me.faction,combat.hexId);
     setPlayers(prev=>{
       const n=[...prev];
       n[0]={...n[0],workers:[...n[0].workers],mechs:[...n[0].mechs],resources:{...n[0].resources}};
@@ -2823,9 +2813,7 @@ export default function App(){
       n[atkIdx]={...n[atkIdx],resources:{...n[atkIdx].resources}};
       Object.keys(prev[atkIdx].resources).forEach(k=>{n[atkIdx].resources[k]={...prev[atkIdx].resources[k]};});
       const displaced=n[0].workers.filter(w=>w.hexId===combat.hexId).length;
-      // Base pour les six factions territoriales, réserve hors-plateau pour
-      // l'Internationale Noire (`myHbHex` null — elle n'a pas de capitale).
-      n[0]=retreatFromHex(n[0],combat.hexId,myHbHex?.id??null).player;
+      n[0]=retreatFromHex(n[0],combat.hexId,myBaseId).player;
       n[0].pop=Math.min((n[0].pop||0)+BALANCE.whiteFlagPop,18);
       const key=String(combat.hexId);const lostRes=n[0].resources[key];
       if(lostRes){
@@ -2841,9 +2829,10 @@ export default function App(){
       return n;
     });
     addLog(`🏳 White Flag ! Vous cédez #${combat.hexId} à ${af.name} (+${BALANCE.whiteFlagPop} Pop, aucune dépense).`);
+    offerRetreatChoice(combat.hexId,myBaseId);
     setCombat(null);
     setCurrentP(combat.resumeCp);setBotRunning(true);
-  },[combat,me,players,addLog]);
+  },[combat,me,players,addLog,offerRetreatChoice,retreatBaseFor]);
 
   // ── PVE REWARD ──
   const claimReward=useCallback((reward)=>{
@@ -3780,7 +3769,7 @@ export default function App(){
           {/* Hexes */}
           {HEXES.map(hex=>{
             // Produce : hex éligibles surlignés (isSrc), hex cochés en vert (isV)
-            const isV=validMoves.has(hex.id)||reentryTargets.has(hex.id)||(selAction==="Produce"&&producePicks.includes(hex.id));
+            const isV=validMoves.has(hex.id)||(selAction==="Produce"&&producePicks.includes(hex.id));
             const isFar=validMoves.has(hex.id)&&!nearMoves.has(hex.id);
             const isSel=selHex===hex.id;const isHov=hovHex===hex.id;
             const isFactory=hex.t==="factory";
@@ -3805,14 +3794,14 @@ export default function App(){
             // revenues, je ne sais pas à quoi elles correspondent ») : le
             // badge $ et la règle des rails s'expliquent au survol de l'hex
             const hexHasRail=rails.some(([a,b])=>a===hex.id||b===hex.id);
-            // Points d'ancrage du réseau clandestin (Internationale Noire) :
-            // ce ne sont PAS des bases (le terrain reste praticable par tous),
-            // seulement les portes par lesquelles la réserve hors-plateau
-            // revient en jeu.
+            // Sorties des quatre planques (Internationale Noire) : ce ne sont
+            // PAS des bases (le terrain reste praticable par tous), seulement
+            // les hex par lesquels ses unités entrent — au premier tour, et
+            // après chaque repli.
             const isAnchor=(myFaction?.anchors||[]).includes(hex.id);
             const hexTitle=[
               isBonusTile?`🏦 ${structureBonus.icon} ${structureBonus.name} — hex éligible au bonus de pose (${structureBonus.scale})`:null,
-              isAnchor?"🕳 Sortie de base du réseau — un de vos ouvriers en sort au premier tour, et vos unités en réserve rentrent ici ou sur un hex adjacent. Un ennemi posté dessus ferme cette porte, pas les trois autres.":null,
+              isAnchor?"🕳 Sortie d'une de vos quatre planques — un ouvrier en sort au premier tour, et vos unités repliées après une défaite en ressortent par ici. Un ennemi posté dessus ferme cette porte, pas les trois autres.":null,
               hexHasRail?"🛤 Rail : depuis un hex du réseau, un PAS de déplacement mène à tout nœud relié. Vrai à chaque pas — avec Vitesse, on peut embarquer puis rouler, ou rouler puis sortir d'un pas. Le réseau est coupé aux nœuds occupés par l'ennemi (destination possible, jamais passage).":null,
             ].filter(Boolean).join("\n");
             return(<g key={hex.id} data-hex={hex.id} onMouseEnter={()=>setHovHex(hex.id)} onMouseLeave={()=>setHovHex(null)} onClick={()=>handleHexClick(hex.id)} style={{cursor:"pointer"}}>
@@ -4029,9 +4018,55 @@ export default function App(){
         </svg>
 
         {/* ═══ MODAL OVERLAYS (combat/rencontre/Rouge River/pouvoir optionnel) ═══ */}
-        {(combat||encounter||encounterBuild||encounterEnlist||encounterUpgrade||encounterResources||rougeRiver||factoryPreview||abilityOffer||stealOffer)&&(
+        {(combat||encounter||encounterBuild||encounterEnlist||encounterUpgrade||encounterResources||rougeRiver||factoryPreview||abilityOffer||stealOffer||retreatChoice)&&(
           <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:10}}>
             <div style={{maxWidth:460,width:"92%",maxHeight:"80vh",overflow:"auto",borderRadius:12,border:"1px solid var(--border-light)",boxShadow:"0 10px 50px rgba(0,0,0,0.8)"}}>
+
+              {/* ═══ REPLI — CHOIX DE LA PLANQUE (Internationale Noire) ═══
+                  Une faction se replie sur SA base ; celle-ci en a quatre, donc
+                  le repli est un choix. Les pions sont déjà posés sur la plus
+                  proche : cliquer une autre planque les y envoie. */}
+              {retreatChoice&&(()=>{
+                const bases=retreatBaseIds(me.faction);
+                const nUnits=retreatChoice.unitIds.length;
+                return(
+                  <div style={{padding:"20px",background:"linear-gradient(180deg,#150d12,var(--bg2))",borderRadius:10,border:"1px solid #9E3B4E",animation:"slideUp 0.35s ease"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                      <div style={{width:44,height:44,borderRadius:"50%",background:"rgba(158,59,78,0.18)",display:"flex",alignItems:"center",justifyContent:"center",border:"2px solid #9E3B4E",flexShrink:0}}>
+                        <FactionCrest factionId={me.faction} size={30} color={uiInk(myFaction)}/>
+                      </div>
+                      <div>
+                        <div style={{fontFamily:"var(--font-title)",color:"#E08090",fontSize:18,fontWeight:700}}>Repli du réseau</div>
+                        <div style={{fontSize:13,color:"var(--text-dim)",marginTop:2}}>
+                          #{retreatChoice.fromHex} est perdu — <b>{nUnits} unité{nUnits>1?"s":""}</b> décroche{nUnits>1?"nt":""}. Sur quelle planque ?
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                      {bases.map((bid,i)=>{
+                        const exit=(ADJ[bid]||[]).find(h=>!hMap[h]?.base);
+                        const here=bid===retreatChoice.baseId;
+                        const held=[...(me.workers||[]),...(me.mechs||[])].filter(u=>u.hexId===bid&&!retreatChoice.unitIds.includes(u.id)).length;
+                        return(
+                          <button key={bid} onClick={()=>pickRetreatBase(bid)} className="act-btn"
+                            style={{textAlign:"left",padding:"10px 12px",
+                              borderColor:here?"#9E3B4E":"var(--border)",
+                              background:here?"rgba(158,59,78,0.16)":"transparent"}}>
+                            <div style={{fontWeight:700,color:here?"#E08090":"var(--gold)",fontSize:14}}>Planque {i+1}{here?" ✓":""}</div>
+                            <div style={{fontSize:12,color:"var(--text-muted)",marginTop:2}}>
+                              sortie #{exit} · {TERRAINS[hMap[exit]?.t]?.name||hMap[exit]?.t}
+                              {held>0&&<> · {held} déjà sur place</>}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div style={{fontSize:12,color:"var(--text-muted)",marginTop:10,lineHeight:1.5}}>
+                      Une unité sur une planque en ressort par sa sortie, au prix d'un déplacement — comme le héros d'une autre faction quitte sa base.
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* COMBAT CHOOSE */}
               {combat&&combat.phase==="choose"&&(()=>{
@@ -4880,30 +4915,13 @@ export default function App(){
                   {(me.movedUnits||[]).length===0&&<button onClick={()=>{const g=1+topUpgradeCount(me,"Move","coins");setPlayers(prev=>{const n=[...prev];n[0]={...n[0],coins:n[0].coins+g};return n;});addLog(`💰 +${g}$`);endHumanTurn(myMat.topRow.indexOf("Move"));}} className="act-btn" style={{marginBottom:8,background:"var(--bg2)",border:`1px solid var(--gold-dim)`,width:"100%"}}>💰 Gagner {1+topUpgradeCount(me,"Move","coins")}$ (pas de déplacement)</button>}
                   {!moveSource&&(
                     <div style={{padding:"10px 12px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px dashed var(--gold-dim)",fontSize:14,color:"var(--gold)",lineHeight:1.5}}>
-                      {/* Rien sur le plateau mais de quoi faire remonter : c'est
-                          l'ouverture de l'Internationale Noire, dont les quatre
-                          ouvriers démarrent hors plateau. Pointer un pion à
-                          déplacer n'aurait aucun sens tant qu'il n'y en a pas. */}
-                      {movableUnits.size===0&&reserveTotal>0
-                        ?<>🕳 Rien sur le plateau : tout votre réseau est <b>hors carte</b>. Faites-le remonter près d'une de vos bases (bouton ci-dessous) — chaque remontée coûte un des déplacements du tour.</>
-                        :<>👆 Cliquez le <b>pion</b> à déplacer (hexes surlignés en doré), puis l'<b>hex</b> de destination. Un clic sur un pion change toujours d'unité ; un clic sur un hex vise toujours l'hex.</>}
+                      👆 Cliquez le <b>pion</b> à déplacer (hexes surlignés en doré), puis l'<b>hex</b> de destination. Un clic sur un pion change toujours d'unité ; un clic sur un hex vise toujours l'hex.
                       <div style={{fontSize:13,color:"var(--text-dim)",marginTop:4}}>
                         Disponibles : {me.hero!=null&&!(me.movedUnits||[]).includes("hero")&&<span>★ {myFaction.hero} · </span>}
                         ● {me.workers.filter(w=>!(me.movedUnits||[]).includes(w.id)).length} ouvrier(s)
                         {me.mechs.length>0&&<span> · ⬡ {me.mechs.filter(m=>!(me.movedUnits||[]).includes(m.id)).length} mecha(s)</span>}
-                        {reserveTotal>0&&<span> · 🕳 {reserveTotal} en réserve</span>}
                       </div>
                     </div>
-                  )}
-                  {/* RÉSERVE DU RÉSEAU (Internationale Noire) : faire remonter une
-                      unité hors-plateau coûte un des déplacements du tour */}
-                  {reserveTotal>0&&(
-                    <button onClick={()=>{setReentryMode(m=>!m);setMoveSource(null);}} className="act-btn"
-                      style={{marginTop:8,width:"100%",fontSize:14,
-                        background:reentryMode?"rgba(158,59,78,0.18)":"transparent",
-                        border:`1px solid ${reentryMode?"#9E3B4E":"var(--border)"}`,color:reentryMode?"#E08090":"var(--text-muted)"}}>
-                      🕳 Réserve du réseau : {me.reserve||0} ouvrier(s){me.reserveMechs>0?` · ${me.reserveMechs} mecha(s)`:""} — {reentryMode?"cliquez un hex près d'un ancrage":"faire remonter (coûte 1 déplacement)"}
-                    </button>
                   )}
                   {/* La boîte de chargement (ci-dessous) porte tout le choix
                       d'emport : elle s'ouvre à chaque déplacement dès qu'il y a
