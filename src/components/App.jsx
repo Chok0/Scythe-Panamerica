@@ -19,6 +19,8 @@ import RulesPage from './RulesPage.jsx';
 import Soundtrack from './Soundtrack.jsx';
 import SetupScreen from './SetupScreen.jsx';
 import CampaignScreen from './CampaignScreen.jsx';
+import WorkshopScreen from './WorkshopScreen.jsx';
+import { loadForgedMats, forgeAndKeep, adoptSavedMats, matsUsedBy } from '../logic/workshop.js';
 import { chapterById, partMet, partProgress, heldHexes } from '../data/campaign.js';
 import { loadProgress, saveProgress, resetProgress, completeChapter, campaignConfig, canonMet, steelTick, growEmpireRail, teslaEncountersUnlocked, teslaPlansUnlocked, teslaFragmentsAvailable, campaignEncounterPool } from '../logic/campaign.js';
 import { buildSaveBundle, parseSaveBundle, saveFileName, describeSave } from '../logic/saveFile.js';
@@ -94,6 +96,13 @@ export default function App(){
   const[empireEnabled,setEmpireEnabled]=useState(false);
   const[difficulty,setDifficulty]=useState("normal");
   const[structureBonus,setStructureBonus]=useState(null); // tuile bonus de construction tirée au début
+  // ── MODE ATELIER (logic/workshop.js) ──
+  // Plateaux forgés dans l'espace des configurations inédites. Rechargés au
+  // démarrage : ils sont enregistrés auprès du moteur (`matById`) avant même
+  // qu'on touche à l'écran d'accueil, sinon la partie autosauvegardée qui
+  // s'appuie sur l'un d'eux repartirait sur un `matId` orphelin.
+  const[forgedMats,setForgedMats]=useState(()=>loadForgedMats());
+  const[workshopMat,setWorkshopMat]=useState(null); // plateau affiché dans l'atelier
   // ── MODE CAMPAGNE (logic/campaign.js) ──
   const[campaignProgress,setCampaignProgress]=useState(()=>loadProgress());
   const[chapter,setChapter]=useState(null); // chapitre en cours (null = partie libre)
@@ -395,9 +404,12 @@ export default function App(){
   // (objectifs, tuile bonus, cartes rencontre du deck) sont stockés par ID et
   // réhydratés à la reprise ; la carte (y compris procédurale) est embarquée
   // telle quelle (pure data) et rechargée via loadMap.
+  // Les plateaux d'ATELIER en jeu sont embarqués eux aussi : ils n'existent
+  // dans aucun fichier source, donc une sauvegarde relue ailleurs (export de
+  // campagne, autre machine) ne saurait pas de quel plateau on parle.
   const serializeGame=useCallback(()=>JSON.stringify({
     v:2,date:Date.now(),turn,difficulty,empireEnabled,
-    chapter:chapter?chapter.id:null,steelPile,
+    chapter:chapter?chapter.id:null,steelPile,mats:matsUsedBy(players),
     map:CURRENT_MAP,empire,rails,empireRails,encounterTokens:[...encounterTokens],
     factoryOffer:factoryOffer.map(c=>c.id),teslaOffer:teslaOffer.map(c=>c.id),
     structureBonus:structureBonus?structureBonus.id:null,
@@ -418,6 +430,9 @@ export default function App(){
     let data=null;
     try{data=JSON.parse(localStorage.getItem('pa-save')||"null");}catch{data=null;}
     if(!data||!Array.isArray(data.players)||data.players.length===0)return;
+    // Plateaux d'atelier embarqués : réenregistrés AVANT de reconstruire les
+    // joueurs, sinon `matById` rendrait `undefined` sur le plateau de la partie.
+    if(Array.isArray(data.mats)&&data.mats.length>0)setForgedMats(adoptSavedMats(data.mats,forgedMats));
     loadMap(data.map);
     setEncounterTokens(new Set(data.encounterTokens||[]));
     // Pool de reshuffle : même verrou Tesla / mêmes cartes Chantier ferroviaire
@@ -463,7 +478,7 @@ export default function App(){
     setSelAction(null);setMoveSource(null);setTransportPick(null);setSelHex(null);
     setTurn(data.turn||1);setCurrentP(0);setPhase("playing");
     addLog(`💾 Partie reprise (tour ${data.turn||1})`);
-  },[addLog,campaignProgress]);
+  },[addLog,campaignProgress,forgedMats]);
 
   // Aperçu de la sauvegarde pour les écrans de setup et de campagne
   // (bouton « Reprendre »). `saveTick` force la relecture après un import.
@@ -636,6 +651,24 @@ export default function App(){
       setMapView({x,y,w:zw,h:zh});
     }
   },[selFaction,selMat,numBots,mapChoice,empireEnabled,difficulty,addLog,campaignProgress]);
+
+  // ── ATELIER : forger un plateau, l'adopter pour la partie ──
+  // La forge tire dans l'espace des configurations INÉDITES (data/matGen.js),
+  // enregistre le plateau auprès du moteur et le persiste — il reste ensuite
+  // choisissable sur l'écran d'accueil, à côté des six plateaux du jeu.
+  const forgeWorkshopMat=useCallback(()=>{
+    const res=forgeAndKeep(forgedMats);
+    if(!res)return;
+    setForgedMats(res.mats);setWorkshopMat(res.mat);
+  },[forgedMats]);
+
+  const adoptWorkshopMat=useCallback((mat)=>{
+    setSelMat(mat.id);setPhase("setup");
+    // L'atelier est un écran long : sans remise à zéro du défilement, on
+    // retombe sur l'accueil au milieu de la page, au-dessous du rappel qui
+    // annonce le plateau adopté.
+    try{window.scrollTo({top:0});}catch{/* environnement sans fenêtre */}
+  },[]);
 
   // Hex de base d'une faction, ou null pour l'Internationale Noire qui n'en
   // a pas : `retreatFromHex` bascule alors sur la réserve hors-plateau.
@@ -3153,7 +3186,14 @@ export default function App(){
 
   // ══════════ SETUP SCREEN ══════════
   if(phase==="setup"){
-    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} mapChoice={mapChoice} setMapChoice={setMapChoice} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={()=>startGame()} onShowRules={()=>setShowRules(true)} savedGame={savedGame} onResume={resumeSaved} onShowCampaign={()=>setPhase("campaign")} campaignProgress={campaignProgress} />;
+    return <SetupScreen selFaction={selFaction} setSelFaction={setSelFaction} selMat={selMat} setSelMat={setSelMat} numBots={numBots} setNumBots={setNumBots} mapChoice={mapChoice} setMapChoice={setMapChoice} difficulty={difficulty} setDifficulty={setDifficulty} empireEnabled={empireEnabled} setEmpireEnabled={setEmpireEnabled} startGame={()=>startGame()} onShowRules={()=>setShowRules(true)} savedGame={savedGame} onResume={resumeSaved} onShowCampaign={()=>setPhase("campaign")} campaignProgress={campaignProgress} workshopMats={forgedMats} onShowWorkshop={()=>setPhase("workshop")} />;
+  }
+
+  // ══════════ MODE ATELIER ══════════
+  if(phase==="workshop"){
+    return <WorkshopScreen mats={forgedMats} current={workshopMat}
+      onForge={forgeWorkshopMat} onSelect={setWorkshopMat}
+      onPlay={adoptWorkshopMat} onBack={()=>setPhase("setup")} />;
   }
 
   // ══════════ CAMPAIGN SCREEN ══════════
