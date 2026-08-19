@@ -137,8 +137,14 @@ export const campaignConfig = (chapter) => {
     faction: chapter?.faction || null,
     empireEnabled: !!v.empire,
     steel: !!v.steel,
-    // Tuile bonus FORCÉE (Ruée vers l'or au chapitre 3) — null = tirage normal
+    // Tuile bonus FORCÉE par le chapitre (« Cœur des Villages » au chapitre 3)
+    // — null = tirage normal
     bonusTile: v.bonusTile ? (STRUCTURE_BONUSES.find(b => b.id === v.bonusTile) || null) : null,
+    // « Contrat d'usine » (chapitre 3) : la faction du chapitre ne déploie
+    // aucun mecha tant que son héros n'a pas atteint Rouge River — elle n'a
+    // que des bricolages avant d'avoir traité. Le verrou est appliqué dans
+    // App.jsx (action Déployer) ; ici on ne fait que transporter le drapeau.
+    factoryContract: !!v.factoryContract,
     // « Le rail avance » (chapitre 1) : croissance automatique du réseau
     // impérial + patrouilles capables de l'emprunter (voir §3 plus bas).
     railGrowth: !!v.railGrowth,

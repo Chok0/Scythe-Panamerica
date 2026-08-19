@@ -601,7 +601,7 @@ export default function App(){
       usedFactions.push(availF[i]);usedMats.push(availM[i%availM.length]);
     }
     // 🏦 Tuile bonus de pose tirée aussi en partie de base (demande de partie
-    // réelle) — un chapitre peut l'IMPOSER (Ruée vers l'or, chapitre 3).
+    // réelle) — un chapitre peut l'IMPOSER (Cœur des Villages, chapitre 3).
     // Tirage restreint aux tuiles JOUABLES sur la carte tirée et à portée de
     // toutes les factions en jeu, et les hex éligibles sont désormais NOMMÉS
     // au journal : deux parties de suite, le bonus a rapporté 0$ à tout le
@@ -1537,10 +1537,20 @@ export default function App(){
   // gratuit — mais ne pose rien sur la carte.
   const stealsMechs=!!FACTIONS[me?.faction]?.stealMechs;
 
+  // ── Réglages du chapitre en cours (null hors campagne) ──────────────────
+  const chapterCfg=useMemo(()=>chapter?campaignConfig(chapter):null,[chapter]);
+  // « Contrat d'usine » (chapitre 3, Frente Libre) : tant que le héros n'a pas
+  // atteint Rouge River, la faction du chapitre n'a que des bricolages — elle
+  // ne DÉPLOIE pas. Signer le contrat, c'est arriver sur l'hex 22 (`visitedRR`,
+  // posé par le passage du héros à l'Usine). Ne concerne que la faction du
+  // chapitre : les bots achètent chez Ford comme d'habitude.
+  const deployLocked=!!chapterCfg?.factoryContract&&me?.faction===chapter?.faction&&!me?.visitedRR;
+
   const doDeploy=useCallback((targetHex,overrideRes)=>{
     // Garde de ré-entrée : le choix de capacité en cours = le Deploy de ce
     // tour est déjà fait (un 2e clic déployait un 2e mecha, bug mesuré en jeu)
     if(!me||pendingAbility)return;
+    if(deployLocked){addLog(`⚠ Contrat non signé : vos mechas ne sont que des bricolages. Menez votre héros jusqu'à l'Usine (hex 22) pour traiter avec Rouge River.`);return;}
     if(me.mechs.length>=4&&!stealsMechs)return;
     const costs=getBottomCost(me);
     const depCost=costs[1]; // Deploy is bottom col 1
@@ -1579,7 +1589,7 @@ export default function App(){
     if(me.mechs.length+1>=4)addLog(`⭐ 4 Mechas déployés !`);
     // Show ability picker — finishBottom will be called after player picks
     setPendingAbility({source:"deploy",col:1});
-  },[me,addLog,pendingAbility,stealsMechs,finishBottom]);
+  },[me,addLog,pendingAbility,stealsMechs,deployLocked,finishBottom]);
 
   const confirmAbility=useCallback((abilityIdx)=>{
     setPlayers(prev=>{
@@ -1969,7 +1979,7 @@ export default function App(){
     // mecha en sélectionnant un hex » (partie du 19/08) — un mecha ne
     // s'obtient QUE par le vol après un combat gagné (fiche §7). Plus aucune
     // cible : l'action se valide depuis le panneau.
-    if(pendingBottom.action==="Deploy"&&FACTIONS[me.faction]?.stealMechs)return none;
+    if(pendingBottom.action==="Deploy"&&(deployLocked||FACTIONS[me.faction]?.stealMechs))return none;
     if(pendingBottom.action==="Deploy"&&me.mechs.length<4){
       const bc=getBottomCost(me)[1];
       const qty=bc.qty;
@@ -1988,7 +1998,7 @@ export default function App(){
       return{type:"build",hexes:new Set(workerHexes.filter(h=>!built.has(h)))};
     }
     return none;
-  },[me,pendingBottom,bottomPick,pendingAbility,railPlacement,players]);
+  },[me,pendingBottom,bottomPick,pendingAbility,railPlacement,players,deployLocked]);
 
   // Automatic stars for the human player (bots handle these in botTurn)
   useEffect(()=>{
@@ -3453,8 +3463,8 @@ export default function App(){
 
   // L'Empire patrouille-t-il dans CETTE partie ? La case de l'écran
   // d'installation ne dit rien des parties de campagne : c'est le chapitre qui
-  // active les patrouilles (`campaignConfig`), sans jamais cocher la case.
-  const empirePatrols=empireEnabled||(chapter?!!campaignConfig(chapter).empireEnabled:false);
+  // active les patrouilles (`chapterCfg`), sans jamais cocher la case.
+  const empirePatrols=empireEnabled||!!chapterCfg?.empireEnabled;
 
   // Étoiles à obtenir (pour le joueur) : icône + nom + progression + exigence.
   // Utilisé par la rangée de la barre du haut ET le panneau détail façon Steam.
@@ -5343,6 +5353,12 @@ export default function App(){
                   </div>;
                 })()}
                 {ba==="Deploy"&&!maxed&&(()=>{
+                  // Contrat d'usine (chapitre 3) : rien à déployer avant d'avoir
+                  // traité avec Rouge River — le verrou se dit, il ne se devine pas.
+                  if(deployLocked)return <div style={{fontSize:13,color:"var(--text-dim)",lineHeight:1.55}}>
+                    🔒 <b>Contrat non signé.</b> La Frente n'aligne que des bricolages : châssis d'occasion et chaudières de locomotive, bons pour reprendre une hacienda, pas pour la tenir.
+                    Menez <b>{myFaction.hero}</b> jusqu'à l'<b>Usine (hex 22)</b> pour traiter avec Rouge River — l'action Déployer s'ouvre dès que le contrat est passé.
+                  </div>;
                   // Internationale Noire : rien à poser sur la carte. La colonne
                   // écoule des pièces détachées (coût payé, bonus $ encaissé) —
                   // les mechas s'arrachent au vaincu, jamais ici.

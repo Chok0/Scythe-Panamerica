@@ -142,27 +142,41 @@ export const CHAPTERS = [
   },
   {
     id: "ch3", num: 3, kind: "game", faction: "frente",
-    title: "L'éclatement",
+    title: "Les mauvais jours finiront",
     subtitle: "Frente Libre — E. Rojas & Trueno",
-    // « Ruée vers l'or » : la tuile bonus est FORCÉE au lieu d'être tirée.
-    // Terres Lointaines (1$/hex de distance à sa base) matérialise la curée
-    // sur les terres éloignées — l'accaparement, pas la simple exploitation.
-    variant: { empire: false, steel: false, bonusTile: "terres_lointaines",
-      label: "Ruée vers l'or : tuile bonus de pose FORCÉE sur « Terres Lointaines » — la curée sur les terres mexicaines par les latifundistes financés par le Consortium." },
+    // « Contrat d'usine » (19/08) : la Frente n'aligne que des bricolages —
+    // châssis d'occasion, chaudières de locomotive, pièces volées aux mines.
+    // L'action Déployer reste FERMÉE tant que son héros n'a pas atteint
+    // Rouge River (hex 22) : c'est là qu'elle traite, et pas avant. Le
+    // verrou vit dans App.jsx (`factoryContract`), la condition canon vient
+    // ensuite chercher le même hex — signer, puis tenir.
+    // La tuile bonus est FORCÉE sur « Cœur des Villages » : la richesse de
+    // ces terres, ce sont les villages qui la font, et c'est là que la
+    // Frente doit aller la chercher pour payer Ford comptant.
+    // (Remplace la « Ruée vers l'or » — tuile Terres Lointaines forcée —
+    // retirée avec les jetons $ du terrain le 19/08.)
+    variant: { empire: false, steel: false, bonusTile: "villages", factoryContract: true,
+      label: "Contrat d'usine : la Frente ne DÉPLOIE aucun mecha tant que Rojas n'a pas mené son héros jusqu'à Rouge River (hex 22) — avant ça, elle n'a que des bricolages. Tuile bonus de pose FORCÉE sur « Cœur des Villages » : la terre reprise ne vaut que par les villages qui la travaillent." },
     before: [
-      "L'Empire n'est pas né au Mexique, mais il s'y est étendu une génération après sa fondation : concessions minières et ferroviaires « exclusives, continent entier », qui ont dépossédé des générations avant même que Zapata prenne les armes.",
-      "La nouvelle du régicide vient d'atteindre le Morelos.",
+      "L'Empire n'est pas né au Mexique : il s'y est étendu une génération après sa fondation. Concessions minières et ferroviaires « exclusives, continent entier », haciendas signées à des propriétaires américains qui avaient financé le trône — et des villages entiers devenus métayers sur la terre de leurs grands-parents, avant même que Zapata prenne les armes.",
+      "Ce que l'Empire laisse derrière lui n'est pas une province pauvre : c'est un pays méthodiquement vidé. Les récoltes partent vers le nord, les titres de propriété sont rédigés dans une langue que personne ne parle au Morelos, et la misère n'est pas un accident de l'occupation — c'en est le produit fini.",
+      "La nouvelle du régicide met trois semaines à monter jusqu'aux sierras. Elle n'y provoque ni deuil ni surprise : seulement la fin d'une attente. E. Rojas ne lève pas une armée, il rend les terres à ceux qui les travaillent et laisse chacun décider du reste. Ceux qui se mettent en travers apprennent ce qu'est une guérilla — les latifundistes, leurs gardes, et les colonnes qui viendront les venger.",
+      "Reste que la Frente n'a jamais possédé un seul vrai mecha. Elle a des bricolages : châssis d'occasion, chaudières de locomotive, tôle rivetée sur des pièces volées aux mines. Ça suffit pour reprendre une hacienda. Pas pour la garder.",
     ],
-    canon: canon("Terre Libérée", [
-      compte("pièges posés", p => (p.trapTokens || []).length, 4),
-      compte("ouvriers sur Sierras/Déserts", p => (p.workers || []).filter(w => {
-        const t = hMap[w.hexId]?.t; return t === "sierra" || t === "desert";
-      }).length, 2),
+    // Signer, puis tenir. Les trois membres tirent la faction du sud vers le
+    // centre : ses deux champs sont à un pas de sa base, l'Usine à quatre, et
+    // les pièces ne s'accumulent que si les terres reprises restent tenues.
+    canon: canon("Tierra y Libertad", [
+      jalon("Usine (hex 22) contrôlée", (p, ctx) => controlsFactory(p, ctx)),
+      compte("terres agricoles tenues (Champs ou Plaine)", (p, ctx) => hexOfTerrain(p, ctx, ["champs", "plaine"]), 3),
+      compte("pièces en caisse (plus de 10$)", p => p.coins || 0, 11),
     ]),
     unlock: "amplificateur",
     after: [
-      "Rojas et Zapata ne sont plus seuls : ce n'est plus une révolte régionale, c'est la première étincelle visible de la Seconde Guerre Civile qui embrase déjà tout le continent.",
-      "Panamerica n'a pas de « centre » géographique unique. L'Empire est un système d'extraction, pas un territoire — et il se défait par tous les bouts à la fois.",
+      "Une terre reprise ne se défend pas avec des bricolages. Rojas mène ses colonnes jusqu'aux grilles de Rouge River et traite — non pas avec la garnison loyaliste qui tient l'usine fermée, mais avec Ford lui-même, chassé de sa propre chaîne et assis sur des stocks qu'aucun trône ne lui achète plus. Prix en argent comptant, livraison hors les murs, aucune signature. La Frente repart avec ses premiers mechas de série.",
+      "Ford, lui, vient d'apprendre quelque chose qu'il n'oubliera pas : un insurgé paie comptant, et il revient. Ce calcul-là — pas la libération de son usine — est ce qui rouvrira un jour le Catalogue au continent entier.",
+      "Rojas et Zapata ne sont plus seuls : ce n'est plus une révolte régionale, c'est la première étincelle visible de la Seconde Guerre Civile qui embrase déjà tout le continent. Panamerica n'a pas de « centre » géographique unique — l'Empire est un système d'extraction, pas un territoire, et il se défait par tous les bouts à la fois.",
+      "Dans les villages repris, on chante un air arrivé du nord par les journaux clandestins, traduit de travers et repris quand même : les mauvais jours finiront. Personne ne demande quand.",
     ],
   },
   {

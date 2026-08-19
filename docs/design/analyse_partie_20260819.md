@@ -232,6 +232,11 @@ non plus : la tuile se lit sur la tuile.
 > vrais jetons de cash **posés sur la carte et ramassables** au chapitre 3,
 > c'est une mécanique à écrire — rien de tel n'existe aujourd'hui, la variante
 > se limite à forcer la tuile bonus.
+>
+> *Mise à jour du 19/08 (même soirée)* : la question est close du côté du
+> chapitre 3 — il a été réécrit (« Les mauvais jours finiront ») et ne porte
+> plus de ruée vers l'or du tout. Sa variante est le **Contrat d'usine**, sa
+> tuile forcée **Cœur des Villages** (docs/campagne.md).
 
 ---
 

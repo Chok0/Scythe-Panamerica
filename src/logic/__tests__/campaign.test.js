@@ -233,8 +233,13 @@ describe('configuration de partie', () => {
   it('les variantes se traduisent en réglages de partie', () => {
     expect(campaignConfig(chapterById('ch1'))).toMatchObject({ faction: 'nations', empireEnabled: true, steel: false, bonusTile: null, railGrowth: true });
     expect(campaignConfig(chapterById('ch6'))).toMatchObject({ faction: 'dominion', empireEnabled: false, steel: true, railGrowth: false });
-    // Ruée vers l'or : tuile forcée, pas tirée
-    expect(campaignConfig(chapterById('ch3')).bonusTile.id).toBe('terres_lointaines');
+    // Chapitre 3 : tuile FORCÉE sur les villages, et contrat d'usine armé
+    // (la Frente ne déploie pas avant d'avoir traité avec Rouge River)
+    expect(campaignConfig(chapterById('ch3'))).toMatchObject({ faction: 'frente', empireEnabled: false, factoryContract: true });
+    expect(campaignConfig(chapterById('ch3')).bonusTile.id).toBe('villages');
+    // Le contrat ne concerne que le chapitre 3
+    CHAPTERS.filter(c => c.id !== 'ch3').forEach(c =>
+      expect(campaignConfig(c).factoryContract, c.id).toBe(false));
   });
 });
 
@@ -283,6 +288,52 @@ describe('conditions canon décomposées en membres', () => {
     expect(c.canon.check(p, {})).toBe(false);
   });
 
+  // Chapitre 3 réécrit le 19/08 : « Tierra y Libertad » — signer avec l'usine,
+  // tenir la terre reprise, et avoir de quoi payer Ford comptant.
+  it('chapitre 3 : Usine + 3 terres agricoles + plus de 10$, les trois ensemble', () => {
+    const c = chapterById('ch3');
+    const p = createPlayer('frente', 1, false);
+    const [usine, terres, pieces] = c.canon.parts;
+    p.hero = FACTORY_HEX;                                   // l'Usine, tenue
+    p.workers = [41, 38, 26].map((h, i) => ({ id: `w${i}`, hexId: h })); // 2 champs + 1 plaine
+    p.coins = 11;                                           // « plus de 10$ »
+    expect(partProgress(usine, p, {})).toBe('✓');
+    expect(partProgress(terres, p, {})).toBe('3/3');
+    expect(partProgress(pieces, p, {})).toBe('11/11');
+    expect(c.canon.check(p, {})).toBe(true);
+
+    // 10$ ne suffit pas : la condition dit PLUS de 10
+    p.coins = 10;
+    expect(partMet(pieces, p, {})).toBe(false);
+    expect(c.canon.check(p, {})).toBe(false);
+    p.coins = 11;
+
+    // Lâcher l'Usine, ou une terre, retombe aussi
+    p.hero = 29;
+    expect(c.canon.check(p, {})).toBe(false);
+    p.hero = FACTORY_HEX;
+    p.workers = p.workers.slice(0, 2);
+    expect(partProgress(terres, p, {})).toBe('2/3');
+    expect(c.canon.check(p, {})).toBe(false);
+  });
+
+  it('chapitre 3 : seules les terres NOURRICIÈRES comptent, et seulement si tenues', () => {
+    const c = chapterById('ch3');
+    const [, terres] = c.canon.parts;
+    const p = createPlayer('frente', 1, false);
+    // Sierra, désert, village : la faction y vit, mais ce ne sont pas des terres agricoles
+    p.workers = [45, 40, 46].map((h, i) => ({ id: `w${i}`, hexId: h }));
+    p.hero = 32;
+    expect(partProgress(terres, p, {})).toBe('0/3');
+    // Un ennemi campé sur un champ le conteste : le piège ne le tient plus
+    const rival = createPlayer('dominion', 2, true);
+    rival.hero = 38;
+    p.workers = [{ id: 'w0', hexId: 41 }];
+    p.trapTokens = [{ hexId: 38, disarmed: false }, { hexId: 26, disarmed: false }];
+    expect(partProgress(terres, p, { players: [p, rival] })).toBe('2/3');
+    expect(partProgress(terres, p, { players: [p] })).toBe('3/3');
+  });
+
   it('la progression par membre reflète l\'état réel (le bug du 01/08)', () => {
     // Position exacte du joueur au tour 17 : patrouilles faites, hex à 2/4.
     const c = chapterById('ch1');
@@ -299,11 +350,13 @@ describe('conditions canon décomposées en membres', () => {
     expect(c.canon.check(p, {})).toBe(false);        // le moteur avait raison
   });
 
-  // GARDE-FOU : les conditions canon reprennent les objectifs de faction.
+  // GARDE-FOU : les conditions canon qui REPRENNENT un objectif de faction.
   // Si un seuil bouge dans factions.js sans être répercuté ici, ce test tombe.
+  // (Le chapitre 3 est sorti de cette liste le 19/08 : « Tierra y Libertad »
+  // ne dérive plus de « Terre Libérée » — l'objectif de faction reste jouable
+  // comme étoile, mais le chapitre demande autre chose.)
   it('reste d\'accord avec les objectifs de faction dont elle dérive', () => {
     const cases = [
-      ['ch3', 'frente', p => { p.trapTokens = [1, 2, 3, 4].map(i => ({ hexId: i })); p.workers = [{ id: 'a', hexId: 32 }, { id: 'b', hexId: 23 }]; }],
       ['ch5', 'bayou', p => { p.capturedMech = 1; p.empireKills = 1; p.combatWins = 1; }],
       ['ch6', 'dominion', p => { p.imperialCoins = 20; }],
     ];

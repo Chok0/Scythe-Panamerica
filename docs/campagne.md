@@ -73,7 +73,7 @@ En **campagne**, deux crans distincts, chacun un cran du récit :
 | Cran | Déclencheur | Contenu ouvert |
 |---|---|---|
 | Ch. 1-2 | — | Rien. Rumeurs seulement. Usine : plans Ford (F1-F5) uniquement. |
-| Ch. 3 | Condition canon remplie (*Amplificateur*) | Les cartes rencontre à fragments Tesla rejoignent le deck — premier contact avec les reliques de Wardenclyffe. |
+| Ch. 3 | Condition canon remplie — *Tierra y Libertad* (*Amplificateur*) | Les cartes rencontre à fragments Tesla rejoignent le deck — premier contact avec les reliques de Wardenclyffe. |
 | Ch. 4 | Prise de Rouge River (condition canon) | Le coffre s'ouvre : les plans T1-T5 rejoignent l'offre de l'Usine pour tous les chapitres suivants. |
 | Fin de campagne | À définir | Le Golem — hors périmètre pour l'instant (voir Legs ci-dessous). |
 
@@ -328,28 +328,67 @@ patrouilles impériales détruites pour percer le cordon.*
   locales simultanées. Washington se retranche sur son noyau et sur Rouge
   River, tenue par une garnison loyaliste.
 
-### Chapitre 3 — Frente Libre (E. Rojas & Trueno) — l'éclatement
+### Chapitre 3 — Frente Libre (E. Rojas & Trueno) — « Les mauvais jours finiront »
 
-- **Histoire donnée avant** : l'Empire n'est pas né au Mexique, mais il s'y
-  est étendu une génération après sa fondation — concessions minières et
-  ferroviaires « exclusives, continent entier » qui ont dépossédé des
-  générations avant même que Zapata prenne les armes. La nouvelle du
-  régicide vient d'atteindre le Morelos.
-- **Variante de jeu** : **Ruée vers l'or** (`structureBonus.js`, tuile bonus
-  $ tirée en début de partie) — la course aux gisements symbolise la curée
-  sur les terres mexicaines par les latifundistes financés par le
-  Consortium. Déblocage de l'**Amplificateur** (bâtiment bonus) en cas de
-  victoire sur l'objectif de faction — ironie du fragment tesla qui produit
-  librement ce que l'Empire n'a jamais cessé d'aller extraire par la force.
-- **Condition canon** : *Terre Libérée* — l'objectif de faction déjà codé
-  (4 pièges posés + 2 ouvriers sur Sierras/Déserts) : la révolte s'enracine
-  sur ses propres terres avant de regarder ailleurs.
-- **Histoire donnée après** : Rojas et Zapata ne sont plus seuls — ce n'est
-  plus une révolte régionale, c'est la **première étincelle visible** de la
-  Seconde Guerre Civile qui embrase déjà tout le continent. Le joueur
-  comprend que Panamerica n'a pas de « centre » géographique unique : l'Empire
-  est un système d'extraction, pas un territoire, et il se défait par tous
-  les bouts à la fois.
+*(réécrit le 19 août 2026 — remplace « l'éclatement » et sa Ruée vers l'or)*
+
+- **Histoire donnée avant** : l'Empire n'est pas né au Mexique, il s'y est
+  étendu une génération après sa fondation — concessions « exclusives,
+  continent entier », haciendas signées à des propriétaires **américains**
+  qui avaient financé le trône, villages entiers devenus métayers sur la
+  terre de leurs grands-parents, avant même que Zapata prenne les armes. Ce
+  que l'Empire laisse derrière lui n'est pas une province pauvre : c'est un
+  pays méthodiquement vidé, où la misère est le produit fini de l'occupation.
+  La nouvelle du régicide met trois semaines à monter jusqu'aux sierras —
+  elle n'y provoque ni deuil ni surprise, seulement la fin d'une attente.
+  **E. Rojas** rend les terres à ceux qui les travaillent et mène la
+  guérilla contre quiconque se met en travers. Mais la Frente n'a jamais
+  possédé un seul vrai mecha : des bricolages, bons pour reprendre une
+  hacienda, pas pour la garder.
+- **Variante de jeu** : **Contrat d'usine** (`variant.factoryContract`,
+  verrou appliqué dans `App.jsx`) — l'action **Déployer est fermée** tant que
+  le héros n'a pas atteint **Rouge River (hex 22)**. Signer, c'est y aller.
+  Une fois le contrat passé (`visitedRR`), la Frente déploie comme tout le
+  monde. Les mechas gagnés autrement (rencontre, carte d'usine) restent
+  possibles : ce sont précisément des bricolages. **Tuile bonus de pose
+  FORCÉE** sur **Cœur des Villages** (`villages`) : la terre reprise ne vaut
+  que par les villages qui la travaillent — et c'est là que se trouve
+  l'argent qu'il faudra poser sur la table. Déblocage de l'**Amplificateur**
+  (legs) sur la voie canon.
+  > **Tempo mesuré sur la carte v3** : la base de la Frente (#901) est à
+  > **4 hex** de l'Usine, et sans mecha le héros avance d'un hex par action
+  > Déplacer — le contrat coûte donc environ **quatre tours**, pendant
+  > lesquels Tierra Minada pose ses pièges sur le trajet. C'est le prix
+  > d'entrée du chapitre ; à revoir si le playtest le trouve trop lourd (le
+  > verrou peut s'ouvrir sur l'ADJACENCE à l'hex 22 plutôt que sur la visite).
+  > Départ favorable en revanche : ses ouvriers commencent sur **#41**, un
+  > Champs — une des trois terres agricoles est acquise dès l'installation.
+- **Condition canon** : *Tierra y Libertad* — **l'Usine (hex 22) contrôlée**
+  ET **3 terres agricoles tenues** (Champs ou Plaine) ET **plus de 10 $ en
+  caisse** (11 pièces). Signer avec l'usine, tenir la terre reprise, et avoir
+  de quoi payer Ford comptant — les trois **au même moment**, la partie
+  s'arrêtant à l'instant où c'est vrai.
+  > ⚠ **Lecture assumée de « 3 champs »** : la carte v3 ne porte que **deux**
+  > hex Champs (#38, #41) — exiger trois *champs* stricts rendait le chapitre
+  > inachevable. Le membre compte donc les hex **nourriciers** : Champs (2) et
+  > Plaine (4), soit six candidats. Pour revenir à la lettre, il faudrait
+  > ajouter un troisième Champs à `hexes.js` — ce qui touche toutes les autres
+  > parties, l'objectif de faction de la Frente ayant déjà souffert d'un
+  > échange de terrain (`factions.js`, v0.15).
+- **Histoire donnée après** : une terre reprise ne se défend pas avec des
+  bricolages. Rojas mène ses colonnes aux grilles de Rouge River et traite —
+  non pas avec la garnison loyaliste qui tient l'usine fermée (chapitre 4),
+  mais avec **Ford lui-même**, chassé de sa propre chaîne et assis sur des
+  stocks qu'aucun trône ne lui achète plus : prix en argent comptant,
+  livraison hors les murs, aucune signature. Ford y apprend ce qu'il
+  n'oubliera pas — **un insurgé paie comptant, et il revient** ; c'est ce
+  calcul, pas la libération de son usine, qui rouvrira le Catalogue au
+  continent entier. Rojas et Zapata ne sont plus seuls : ce n'est plus une
+  révolte régionale, c'est la **première étincelle visible** de la Seconde
+  Guerre Civile. Panamerica n'a pas de « centre » géographique unique —
+  l'Empire est un système d'extraction, pas un territoire, et il se défait
+  par tous les bouts à la fois. Dans les villages repris, on chante un air
+  arrivé du nord par les journaux clandestins : *les mauvais jours finiront*.
 
 ### Chapitre 4 — Confédération (J. Cole & Dixie) — la libération de Ford
 
@@ -539,10 +578,13 @@ actif dès le lancement du chapitre, sans effet en partie libre.
 - **Chapitre validé = fin de partie déclenchée par le joueur** (condition canon
   remplie, ou ses propres 6 étoiles). Un bot qui atteint 6 étoiles le premier
   met fin à la partie et le chapitre est manqué — rejouable.
-- **Ruée vers l'or (chapitre 3)** = tuile bonus **Terres Lointaines** forcée au
-  lieu du tirage (1$ par hex de distance à sa base : l'accaparement des terres
-  éloignées). À rebasculer sur `monts_forets` en changeant un seul id si la
-  lecture « gisements miniers » l'emporte.
+- **Contrat d'usine (chapitre 3)** = l'action Déployer reste **fermée** pour la
+  faction du chapitre tant que son héros n'a pas atteint Rouge River (hex 22).
+  Un seul drapeau (`variant.factoryContract`), transporté par `campaignConfig`
+  et appliqué dans `App.jsx` (`deployLocked` : garde de `doDeploy`, aucune
+  cible sur la carte, message dans le panneau). Ne touche ni les bots ni les
+  autres chapitres. La **tuile bonus** y est forcée sur **Cœur des Villages**
+  — même mécanisme que l'ancienne Ruée vers l'or, un seul id à changer.
 - **Acier Brut** : Rouge River fabrique 1 métal par tour ; tant que personne ne
   tient l'Usine **seul**, la pile monte, et le premier arrivé la ramasse
   ENTIÈRE (contestée, elle ne part pas). Le métal atterrit sur l'hex 22 — il ne
