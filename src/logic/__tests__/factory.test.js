@@ -125,6 +125,19 @@ describe('faisabilité des gains', () => {
     expect(factoryEffectPossible(p, { type: 'resources', qty: 2 })).toBe(false);
   });
 
+  // 19/08 : « un mecha n'est déployable que par une victoire en combat ».
+  // L'usine ne fait pas exception — le gain est passé, et un « mecha OU
+  // bâtiment » ne laisse que le bâtiment.
+  it('mech impossible pour une faction qui VOLE ses mechas (Internationale)', () => {
+    const p = createPlayer('internationale', 200, false);
+    p.workers = [{ id: 'w', hexId: 20 }];
+    expect(factoryEffectPossible(p, { type: 'mech' })).toBe(false);
+    expect(factoryEffectPossible(p, { type: 'choice', options: [{ type: 'mech' }, { type: 'building' }] })).toBe(true);
+    expect(factoryEffectPossible(p, { type: 'choice', options: [{ type: 'mech' }] })).toBe(false);
+    // Le reste du roster n'est pas touché
+    expect(factoryEffectPossible(mkPlayer(), { type: 'mech' })).toBe(true);
+  });
+
   it('upgrade impossible une fois les 6 améliorations faites', () => {
     const p = mkPlayer();
     p.upgrades = 6;

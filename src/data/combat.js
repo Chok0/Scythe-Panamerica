@@ -53,6 +53,18 @@ export const COMBAT_ABILITIES = {
   },
 };
 
+// ── Qui l'emporte ? ───────────────────────────────────────────────────────
+// « Le joueur ayant le score le plus élevé remporte le combat (les égalités
+// sont remportées par le joueur ATTAQUANT) » — règles du jeu original, p. 22.
+// Point de vérité unique : la règle était recopiée à trois endroits dans
+// resolveCombat (PvE, défense PvP, attaque PvP) et l'une des trois l'avait
+// perdue — contre l'Empire, les deux branches du ternaire étaient identiques
+// et le joueur remportait les égalités MÊME en défense (partie du 19/08 :
+// « on a fait égalité sur la puissance, il aurait dû gagner »).
+/** @param isDefender vrai quand c'est l'ADVERSAIRE qui attaque. */
+export const playerWinsCombat = (playerTotal, enemyTotal, isDefender) =>
+  isDefender ? playerTotal > enemyTotal : playerTotal >= enemyTotal;
+
 // ── Unités COMBATTANTES sur un hex ────────────────────────────────────────
 // Règle générale : seuls le héros et les mechas comptent — chacun autorise
 // une carte de combat. Dérogation de l'Internationale Noire (fiche §5) : ses

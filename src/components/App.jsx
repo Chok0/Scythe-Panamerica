@@ -6,7 +6,7 @@ import { TERRAINS } from '../data/terrains.js';
 import { FACTIONS, FACTION_IDS, uiInk } from '../data/factions.js';
 import { HEXES, RIVERS, HOME_BASES, hMap, ADJ, hasR, CURRENT_MAP, DEFAULT_MAP, CLASSIC_V2_MAP, loadMap, baseHexAt, homeBaseHex, isBaseHex, allBaseHexes, factionBaseHexes } from '../data/hexes.js';
 import { generateAcceptedMap } from '../data/mapGen.js';
-import { getCombatBonus, combatUnitCount, isCombatUnit } from '../data/combat.js';
+import { getCombatBonus, combatUnitCount, isCombatUnit, playerWinsCombat } from '../data/combat.js';
 import { BALANCE } from '../data/balance.js';
 import { EMPIRE_START, EMPIRE_RAILS, EMPIRE_RAIL_CHANCE, EMPIRE_HUNT_CHANCE, drawEmpireCombat, empirePowerRange } from '../data/empire.js';
 import { ENCOUNTERS, ALL_ENCOUNTERS } from '../data/encounters.js';
@@ -40,7 +40,7 @@ import { playSfx, sfxForLog } from '../logic/sfx.js';
 import { HexTerrain, UnitToken, EmpireMecha, ResourceToken, FactionHalo, TerrainResBadge } from './svg/MapComponents.jsx';
 import { layoutUnits, layoutStrip, halfWidthAt, STRIP_TOP_Y, STRIP_BOTTOM_Y } from '../logic/hexLayout.js';
 import { ActionRow, ActionSquare, CubeSlots, UpgradeSlot, GhostSquare, BuildingSlot, RecruitSlot, ProduceTrack, RESOURCE_ICONS, BUILDING_ICONS, Glyph } from './svg/ActionIcons.jsx';
-import { getMechAbilities } from '../data/mechAbilities.js';
+import { getMechAbilities, stealableSlots, positionFactionOf } from '../data/mechAbilities.js';
 import { EmblemInternationale, FactionCrest } from './svg/FactionIcons.jsx';
 import { FACTION_LOGOS, FACTION_ART } from '../assets/factions/index.js';
 import { TERRAIN_TEXTURES, TERRAIN_TILE } from '../assets/terrains/index.js';
@@ -609,9 +609,12 @@ export default function App(){
     const sb=cfg?.bonusTile||pickStructureBonus(ps.map(p=>p.faction));
     setStructureBonus(sb);
     addLog(`🏦 Bonus de pose : ${sb.icon} ${sb.name} — ${sb.scale} ${sb.desc}${cfg?.bonusTile?" (imposé par le chapitre)":""}`);
+    // Les hex éligibles sont NOMMÉS au journal (deux parties de suite, le
+    // bonus avait rapporté 0$ à tout le monde sans que personne ne sache ce
+    // qu'il fallait viser) — mais plus rien ne les marque sur le terrain.
     const eligible=eligibleHexes(sb);
     addLog(eligible.length>0
-      ?`🏦 ${eligible.length} hex éligibles (badge 💲 sur la carte) : ${eligible.map(h=>`#${h}`).join(" ")}`
+      ?`🏦 ${eligible.length} hex éligibles : ${eligible.map(h=>`#${h}`).join(" ")}`
       :`🏦 Aucun hex prédéterminé : la tuile se juge sur la disposition de vos bâtiments`);
     const shuffled=shuffleArray(OBJECTIVES);
     ps.forEach((p,i)=>{
@@ -1488,29 +1491,43 @@ export default function App(){
     return true;
   },[me]);
 
+  // `slot` : un numéro de slot à arracher · `"nu"` = relever le mecha SANS
+  // capacité (quand la victime n'a plus rien que le réseau ne possède déjà) ·
+  // `null` = laisser la carcasse.
   const confirmSteal=useCallback((slot)=>{
     const o=stealOffer;if(!o||!me)return;
     setStealOffer(null);
     const fname=o.fromFaction==="empire"?"impérial":FACTIONS[o.fromFaction]?.name||o.fromFaction;
     if(slot==null){addLog(`⚙ Mecha ${fname} laissé à la ferraille — le réseau n'en fait rien`);return;}
+    const bare=slot==="nu";
+    // Garde autoritaire : une capacité que le réseau tient DÉJÀ ne se rearrache
+    // pas (la modale la grise, cette ligne la refuse pour de bon) — sinon le
+    // mecha se relevait nu en croyant gagner un pouvoir (partie du 19/08).
+    if(!bare&&!stealableSlots(o.fromFaction,me).some(s=>s.slot===slot&&!s.owned)){
+      addLog(`⚠ Capacité déjà au réseau — rien de neuf à arracher sur ce mecha`);return;
+    }
     const dep=getBottomCost(me)[1];
     if(countRes(me,dep.res)<dep.qty){addLog(`⚠ Vol impossible : ${dep.qty} ${resFR(dep.res)} requis pour le relever`);return;}
-    const stolen=getMechAbilities(o.fromFaction)[slot];
+    const stolen=bare?null:getMechAbilities(o.fromFaction)[slot];
     setPlayers(prev=>{
       const n=[...prev];
       let p=spendRes(n[0],dep.res,dep.qty);
       p={...p,mechs:[...p.mechs,{id:`${p.faction}_vol${(p.capturedMech||0)+1}`,hexId:o.hexId}]};
       p.capturedMech=(p.capturedMech||0)+1;
-      if(!(p.unlockedAbilities||[]).includes(slot))p.unlockedAbilities=[...(p.unlockedAbilities||[]),slot];
-      // Provenance de la capacité volée : le mecha capturé apporte celle de
-      // SA faction. Un nouveau vol REMPLACE la précédente (le patchwork se
-      // refait) — c'est ce qui garde un vrai choix à la 4e capture.
-      if(slot===2)p.stolenCombat=o.fromFaction;
-      if(slot===3)p.stolenPosition=o.fromFaction;
+      if(!bare){
+        if(!(p.unlockedAbilities||[]).includes(slot))p.unlockedAbilities=[...(p.unlockedAbilities||[]),slot];
+        // Provenance de la capacité volée : le mecha capturé apporte celle de
+        // SA faction. Un nouveau vol REMPLACE la précédente (le patchwork se
+        // refait) — c'est ce qui garde un vrai choix à la 4e capture.
+        if(slot===2)p.stolenCombat=o.fromFaction;
+        if(slot===3)p.stolenPosition=o.fromFaction;
+      }
       if(p.mechs.length>=4&&!p.starMechs){p.stars++;p.starMechs=true;}
       n[0]=p;return n;
     });
-    addLog(`🔧 Mecha ${fname} retourné sur #${o.hexId} (-${dep.qty} ${resFR(dep.res)}) — capacité arrachée : ${stolen?.icon||""} ${stolen?.name||"?"}`);
+    addLog(bare
+      ?`🔧 Mecha ${fname} retourné sur #${o.hexId} (-${dep.qty} ${resFR(dep.res)}) — carcasse nue : rien à arracher que le réseau n'ait déjà`
+      :`🔧 Mecha ${fname} retourné sur #${o.hexId} (-${dep.qty} ${resFR(dep.res)}) — capacité arrachée : ${stolen?.icon||""} ${stolen?.name||"?"}`);
     if(me.mechs.length+1>=4)addLog(`⭐ 4 mechas volés — l'arsenal du réseau est complet !`);
   },[stealOffer,me,addLog]);
 
@@ -1616,7 +1633,10 @@ export default function App(){
 
   // ── PACK UP (Nations slot 3 — free building move during Move action) ──
   const doPackUpMove=useCallback((buildingIdx,targetHex)=>{
-    if(!me||me.faction!=="nations")return;
+    // `positionFactionOf` et non `me.faction` : l'Internationale Noire peut
+    // ARRACHER ce slot 3 aux Nations. Il ne faisait alors strictement rien —
+    // le vol lui coûtait un mecha pour une capacité morte.
+    if(!me||positionFactionOf(me)!=="nations")return;
     if(!(me.unlockedAbilities||[]).includes(3))return;
     if(me.packUpUsed)return; // 1 per Move action
     const bld=(me.buildings||[])[buildingIdx];
@@ -1943,9 +1963,14 @@ export default function App(){
     // (double mecha observé en partie réelle, une seule capacité débloquée)
     if(!me||!pendingBottom||pendingAbility||railPlacement)return none;
     const workerHexes=getWorkerHexes(me);
-    // L'Internationale Noire ne pose pas de mecha : sa colonne Deploy reste
-    // une conversion métal → pièces, jouable même avec 4 mechas volés.
-    if(pendingBottom.action==="Deploy"&&(me.mechs.length<4||FACTIONS[me.faction]?.stealMechs)){
+    // L'Internationale Noire ne DÉPLOIE pas : sa colonne Deploy est une
+    // conversion métal → pièces, sans rien à poser sur la carte. Elle
+    // surlignait pourtant les hex d'ouvriers et proposait de « déployer un
+    // mecha en sélectionnant un hex » (partie du 19/08) — un mecha ne
+    // s'obtient QUE par le vol après un combat gagné (fiche §7). Plus aucune
+    // cible : l'action se valide depuis le panneau.
+    if(pendingBottom.action==="Deploy"&&FACTIONS[me.faction]?.stealMechs)return none;
+    if(pendingBottom.action==="Deploy"&&me.mechs.length<4){
       const bc=getBottomCost(me)[1];
       const qty=bc.qty;
       const deployAlt=FACTIONS[me.faction]?.deployAltRes;
@@ -2496,7 +2521,7 @@ export default function App(){
       const attacker=players[atkIdx];const af=FACTIONS[attacker.faction];
       const atkCB=getCombatBonus(attacker,combat.hexId,true,me.combatCards);
       const attackerTotal=combat.botSpend+atkCB.powerBonus+(combat.botCards*2);
-      const win=playerTotal>attackerTotal; // l'attaquant remporte les égalités
+      const win=playerWinsCombat(playerTotal,attackerTotal,true); // l'attaquant remporte les égalités
       addLog(`⚔ ${af.name}: ${attackerTotal} (${combat.botSpend}⚡+${combat.botCards}🃏) vs vous: ${playerTotal} (${combat.powerSpend}⚡+${combat.cardsSpend}🃏)`);
       setCombatReveal({
         title:`Défense de #${combat.hexId}`,
@@ -2564,8 +2589,9 @@ export default function App(){
     if(combat.type==="pve"){
       const empireTotal=combat.empireCard.power;
       const hbIdPve=retreatBaseFor(me.faction,combat.hexId);
-      // Attacker wins ties when player attacks; defender (player) wins ties when Empire attacks
-      const win=isDefender?playerTotal>=empireTotal:playerTotal>=empireTotal;
+      // L'attaquant remporte les égalités (data/combat.js) : quand l'Empire
+      // attaque, il faut STRICTEMENT plus que lui.
+      const win=playerWinsCombat(playerTotal,empireTotal,isDefender);
       // Spend resources
       setPlayers(prev=>{
         const n=[...prev];const p={...n[0]};
@@ -2676,7 +2702,7 @@ export default function App(){
       const botPower=botFold?0:Math.min(Math.floor(enemy.power*0.6),7,enemy.power);
       const botCards=botFold?0:Math.min(enemy.combatCards,botCardSlots);
       const enemyTotal=botPower+enemyCBonus.powerBonus+(botCards*2);
-      const win=playerTotal>=enemyTotal; // attacker wins ties
+      const win=playerWinsCombat(playerTotal,enemyTotal,false); // l'attaquant remporte les égalités
       if(botFold)addLog(`🫱 ${ef.name} ne mise rien (dominé en visible — munitions gardées)`);
       
       let bonusLog="";
@@ -3261,6 +3287,10 @@ export default function App(){
           etoiles:s.stars,pop:s.pop,palier_pop:["0-6","7-12","13-18"][s.popTier],
           territoires:s.territories,bonus_usine:s.factoryBonus,comptoirs:s.flagBonus,
           ressources:s.totalRes,paires:s.resPairs,argent:s.coins,bonus_pose:s.sbCoins,
+          // `comptoirs` compte les territoires gagnés, `comptoirs_argent` les
+          // 2$ par comptoir : sans lui, le total exporté ne se recalculait pas
+          // depuis les colonnes (journal du 19/08, Acadiane à 21 pour 19).
+          comptoirs_argent:s.flagCoins,
           detail:{etoiles:s.starScore,territoires:s.terScore,ressources:s.resScore},
         })),
         journal:log.map(e=>({tour:e.turn,etape:e.step,cat:e.cat,ts:e.ts,msg:e.msg})),
@@ -3421,22 +3451,39 @@ export default function App(){
   const FR_TOP=FR_TOP_MAP;
   const FR_BOT=FR_BOT_MAP;
 
+  // L'Empire patrouille-t-il dans CETTE partie ? La case de l'écran
+  // d'installation ne dit rien des parties de campagne : c'est le chapitre qui
+  // active les patrouilles (`campaignConfig`), sans jamais cocher la case.
+  const empirePatrols=empireEnabled||(chapter?!!campaignConfig(chapter).empireEnabled:false);
+
   // Étoiles à obtenir (pour le joueur) : icône + nom + progression + exigence.
   // Utilisé par la rangée de la barre du haut ET le panneau détail façon Steam.
   const starList=[
     {key:"upg",icon:"⬆",name:"6 Améliorations",done:(me.upgrades||0)>=6,prog:`${me.upgrades||0}/6`,need:"Améliorer 6 cubes (action Upgrade : déplace un cube du haut vers le bas)."},
-    {key:"mech",icon:"⬡",name:"4 Mechas déployés",done:me.mechs.length>=4,prog:`${me.mechs.length}/4`,need:"Déployer 4 mechas (action Deploy, sur un hex avec un ouvrier)."},
+    {key:"mech",icon:"⬡",name:FACTIONS[me.faction]?.stealMechs?"4 Mechas volés":"4 Mechas déployés",done:me.mechs.length>=4,prog:`${me.mechs.length}/4`,
+      need:FACTIONS[me.faction]?.stealMechs
+        ?"Battre 4 mechas (adverses ou patrouilles impériales) et les relever en payant le coût de Déploiement — l'action Deploy ne pose aucun mecha."
+        :"Déployer 4 mechas (action Deploy, sur un hex avec un ouvrier)."},
     {key:"build",icon:"🏗",name:"4 Bâtiments",done:(me.buildings||[]).length>=4,prog:`${(me.buildings||[]).length}/4`,need:"Construire 4 bâtiments (action Build, sur un hex avec un ouvrier)."},
     {key:"recr",icon:"🤝",name:"4 Recrues",done:(me.recruits||0)>=4,prog:`${me.recruits||0}/4`,need:"Enrôler 4 recrues (action Enlist)."},
     // Règle Scythe : DEUX étoiles de combat distinctes, une par victoire
-    {key:"cbt1",icon:"⚔",name:"1er Combat gagné",done:(me.combatWins||0)>=1,prog:`${Math.min(me.combatWins||0,1)}/1`,need:"Gagner un combat (chaque victoire pose sa propre étoile)."},
-    {key:"cbt2",icon:"⚔",name:"2e Combat gagné",done:(me.combatWins||0)>=2,prog:`${Math.min(Math.max((me.combatWins||0)-1,0),1)}/1`,need:"Gagner un second combat (2e étoile de combat)."},
+    // Les victoires contre l'EMPIRE ne comptent pas ici : elles alimentent
+    // l'étoile Libérateur (3 patrouilles). Le libellé promettait « un combat »
+    // tout court — quatre victoires impériales et zéro étoile au tableau
+    // (partie du 19/08). Le texte dit désormais ce que le moteur fait.
+    {key:"cbt1",icon:"⚔",name:"1er Combat gagné",done:(me.combatWins||0)>=1,prog:`${Math.min(me.combatWins||0,1)}/1`,need:"Gagner un combat contre une FACTION (les patrouilles impériales comptent pour l'étoile Libérateur, pas pour celle-ci)."},
+    {key:"cbt2",icon:"⚔",name:"2e Combat gagné",done:(me.combatWins||0)>=2,prog:`${Math.min(Math.max((me.combatWins||0)-1,0),1)}/1`,need:"Gagner un second combat contre une faction (2e étoile de combat)."},
+    // Libérateur : la seule étoile que l'Empire donne. Elle se gagnait sans
+    // figurer nulle part au tableau (partie du 19/08, 4 victoires impériales
+    // et une seule étoile, jamais annoncée avant de tomber). Absente des
+    // parties sans patrouilles, où elle serait hors d'atteinte.
+    empirePatrols?{key:"lib",icon:"💀",name:"Libérateur",done:!!me.starLiberator,prog:`${Math.min(me.empireKills||0,3)}/3`,need:"Détruire 3 patrouilles impériales — c'est l'étoile que paient les victoires contre l'Empire, à la place des étoiles de combat."}:null,
     {key:"obj",icon:"🎯",name:"Mission secrète",done:!!me.objectiveRevealed,prog:me.objectiveRevealed?"✓":"…",need:"Remplir la condition d'une de vos 2 missions secrètes puis la révéler."},
     {key:"fobj",icon:"🏛",name:"Objectif de faction",done:!!me.fObjRevealed,prog:me.fObjRevealed?"✓":"…",need:myFaction.fObj?`${myFaction.fObj.name} — ${myFaction.fObj.desc}`:"Accomplir l'objectif de votre faction."},
     {key:"wrk",icon:"👷",name:"8 Ouvriers",done:me.workers.length>=8,prog:`${me.workers.length}/8`,need:"Avoir 8 ouvriers sur le plateau (produits sur les villages)."},
     {key:"pop",icon:"♥",name:"Popularité max",done:me.pop>=18,prog:`${me.pop}/18`,need:"Atteindre 18 de popularité."},
     {key:"pow",icon:"⚡",name:"Puissance max",done:me.power>=16,prog:`${me.power}/16`,need:"Atteindre 16 de puissance."},
-  ];
+  ].filter(Boolean);
 
   // Progression des 6 étoiles (voies d'étoiles Scythe) pour n'importe quel joueur
   const starMilestones=(p)=>[
@@ -3774,7 +3821,6 @@ export default function App(){
             const isSel=selHex===hex.id;const isHov=hovHex===hex.id;
             const isFactory=hex.t==="factory";
             const isSrc=(!moveSource&&movableUnits.has(hex.id))||actionTargets.hexes.has(hex.id)||produceEligible.has(hex.id)||packUpTargets.has(hex.id);
-            const isBonusTile=structureBonus&&hex.t!=="lac"&&hex.t!=="marecage"&&hex.t!=="factory"&&structureBonus.check(hex.id,players[0],players);
             // Territorial control contour (§2.3 refonte visuelle) : la première unité
             // présente sur l'hex porte la couleur de contrôle — un hex n'est jamais
             // occupé par deux factions à la fois hors résolution de combat.
@@ -3790,9 +3836,12 @@ export default function App(){
             const controlEntry=hexContents[0];
             const controlColor=isBaseHex(hex.id)?null
               :(controlEntry?uiInk(FACTIONS[controlEntry.factionId]):bldHere?uiInk(FACTIONS[bldHere.faction]):null);
-            // Tooltips natifs (note du 28/07 : « les icônes dollars sont
-            // revenues, je ne sais pas à quoi elles correspondent ») : le
-            // badge $ et la règle des rails s'expliquent au survol de l'hex
+            // Tooltips natifs : la règle des rails et les sorties de planque
+            // s'expliquent au survol de l'hex. Le badge $ du bonus de pose a
+            // été RETIRÉ de la carte (demande de jeu du 19/08, déjà signalé le
+            // 28/07) : comme sur le plateau du jeu original, la tuile bonus se
+            // lit sur sa tuile, pas sur le terrain — et le symbole $ reste
+            // réservé à l'argent.
             const hexHasRail=rails.some(([a,b])=>a===hex.id||b===hex.id);
             // Sorties des quatre planques (Internationale Noire) : ce ne sont
             // PAS des bases (le terrain reste praticable par tous), seulement
@@ -3800,7 +3849,6 @@ export default function App(){
             // après chaque repli.
             const isAnchor=(myFaction?.anchors||[]).includes(hex.id);
             const hexTitle=[
-              isBonusTile?`🏦 ${structureBonus.icon} ${structureBonus.name} — hex éligible au bonus de pose (${structureBonus.scale})`:null,
               isAnchor?"🕳 Sortie d'une de vos quatre planques — un ouvrier en sort au premier tour, et vos unités repliées après une défaite en ressortent par ici. Un ennemi posté dessus ferme cette porte, pas les trois autres.":null,
               hexHasRail?"🛤 Rail : depuis un hex du réseau, un PAS de déplacement mène à tout nœud relié. Vrai à chaque pas — avec Vitesse, on peut embarquer puis rouler, ou rouler puis sortir d'un pas. Le réseau est coupé aux nœuds occupés par l'ennemi (destination possible, jamais passage).":null,
             ].filter(Boolean).join("\n");
@@ -3809,8 +3857,8 @@ export default function App(){
               <text x={hex.rx} y={hex.ry+53} textAnchor="middle" fontSize={6.5} fill="#4a4030" opacity={0.2} style={{fontFamily:"var(--font-map)",pointerEvents:"none"}}>#{hex.id}</text>
               <HexTerrain hex={hex} isV={isV} isFar={isFar} isSel={isSel} isHov={isHov} isFactory={isFactory} isSrc={isSrc} controlColor={controlColor} wireframe={mapChoice!=="random"}/>
               {/* ── BANDE HAUTE : tout ce que dit la CARTE ────────────────
-                    Pastille du terrain, rencontre, ancrage, bonus de pose,
-                    pièges et comptoirs : une seule rangée, centrée, dont la
+                    Pastille du terrain, rencontre, ancrage, pièges et
+                    comptoirs : une seule rangée, centrée, dont la
                     largeur se répartit selon ce qui est réellement là
                     (logic/hexLayout.js). Avant, chacun avait un coin fixe —
                     l'ancrage et la rencontre partageaient le MÊME, et les
@@ -3823,7 +3871,6 @@ export default function App(){
                   ...(terr.res?[{k:"terr",w:24}]:[]),
                   ...(encounterTokens.has(hex.id)?[{k:"enc",w:20}]:[]),
                   ...(isAnchor?[{k:"anchor",w:17}]:[]),
-                  ...(isBonusTile?[{k:"bonus",w:17}]:[]),
                   ...traps.map((tr,i)=>({k:`trap${i}`,w:18,tr})),
                   ...flags.map((fl,i)=>({k:`flag${i}`,w:18,fl})),
                 ];
@@ -3846,10 +3893,6 @@ export default function App(){
                   if(it.k==="anchor")return <g key={it.k}>
                     <circle cx={X} cy={Y} r={8.5} fill="rgba(6,5,3,0.8)" stroke="#D8CFB8" strokeWidth={1.2}/>
                     <text x={X} y={Y+3.5} textAnchor="middle" fontSize={9} fill="#D8CFB8" fontWeight={700}>⚑</text>
-                  </g>;
-                  if(it.k==="bonus")return <g key={it.k}>
-                    <circle cx={X} cy={Y} r={8.5} fill="rgba(6,5,3,0.8)" stroke="#d4b254" strokeWidth={1.2}/>
-                    <text x={X} y={Y+3.5} textAnchor="middle" fontSize={10} fill="#d4b254" fontWeight={700}>$</text>
                   </g>;
                   if(it.tr){const {t,pl}=it.tr;return <g key={it.k}>
                     <circle cx={X} cy={Y} r={9} fill="rgba(6,5,3,0.85)"/>
@@ -4181,8 +4224,13 @@ export default function App(){
                 const o=stealOffer;
                 const src=o.fromFaction;
                 const fname=src==="empire"?"Patrouille impériale (Model M)":FACTIONS[src]?.name||src;
-                const abil=getMechAbilities(src);
-                const slots=(src==="empire"?[0,2]:[0,2,3]).filter(i=>!(src==="dominion"&&i===3));
+                // Ce que ce mecha a ENCORE à donner : `owned` grise ce que le
+                // réseau tient déjà (data/mechAbilities.js). Le filtre spécial
+                // « Dominion sans slot 3 » a disparu : Bitume existe depuis
+                // v0.18, c'est l'absence de capacité de position qui décide.
+                const opts=stealableSlots(src,me);
+                const free=opts.filter(s=>!s.owned);
+                const mine=getMechAbilities(me.faction,me);
                 const dep=getBottomCost(me)[1];
                 const canPay=countRes(me,dep.res)>=dep.qty;
                 return(
@@ -4192,23 +4240,39 @@ export default function App(){
                       <div>
                         <div style={{fontFamily:"var(--font-title)",color:"#E08090",fontSize:18,fontWeight:700}}>Relever le mecha vaincu</div>
                         <div style={{fontSize:13,color:"var(--text-dim)",lineHeight:1.5,marginTop:3}}>
-                          {fname} gît sur #{o.hexId}. Vos monteurs peuvent le remettre debout pour <b>{dep.qty} {resFR(dep.res)}</b> ({(me.capturedMech||0)+1}/{FACTIONS[me.faction]?.stealMechs} captures) — et lui arracher une capacité.
+                          {fname} gît sur #{o.hexId}. Vos monteurs peuvent le remettre debout pour <b>{dep.qty} {resFR(dep.res)}</b> ({(me.capturedMech||0)+1}/{FACTIONS[me.faction]?.stealMechs} captures) — {free.length>0?"et lui arracher une capacité.":"mais il n'a plus rien à donner au réseau."}
                         </div>
                       </div>
                     </div>
                     {!canPay&&<div style={{fontSize:13,color:"var(--rust)",marginBottom:8}}>⚠ Pas assez de {resFR(dep.res)} : le mecha restera à la ferraille.</div>}
                     <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:10}}>
-                      {slots.map(i=>{
-                        const a=abil[i];const taken=(me.unlockedAbilities||[]).includes(i);
+                      {opts.map(({slot,ability:a,owned})=>{
+                        // Un slot 2/3 déjà occupé par une AUTRE faction n'est pas
+                        // « pris » : le patchwork se refait, la capacité change.
+                        const replaces=!owned&&slot>1&&(me.unlockedAbilities||[]).includes(slot)?mine[slot]?.name:null;
+                        const off=owned||!canPay;
                         return(
-                          <button key={i} disabled={!canPay} onClick={()=>confirmSteal(i)} className="act-btn"
-                            style={{textAlign:"left",opacity:canPay?1:0.45,border:"1px solid var(--border)"}}>
-                            <b>{a.icon} {a.name}</b>{taken?" (slot déjà pris — la capacité est remplacée)":""}
+                          <button key={slot} disabled={off} onClick={()=>{if(!off)confirmSteal(slot);}} className="act-btn"
+                            style={{textAlign:"left",opacity:off?0.4:1,cursor:off?"not-allowed":"pointer",border:owned?"1px dashed var(--border-dark)":"1px solid var(--border)"}}>
+                            <b>{a.icon} {a.name}</b>
+                            {owned?<span style={{color:"var(--text-muted)"}}> — déjà au réseau, rien à arracher</span>:null}
+                            {replaces?<span style={{color:"var(--gold)"}}> — remplace {replaces}</span>:null}
                             <div style={{fontSize:12.5,color:"var(--text-dim)",marginTop:2}}>{a.desc}</div>
                           </button>
                         );
                       })}
                     </div>
+                    {free.length===0&&(
+                      <div style={{marginBottom:10}}>
+                        <div style={{fontSize:13,color:"var(--text-dim)",lineHeight:1.5,marginBottom:6}}>
+                          Ce mecha n'a plus rien que le réseau n'ait déjà. Le relever compte toujours comme une <b>capture</b> — mais il rejoindra la colonne sans pouvoir.
+                        </div>
+                        <button disabled={!canPay} onClick={()=>{if(canPay)confirmSteal("nu");}} className="act-btn"
+                          style={{width:"100%",fontWeight:700,opacity:canPay?1:0.45,cursor:canPay?"pointer":"not-allowed"}}>
+                          🔧 Relever la carcasse nue (−{dep.qty} {resFR(dep.res)})
+                        </button>
+                      </div>
+                    )}
                     <button onClick={()=>confirmSteal(null)} className="act-btn" style={{width:"100%",opacity:0.85}}>Laisser la carcasse</button>
                   </div>
                 );
@@ -4272,6 +4336,11 @@ export default function App(){
                   <div style={{display:"flex",flexDirection:"column",gap:8}}>
                     {encounter.card.choices.map((c,ci)=>{
                       const locked=c.available&&!c.available(me);
+                      // Une option grisée sans raison est une énigme : celle-ci
+                      // l'est toujours pour l'Internationale Noire (ses mechas
+                      // s'arrachent en combat), autant le dire.
+                      const lockReason=locked&&c.grantsMech&&FACTIONS[me.faction]?.stealMechs
+                        ?"Le réseau ne reçoit pas de mecha — il les arrache aux vaincus":null;
                       return(
                       <button key={ci} onClick={()=>{if(!locked)resolveEncounter(ci);}} className="enc-card" disabled={locked} style={locked?{opacity:0.35,cursor:"not-allowed"}:undefined}>
                         <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -4279,6 +4348,7 @@ export default function App(){
                           <div style={{flex:1}}>
                             <div style={{fontSize:15,fontWeight:700,color:"var(--text)"}}>{c.label}</div>
                             <div style={{fontSize:12,color:"var(--brass)",marginTop:2}}>{c.desc}</div>
+                            {lockReason&&<div style={{fontSize:12,color:"var(--text-muted)",marginTop:2,fontStyle:"italic"}}>{lockReason}</div>}
                           </div>
                           <span style={{fontSize:18,color:"var(--gold-dim)"}}>›</span>
                         </div>
@@ -4672,7 +4742,7 @@ export default function App(){
         {structureBonus&&(()=>{
           const d=structureBonusDetail(me,structureBonus,players);
           return(
-          <div title={`En fin de partie : ${structureBonus.scale} — ${structureBonus.desc} (tuiles marquées $ sur la carte)`}
+          <div title={`En fin de partie : ${structureBonus.scale} — ${structureBonus.desc}`}
             style={{padding:"5px 10px",borderBottom:"1px solid var(--border)",flexShrink:0,fontSize:13,color:"var(--gold)",display:"flex",alignItems:"center",gap:6,background:"rgba(212,178,84,0.05)"}}>
             <span>🏦</span>
             <span style={{fontWeight:700,fontFamily:"var(--font-title)"}}>{structureBonus.icon} {structureBonus.name}</span>
@@ -4747,7 +4817,7 @@ export default function App(){
                 }[action]||{pay:[],gain:[],altGain:null,label:action};
                 const bottomData={
                   Upgrade:{prog:`${me.upgrades||0}/6`,max:(me.upgrades||0)>=6},
-                  Deploy:{prog:`${me.mechs.length}/4`,max:me.mechs.length>=4},
+                  Deploy:{prog:`${me.mechs.length}/4`,max:me.mechs.length>=4&&!stealsMechs},
                   Build:{prog:`${(me.buildings||[]).length}/4`,max:(me.buildings||[]).length>=4},
                   Enlist:{prog:`${me.recruits||0}/4`,max:(me.recruits||0)>=4},
                 }[bottomAction]||{prog:"",max:false};
@@ -4769,7 +4839,7 @@ export default function App(){
                 const rec=recIdx!=null?ENLIST_ONGOING[recIdx]:null;
                 const RIcon=rec?RESOURCE_ICONS[rec.svgKey]:null;
                 // Gain intrinsèque de l'action du bas (la flèche ↑ pour Améliorer)
-                const bottomGainRes=bottomAction==="Deploy"?"mech":bottomAction==="Build"?"building":bottomAction==="Enlist"?"pop":"upgrade";
+                const bottomGainRes=bottomAction==="Deploy"?(stealsMechs?"coins":"mech"):bottomAction==="Build"?"building":bottomAction==="Enlist"?"pop":"upgrade";
                 // Action group separator: strong between pairs (after index 1), light between actions within a pair (after index 0, 2)
                 const isGroupEnd=i===1;
                 const isLastAction=i===3;
@@ -5012,7 +5082,7 @@ export default function App(){
                     </div>);
                   })()}
                   {/* PACK UP — Nations free building move */}
-                  {me.faction==="nations"&&(me.unlockedAbilities||[]).includes(3)&&(me.buildings||[]).length>0&&!me.packUpUsed&&!moveSource&&(()=>{
+                  {positionFactionOf(me)==="nations"&&(me.unlockedAbilities||[]).includes(3)&&(me.buildings||[]).length>0&&!me.packUpUsed&&!moveSource&&(()=>{
                     if(bottomPick&&bottomPick.packUp){
                       const bld=(me.buildings||[])[bottomPick.buildingIdx];
                       const adjTargets=[...packUpTargets];
@@ -5028,7 +5098,7 @@ export default function App(){
                       <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>{(me.buildings||[]).map((b,i)=>{const bt=BUILDING_TYPES.find(t=>t.type===b.type);return <button key={i} onClick={()=>setBottomPick({packUp:true,buildingIdx:i})} className="act-btn" style={{fontSize:14,borderColor:"var(--nations)",padding:"8px 12px"}}>{bt?bt.icon:"🏗"} #{b.hexId}</button>;})}</div>
                     </div>;
                   })()}
-                  {me.packUpUsed&&me.faction==="nations"&&<div style={{marginTop:6,fontSize:12,color:"var(--text-muted)"}}>📦 Pack Up utilisé ce tour</div>}
+                  {me.packUpUsed&&positionFactionOf(me)==="nations"&&<div style={{marginTop:6,fontSize:12,color:"var(--text-muted)"}}>📦 Pack Up utilisé ce tour</div>}
                   {/* Le bouton unique « ✓ Terminer le déplacement » (bloc générique
                       plus bas) sert de filet de sécurité — l'ancien doublon ici
                       loguait ✅ quand l'autre non (journal incohérent) */}
@@ -5234,7 +5304,7 @@ export default function App(){
             const costs=getBottomCost(me);const bc=costs[colIdx];
             const hasRes=bc?countRes(me,bc.res)>=bc.qty:false;const resCount=bc?countRes(me,bc.res):0;
             const workerHexes=getWorkerHexes(me);
-            const maxed=ba==="Upgrade"?(me.upgrades||0)>=6:ba==="Deploy"?me.mechs.length>=4:ba==="Build"?(me.buildings||[]).length>=4:ba==="Enlist"?(me.recruits||0)>=4:false;
+            const maxed=ba==="Upgrade"?(me.upgrades||0)>=6:ba==="Deploy"?(me.mechs.length>=4&&!stealsMechs):ba==="Build"?(me.buildings||[]).length>=4:ba==="Enlist"?(me.recruits||0)>=4:false;
             const availBuildings=BUILDING_TYPES.filter(bt=>!(me.buildings||[]).some(b=>b.type===bt.type));
             const buildableHexes=workerHexes.filter(h=>!(me.buildings||[]).some(b=>b.hexId===h));
             const deployHexes=workerHexes;
@@ -5273,6 +5343,22 @@ export default function App(){
                   </div>;
                 })()}
                 {ba==="Deploy"&&!maxed&&(()=>{
+                  // Internationale Noire : rien à poser sur la carte. La colonne
+                  // écoule des pièces détachées (coût payé, bonus $ encaissé) —
+                  // les mechas s'arrachent au vaincu, jamais ici.
+                  if(stealsMechs){
+                    const qty=bc.qty;const gain=bc.bonus||0;
+                    if(countRes(me,bc.res)<qty)return <div style={{fontSize:13,color:"var(--text-muted)"}}>Pas assez de {resFR(bc.res)}</div>;
+                    return <div>
+                      <div style={{fontSize:13,color:"var(--text-dim)",lineHeight:1.55,marginBottom:8}}>
+                        Le réseau ne construit pas de mecha : il en <b>prend</b>. Cette colonne revend vos pièces détachées.
+                        Un mecha ne s'obtient qu'en <b>battant</b> un mecha adverse ou une patrouille impériale, puis en payant ce même coût pour le relever.
+                      </div>
+                      <button onClick={()=>doDeploy(null)} className="act-btn" style={{width:"100%",fontWeight:700}}>
+                        ⚙ Écouler les pièces détachées (−{qty} {resFR(bc.res)}{gain>0?`, +${gain}$`:""})
+                      </button>
+                    </div>;
+                  }
                   // Ressource alternative de déploiement — générique par faction :
                   // Nations/Bayou → bois, Acadiane → pétrole (Vapeur des Lacs)
                   const deployAlt=FACTIONS[me.faction]?.deployAltRes;
@@ -5576,7 +5662,7 @@ export default function App(){
                   </div>
                 );})}
                 {structureBonus&&<div style={{marginTop:8,padding:"8px 10px",borderRadius:6,background:"rgba(212,178,84,0.07)",border:"1px solid var(--gold-dim)",fontSize:14,color:"var(--gold)"}}>
-                  🏦 Bonus de pose : <b>{structureBonus.icon} {structureBonus.name}</b> — {structureBonus.scale} {structureBonus.desc} (tuiles marquées $ sur la carte).
+                  🏦 Bonus de pose : <b>{structureBonus.icon} {structureBonus.name}</b> — {structureBonus.scale} {structureBonus.desc}.
                 </div>}
                 {/* Règle de scoring liée au PLACEMENT des bâtiments — toujours
                     lisible ici (demande de jeu réel : introuvable en partie) */}
@@ -5589,15 +5675,31 @@ export default function App(){
               </div>)}
               {starDetail==="mech"&&(<div>
                 <div style={{fontSize:14,fontWeight:700,color:"var(--brass)",marginBottom:8,fontFamily:"var(--font-title)"}}>Mechas & capacités</div>
-                <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:8}}>Déployés : {me.mechs.length}/4 {me.mechs.length>0&&`(hex ${me.mechs.map(m=>`#${m.hexId}`).join(", ")})`} · Chaque déploiement débloque UNE capacité au choix :</div>
-                {myMechAbilities.map((ab,idx)=>{const unlocked=(me.unlockedAbilities||[]).includes(idx);return(
-                  <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:6,marginBottom:5,background:unlocked?"rgba(200,112,64,0.1)":"rgba(0,0,0,0.25)",border:unlocked?"1px solid var(--rust-dark)":"1px dashed var(--border-dark)",opacity:unlocked?1:0.75}}>
+                {/* L'Internationale Noire ne déploie pas : ce panneau doit dire
+                    ce qu'elle a ARRACHÉ et ce qui reste à arracher — demande de
+                    jeu réel du 19/08 (« les slots devraient refléter les
+                    capacités libres, et les voir à mesure qu'on les vole »). */}
+                <div style={{fontSize:14,color:"var(--text-dim)",marginBottom:8}}>
+                  {stealsMechs
+                    ?<>Volés : {me.capturedMech||0}/{FACTIONS[me.faction]?.stealMechs} {me.mechs.length>0&&`(hex ${me.mechs.map(m=>`#${m.hexId}`).join(", ")})`} · Chaque mecha battu — adverse ou patrouille impériale — se relève contre le coût de Déploiement et livre UNE de ses capacités, jamais la vôtre. L'action Deploy, elle, ne pose rien.</>
+                    :<>Déployés : {me.mechs.length}/4 {me.mechs.length>0&&`(hex ${me.mechs.map(m=>`#${m.hexId}`).join(", ")})`} · Chaque déploiement débloque UNE capacité au choix :</>}
+                </div>
+                {myMechAbilities.map((ab,idx)=>{
+                  const unlocked=(me.unlockedAbilities||[]).includes(idx);
+                  // Slot 1 de l'Internationale : libéré par Résilience, il ne se
+                  // volera jamais — « libre » ne veut pas dire « à prendre ».
+                  const dead=stealsMechs&&idx===1;
+                  const from=idx===2?me.stolenCombat:idx===3?me.stolenPosition:null;
+                  const statut=unlocked?(stealsMechs&&from?`✓ volé à ${FACTIONS[from]?.name||"l'Empire"}`:"✓")
+                    :dead?"—":stealsMechs?"à voler":"—";
+                  return(
+                  <div key={idx} style={{display:"flex",alignItems:"center",gap:10,padding:"7px 8px",borderRadius:6,marginBottom:5,background:unlocked?"rgba(200,112,64,0.1)":"rgba(0,0,0,0.25)",border:unlocked?"1px solid var(--rust-dark)":"1px dashed var(--border-dark)",opacity:unlocked?1:dead?0.5:0.75}}>
                     <span style={{fontSize:23,opacity:unlocked?1:0.5}}>{ab.icon}</span>
                     <div style={{flex:1}}>
                       <div style={{fontSize:15,fontWeight:700,color:unlocked?"var(--rust)":"var(--text-dim)"}}>{ab.name}</div>
                       <div style={{fontSize:14,color:"var(--text-dim)"}}>{ab.desc}</div>
                     </div>
-                    <span style={{fontSize:14,color:unlocked?"#8fbf6a":"var(--text-muted)",fontWeight:700}}>{unlocked?"✓":"—"}</span>
+                    <span style={{fontSize:14,color:unlocked?"#8fbf6a":dead?"var(--text-muted)":stealsMechs?"var(--gold)":"var(--text-muted)",fontWeight:700}}>{statut}</span>
                   </div>
                 );})}
               </div>)}

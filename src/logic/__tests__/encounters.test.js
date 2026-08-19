@@ -20,6 +20,22 @@ describe('deck de rencontres — 15 Panamerica + 12 triptyques originaux + 6 ext
     expect(slots.size).toBe(3);
   });
 
+  // Retour de partie du 19/08 : « pas assez de cartes rencontre qui donnent
+  // des $ ». 8 options sur 8 cartes en donnaient, contre 36 qui en coûtent.
+  it('une carte sur trois au moins offre une sortie en pièces, sans inflation', () => {
+    const gainsCash = (ch) => /\+(\d+)\$/.exec(ch.desc);
+    const cards = ENCOUNTERS.filter(c => c.choices.some(gainsCash));
+    expect(cards.length).toBeGreaterThanOrEqual(14);          // 14/33 = 42 %
+    // Le montant reste celui du deck : 2$, jamais plus (pas d'inflation)
+    ENCOUNTERS.flatMap(c => c.choices).forEach(ch => {
+      const m = gainsCash(ch);
+      if (m) expect(parseInt(m[1]), ch.label).toBeLessThanOrEqual(2);
+    });
+    // Les 12 triptyques ORIGINAUX restent l'étalon : on n'y a rien ajouté
+    const origCash = ENCOUNTERS.filter(c => c.src === "original" && c.choices.some(gainsCash));
+    expect(origCash.map(c => c.id)).toEqual([19, 23, 27]);
+  });
+
   it('structure du triptyque : 3 options, la 1re gratuite gagne +1 pop, les coûts sont gardés', () => {
     ENCOUNTERS.forEach(card => {
       expect(card.choices.length, `carte ${card.id}`).toBe(3);

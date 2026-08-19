@@ -1,0 +1,2212 @@
+{
+  "jeu": "Scythe Panamerica",
+  "date": "2026-08-19T22:41:33.982Z",
+  "carte": "panamerica-v3",
+  "tours": 20,
+  "difficulte": "normal",
+  "classement": [
+    {
+      "rang": 1,
+      "faction": "internationale",
+      "nom": "Internationale Noire",
+      "bot": false,
+      "total": 29,
+      "etoiles": 1,
+      "pop": 5,
+      "palier_pop": "0-6",
+      "territoires": 6,
+      "bonus_usine": 2,
+      "comptoirs": 0,
+      "ressources": 5,
+      "paires": 2,
+      "argent": 8,
+      "bonus_pose": 0,
+      "detail": {
+        "etoiles": 3,
+        "territoires": 16,
+        "ressources": 2
+      }
+    },
+    {
+      "rang": 2,
+      "faction": "acadiane",
+      "nom": "Acadiane",
+      "bot": true,
+      "total": 21,
+      "etoiles": 0,
+      "pop": 14,
+      "palier_pop": "13-18",
+      "territoires": 1,
+      "bonus_usine": 0,
+      "comptoirs": 0,
+      "ressources": 3,
+      "paires": 1,
+      "argent": 12,
+      "bonus_pose": 0,
+      "detail": {
+        "etoiles": 0,
+        "territoires": 4,
+        "ressources": 3
+      }
+    },
+    {
+      "rang": 3,
+      "faction": "bayou",
+      "nom": "Bayou",
+      "bot": true,
+      "total": 20,
+      "etoiles": 1,
+      "pop": 14,
+      "palier_pop": "13-18",
+      "territoires": 3,
+      "bonus_usine": 0,
+      "comptoirs": 0,
+      "ressources": 3,
+      "paires": 1,
+      "argent": 0,
+      "bonus_pose": 0,
+      "detail": {
+        "etoiles": 5,
+        "territoires": 12,
+        "ressources": 3
+      }
+    }
+  ],
+  "journal": [
+    {
+      "tour": 1,
+      "etape": 1,
+      "cat": "info",
+      "ts": 1787177582293,
+      "msg": "📖 Chapitre 2 — Le Régicide (Internationale Noire)"
+    },
+    {
+      "tour": 1,
+      "etape": 2,
+      "cat": "info",
+      "ts": 1787177582293,
+      "msg": "🏛 Condition canon : Atteindre l'Empereur — 3 ouvriers sur l'Usine (hex 22) ET 2 mechas volés (à n'importe quelle faction)"
+    },
+    {
+      "tour": 1,
+      "etape": 3,
+      "cat": "warn",
+      "ts": 1787177582293,
+      "msg": "🔒 Contenu Tesla verrouillé — rumeurs seulement, aucun fragment en rencontre tant que le chapitre 3 n'est pas remporté par la voie canon"
+    },
+    {
+      "tour": 1,
+      "etape": 4,
+      "cat": "bot",
+      "ts": 1787177582293,
+      "msg": "🤖 Bots de l'Empire activés (mécanique campagne)"
+    },
+    {
+      "tour": 1,
+      "etape": 5,
+      "cat": "build",
+      "ts": 1787177582293,
+      "msg": "🏦 Bonus de pose : 🚩 Avant-Postes — 1 → 10$ (+2$/autre bât.) 10$ si au moins un bâtiment est adjacent à une base adverse, +2$ par autre bâtiment construit"
+    },
+    {
+      "tour": 1,
+      "etape": 6,
+      "cat": "info",
+      "ts": 1787177582293,
+      "msg": "🏦 16 hex éligibles (badge 💲 sur la carte) : #0 #2 #3 #4 #6 #10 #17 #20 #25 #28 #32 #35 #36 #40 #41 #45"
+    },
+    {
+      "tour": 1,
+      "etape": 7,
+      "cat": "rr",
+      "ts": 1787177582293,
+      "msg": "⚙ Usine Rouge River : 4 plans Ford face cachée (joueurs + 1) — coffre de Wardenclyffe encore scellé, pas de prototype Tesla"
+    },
+    {
+      "tour": 1,
+      "etape": 8,
+      "cat": "combat",
+      "ts": 1787177582293,
+      "msg": "⚔ 3 joueurs"
+    },
+    {
+      "tour": 1,
+      "etape": 9,
+      "cat": "resource",
+      "ts": 1787177582293,
+      "msg": "👤 Internationale Noire (Le Réseau)  ⚡2 🃏1 ♥4 💰3"
+    },
+    {
+      "tour": 1,
+      "etape": 10,
+      "cat": "bot",
+      "ts": 1787177582293,
+      "msg": "🤖 Bayou (Forge) 🐊 Prédateur  ⚡2 🃏3 ♥3 💰6"
+    },
+    {
+      "tour": 1,
+      "etape": 11,
+      "cat": "bot",
+      "ts": 1787177582293,
+      "msg": "🤖 Acadiane (Terroir) ⚖ Équilibré  ⚡2 🃏3 ♥3 💰6"
+    },
+    {
+      "tour": 1,
+      "etape": 12,
+      "cat": "note",
+      "ts": 1787177724703,
+      "msg": "📝 Il y a des jetons $ sur le terrain, ils représentent le points ou poser les les batiment pour scoring bonus. Il faut completement retirer cette feature, les jetons $ ne sont utilisés que dans la partie ruée vers l'or comme des jetons de cash"
+    },
+    {
+      "tour": 1,
+      "etape": 13,
+      "cat": "move",
+      "ts": 1787177777692,
+      "msg": "🚶 internationale_w3 → #40"
+    },
+    {
+      "tour": 1,
+      "etape": 14,
+      "cat": "combat",
+      "ts": 1787177777692,
+      "msg": "📜 Jeton de rencontre atteint sur #40 — il se résoudra après les combats"
+    },
+    {
+      "tour": 1,
+      "etape": 15,
+      "cat": "info",
+      "ts": 1787177785170,
+      "msg": "≋ Sang du Marais : traversée du marécage #20 sans péage"
+    },
+    {
+      "tour": 1,
+      "etape": 16,
+      "cat": "move",
+      "ts": 1787177785170,
+      "msg": "🚶 internationale_w1 → #20"
+    },
+    {
+      "tour": 1,
+      "etape": 17,
+      "cat": "move",
+      "ts": 1787177785170,
+      "msg": "✅ Mouvement terminé (2/2)"
+    },
+    {
+      "tour": 1,
+      "etape": 18,
+      "cat": "encounter",
+      "ts": 1787177785186,
+      "msg": "📜 Rencontre: \"L'Épave Fumante\""
+    },
+    {
+      "tour": 1,
+      "etape": 19,
+      "cat": "encounter",
+      "ts": 1787177807674,
+      "msg": "📜 L'Épave Fumante: Réanimer le mecha → -3 pop, +1 mecha"
+    },
+    {
+      "tour": 1,
+      "etape": 20,
+      "cat": "info",
+      "ts": 1787177813673,
+      "msg": "↶ Coup annulé"
+    },
+    {
+      "tour": 1,
+      "etape": 21,
+      "cat": "info",
+      "ts": 1787177816238,
+      "msg": "≋ Sang du Marais : traversée du marécage #20 sans péage"
+    },
+    {
+      "tour": 1,
+      "etape": 22,
+      "cat": "move",
+      "ts": 1787177816238,
+      "msg": "🚶 internationale_w1 → #20"
+    },
+    {
+      "tour": 1,
+      "etape": 23,
+      "cat": "move",
+      "ts": 1787177816238,
+      "msg": "✅ Mouvement terminé (2/2)"
+    },
+    {
+      "tour": 1,
+      "etape": 24,
+      "cat": "encounter",
+      "ts": 1787177816254,
+      "msg": "📜 Rencontre: \"Les Granges Pleines\""
+    },
+    {
+      "tour": 1,
+      "etape": 25,
+      "cat": "encounter",
+      "ts": 1787177829128,
+      "msg": "📜 Les Granges Pleines: Partager la récolte → +1 pop, +2 nourriture"
+    },
+    {
+      "tour": 1,
+      "etape": 26,
+      "cat": "bot",
+      "ts": 1787177835635,
+      "msg": "🤖 Bayou: +1 ouv. #35"
+    },
+    {
+      "tour": 1,
+      "etape": 27,
+      "cat": "bot",
+      "ts": 1787177835635,
+      "msg": "🤖 Bayou: Produire"
+    },
+    {
+      "tour": 1,
+      "etape": 28,
+      "cat": "bot",
+      "ts": 1787177835991,
+      "msg": "🤖 Acadiane: +1 ouv. #6"
+    },
+    {
+      "tour": 1,
+      "etape": 29,
+      "cat": "bot",
+      "ts": 1787177835991,
+      "msg": "🤖 Acadiane: Produire"
+    },
+    {
+      "tour": 2,
+      "etape": 30,
+      "cat": "move",
+      "ts": 1787177835997,
+      "msg": "🔴 Empire E5 → #34"
+    },
+    {
+      "tour": 2,
+      "etape": 31,
+      "cat": "turn",
+      "ts": 1787177835997,
+      "msg": "── Tour 2 ──"
+    },
+    {
+      "tour": 2,
+      "etape": 32,
+      "cat": "snap",
+      "ts": 1787177835997,
+      "msg": "[Début] ⚡2 🃏1 ♥5 💰3 ⭐0 W4 M0 Fe0 Bo0 No2 Pe0 Ab[]"
+    },
+    {
+      "tour": 2,
+      "etape": 33,
+      "cat": "snap",
+      "ts": 1787177835997,
+      "msg": "[Début 🤖 Bayou] ⚡2 🃏3 ♥3 💰6 ⭐0 W3 M0 Fe0 Bo1 No0 Pe0 Ab[]"
+    },
+    {
+      "tour": 2,
+      "etape": 34,
+      "cat": "snap",
+      "ts": 1787177835997,
+      "msg": "[Début 🤖 Acadiane] ⚡2 🃏3 ♥3 💰6 ⭐0 W3 M0 Fe0 Bo0 No0 Pe1 Ab[]"
+    },
+    {
+      "tour": 2,
+      "etape": 35,
+      "cat": "resource",
+      "ts": 1787177863825,
+      "msg": "💰 -1$ → +2 petrole (#40)"
+    },
+    {
+      "tour": 2,
+      "etape": 36,
+      "cat": "bot",
+      "ts": 1787177870031,
+      "msg": "🤖 Bayou: +2 métal"
+    },
+    {
+      "tour": 2,
+      "etape": 37,
+      "cat": "bot",
+      "ts": 1787177870385,
+      "msg": "🤖 Acadiane: +2 pétrole"
+    },
+    {
+      "tour": 3,
+      "etape": 38,
+      "cat": "move",
+      "ts": 1787177870387,
+      "msg": "🔴 Empire E4 → #29"
+    },
+    {
+      "tour": 3,
+      "etape": 39,
+      "cat": "turn",
+      "ts": 1787177870387,
+      "msg": "── Tour 3 ──"
+    },
+    {
+      "tour": 3,
+      "etape": 40,
+      "cat": "snap",
+      "ts": 1787177870387,
+      "msg": "[Début] ⚡2 🃏1 ♥5 💰2 ⭐0 W4 M0 Fe0 Bo0 No2 Pe2 Ab[]"
+    },
+    {
+      "tour": 3,
+      "etape": 41,
+      "cat": "snap",
+      "ts": 1787177870387,
+      "msg": "[Début 🤖 Bayou] ⚡2 🃏3 ♥3 💰5 ⭐0 W3 M0 Fe2 Bo1 No0 Pe0 Ab[]"
+    },
+    {
+      "tour": 3,
+      "etape": 42,
+      "cat": "snap",
+      "ts": 1787177870387,
+      "msg": "[Début 🤖 Acadiane] ⚡2 🃏3 ♥3 💰5 ⭐0 W3 M0 Fe0 Bo0 No0 Pe3 Ab[]"
+    },
+    {
+      "tour": 3,
+      "etape": 43,
+      "cat": "info",
+      "ts": 1787177875610,
+      "msg": "≋ Sang du Marais : traversée du marécage #25 sans péage"
+    },
+    {
+      "tour": 3,
+      "etape": 44,
+      "cat": "move",
+      "ts": 1787177875610,
+      "msg": "🚶 internationale_w2 → #25"
+    },
+    {
+      "tour": 3,
+      "etape": 45,
+      "cat": "info",
+      "ts": 1787177878795,
+      "msg": "≋ Sang du Marais : traversée du marécage #3 sans péage"
+    },
+    {
+      "tour": 3,
+      "etape": 46,
+      "cat": "move",
+      "ts": 1787177878795,
+      "msg": "🚶 internationale_w0 → #3"
+    },
+    {
+      "tour": 3,
+      "etape": 47,
+      "cat": "combat",
+      "ts": 1787177878795,
+      "msg": "📜 Jeton de rencontre atteint sur #3 — il se résoudra après les combats"
+    },
+    {
+      "tour": 3,
+      "etape": 48,
+      "cat": "move",
+      "ts": 1787177878795,
+      "msg": "✅ Mouvement terminé (2/2)"
+    },
+    {
+      "tour": 3,
+      "etape": 49,
+      "cat": "combat",
+      "ts": 1787177880866,
+      "msg": "⚔ Contacts en attente — ils se résolvent avant la fin du tour"
+    },
+    {
+      "tour": 3,
+      "etape": 50,
+      "cat": "encounter",
+      "ts": 1787177880884,
+      "msg": "📜 Rencontre: \"Le Prêcheur au Carrefour\""
+    },
+    {
+      "tour": 3,
+      "etape": 51,
+      "cat": "combat",
+      "ts": 1787177891159,
+      "msg": "📜 Le Prêcheur au Carrefour: Écouter le sermon → +1 pop, +1 carte combat"
+    },
+    {
+      "tour": 3,
+      "etape": 52,
+      "cat": "note",
+      "ts": 1787177924051,
+      "msg": "📝 je trouve qu'il n'y a pas assez de carte rencontre qui donnent des $"
+    },
+    {
+      "tour": 3,
+      "etape": 53,
+      "cat": "resource",
+      "ts": 1787177978257,
+      "msg": "💰 -1$ → +2 petrole (#25)"
+    },
+    {
+      "tour": 3,
+      "etape": 54,
+      "cat": "bot",
+      "ts": 1787177982073,
+      "msg": "🤖 Bayou: +2 pui"
+    },
+    {
+      "tour": 3,
+      "etape": 55,
+      "cat": "bot",
+      "ts": 1787177982073,
+      "msg": "🤖 Bayou: Déployer #28 → 🔓 Vitesse"
+    },
+    {
+      "tour": 3,
+      "etape": 56,
+      "cat": "bot",
+      "ts": 1787177982073,
+      "msg": "🤖💰 Bayou: +1$ (Déployer)"
+    },
+    {
+      "tour": 3,
+      "etape": 57,
+      "cat": "bot",
+      "ts": 1787177982436,
+      "msg": "🤖 Acadiane: M. Thibodeau → #6"
+    },
+    {
+      "tour": 3,
+      "etape": 58,
+      "cat": "bot",
+      "ts": 1787177982436,
+      "msg": "🤖🏴 Acadiane: Comptoir #6 (1/4)"
+    },
+    {
+      "tour": 3,
+      "etape": 59,
+      "cat": "bot",
+      "ts": 1787177982436,
+      "msg": "🤖 Acadiane: Ouv. → #9"
+    },
+    {
+      "tour": 3,
+      "etape": 60,
+      "cat": "bot",
+      "ts": 1787177982436,
+      "msg": "🤖 Acadiane: Améliorer 1/6"
+    },
+    {
+      "tour": 4,
+      "etape": 61,
+      "cat": "move",
+      "ts": 1787177982440,
+      "msg": "🔴 Empire E3 → #28"
+    },
+    {
+      "tour": 4,
+      "etape": 62,
+      "cat": "combat",
+      "ts": 1787177982440,
+      "msg": "⚔🤖 Bayou échoue vs Titan Errant (4 vs 6)"
+    },
+    {
+      "tour": 4,
+      "etape": 63,
+      "cat": "turn",
+      "ts": 1787177982440,
+      "msg": "── Tour 4 ──"
+    },
+    {
+      "tour": 4,
+      "etape": 64,
+      "cat": "snap",
+      "ts": 1787177982440,
+      "msg": "[Début] ⚡2 🃏2 ♥6 💰1 ⭐0 W4 M0 Fe0 Bo0 No2 Pe4 Ab[]"
+    },
+    {
+      "tour": 4,
+      "etape": 65,
+      "cat": "snap",
+      "ts": 1787177982440,
+      "msg": "[Début 🤖 Bayou] ⚡4 🃏3 ♥3 💰5 ⭐0 W3 M1 Fe0 Bo1 No0 Pe0 Ab[0]"
+    },
+    {
+      "tour": 4,
+      "etape": 66,
+      "cat": "snap",
+      "ts": 1787177982440,
+      "msg": "[Début 🤖 Acadiane] ⚡2 🃏3 ♥3 💰8 ⭐0 W3 M0 Fe0 Bo0 No0 Pe1 Ab[]"
+    },
+    {
+      "tour": 4,
+      "etape": 67,
+      "cat": "move",
+      "ts": 1787178000867,
+      "msg": "🚶 internationale_w2 → #21 📦2petrole"
+    },
+    {
+      "tour": 4,
+      "etape": 68,
+      "cat": "move",
+      "ts": 1787178017505,
+      "msg": "🚶 internationale_w0 → #7"
+    },
+    {
+      "tour": 4,
+      "etape": 69,
+      "cat": "move",
+      "ts": 1787178017505,
+      "msg": "✅ Mouvement terminé (2/2)"
+    },
+    {
+      "tour": 4,
+      "etape": 70,
+      "cat": "upgrade",
+      "ts": 1787178044261,
+      "msg": "⬆ Améliorer 1/6: Soutien↑ → Enrôler↓ (-3 pétrole, +0$)"
+    },
+    {
+      "tour": 4,
+      "etape": 71,
+      "cat": "bot",
+      "ts": 1787178046120,
+      "msg": "🤖 Bayou: +2 pétrole"
+    },
+    {
+      "tour": 4,
+      "etape": 72,
+      "cat": "bot",
+      "ts": 1787178046477,
+      "msg": "🤖 Acadiane: Produire"
+    },
+    {
+      "tour": 5,
+      "etape": 73,
+      "cat": "move",
+      "ts": 1787178046482,
+      "msg": "🔴 Empire E4 → #21"
+    },
+    {
+      "tour": 5,
+      "etape": 74,
+      "cat": "combat",
+      "ts": 1787178046482,
+      "msg": "⚔ L'Empire attaque sur #21 ! Force inconnue — entre 1 à 12"
+    },
+    {
+      "tour": 5,
+      "etape": 75,
+      "cat": "turn",
+      "ts": 1787178046482,
+      "msg": "── Tour 5 ──"
+    },
+    {
+      "tour": 5,
+      "etape": 76,
+      "cat": "snap",
+      "ts": 1787178046482,
+      "msg": "[Début] ⚡2 🃏2 ♥6 💰1 ⭐0 W4 M0 Fe0 Bo0 No2 Pe1 Ab[]"
+    },
+    {
+      "tour": 5,
+      "etape": 77,
+      "cat": "snap",
+      "ts": 1787178046482,
+      "msg": "[Début 🤖 Bayou] ⚡2 🃏2 ♥3 💰4 ⭐0 W3 M1 Fe0 Bo1 No0 Pe2 Ab[0]"
+    },
+    {
+      "tour": 5,
+      "etape": 78,
+      "cat": "snap",
+      "ts": 1787178046482,
+      "msg": "[Début 🤖 Acadiane] ⚡2 🃏3 ♥3 💰8 ⭐0 W3 M0 Fe0 Bo1 No0 Pe2 Ab[]"
+    },
+    {
+      "tour": 5,
+      "etape": 79,
+      "cat": "warn",
+      "ts": 1787178060767,
+      "msg": "✅ Victoire ! Titan Errant détruit (6 vs 6 — dépensé: 2⚡ 1🃏)"
+    },
+    {
+      "tour": 5,
+      "etape": 80,
+      "cat": "warn",
+      "ts": 1787178074883,
+      "msg": "🏆 +2 Métal (ferraille)"
+    },
+    {
+      "tour": 5,
+      "etape": 81,
+      "cat": "warn",
+      "ts": 1787178089431,
+      "msg": "⚙ Mecha impérial laissé à la ferraille — le réseau n'en fait rien"
+    },
+    {
+      "tour": 5,
+      "etape": 82,
+      "cat": "note",
+      "ts": 1787178147655,
+      "msg": "📝 je viens de me faire attaquer par un mech de l'empire, on a fait egalité sur la puissance il aurait du gagner mais cest quand meme moi qui ai gagné, bug"
+    },
+    {
+      "tour": 5,
+      "etape": 83,
+      "cat": "resource",
+      "ts": 1787178161696,
+      "msg": "💪 -1$ → +3 Pui (Amélioration +1)"
+    },
+    {
+      "tour": 5,
+      "etape": 84,
+      "cat": "info",
+      "ts": 1787178167836,
+      "msg": "↶ Coup annulé"
+    },
+    {
+      "tour": 5,
+      "etape": 85,
+      "cat": "info",
+      "ts": 1787178185234,
+      "msg": "🏭 +1 pétrole #40"
+    },
+    {
+      "tour": 5,
+      "etape": 86,
+      "cat": "info",
+      "ts": 1787178185234,
+      "msg": "🏭 +1 nourriture #7"
+    },
+    {
+      "tour": 5,
+      "etape": 87,
+      "cat": "bot",
+      "ts": 1787178192140,
+      "msg": "🤖 Bayou: +2 ouv. #35"
+    },
+    {
+      "tour": 5,
+      "etape": 88,
+      "cat": "bot",
+      "ts": 1787178192140,
+      "msg": "🤖 Bayou: Produire"
+    },
+    {
+      "tour": 5,
+      "etape": 89,
+      "cat": "bot",
+      "ts": 1787178192499,
+      "msg": "🤖 Acadiane: M. Thibodeau → #9"
+    },
+    {
+      "tour": 5,
+      "etape": 90,
+      "cat": "bot",
+      "ts": 1787178192499,
+      "msg": "🤖🏴 Acadiane: comptoir gardé (#9 colle au réseau)"
+    },
+    {
+      "tour": 5,
+      "etape": 91,
+      "cat": "bot",
+      "ts": 1787178192499,
+      "msg": "🤖 Acadiane: Ouv. → #6"
+    },
+    {
+      "tour": 5,
+      "etape": 92,
+      "cat": "bot",
+      "ts": 1787178192499,
+      "msg": "🤖 Acadiane: Améliorer 2/6"
+    },
+    {
+      "tour": 5,
+      "etape": 93,
+      "cat": "bot",
+      "ts": 1787178192499,
+      "msg": "🤖📜 Acadiane: \"La Contrebandière\" → Engager ses mercenaires"
+    },
+    {
+      "tour": 6,
+      "etape": 94,
+      "cat": "move",
+      "ts": 1787178192503,
+      "msg": "🔴 Empire E1 → #27"
+    },
+    {
+      "tour": 6,
+      "etape": 95,
+      "cat": "turn",
+      "ts": 1787178192503,
+      "msg": "── Tour 6 ──"
+    },
+    {
+      "tour": 6,
+      "etape": 96,
+      "cat": "snap",
+      "ts": 1787178192503,
+      "msg": "[Début] ⚡0 🃏1 ♥6 💰1 ⭐0 W4 M0 Fe2 Bo0 No3 Pe2 Ab[]"
+    },
+    {
+      "tour": 6,
+      "etape": 97,
+      "cat": "snap",
+      "ts": 1787178192503,
+      "msg": "[Début 🤖 Bayou] ⚡2 🃏2 ♥3 💰4 ⭐0 W5 M1 Fe0 Bo1 No0 Pe2 Ab[0]"
+    },
+    {
+      "tour": 6,
+      "etape": 98,
+      "cat": "snap",
+      "ts": 1787178192503,
+      "msg": "[Début 🤖 Acadiane] ⚡2 🃏5 ♥3 💰8 ⭐0 W3 M0 Fe0 Bo1 No0 Pe0 Ab[]"
+    },
+    {
+      "tour": 6,
+      "etape": 99,
+      "cat": "resource",
+      "ts": 1787178206978,
+      "msg": "💪 -1$ → +3 Pui (Amélioration +1)"
+    },
+    {
+      "tour": 6,
+      "etape": 100,
+      "cat": "enlist",
+      "ts": 1787178218760,
+      "msg": "🤝 Recrue 1/4 sur Améliorer (-3 nourriture) — immédiat +2 Pièces"
+    },
+    {
+      "tour": 6,
+      "etape": 101,
+      "cat": "combat",
+      "ts": 1787178218760,
+      "msg": "   Permanent 🃏 +1 Carte Combat quand vous/voisins faites Upgrade"
+    },
+    {
+      "tour": 6,
+      "etape": 102,
+      "cat": "bot",
+      "ts": 1787178220558,
+      "msg": "🤖 Bayou: +2 pétrole"
+    },
+    {
+      "tour": 6,
+      "etape": 103,
+      "cat": "bot",
+      "ts": 1787178220558,
+      "msg": "🤖 Bayou: Améliorer 1/6"
+    },
+    {
+      "tour": 6,
+      "etape": 104,
+      "cat": "combat",
+      "ts": 1787178220558,
+      "msg": "🤝 Internationale Noire: 🃏+1 Carte Combat (voisin Bayou → Upgrade)"
+    },
+    {
+      "tour": 6,
+      "etape": 105,
+      "cat": "bot",
+      "ts": 1787178220918,
+      "msg": "🤖 Acadiane: +2 ouv. #6"
+    },
+    {
+      "tour": 6,
+      "etape": 106,
+      "cat": "bot",
+      "ts": 1787178220918,
+      "msg": "🤖 Acadiane: Produire"
+    },
+    {
+      "tour": 7,
+      "etape": 107,
+      "cat": "move",
+      "ts": 1787178220921,
+      "msg": "🔴 Empire E6 → #34"
+    },
+    {
+      "tour": 7,
+      "etape": 108,
+      "cat": "turn",
+      "ts": 1787178220921,
+      "msg": "── Tour 7 ──"
+    },
+    {
+      "tour": 7,
+      "etape": 109,
+      "cat": "snap",
+      "ts": 1787178220921,
+      "msg": "[Début] ⚡3 🃏2 ♥6 💰2 ⭐0 W4 M0 Fe2 Bo0 No0 Pe2 Ab[]"
+    },
+    {
+      "tour": 7,
+      "etape": 110,
+      "cat": "snap",
+      "ts": 1787178220921,
+      "msg": "[Début 🤖 Bayou] ⚡2 🃏2 ♥3 💰5 ⭐0 W5 M1 Fe0 Bo1 No0 Pe1 Ab[0]"
+    },
+    {
+      "tour": 7,
+      "etape": 111,
+      "cat": "snap",
+      "ts": 1787178220921,
+      "msg": "[Début 🤖 Acadiane] ⚡2 🃏5 ♥3 💰8 ⭐0 W5 M0 Fe0 Bo1 No0 Pe1 Ab[]"
+    },
+    {
+      "tour": 7,
+      "etape": 112,
+      "cat": "move",
+      "ts": 1787178244836,
+      "msg": "🚶 internationale_w2 → #29 📦2metal"
+    },
+    {
+      "tour": 7,
+      "etape": 113,
+      "cat": "combat",
+      "ts": 1787178244836,
+      "msg": "📜 Jeton de rencontre atteint sur #29 — il se résoudra après les combats"
+    },
+    {
+      "tour": 7,
+      "etape": 114,
+      "cat": "move",
+      "ts": 1787178248589,
+      "msg": "🚶 internationale_w0 → #14"
+    },
+    {
+      "tour": 7,
+      "etape": 115,
+      "cat": "combat",
+      "ts": 1787178248589,
+      "msg": "📜 Jeton de rencontre atteint sur #14 — il se résoudra après les combats"
+    },
+    {
+      "tour": 7,
+      "etape": 116,
+      "cat": "move",
+      "ts": 1787178248589,
+      "msg": "✅ Mouvement terminé (2/2)"
+    },
+    {
+      "tour": 7,
+      "etape": 117,
+      "cat": "encounter",
+      "ts": 1787178248605,
+      "msg": "📜 Rencontre: \"Le Champ de Pétrole\""
+    },
+    {
+      "tour": 7,
+      "etape": 118,
+      "cat": "encounter",
+      "ts": 1787178264382,
+      "msg": "📜 Le Champ de Pétrole: Forer sans relâche → -2 pop, +5 pétrole"
+    },
+    {
+      "tour": 7,
+      "etape": 119,
+      "cat": "encounter",
+      "ts": 1787178264408,
+      "msg": "📜 Rencontre: \"Le Convoi de Traverses\""
+    },
+    {
+      "tour": 7,
+      "etape": 120,
+      "cat": "encounter",
+      "ts": 1787178271058,
+      "msg": "📜 Le Convoi de Traverses: Redistribuer le bois → +1 pop, +2 bois"
+    },
+    {
+      "tour": 7,
+      "etape": 121,
+      "cat": "upgrade",
+      "ts": 1787178314165,
+      "msg": "⬆ Améliorer 2/6: Produire↑ → Construire↓ (-3 pétrole, +3$)"
+    },
+    {
+      "tour": 7,
+      "etape": 122,
+      "cat": "combat",
+      "ts": 1787178314165,
+      "msg": "🤝 Internationale Noire: 🃏+1 Carte Combat (propre Upgrade)"
+    },
+    {
+      "tour": 7,
+      "etape": 123,
+      "cat": "bot",
+      "ts": 1787178317321,
+      "msg": "🤖 Bayou: Produire"
+    },
+    {
+      "tour": 7,
+      "etape": 124,
+      "cat": "bot",
+      "ts": 1787178317675,
+      "msg": "🤖 Acadiane: +2 Pop"
+    },
+    {
+      "tour": 8,
+      "etape": 125,
+      "cat": "move",
+      "ts": 1787178317677,
+      "msg": "🔴 Empire E1 → #22"
+    },
+    {
+      "tour": 8,
+      "etape": 126,
+      "cat": "turn",
+      "ts": 1787178317677,
+      "msg": "── Tour 8 ──"
+    },
+    {
+      "tour": 8,
+      "etape": 127,
+      "cat": "snap",
+      "ts": 1787178317677,
+      "msg": "[Début] ⚡3 🃏3 ♥5 💰5 ⭐0 W4 M0 Fe2 Bo2 No0 Pe4 Ab[]"
+    },
+    {
+      "tour": 8,
+      "etape": 128,
+      "cat": "snap",
+      "ts": 1787178317677,
+      "msg": "[Début 🤖 Bayou] ⚡1 🃏2 ♥3 💰5 ⭐0 W5 M1 Fe0 Bo1 No0 Pe1 Ab[0]"
+    },
+    {
+      "tour": 8,
+      "etape": 129,
+      "cat": "snap",
+      "ts": 1787178317677,
+      "msg": "[Début 🤖 Acadiane] ⚡2 🃏5 ♥5 💰7 ⭐0 W5 M0 Fe0 Bo1 No0 Pe1 Ab[]"
+    },
+    {
+      "tour": 8,
+      "etape": 130,
+      "cat": "resource",
+      "ts": 1787178358047,
+      "msg": "💰 -1$ → +2 nourriture (#14)"
+    },
+    {
+      "tour": 8,
+      "etape": 131,
+      "cat": "build",
+      "ts": 1787178366921,
+      "msg": "🏗 Arsenal construit sur #14 (-2 bois, +3$)"
+    },
+    {
+      "tour": 8,
+      "etape": 132,
+      "cat": "build",
+      "ts": 1787178366921,
+      "msg": "🤝 Acadiane: ♥+1 Popularité (voisin Internationale Noire → Build)"
+    },
+    {
+      "tour": 8,
+      "etape": 133,
+      "cat": "bot",
+      "ts": 1787178370895,
+      "msg": "🤖 Bayou: +2 Pop"
+    },
+    {
+      "tour": 8,
+      "etape": 134,
+      "cat": "bot",
+      "ts": 1787178371250,
+      "msg": "🤖 Acadiane: Produire"
+    },
+    {
+      "tour": 9,
+      "etape": 135,
+      "cat": "move",
+      "ts": 1787178371253,
+      "msg": "🔴 Empire E6 → #30"
+    },
+    {
+      "tour": 9,
+      "etape": 136,
+      "cat": "turn",
+      "ts": 1787178371253,
+      "msg": "── Tour 9 ──"
+    },
+    {
+      "tour": 9,
+      "etape": 137,
+      "cat": "snap",
+      "ts": 1787178371253,
+      "msg": "[Début] ⚡3 🃏3 ♥5 💰7 ⭐0 W4 M0 Fe2 Bo0 No2 Pe4 Ab[]"
+    },
+    {
+      "tour": 9,
+      "etape": 138,
+      "cat": "snap",
+      "ts": 1787178371253,
+      "msg": "[Début 🤖 Bayou] ⚡1 🃏2 ♥5 💰4 ⭐0 W5 M1 Fe0 Bo1 No0 Pe1 Ab[0]"
+    },
+    {
+      "tour": 9,
+      "etape": 139,
+      "cat": "snap",
+      "ts": 1787178371253,
+      "msg": "[Début 🤖 Acadiane] ⚡1 🃏5 ♥6 💰7 ⭐0 W5 M0 Fe0 Bo1 No0 Pe2 Ab[]"
+    },
+    {
+      "tour": 9,
+      "etape": 140,
+      "cat": "move",
+      "ts": 1787178394531,
+      "msg": "🚶 internationale_w1 → #16"
+    },
+    {
+      "tour": 9,
+      "etape": 141,
+      "cat": "move",
+      "ts": 1787178423587,
+      "msg": "🚶 internationale_w2 → #36 📦2metal, 2petrole"
+    },
+    {
+      "tour": 9,
+      "etape": 142,
+      "cat": "move",
+      "ts": 1787178423587,
+      "msg": "✅ Mouvement terminé (2/2)"
+    },
+    {
+      "tour": 9,
+      "etape": 143,
+      "cat": "upgrade",
+      "ts": 1787178435074,
+      "msg": "⬆ Améliorer 3/6: Déplacer↑ → Améliorer↓ (-3 pétrole, +1$)"
+    },
+    {
+      "tour": 9,
+      "etape": 144,
+      "cat": "combat",
+      "ts": 1787178435074,
+      "msg": "🤝 Internationale Noire: 🃏+1 Carte Combat (propre Upgrade)"
+    },
+    {
+      "tour": 9,
+      "etape": 145,
+      "cat": "bot",
+      "ts": 1787178437251,
+      "msg": "🤖 Bayou: +2 pui"
+    },
+    {
+      "tour": 9,
+      "etape": 146,
+      "cat": "bot",
+      "ts": 1787178437609,
+      "msg": "🤖 Acadiane: +2 Pop (palier ×2 franchi !)"
+    },
+    {
+      "tour": 10,
+      "etape": 147,
+      "cat": "move",
+      "ts": 1787178437611,
+      "msg": "🔴 Empire E5 → #30"
+    },
+    {
+      "tour": 10,
+      "etape": 148,
+      "cat": "turn",
+      "ts": 1787178437611,
+      "msg": "── Tour 10 ──"
+    },
+    {
+      "tour": 10,
+      "etape": 149,
+      "cat": "snap",
+      "ts": 1787178437611,
+      "msg": "[Début] ⚡3 🃏4 ♥5 💰8 ⭐0 W4 M0 Fe2 Bo0 No2 Pe1 Ab[]"
+    },
+    {
+      "tour": 10,
+      "etape": 150,
+      "cat": "snap",
+      "ts": 1787178437611,
+      "msg": "[Début 🤖 Bayou] ⚡3 🃏2 ♥5 💰3 ⭐0 W5 M1 Fe0 Bo1 No0 Pe1 Ab[0]"
+    },
+    {
+      "tour": 10,
+      "etape": 151,
+      "cat": "snap",
+      "ts": 1787178437611,
+      "msg": "[Début 🤖 Acadiane] ⚡1 🃏5 ♥8 💰6 ⭐0 W5 M0 Fe0 Bo1 No0 Pe2 Ab[]"
+    },
+    {
+      "tour": 10,
+      "etape": 152,
+      "cat": "info",
+      "ts": 1787178457539,
+      "msg": "🏭 +1 pétrole #40"
+    },
+    {
+      "tour": 10,
+      "etape": 153,
+      "cat": "info",
+      "ts": 1787178457539,
+      "msg": "👷 +ouv. #36"
+    },
+    {
+      "tour": 10,
+      "etape": 154,
+      "cat": "info",
+      "ts": 1787178457539,
+      "msg": "🏭 +1 métal #16"
+    },
+    {
+      "tour": 10,
+      "etape": 155,
+      "cat": "bot",
+      "ts": 1787178463619,
+      "msg": "🤖 Bayou: +2 Pop (palier ×2 franchi !)"
+    },
+    {
+      "tour": 10,
+      "etape": 156,
+      "cat": "bot",
+      "ts": 1787178463973,
+      "msg": "🤖 Acadiane: M. Thibodeau → #2 📦1bois"
+    },
+    {
+      "tour": 10,
+      "etape": 157,
+      "cat": "bot",
+      "ts": 1787178463973,
+      "msg": "🤖🏴 Acadiane: comptoir gardé (#2 colle au réseau)"
+    },
+    {
+      "tour": 10,
+      "etape": 158,
+      "cat": "bot",
+      "ts": 1787178463973,
+      "msg": "🤖 Acadiane: Ouv. → #9"
+    },
+    {
+      "tour": 11,
+      "etape": 159,
+      "cat": "move",
+      "ts": 1787178463977,
+      "msg": "🔴 Empire E2 → #12"
+    },
+    {
+      "tour": 11,
+      "etape": 160,
+      "cat": "turn",
+      "ts": 1787178463977,
+      "msg": "── Tour 11 ──"
+    },
+    {
+      "tour": 11,
+      "etape": 161,
+      "cat": "snap",
+      "ts": 1787178463977,
+      "msg": "[Début] ⚡3 🃏4 ♥5 💰8 ⭐0 W5 M0 Fe3 Bo0 No2 Pe2 Ab[]"
+    },
+    {
+      "tour": 11,
+      "etape": 162,
+      "cat": "snap",
+      "ts": 1787178463977,
+      "msg": "[Début 🤖 Bayou] ⚡3 🃏2 ♥7 💰2 ⭐0 W5 M1 Fe0 Bo1 No0 Pe1 Ab[0]"
+    },
+    {
+      "tour": 11,
+      "etape": 163,
+      "cat": "snap",
+      "ts": 1787178463977,
+      "msg": "[Début 🤖 Acadiane] ⚡1 🃏5 ♥8 💰6 ⭐0 W5 M0 Fe0 Bo1 No0 Pe2 Ab[]"
+    },
+    {
+      "tour": 11,
+      "etape": 164,
+      "cat": "note",
+      "ts": 1787178498239,
+      "msg": "📝 en mode internationale noir si j'ai le metal pour deploy  on me propose de deploy un mecha en selectionnant un hex"
+    },
+    {
+      "tour": 11,
+      "etape": 165,
+      "cat": "note",
+      "ts": 1787178585754,
+      "msg": "📝 mais mech deployable uniquement par victoire dans un combat  cotre un mech + ressources"
+    },
+    {
+      "tour": 11,
+      "etape": 166,
+      "cat": "move",
+      "ts": 1787178609239,
+      "msg": "🚶 internationale_w0 → #7 📦2nourriture"
+    },
+    {
+      "tour": 11,
+      "etape": 167,
+      "cat": "move",
+      "ts": 1787178619225,
+      "msg": "🚶 internationale_w4 → #29 📦2metal"
+    },
+    {
+      "tour": 11,
+      "etape": 168,
+      "cat": "move",
+      "ts": 1787178629224,
+      "msg": "✅ Mouvement terminé (2/3)"
+    },
+    {
+      "tour": 11,
+      "etape": 169,
+      "cat": "upgrade",
+      "ts": 1787178648417,
+      "msg": "⬆ Améliorer 4/6: Commerce↑ → Déployer↓ (-2 pétrole, +2$)"
+    },
+    {
+      "tour": 11,
+      "etape": 170,
+      "cat": "combat",
+      "ts": 1787178648417,
+      "msg": "🤝 Internationale Noire: 🃏+1 Carte Combat (propre Upgrade)"
+    },
+    {
+      "tour": 11,
+      "etape": 171,
+      "cat": "bot",
+      "ts": 1787178652119,
+      "msg": "🤖 Bayou: Cap. Zeke → #31 📦1petrole"
+    },
+    {
+      "tour": 11,
+      "etape": 172,
+      "cat": "bot",
+      "ts": 1787178652119,
+      "msg": "🤖 Bayou: Ouv. → #28"
+    },
+    {
+      "tour": 11,
+      "etape": 173,
+      "cat": "bot",
+      "ts": 1787178652119,
+      "msg": "🤖📜 Bayou: \"La Diligence Postale\" → Escorter le courrier"
+    },
+    {
+      "tour": 11,
+      "etape": 174,
+      "cat": "bot",
+      "ts": 1787178652477,
+      "msg": "🤖 Acadiane: +2 nourriture"
+    },
+    {
+      "tour": 12,
+      "etape": 175,
+      "cat": "move",
+      "ts": 1787178652481,
+      "msg": "🔴 Empire E3 → #31"
+    },
+    {
+      "tour": 12,
+      "etape": 176,
+      "cat": "combat",
+      "ts": 1787178652481,
+      "msg": "⚔🤖 Bayou échoue vs Gardien de Route (1 vs 3)"
+    },
+    {
+      "tour": 12,
+      "etape": 177,
+      "cat": "turn",
+      "ts": 1787178652481,
+      "msg": "── Tour 12 ──"
+    },
+    {
+      "tour": 12,
+      "etape": 178,
+      "cat": "snap",
+      "ts": 1787178652481,
+      "msg": "[Début] ⚡3 🃏5 ♥5 💰10 ⭐0 W5 M0 Fe3 Bo0 No2 Pe0 Ab[]"
+    },
+    {
+      "tour": 12,
+      "etape": 179,
+      "cat": "snap",
+      "ts": 1787178652481,
+      "msg": "[Début 🤖 Bayou] ⚡3 🃏2 ♥8 💰4 ⭐0 W5 M1 Fe0 Bo1 No0 Pe1 Ab[0]"
+    },
+    {
+      "tour": 12,
+      "etape": 180,
+      "cat": "snap",
+      "ts": 1787178652481,
+      "msg": "[Début 🤖 Acadiane] ⚡1 🃏5 ♥8 💰5 ⭐0 W5 M0 Fe0 Bo1 No2 Pe2 Ab[]"
+    },
+    {
+      "tour": 12,
+      "etape": 181,
+      "cat": "info",
+      "ts": 1787178683787,
+      "msg": "🏭 +1 bois #29"
+    },
+    {
+      "tour": 12,
+      "etape": 182,
+      "cat": "info",
+      "ts": 1787178683787,
+      "msg": "🏭 +1 métal #16"
+    },
+    {
+      "tour": 12,
+      "etape": 183,
+      "cat": "info",
+      "ts": 1787178683787,
+      "msg": "🏭 +1 nourriture #7"
+    },
+    {
+      "tour": 12,
+      "etape": 184,
+      "cat": "bot",
+      "ts": 1787178687953,
+      "msg": "🤖🔄 Bayou: son plan ne paie pas — repli sur la popularité, les territoires et les ressources"
+    },
+    {
+      "tour": 12,
+      "etape": 185,
+      "cat": "bot",
+      "ts": 1787178687953,
+      "msg": "🤖 Bayou: +2 Pop"
+    },
+    {
+      "tour": 12,
+      "etape": 186,
+      "cat": "bot",
+      "ts": 1787178688320,
+      "msg": "🤖 Acadiane: Produire"
+    },
+    {
+      "tour": 12,
+      "etape": 187,
+      "cat": "bot",
+      "ts": 1787178688320,
+      "msg": "🤖 Acadiane: Enrôler Améliorer → immédiat 💰+2 Pièces, recrue ⚡ permanent"
+    },
+    {
+      "tour": 12,
+      "etape": 188,
+      "cat": "bot",
+      "ts": 1787178688320,
+      "msg": "🤖💰 Acadiane: +3$ (Enrôler)"
+    },
+    {
+      "tour": 13,
+      "etape": 189,
+      "cat": "move",
+      "ts": 1787178688323,
+      "msg": "🔴 Empire E5 → #37"
+    },
+    {
+      "tour": 13,
+      "etape": 190,
+      "cat": "turn",
+      "ts": 1787178688324,
+      "msg": "── Tour 13 ──"
+    },
+    {
+      "tour": 13,
+      "etape": 191,
+      "cat": "snap",
+      "ts": 1787178688324,
+      "msg": "[Début] ⚡3 🃏5 ♥5 💰10 ⭐0 W5 M0 Fe4 Bo1 No3 Pe0 Ab[]"
+    },
+    {
+      "tour": 13,
+      "etape": 192,
+      "cat": "snap",
+      "ts": 1787178688324,
+      "msg": "[Début 🤖 Bayou] ⚡2 🃏2 ♥10 💰3 ⭐0 W5 M1 Fe0 Bo1 No0 Pe1 Ab[0]"
+    },
+    {
+      "tour": 13,
+      "etape": 193,
+      "cat": "snap",
+      "ts": 1787178688324,
+      "msg": "[Début 🤖 Acadiane] ⚡0 🃏5 ♥8 💰10 ⭐0 W5 M0 Fe0 Bo2 No1 Pe3 Ab[]"
+    },
+    {
+      "tour": 13,
+      "etape": 194,
+      "cat": "resource",
+      "ts": 1787178692882,
+      "msg": "💪 -1$ → +4 Pui (Amélioration +1) (Arsenal +1)"
+    },
+    {
+      "tour": 13,
+      "etape": 195,
+      "cat": "enlist",
+      "ts": 1787178699990,
+      "msg": "🤝 Recrue 2/4 sur Enrôler (-3 nourriture) — immédiat +2 Puissance"
+    },
+    {
+      "tour": 13,
+      "etape": 196,
+      "cat": "enlist",
+      "ts": 1787178699990,
+      "msg": "   Permanent ⚡ +1 Puissance quand vous/voisins faites Enlist"
+    },
+    {
+      "tour": 13,
+      "etape": 197,
+      "cat": "enlist",
+      "ts": 1787178699990,
+      "msg": "🤝 Internationale Noire: ⚡+1 Puissance (propre Enlist)"
+    },
+    {
+      "tour": 13,
+      "etape": 198,
+      "cat": "bot",
+      "ts": 1787178702662,
+      "msg": "🤖 Bayou: +3 ouv. #35"
+    },
+    {
+      "tour": 13,
+      "etape": 199,
+      "cat": "star",
+      "ts": 1787178702662,
+      "msg": "⭐ Bayou: 8 ouvriers !"
+    },
+    {
+      "tour": 13,
+      "etape": 200,
+      "cat": "bot",
+      "ts": 1787178702662,
+      "msg": "🤖 Bayou: Produire"
+    },
+    {
+      "tour": 13,
+      "etape": 201,
+      "cat": "bot",
+      "ts": 1787178703016,
+      "msg": "🤖 Acadiane: M. Thibodeau → #9 📦3petrole, 1bois, 1nourriture"
+    },
+    {
+      "tour": 13,
+      "etape": 202,
+      "cat": "bot",
+      "ts": 1787178703016,
+      "msg": "🤖🏴 Acadiane: comptoir gardé (#9 colle au réseau)"
+    },
+    {
+      "tour": 13,
+      "etape": 203,
+      "cat": "bot",
+      "ts": 1787178703016,
+      "msg": "🤖 Acadiane: Ouv. → #9"
+    },
+    {
+      "tour": 14,
+      "etape": 204,
+      "cat": "move",
+      "ts": 1787178703020,
+      "msg": "🔴 Empire E1 → #30"
+    },
+    {
+      "tour": 14,
+      "etape": 205,
+      "cat": "turn",
+      "ts": 1787178703020,
+      "msg": "── Tour 14 ──"
+    },
+    {
+      "tour": 14,
+      "etape": 206,
+      "cat": "snap",
+      "ts": 1787178703020,
+      "msg": "[Début] ⚡10 🃏5 ♥5 💰9 ⭐0 W5 M0 Fe4 Bo1 No0 Pe0 Ab[]"
+    },
+    {
+      "tour": 14,
+      "etape": 207,
+      "cat": "snap",
+      "ts": 1787178703020,
+      "msg": "[Début 🤖 Bayou] ⚡1 🃏2 ♥10 💰3 ⭐1 W8 M1 Fe0 Bo2 No0 Pe1 Ab[0]"
+    },
+    {
+      "tour": 14,
+      "etape": 208,
+      "cat": "snap",
+      "ts": 1787178703020,
+      "msg": "[Début 🤖 Acadiane] ⚡0 🃏5 ♥8 💰10 ⭐0 W5 M0 Fe0 Bo2 No1 Pe3 Ab[]"
+    },
+    {
+      "tour": 14,
+      "etape": 209,
+      "cat": "resource",
+      "ts": 1787178739646,
+      "msg": "💰 -1$ → +1 metal (#29), +1 bois (#29)"
+    },
+    {
+      "tour": 14,
+      "etape": 210,
+      "cat": "build",
+      "ts": 1787178748925,
+      "msg": "🏗 Gare construit sur #29 (-2 bois, +3$)"
+    },
+    {
+      "tour": 14,
+      "etape": 211,
+      "cat": "resource",
+      "ts": 1787178748925,
+      "msg": "🚂 Posez 3 segments de rail depuis la Gare ou un rail existant (pas sur lac/marécage)"
+    },
+    {
+      "tour": 14,
+      "etape": 212,
+      "cat": "resource",
+      "ts": 1787178750630,
+      "msg": "🚂 Rail depuis #29 — cliquez un hex adjacent"
+    },
+    {
+      "tour": 14,
+      "etape": 213,
+      "cat": "info",
+      "ts": 1787178751556,
+      "msg": "🛤 Rail posé #29↔#26 (2 restants)"
+    },
+    {
+      "tour": 14,
+      "etape": 214,
+      "cat": "resource",
+      "ts": 1787178752238,
+      "msg": "🚂 Rail depuis #26 — cliquez un hex adjacent"
+    },
+    {
+      "tour": 14,
+      "etape": 215,
+      "cat": "info",
+      "ts": 1787178753029,
+      "msg": "🛤 Rail posé #26↔#22 (1 restant)"
+    },
+    {
+      "tour": 14,
+      "etape": 216,
+      "cat": "resource",
+      "ts": 1787178757554,
+      "msg": "🚂 Rail depuis #22 — cliquez un hex adjacent"
+    },
+    {
+      "tour": 14,
+      "etape": 217,
+      "cat": "info",
+      "ts": 1787178758500,
+      "msg": "🛤 Rail posé #22↔#15 (0 restant)"
+    },
+    {
+      "tour": 14,
+      "etape": 218,
+      "cat": "info",
+      "ts": 1787178758500,
+      "msg": "✅ Rails posés !"
+    },
+    {
+      "tour": 14,
+      "etape": 219,
+      "cat": "build",
+      "ts": 1787178758500,
+      "msg": "🤝 Acadiane: ♥+1 Popularité (voisin Internationale Noire → Build)"
+    },
+    {
+      "tour": 14,
+      "etape": 220,
+      "cat": "bot",
+      "ts": 1787178761226,
+      "msg": "🤖 Bayou: +2 Pop"
+    },
+    {
+      "tour": 14,
+      "etape": 221,
+      "cat": "bot",
+      "ts": 1787178761588,
+      "msg": "🤖 Acadiane: (coût prod.)"
+    },
+    {
+      "tour": 14,
+      "etape": 222,
+      "cat": "bot",
+      "ts": 1787178761588,
+      "msg": "🤖 Acadiane: Enrôler Déployer → immédiat ♥+2 Popularité, recrue 💰 permanent"
+    },
+    {
+      "tour": 14,
+      "etape": 223,
+      "cat": "bot",
+      "ts": 1787178761588,
+      "msg": "🤖💰 Acadiane: +3$ (Enrôler)"
+    },
+    {
+      "tour": 14,
+      "etape": 224,
+      "cat": "enlist",
+      "ts": 1787178761588,
+      "msg": "🤝 Internationale Noire: ⚡+1 Puissance (voisin Acadiane → Enlist)"
+    },
+    {
+      "tour": 15,
+      "etape": 225,
+      "cat": "move",
+      "ts": 1787178761598,
+      "msg": "🔴 Empire E5 → #40"
+    },
+    {
+      "tour": 15,
+      "etape": 226,
+      "cat": "combat",
+      "ts": 1787178761598,
+      "msg": "⚔ L'Empire attaque sur #40 ! Force inconnue — entre 1 à 12"
+    },
+    {
+      "tour": 15,
+      "etape": 227,
+      "cat": "turn",
+      "ts": 1787178761598,
+      "msg": "── Tour 15 ──"
+    },
+    {
+      "tour": 15,
+      "etape": 228,
+      "cat": "snap",
+      "ts": 1787178761598,
+      "msg": "[Début] ⚡11 🃏5 ♥5 💰11 ⭐0 W5 M0 Fe5 Bo0 No0 Pe0 Ab[]"
+    },
+    {
+      "tour": 15,
+      "etape": 229,
+      "cat": "snap",
+      "ts": 1787178761598,
+      "msg": "[Début 🤖 Bayou] ⚡1 🃏2 ♥12 💰2 ⭐1 W8 M1 Fe0 Bo2 No0 Pe1 Ab[0]"
+    },
+    {
+      "tour": 15,
+      "etape": 230,
+      "cat": "snap",
+      "ts": 1787178761598,
+      "msg": "[Début 🤖 Acadiane] ⚡0 🃏5 ♥11 💰13 ⭐0 W5 M0 Fe0 Bo2 No0 Pe3 Ab[]"
+    },
+    {
+      "tour": 15,
+      "etape": 231,
+      "cat": "warn",
+      "ts": 1787178771443,
+      "msg": "✅ Victoire ! Titan Errant détruit (12 vs 6 — dépensé: 7⚡ 1🃏)"
+    },
+    {
+      "tour": 15,
+      "etape": 232,
+      "cat": "warn",
+      "ts": 1787178776445,
+      "msg": "🏆 +2 Métal (ferraille)"
+    },
+    {
+      "tour": 15,
+      "etape": 233,
+      "cat": "info",
+      "ts": 1787178778420,
+      "msg": "🔧 Mecha impérial retourné sur #40 (-2 métal) — capacité arrachée : 🏃 Vitesse"
+    },
+    {
+      "tour": 15,
+      "etape": 234,
+      "cat": "resource",
+      "ts": 1787178791464,
+      "msg": "💪 -1$ → +4 Pui (Amélioration +1) (Arsenal +1)"
+    },
+    {
+      "tour": 15,
+      "etape": 235,
+      "cat": "bot",
+      "ts": 1787178796318,
+      "msg": "🤖 Bayou: Cap. Zeke → #31"
+    },
+    {
+      "tour": 15,
+      "etape": 236,
+      "cat": "bot",
+      "ts": 1787178796318,
+      "msg": "🤖 Bayou: Ouv. → #28"
+    },
+    {
+      "tour": 15,
+      "etape": 237,
+      "cat": "bot",
+      "ts": 1787178796684,
+      "msg": "🤖 Acadiane: +2 Pop (palier ×3 franchi !)"
+    },
+    {
+      "tour": 16,
+      "etape": 238,
+      "cat": "move",
+      "ts": 1787178796687,
+      "msg": "🔴 Empire E3 → #27"
+    },
+    {
+      "tour": 16,
+      "etape": 239,
+      "cat": "turn",
+      "ts": 1787178796687,
+      "msg": "── Tour 16 ──"
+    },
+    {
+      "tour": 16,
+      "etape": 240,
+      "cat": "snap",
+      "ts": 1787178796687,
+      "msg": "[Début] ⚡8 🃏4 ♥5 💰10 ⭐0 W5 M1 Fe5 Bo0 No0 Pe0 Ab[0]"
+    },
+    {
+      "tour": 16,
+      "etape": 241,
+      "cat": "snap",
+      "ts": 1787178796687,
+      "msg": "[Début 🤖 Bayou] ⚡1 🃏2 ♥12 💰2 ⭐1 W8 M1 Fe0 Bo2 No0 Pe1 Ab[0]"
+    },
+    {
+      "tour": 16,
+      "etape": 242,
+      "cat": "snap",
+      "ts": 1787178796687,
+      "msg": "[Début 🤖 Acadiane] ⚡0 🃏5 ♥13 💰12 ⭐0 W5 M0 Fe0 Bo2 No0 Pe3 Ab[]"
+    },
+    {
+      "tour": 16,
+      "etape": 243,
+      "cat": "move",
+      "ts": 1787178836733,
+      "msg": "🚶 internationale_w4 → #22 📦3metal"
+    },
+    {
+      "tour": 16,
+      "etape": 244,
+      "cat": "rr",
+      "ts": 1787178836733,
+      "msg": "⚙ Rouge River ! Offre découverte : 4 plans Ford"
+    },
+    {
+      "tour": 16,
+      "etape": 245,
+      "cat": "warn",
+      "ts": 1787178865365,
+      "msg": "⚙ Carte d'usine choisie: Stock de Guerre — HAUT 1🃏 → +2💰 + +1⚡ · BAS Déplacer 1 unité de 2 hex (+1 si Vitesse)"
+    },
+    {
+      "tour": 16,
+      "etape": 246,
+      "cat": "info",
+      "ts": 1787178872380,
+      "msg": "👆 2 unités sur #40 — cliquez le pion à déplacer"
+    },
+    {
+      "tour": 16,
+      "etape": 247,
+      "cat": "move",
+      "ts": 1787178890275,
+      "msg": "🚶 internationale_vol1 → #34 👷×1 📦2metal"
+    },
+    {
+      "tour": 16,
+      "etape": 248,
+      "cat": "move",
+      "ts": 1787178900050,
+      "msg": "🚶 internationale_w2 → #29"
+    },
+    {
+      "tour": 16,
+      "etape": 249,
+      "cat": "move",
+      "ts": 1787178900050,
+      "msg": "✅ Mouvement terminé (3/3)"
+    },
+    {
+      "tour": 16,
+      "etape": 250,
+      "cat": "bot",
+      "ts": 1787178906801,
+      "msg": "🤖 Bayou: +2 Pop (palier ×3 franchi !)"
+    },
+    {
+      "tour": 16,
+      "etape": 251,
+      "cat": "bot",
+      "ts": 1787178907154,
+      "msg": "🤖 Acadiane: M. Thibodeau → #2 📦2bois, 3petrole"
+    },
+    {
+      "tour": 16,
+      "etape": 252,
+      "cat": "bot",
+      "ts": 1787178907154,
+      "msg": "🤖🏴 Acadiane: comptoir gardé (#2 colle au réseau)"
+    },
+    {
+      "tour": 16,
+      "etape": 253,
+      "cat": "bot",
+      "ts": 1787178907154,
+      "msg": "🤖 Acadiane: Ouv. → #9"
+    },
+    {
+      "tour": 17,
+      "etape": 254,
+      "cat": "move",
+      "ts": 1787178907162,
+      "msg": "🔴 Empire E2 → #9"
+    },
+    {
+      "tour": 17,
+      "etape": 255,
+      "cat": "info",
+      "ts": 1787178907162,
+      "msg": "🔴👷 L'Empire disperse 3 ouvriers de Acadiane sur #9 → base"
+    },
+    {
+      "tour": 17,
+      "etape": 256,
+      "cat": "turn",
+      "ts": 1787178907162,
+      "msg": "── Tour 17 ──"
+    },
+    {
+      "tour": 17,
+      "etape": 257,
+      "cat": "snap",
+      "ts": 1787178907162,
+      "msg": "[Début] ⚡8 🃏4 ♥5 💰10 ⭐0 W5 M1 Fe5 Bo0 No0 Pe0 Ab[0]"
+    },
+    {
+      "tour": 17,
+      "etape": 258,
+      "cat": "snap",
+      "ts": 1787178907162,
+      "msg": "[Début 🤖 Bayou] ⚡1 🃏2 ♥14 💰1 ⭐1 W8 M1 Fe0 Bo2 No0 Pe1 Ab[0]"
+    },
+    {
+      "tour": 17,
+      "etape": 259,
+      "cat": "snap",
+      "ts": 1787178907162,
+      "msg": "[Début 🤖 Acadiane] ⚡0 🃏5 ♥13 💰12 ⭐0 W5 M0 Fe0 Bo2 No0 Pe3 Ab[]"
+    },
+    {
+      "tour": 17,
+      "etape": 260,
+      "cat": "resource",
+      "ts": 1787178941262,
+      "msg": "💪 -1$ → +4 Pui (Amélioration +1) (Arsenal +1)"
+    },
+    {
+      "tour": 17,
+      "etape": 261,
+      "cat": "bot",
+      "ts": 1787178945223,
+      "msg": "🤖 Bayou: +2 pui"
+    },
+    {
+      "tour": 17,
+      "etape": 262,
+      "cat": "bot",
+      "ts": 1787178945585,
+      "msg": "🤖 Acadiane: +2 bois"
+    },
+    {
+      "tour": 18,
+      "etape": 263,
+      "cat": "move",
+      "ts": 1787178945591,
+      "msg": "🔴 Empire E6 → #26"
+    },
+    {
+      "tour": 18,
+      "etape": 264,
+      "cat": "turn",
+      "ts": 1787178945591,
+      "msg": "── Tour 18 ──"
+    },
+    {
+      "tour": 18,
+      "etape": 265,
+      "cat": "snap",
+      "ts": 1787178945591,
+      "msg": "[Début] ⚡12 🃏4 ♥5 💰9 ⭐0 W5 M1 Fe5 Bo0 No0 Pe0 Ab[0]"
+    },
+    {
+      "tour": 18,
+      "etape": 266,
+      "cat": "snap",
+      "ts": 1787178945591,
+      "msg": "[Début 🤖 Bayou] ⚡3 🃏2 ♥14 💰0 ⭐1 W8 M1 Fe0 Bo2 No0 Pe1 Ab[0]"
+    },
+    {
+      "tour": 18,
+      "etape": 267,
+      "cat": "snap",
+      "ts": 1787178945591,
+      "msg": "[Début 🤖 Acadiane] ⚡0 🃏5 ♥13 💰11 ⭐0 W5 M0 Fe0 Bo4 No0 Pe3 Ab[]"
+    },
+    {
+      "tour": 18,
+      "etape": 268,
+      "cat": "move",
+      "ts": 1787178956024,
+      "msg": "🚶 internationale_w2 → #26"
+    },
+    {
+      "tour": 18,
+      "etape": 269,
+      "cat": "combat",
+      "ts": 1787178956024,
+      "msg": "⚔ Contact sur #26 — le combat se résoudra à la fin de vos déplacements"
+    },
+    {
+      "tour": 18,
+      "etape": 270,
+      "cat": "move",
+      "ts": 1787178978504,
+      "msg": "🚶 internationale_w0 → #11"
+    },
+    {
+      "tour": 18,
+      "etape": 271,
+      "cat": "move",
+      "ts": 1787178983792,
+      "msg": "✅ Mouvement terminé (2/3)"
+    },
+    {
+      "tour": 18,
+      "etape": 272,
+      "cat": "combat",
+      "ts": 1787178983815,
+      "msg": "⚔ Combat Empire sur #26 ! Patrouille impériale — force entre 1 à 12"
+    },
+    {
+      "tour": 18,
+      "etape": 273,
+      "cat": "info",
+      "ts": 1787178988823,
+      "msg": "✅ Victoire ! Marcheur d'Acier détruit (10 vs 5 — dépensé: 7⚡ 1🃏)"
+    },
+    {
+      "tour": 18,
+      "etape": 274,
+      "cat": "star",
+      "ts": 1787178988823,
+      "msg": "⭐💀 LIBÉRATEUR ! 3 Empire détruits !"
+    },
+    {
+      "tour": 18,
+      "etape": 275,
+      "cat": "warn",
+      "ts": 1787178992671,
+      "msg": "🏆 +2 Métal (ferraille)"
+    },
+    {
+      "tour": 18,
+      "etape": 276,
+      "cat": "info",
+      "ts": 1787179001366,
+      "msg": "🔧 Mecha impérial retourné sur #26 (-2 métal) — capacité arrachée : 🏃 Vitesse"
+    },
+    {
+      "tour": 18,
+      "etape": 277,
+      "cat": "note",
+      "ts": 1787179183816,
+      "msg": "📝 Lors de la selection pour mon second mecha volé sur un mech de l'empire, il me signale que j'ai deja pris Speed mais mautorise quand meme à la prendre. résultat j'ai un mech sans pouvoir,  c'est potentiellement une resolution s'il n'y a pas de pouvoir prenable car tous seraient deja pris mais dans ce cas j'aurais du prendre le blindage imperial de facto, speed aurait du etre grisé car deja consommé, et si vraiment il n'y a plus de pouvoir à prendre alors dans ce cas je peux faire un mech sans pouvoir"
+    },
+    {
+      "tour": 18,
+      "etape": 278,
+      "cat": "note",
+      "ts": 1787179240170,
+      "msg": "📝 D'ailleurs lorsqu'on clique sur l'icone des mechs ils devraient refleter le fait qu'ils ont des ability libre et les voir à mesure qu'on les vole"
+    },
+    {
+      "tour": 18,
+      "etape": 279,
+      "cat": "bot",
+      "ts": 1787179248979,
+      "msg": "🤖 Bayou: +1$ (Déplacer, blocage économique)"
+    },
+    {
+      "tour": 18,
+      "etape": 280,
+      "cat": "bot",
+      "ts": 1787179249337,
+      "msg": "🤖 Acadiane: +2 pui"
+    },
+    {
+      "tour": 18,
+      "etape": 281,
+      "cat": "bot",
+      "ts": 1787179249337,
+      "msg": "🤖 Acadiane: Construire Mémorial #2"
+    },
+    {
+      "tour": 18,
+      "etape": 282,
+      "cat": "bot",
+      "ts": 1787179249337,
+      "msg": "🤖💰 Acadiane: +2$ (Construire)"
+    },
+    {
+      "tour": 18,
+      "etape": 283,
+      "cat": "build",
+      "ts": 1787179249337,
+      "msg": "🤝 Acadiane: ♥+1 Popularité (propre Build)"
+    },
+    {
+      "tour": 19,
+      "etape": 284,
+      "cat": "move",
+      "ts": 1787179249344,
+      "msg": "🔴 Empire E2 → #6"
+    },
+    {
+      "tour": 19,
+      "etape": 285,
+      "cat": "info",
+      "ts": 1787179249344,
+      "msg": "🔴👷 L'Empire disperse 1 ouvrier de Acadiane sur #6 → base"
+    },
+    {
+      "tour": 19,
+      "etape": 286,
+      "cat": "turn",
+      "ts": 1787179249344,
+      "msg": "── Tour 19 ──"
+    },
+    {
+      "tour": 19,
+      "etape": 287,
+      "cat": "snap",
+      "ts": 1787179249344,
+      "msg": "[Début] ⚡5 🃏3 ♥5 💰9 ⭐1 W5 M2 Fe5 Bo0 No0 Pe0 Ab[0]"
+    },
+    {
+      "tour": 19,
+      "etape": 288,
+      "cat": "snap",
+      "ts": 1787179249344,
+      "msg": "[Début 🤖 Bayou] ⚡3 🃏2 ♥14 💰1 ⭐1 W8 M1 Fe0 Bo2 No0 Pe1 Ab[0]"
+    },
+    {
+      "tour": 19,
+      "etape": 289,
+      "cat": "snap",
+      "ts": 1787179249344,
+      "msg": "[Début 🤖 Acadiane] ⚡2 🃏5 ♥14 💰12 ⭐0 W5 M0 Fe0 Bo0 No0 Pe3 Ab[]"
+    },
+    {
+      "tour": 19,
+      "etape": 290,
+      "cat": "resource",
+      "ts": 1787179257136,
+      "msg": "💪 -1$ → +4 Pui (Amélioration +1) (Arsenal +1)"
+    },
+    {
+      "tour": 19,
+      "etape": 291,
+      "cat": "bot",
+      "ts": 1787179260002,
+      "msg": "🤖 Bayou: +2 nourriture"
+    },
+    {
+      "tour": 19,
+      "etape": 292,
+      "cat": "bot",
+      "ts": 1787179260357,
+      "msg": "🤖 Acadiane: Ouv. (base) → #2"
+    },
+    {
+      "tour": 19,
+      "etape": 293,
+      "cat": "bot",
+      "ts": 1787179260357,
+      "msg": "🤖 Acadiane: Ouv. (base) → #2"
+    },
+    {
+      "tour": 20,
+      "etape": 294,
+      "cat": "move",
+      "ts": 1787179260360,
+      "msg": "🔴 Empire E3 → #34"
+    },
+    {
+      "tour": 20,
+      "etape": 295,
+      "cat": "combat",
+      "ts": 1787179260360,
+      "msg": "⚔ L'Empire attaque sur #34 ! Force inconnue — entre 1 à 12"
+    },
+    {
+      "tour": 20,
+      "etape": 296,
+      "cat": "turn",
+      "ts": 1787179260360,
+      "msg": "── Tour 20 ──"
+    },
+    {
+      "tour": 20,
+      "etape": 297,
+      "cat": "snap",
+      "ts": 1787179260360,
+      "msg": "[Début] ⚡9 🃏3 ♥5 💰8 ⭐1 W5 M2 Fe5 Bo0 No0 Pe0 Ab[0]"
+    },
+    {
+      "tour": 20,
+      "etape": 298,
+      "cat": "snap",
+      "ts": 1787179260360,
+      "msg": "[Début 🤖 Bayou] ⚡3 🃏2 ♥14 💰0 ⭐1 W8 M1 Fe0 Bo2 No2 Pe1 Ab[0]"
+    },
+    {
+      "tour": 20,
+      "etape": 299,
+      "cat": "snap",
+      "ts": 1787179260360,
+      "msg": "[Début 🤖 Acadiane] ⚡2 🃏5 ♥14 💰12 ⭐0 W5 M0 Fe0 Bo0 No0 Pe3 Ab[]"
+    },
+    {
+      "tour": 20,
+      "etape": 300,
+      "cat": "info",
+      "ts": 1787179266439,
+      "msg": "✅ Victoire ! Bête de Wardenclyffe détruit (10 vs 9 — dépensé: 7⚡ 1🃏)"
+    },
+    {
+      "tour": 20,
+      "etape": 301,
+      "cat": "warn",
+      "ts": 1787179270146,
+      "msg": "🏆 +2 Métal (ferraille)"
+    },
+    {
+      "tour": 20,
+      "etape": 302,
+      "cat": "combat",
+      "ts": 1787179272689,
+      "msg": "🔧 Mecha impérial retourné sur #34 (-2 métal) — capacité arrachée : ⚔ Blindage impérial"
+    },
+    {
+      "tour": 20,
+      "etape": 303,
+      "cat": "move",
+      "ts": 1787179280145,
+      "msg": "🚶 internationale_vol3 → #22 👷×1 📦4metal"
+    },
+    {
+      "tour": 20,
+      "etape": 304,
+      "cat": "move",
+      "ts": 1787179285740,
+      "msg": "🚶 internationale_vol2 → #22 👷×1 📦1metal"
+    },
+    {
+      "tour": 20,
+      "etape": 305,
+      "cat": "info",
+      "ts": 1787179285776,
+      "msg": "🏛🏆 Atteindre l'Empereur accompli — chapitre 2 remporté par la voie canon !"
+    }
+  ]
+}

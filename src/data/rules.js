@@ -206,7 +206,7 @@ export const RULES = [
       },
       {
         title: "Conséquences",
-        content: "Le perdant retire toutes ses unités (héros, mechas, ouvriers) de l'hex. Les ouvriers retournent sur la base. Le vainqueur gagne une étoile de combat (max 2). Le perdant gagne +1 Carte Combat par unité retirée."
+        content: "Le perdant retire toutes ses unités (héros, mechas, ouvriers) de l'hex. Les ouvriers retournent sur la base. Le vainqueur gagne une étoile de combat (max 2) — seulement contre une FACTION : les patrouilles impériales alimentent l'étoile Libérateur (3 patrouilles détruites), pas celles-ci. Le perdant gagne +1 Carte Combat par unité retirée."
       },
       {
         title: "Capacités de Combat (Mecha #3)",

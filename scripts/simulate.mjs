@@ -30,7 +30,7 @@ import { BALANCE } from '../src/data/balance.js';
 import { MATS, applyEnlistOngoing, BOTTOM } from '../src/data/mats.js';
 import { HEXES, HOME_BASES, hMap, ADJ } from '../src/data/hexes.js';
 import { EMPIRE_START, EMPIRE_RAILS, drawEmpireCombat } from '../src/data/empire.js';
-import { getCombatBonus } from '../src/data/combat.js';
+import { getCombatBonus, playerWinsCombat } from '../src/data/combat.js';
 import { OBJECTIVES } from '../src/data/objectives.js';
 import { shuffleArray } from '../src/logic/hexMath.js';
 import { claimFactoryCard } from '../src/logic/factory.js';
@@ -289,7 +289,7 @@ const playGame = (gameIdx, log) => {
         const botCC = Math.min(Math.floor(Math.random() * (p.combatCards + 1)), units + cb.cardBonus);
         const botTotal = botSpend + cb.powerBonus + botCC * 2;
         p.power -= botSpend; p.combatCards -= botCC;
-        if (botTotal >= card.power) {
+        if (playerWinsCombat(botTotal, card.power, false)) { // le bot attaque : l'égalité lui revient
           combatStats.pveWins++;
           delete empire[empireOnHero[0]];
           p.empireKills = (p.empireKills || 0) + 1;
@@ -430,7 +430,7 @@ const playGame = (gameIdx, log) => {
             const botTotal = botSpend + cb.powerBonus + botCC * 2;
             const bp = { ...pl };
             bp.power -= botSpend; bp.combatCards -= botCC;
-            if (botTotal >= card.power) { // le défenseur gagne l'égalité (même règle que l'humain)
+            if (playerWinsCombat(botTotal, card.power, true)) { // l'ATTAQUANT gagne l'égalité : ici l'Empire (même règle que l'humain, corrigée le 19/08)
               combatStats.defWins++;
               delete empire[eid];
               bp.empireKills = (bp.empireKills || 0) + 1;

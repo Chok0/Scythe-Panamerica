@@ -14,6 +14,20 @@
 //     endroit où l'on dépense de la popularité — la ressource la plus dure à
 //     regagner en cours de partie, ce qui rend ce choix réellement tendu.
 //
+// ── L'ARGENT DANS LE DECK (revu le 19/08) ────────────────────────────────
+// Constat de partie : « pas assez de cartes rencontre qui donnent des $ ».
+// Il était juste — 36 options COÛTENT de l'argent, 8 seulement en donnaient,
+// sur 8 cartes du deck (24 %). Huit options s'ajoutent donc : ids 1, 3, 6, 9,
+// 13 et 29 sur l'option 1 (on est PAYÉ pour le service rendu), ids 12 et 32
+// sur l'option 3 (la cassette part avec le butin). 16 options sur 14 cartes
+// (42 %) : une carte sur trois payait, deux sur cinq paient.
+// Aucune inflation : chaque ajout ÉCHANGE une unité de ressource contre 2$
+// (le taux du Commerce, 1$ → 2 ressources), donc la valeur de l'option ne
+// bouge pas — c'est sa LIQUIDITÉ qui change, et c'est ce qui manquait aux
+// factions à petite trésorerie (Le Réseau démarre à 3$).
+// Les 12 triptyques `src:"original"` restent INTACTS : ils sont l'étalon
+// d'équilibrage du deck, on ne touche pas au mètre pour mesurer.
+//
 // Les `available` gardent les options payables (UI joueur ET tirage des bots).
 //
 // Le deck mêle 15 cartes Panamerica (ids 1-15), les 12 TRIPTYQUES DU JEU
@@ -29,6 +43,8 @@
 // C'est le principal carburant de la quête des prototypes (2 fragments).
 // `grantsResources: N` : N ressources AU CHOIX, prises une par une (picker
 // côté joueur, tirage côté bot), posées sur le hex de la rencontre.
+
+import { FACTIONS } from './factions.js';
 
 // ── Hex d'ARRIVÉE de la rencontre ─────────────────────────────────────────
 // « Les gains atterrissent sur le territoire de la rencontre » : c'est celui
@@ -47,10 +63,16 @@ const addRes = (p, res, n) => {
 const addWorkers = (p, n) => {
   for (let i = 0; i < n && p.workers.length < 8; i++) p.workers.push({ id: `${p.faction}_w${p.workers.length}`, hexId: encAnchor(p) });
 };
+// Un mecha ne se GAGNE pas quand la faction ne déploie pas : l'Internationale
+// Noire n'en obtient QUE par le vol après un combat gagné (fiche §6-§7, et
+// « captures uniquement » pour son étoile). L'option disparaît donc de son
+// triptyque — sinon une rencontre remplissait l'étoile des 4 mechas sans
+// qu'un seul mecha ait été arraché à personne (offert en partie le 19/08).
+const canGainMech = (p) => p.mechs.length < 4 && !FACTIONS[p.faction]?.stealMechs;
 // Mecha gagné en rencontre : pose sur le hex du héros + étoile à 4 (comme un Deploy).
 // L'ability est débloquée ensuite (picker joueur / auto côté bot).
 const addMech = (p) => {
-  if (p.mechs.length < 4) {
+  if (canGainMech(p)) {
     p.mechs.push({ id: `${p.faction}_m${p.mechs.length}`, hexId: encAnchor(p) });
     if (p.mechs.length >= 4 && !p.starMechs) { p.stars++; p.starMechs = true; }
   }
@@ -76,9 +98,9 @@ const canEncGare = (p) => (p.buildings || []).length < 4 && !(p.buildings || [])
 export const ENCOUNTERS = [
   { id: 1, name: "L'Épave Fumante", desc: "Un mecha gît au bord de la route, fumant encore.",
     choices: [
-      { label: "Prévenir le hameau", icon: "♥", desc: "+1 pop, +2 métal", effect: p => { gainPop(p, 1); addRes(p, "metal", 2); } },
+      { label: "Prévenir le hameau", icon: "♥", desc: "+1 pop, +1 métal, +2$", effect: p => { gainPop(p, 1); addRes(p, "metal", 1); p.coins += 2; } },
       { label: "Racheter la carcasse", icon: "💰", desc: "-2$, +4 métal", available: p => p.coins >= 2, effect: p => { p.coins -= 2; addRes(p, "metal", 4); } },
-      { label: "Réanimer le mecha", icon: "⬡", desc: "-3 pop, +1 mecha", grantsMech: true, available: p => p.pop >= 3 && p.mechs.length < 4, effect: p => { p.pop = Math.max(0, p.pop - 3); addMech(p); } },
+      { label: "Réanimer le mecha", icon: "⬡", desc: "-3 pop, +1 mecha", grantsMech: true, available: p => p.pop >= 3 && canGainMech(p), effect: p => { p.pop = Math.max(0, p.pop - 3); addMech(p); } },
     ] },
   { id: 2, name: "Le Pont Coupé", desc: "Le pont est détruit. Des villageois tentent de traverser.",
     choices: [
@@ -88,7 +110,7 @@ export const ENCOUNTERS = [
     ] },
   { id: 3, name: "La Mine Abandonnée", desc: "Une mine oubliée, pleine de ressources... ou de dangers.",
     choices: [
-      { label: "Étayer la galerie", icon: "♥", desc: "+1 pop, +2 métal", effect: p => { gainPop(p, 1); addRes(p, "metal", 2); } },
+      { label: "Étayer la galerie", icon: "♥", desc: "+1 pop, +1 métal, +2$", effect: p => { gainPop(p, 1); addRes(p, "metal", 1); p.coins += 2; } },
       { label: "Exploiter la veine", icon: "💰", desc: "-2$, +4 métal", available: p => p.coins >= 2, effect: p => { p.coins -= 2; addRes(p, "metal", 4); } },
       { label: "Envoyer les hommes au fond", icon: "👷", desc: "-2 pop, +2 ouvriers", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); addWorkers(p, 2); } },
     ] },
@@ -106,7 +128,7 @@ export const ENCOUNTERS = [
     ] },
   { id: 6, name: "Le Dépôt de Trains", desc: "Un dépôt ferroviaire rempli de technologie oubliée.",
     choices: [
-      { label: "Inventorier le dépôt", icon: "♥", desc: "+1 pop, +2 métal", effect: p => { gainPop(p, 1); addRes(p, "metal", 2); } },
+      { label: "Inventorier le dépôt", icon: "♥", desc: "+1 pop, +1 métal, +2$", effect: p => { gainPop(p, 1); addRes(p, "metal", 1); p.coins += 2; } },
       { label: "Acheter la cargaison", icon: "🔬", grantsFragment: true, desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
       { label: "Rafler la technologie", icon: "⬆", desc: "-2 pop, +1 amélioration", grantsUpgrade: true, available: p => p.pop >= 2 && canGainUpg(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
     ] },
@@ -119,12 +141,12 @@ export const ENCOUNTERS = [
   { id: 8, name: "Le Mécanicien Errant", desc: "Un génie mécanique cherche du travail. Ses mains tremblent.",
     choices: [
       { label: "L'écouter raconter", icon: "♥", desc: "+1 pop, +1 carte combat", effect: p => { gainPop(p, 1); p.combatCards += 1; } },
-      { label: "L'embaucher", icon: "⬡", desc: "-3$, +1 mecha", grantsMech: true, available: p => p.coins >= 3 && p.mechs.length < 4, effect: p => { p.coins -= 3; addMech(p); } },
+      { label: "L'embaucher", icon: "⬡", desc: "-3$, +1 mecha", grantsMech: true, available: p => p.coins >= 3 && canGainMech(p), effect: p => { p.coins -= 3; addMech(p); } },
       { label: "Le forcer à bricoler", icon: "⬆", desc: "-2 pop, +1 amélioration", grantsUpgrade: true, available: p => p.pop >= 2 && canGainUpg(p), effect: p => { p.pop = Math.max(0, p.pop - 2); } },
     ] },
   { id: 9, name: "Le Champ de Pétrole", desc: "Du pétrole jaillit du sol. Sacré pour les uns, fortune pour les autres.",
     choices: [
-      { label: "Sécuriser le puits", icon: "♥", desc: "+1 pop, +2 pétrole", effect: p => { gainPop(p, 1); addRes(p, "petrole", 2); } },
+      { label: "Sécuriser le puits", icon: "♥", desc: "+1 pop, +1 pétrole, +2$", effect: p => { gainPop(p, 1); addRes(p, "petrole", 1); p.coins += 2; } },
       { label: "Exploiter le gisement", icon: "💰", desc: "-2$, +4 pétrole", available: p => p.coins >= 2, effect: p => { p.coins -= 2; addRes(p, "petrole", 4); } },
       { label: "Forer sans relâche", icon: "🛢", desc: "-2 pop, +5 pétrole", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); addRes(p, "petrole", 5); } },
     ] },
@@ -138,17 +160,17 @@ export const ENCOUNTERS = [
     choices: [
       { label: "Rendre hommage", icon: "♥", desc: "+1 pop, +2 métal", effect: p => { gainPop(p, 1); addRes(p, "metal", 2); } },
       { label: "Fouiller les prototypes", icon: "🔬", grantsFragment: true, desc: "-2$, +1 Fragment Tesla", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; } },
-      { label: "Reconstruire un colosse", icon: "⬡", desc: "-3 pop, +1 mecha", grantsMech: true, available: p => p.pop >= 3 && p.mechs.length < 4, effect: p => { p.pop = Math.max(0, p.pop - 3); addMech(p); } },
+      { label: "Reconstruire un colosse", icon: "⬡", desc: "-3 pop, +1 mecha", grantsMech: true, available: p => p.pop >= 3 && canGainMech(p), effect: p => { p.pop = Math.max(0, p.pop - 3); addMech(p); } },
     ] },
   { id: 12, name: "La Contrebandière", desc: "Elle vend de tout. Armes, nourriture, secrets.",
     choices: [
       { label: "Marchander poliment", icon: "♥", desc: "+1 pop, +2$", effect: p => { gainPop(p, 1); p.coins += 2; } },
       { label: "Engager ses mercenaires", icon: "🤝", desc: "-3$, +1 recrue", grantsRecruit: true, available: p => p.coins >= 3 && canEncRecruit(p), effect: p => { p.coins -= 3; } },
-      { label: "La dévaliser", icon: "⚙", desc: "-2 pop, +4 métal", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); addRes(p, "metal", 4); } },
+      { label: "La dévaliser", icon: "⚙", desc: "-2 pop, +3 métal, +2$", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); addRes(p, "metal", 3); p.coins += 2; } },
     ] },
   { id: 13, name: "Le Barrage", desc: "Un barrage hydroélectrique, intact mais sans opérateur.",
     choices: [
-      { label: "Rétablir le courant", icon: "♥", desc: "+1 pop, +2 puissance", effect: p => { gainPop(p, 1); gainPow(p, 2); } },
+      { label: "Rétablir le courant", icon: "♥", desc: "+1 pop, +1 puissance, +2$", effect: p => { gainPop(p, 1); gainPow(p, 1); p.coins += 2; } },
       { label: "Moderniser la turbine", icon: "💰", desc: "-2$, +1 amélioration", grantsUpgrade: true, available: p => p.coins >= 2 && canGainUpg(p), effect: p => { p.coins -= 2; } },
       { label: "Réquisitionner l'énergie", icon: "⚡", desc: "-2 pop, +4 puissance, +1 ouvrier", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); gainPow(p, 4); addWorkers(p, 1); } },
     ] },
@@ -156,7 +178,7 @@ export const ENCOUNTERS = [
     choices: [
       { label: "Les nourrir", icon: "♥", desc: "+1 pop, +2 nourriture", effect: p => { gainPop(p, 1); addRes(p, "nourriture", 2); } },
       { label: "Les prendre en charge", icon: "👷", desc: "-2$, +2 ouvriers", available: p => p.coins >= 2, effect: p => { p.coins -= 2; addWorkers(p, 2); } },
-      { label: "Remettre le colosse en marche", icon: "⬡", desc: "-3 pop, +1 mecha", grantsMech: true, available: p => p.pop >= 3 && p.mechs.length < 4, effect: p => { p.pop = Math.max(0, p.pop - 3); addMech(p); } },
+      { label: "Remettre le colosse en marche", icon: "⬡", desc: "-3 pop, +1 mecha", grantsMech: true, available: p => p.pop >= 3 && canGainMech(p), effect: p => { p.pop = Math.max(0, p.pop - 3); addMech(p); } },
     ] },
   { id: 15, name: "Le Dernier Gouverneur", desc: "Il offre sa reddition. Que faites-vous de son pouvoir ?",
     choices: [
@@ -211,7 +233,7 @@ export const ENCOUNTERS = [
   { id: 23, src: "original", name: "Le Garage du Désert", desc: "Un hangar tôlé : bidons, pièces détachées et un châssis bâché.",
     choices: [
       { label: "Soulever la bâche", icon: "🔬", grantsFragment: true, desc: "+1 pop, +1 Fragment Tesla", effect: p => { gainPop(p, 1); p.fragments = (p.fragments || 0) + 1; } },
-      { label: "Racheter le châssis", icon: "⬡", desc: "-4$, +1 mecha", grantsMech: true, available: p => p.coins >= 4 && p.mechs.length < 4, effect: p => { p.coins -= 4; addMech(p); } },
+      { label: "Racheter le châssis", icon: "⬡", desc: "-4$, +1 mecha", grantsMech: true, available: p => p.coins >= 4 && canGainMech(p), effect: p => { p.coins -= 4; addMech(p); } },
       { label: "Saisir la caisse", icon: "📦", desc: "-2 pop, +2$, +2 ressources au choix", grantsResources: 2, available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); p.coins += 2; } },
     ] },
   { id: 24, src: "original", name: "La Caravane Marchande", desc: "Des chariots bâchés, chargés de tout ce qui se vend.",
@@ -236,7 +258,7 @@ export const ENCOUNTERS = [
     choices: [
       { label: "Marchander la tôle", icon: "♥", desc: "+1 pop, +2$", effect: p => { gainPop(p, 1); p.coins += 2; } },
       { label: "Racheter le bras de mecha", icon: "🔬", grantsFragment: true, desc: "-2$, +1 Fragment Tesla, +1 métal", available: p => p.coins >= 2, effect: p => { p.coins -= 2; p.fragments = (p.fragments || 0) + 1; addRes(p, "metal", 1); } },
-      { label: "Ressusciter le colosse", icon: "⬡", desc: "-3 pop, +1 mecha", grantsMech: true, available: p => p.pop >= 3 && p.mechs.length < 4, effect: p => { p.pop = Math.max(0, p.pop - 3); addMech(p); } },
+      { label: "Ressusciter le colosse", icon: "⬡", desc: "-3 pop, +1 mecha", grantsMech: true, available: p => p.pop >= 3 && canGainMech(p), effect: p => { p.pop = Math.max(0, p.pop - 3); addMech(p); } },
     ] },
 
   // ═══ Extension (ids 28-33) — même logique de triptyque que l'original ═══
@@ -248,7 +270,7 @@ export const ENCOUNTERS = [
     ] },
   { id: 29, name: "Le Bac à Vapeur", desc: "Un passeur ronchon relie les deux rives, chaudière crachotante.",
     choices: [
-      { label: "Aider au débarcadère", icon: "♥", desc: "+1 pop, +2 bois", effect: p => { gainPop(p, 1); addRes(p, "bois", 2); } },
+      { label: "Aider au débarcadère", icon: "♥", desc: "+1 pop, +1 bois, +2$", effect: p => { gainPop(p, 1); addRes(p, "bois", 1); p.coins += 2; } },
       { label: "Affréter le bac", icon: "🌽", desc: "-2$, +4 nourriture", available: p => p.coins >= 2, effect: p => { p.coins -= 2; addRes(p, "nourriture", 4); } },
       { label: "Saisir la chaudière", icon: "🔬", grantsFragment: true, desc: "-2 pop, +1 Fragment Tesla, +2$", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); p.fragments = (p.fragments || 0) + 1; p.coins += 2; } },
     ] },
@@ -268,7 +290,7 @@ export const ENCOUNTERS = [
     choices: [
       { label: "Payer le passage", icon: "♥", desc: "+1 pop, +2 pétrole", effect: p => { gainPop(p, 1); addRes(p, "petrole", 2); } },
       { label: "S'offrir l'escorte armée", icon: "⚡", desc: "-2$, +2 puissance, +1 carte combat", available: p => p.coins >= 2, effect: p => { p.coins -= 2; gainPow(p, 2); p.combatCards += 1; } },
-      { label: "Saisir la contrebande", icon: "🔬", grantsFragment: true, desc: "-2 pop, +1 Fragment Tesla, +2 métal", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); p.fragments = (p.fragments || 0) + 1; addRes(p, "metal", 2); } },
+      { label: "Saisir la contrebande", icon: "🔬", grantsFragment: true, desc: "-2 pop, +1 Fragment Tesla, +1 métal, +2$", available: p => p.pop >= 2, effect: p => { p.pop = Math.max(0, p.pop - 2); p.fragments = (p.fragments || 0) + 1; addRes(p, "metal", 1); p.coins += 2; } },
     ] },
   { id: 33, name: "L'Île du Naufrageur", desc: "Des épaves s'entassent sur la grève d'un vieil ermite du lac.",
     choices: [

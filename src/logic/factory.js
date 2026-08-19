@@ -2,6 +2,7 @@
 // La carte d'usine est une 5e colonne d'action : HAUT = 1 coût + 1 gain,
 // BAS = déplacer 1 unité de 2 hex (+1 si Vitesse). Voir data/plans.js.
 import { matById, maxBottomCubes, ENLIST_ONGOING, BUILDING_TYPES } from '../data/mats.js';
+import { FACTIONS } from '../data/factions.js';
 import { TESLA_FRAGMENTS_REQUIRED } from '../data/plans.js';
 import { TERRAINS } from '../data/terrains.js';
 import { hMap } from '../data/hexes.js';
@@ -68,7 +69,11 @@ export const factoryEffectPossible = (p, eff) => {
         && BUILDING_TYPES.some(bt => !(p.buildings || []).some(b => b.type === bt.type))
         && factoryWorkerHexes(p).some(h => !(p.buildings || []).some(b => b.hexId === h));
     case "mech":
-      return p.mechs.length < 4 && factoryWorkerHexes(p).length > 0;
+      // Même règle qu'en rencontre : une faction qui VOLE ses mechas n'en
+      // reçoit pas gratuitement (fiche de l'Internationale Noire §6-§7). Le
+      // gain est simplement « impossible » — l'usine passe à l'effet suivant,
+      // et un gain « mecha OU bâtiment » ne propose plus que le bâtiment.
+      return p.mechs.length < 4 && !FACTIONS[p.faction]?.stealMechs && factoryWorkerHexes(p).length > 0;
     case "produce2":
       return factoryProduceHexes(p).length > 0;
     case "resources":

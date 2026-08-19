@@ -24,6 +24,8 @@
 > | 6 | Capacité de combat propre (slot 2) | **Sabotage** : +1 carte si ≥2 ouvriers alliés sur l'hex — elle prolonge la dérogation des ouvriers combattants au lieu de la doubler. |
 > | 7 | Winrate & fréquence des stacks | **Non mesuré** : la faction est réservée au joueur humain en campagne, aucun bot ne la joue — `simulate.mjs` ne peut donc pas la mesurer. À reprendre le jour où un profil de bot existera. |
 > | 8 | Mécanique de scénario des chapitres 2 et 8 | **Tranchée** : ch2 = 3 ouvriers sur l'Usine + **2 mechas VOLÉS** (à n'importe quelle faction — détruire est ce que cette faction refuse de faire, et son compteur propre est `capturedMech`) ; ch8 = 3 tours consécutifs sur l'Usine + 3 mechas arrachés. |
+> | 9 | Les mechas « gratuits » (rencontre, carte d'usine) — arbitrage du 19/08 | **Fermés.** L'option « +1 mecha » disparaît de son triptyque de rencontre et le gain « 1 Mecha » de l'usine est passé : sinon une rencontre remplissait l'étoile des 4 mechas sans une seule capture, à rebours de la ligne 3. Verdict de partie : *« mech déployable uniquement par victoire dans un combat contre un mech + ressources »*. |
+> | 10 | Voler deux fois la même capacité — arbitrage du 19/08 | **Interdit, et dit.** Une capacité déjà au réseau est **grisée** dans la modale de vol (Vitesse une fois acquise ; slots 2/3 si la provenance est déjà cette faction). S'il ne reste rien à prendre, le mecha se relève quand même — **carcasse nue**, sans pouvoir, par un bouton explicite : la capture compte, le joueur sait ce qu'il paie. |
 >
 > **Écarts assumés par rapport à la spec ci-dessous :**
 > - **Les hex #3/#20/#25/#40 ne sont PAS des hex de base** (§3 proposait
@@ -36,6 +38,10 @@
 >   position de SA faction (`stolenCombat` / `stolenPosition`), Vitesse restant
 >   commune. Un nouveau vol remplace le précédent — le patchwork se refait.
 >   Le riverwalk volé n'est jamais proposé : Résilience le rend inutile.
+>   Une capacité volée doit **fonctionner** : Pack Up (slot 3 des Nations) se
+>   lisait sur `me.faction` et ne faisait donc strictement rien une fois arraché
+>   — il lit `positionFactionOf(player)` depuis le 19/08, la convention que
+>   `movement.js` appliquait déjà pour les bonds de terrain.
 >
 > **Correctif du 04/08 — deux capacités inventées, retirées.** Une première
 > passe avait meublé les slots libres avec des capacités MAISON (« Passeurs »,
@@ -254,9 +260,18 @@ L'Internationale Noire ne construit aucun mecha. Elle les **prend**.
   l'Internationale Noire, posé sur l'hex du combat.
 - **Plafond** : **4 mechas** capturés au total, ce qui remplit l'étoile
   « Déployer les 4 Mechas » du plateau de triomphes.
-- **Bonus** : à chaque capture, le joueur choisit **une capacité parmi les
-  quatre du mecha de la faction vaincue** (`getMechAbilities(factionId)`) et
-  l'acquiert définitivement.
+- **Bonus** : à chaque capture, le joueur choisit **une capacité parmi celles
+  que la victime a encore à donner** (`stealableSlots(factionId, player)`,
+  data/mechAbilities.js) et l'acquiert définitivement. Ce que la victime n'a
+  plus à donner (correctif du 19/08) : **Vitesse** une fois qu'elle est au
+  réseau — elle est commune à tout le roster, personne ne la redonne — et son
+  **slot 2 ou 3** si le réseau tient déjà la capacité de CETTE faction. Une
+  autre faction reste un vrai choix : le patchwork se refait, la modale annonce
+  « remplace *X* ». Une patrouille impériale n'offre que Vitesse et son
+  Blindage ; toute faction sans capacité de position n'offre pas de slot 3.
+- **Carcasse nue** : quand plus rien n'est à prendre, le mecha se relève sans
+  capacité — au même prix, et sur un bouton distinct. Il compte pour
+  `capturedMech` (donc pour les conditions canon des chapitres 2 et 8).
 
 C'est la mécanique signature de la faction : son arsenal est un **patchwork
 volé**, exactement comme les mechas-Spectres des Moissonneurs décrits dans le
@@ -273,7 +288,10 @@ partie.
 
 L'action garde son **coût en métal** et son **gain en pièces** habituels, mais
 **ne pose aucun mecha** : les mechas de l'Internationale Noire arrivent
-exclusivement par le vol en combat (§6). Mécaniquement, c'est « comme si le
+exclusivement par le vol en combat (§6). **Conséquence d'interface (19/08)** :
+la colonne n'a **aucune cible sur la carte** — ni hex surligné, ni bouton
+« ⬡ #hex » — mais un bouton unique « Écouler les pièces détachées », et elle
+reste jouable à 4 mechas volés (c'est une conversion, pas un déploiement). Mécaniquement, c'est « comme si le
 mecha avait déjà été déployé » — l'action reste un vrai choix économique
 (convertir du métal en or et avancer sur la piste d'améliorations), jamais un
 gain gratuit.

@@ -8,7 +8,7 @@ import { matById } from '../../data/mats.js';
 import { createPlayer, retreatFromHex, retreatBaseIds, defaultRetreatBase, baseExits } from '../player.js';
 import { getValidMoves, getValidMoves1Step } from '../movement.js';
 import { combatUnitCount, getCombatBonus, isCombatUnit } from '../../data/combat.js';
-import { getMechAbilities } from '../../data/mechAbilities.js';
+import { getMechAbilities, stealableSlots, positionFactionOf } from '../../data/mechAbilities.js';
 import { heldHexes } from '../../data/control.js';
 import { chapterById } from '../../data/campaign.js';
 import { hMap, ADJ, hasR, CURRENT_MAP, factionBaseHexes, HOME_BASES, baseHexAt, homeBaseHex } from '../../data/hexes.js';
@@ -196,6 +196,57 @@ describe('vol de mecha — la capacité volée est celle du vaincu', () => {
   });
 });
 
+// Partie du 19/08 : au 2e vol sur une patrouille impériale, la modale
+// proposait Vitesse — déjà arrachée au 1er — en la signalant « déjà prise »,
+// mais laissait cliquer. Le mecha se relevait donc SANS capacité, payé plein
+// tarif. Ce que la victime a encore à donner se calcule maintenant ici.
+describe('vol de mecha : ce qui reste À ARRACHER (correctif du 19/08)', () => {
+  it('une patrouille impériale n\'offre que Vitesse et son Blindage — pas de Position', () => {
+    const opts = stealableSlots('empire', mk());
+    expect(opts.map(o => o.slot)).toEqual([0, 2]);
+    expect(opts[1].ability.name).toBe('Blindage impérial');
+    expect(opts.every(o => !o.owned)).toBe(true);
+  });
+
+  it('Vitesse déjà volée : le slot est marqué pris, il ne se reprend nulle part', () => {
+    const p = mk();
+    p.unlockedAbilities = [0];
+    expect(stealableSlots('empire', p).find(o => o.slot === 0).owned).toBe(true);
+    expect(stealableSlots('bayou', p).find(o => o.slot === 0).owned).toBe(true);
+    // Il reste de quoi choisir chez une faction complète
+    expect(stealableSlots('bayou', p).filter(o => !o.owned).map(o => o.slot)).toEqual([2, 3]);
+  });
+
+  it('repiller la MÊME faction ne redonne rien — une autre, si', () => {
+    const p = mk();
+    p.unlockedAbilities = [0, 2];
+    p.stolenCombat = 'bayou';
+    expect(stealableSlots('bayou', p).find(o => o.slot === 2).owned).toBe(true);
+    expect(stealableSlots('dominion', p).find(o => o.slot === 2).owned).toBe(false);
+  });
+
+  it('plus rien à prendre : la liste est vide, le mecha se relèvera nu', () => {
+    const p = mk();
+    p.unlockedAbilities = [0, 2];
+    p.stolenCombat = 'empire';
+    expect(stealableSlots('empire', p).filter(o => !o.owned)).toHaveLength(0);
+  });
+
+  it('le Dominion n\'est plus une exception : Bitume est un slot 3 volable', () => {
+    const opts = stealableSlots('dominion', mk());
+    expect(opts.map(o => o.slot)).toEqual([0, 2, 3]);
+    expect(opts[2].ability.name).toBe('Bitume');
+  });
+
+  it('la capacité de position volée est celle qui commande Pack Up', () => {
+    const p = mk();
+    expect(positionFactionOf(p)).toBe(IN);
+    p.stolenPosition = 'nations';
+    expect(positionFactionOf(p)).toBe('nations');   // App.jsx : le déménagement s'ouvre
+    expect(positionFactionOf(createPlayer('nations', 1, false))).toBe('nations');
+  });
+});
+
 describe('repli après défaite : une planque, AU CHOIX (arbitrage du 11/08)', () => {
   // Elle se replie comme tout le monde — sur une base. La seule différence
   // est qu'elle en a quatre et que le joueur désigne laquelle. La réserve
@@ -349,27 +400,42 @@ describe('récompenses de rencontre : elles se posent sur le hex ATTEINT', () =>
 
   it('les ressources gagnées atterrissent sur l\'hex de la rencontre', () => {
     const p = sorti();
+    const coins = p.coins;
     p.encHex = 25;
-    card.choices[0].effect(p);                     // +1 pop, +2 métal
+    card.choices[0].effect(p);                     // +1 pop, +1 métal, +2$
     delete p.encHex;
-    expect(p.resources['25'].metal).toBe(2);
+    expect(p.resources['25'].metal).toBe(1);
     expect(p.resources.null).toBeUndefined();
+    expect(p.coins).toBe(coins + 2);               // les pièces, elles, vont au joueur
   });
 
-  it('un mecha gagné en rencontre se pose sur l\'hex, pas sur `null`', () => {
+  // Correctif du 19/08 : « un mecha n'est déployable que par une victoire en
+  // combat contre un mecha ». L'option « +1 mecha » disparaît donc de son
+  // triptyque — elle remplissait sinon l'étoile des 4 mechas sans capture,
+  // à rebours de l'arbitrage « captures uniquement » de la fiche.
+  it('aucun mecha de rencontre pour le réseau : ils s\'arrachent en combat', () => {
     const p = sorti();
     p.pop = 6; p.encHex = 20;
-    card.choices[2].effect(p);                     // -3 pop, +1 mecha
+    expect(card.choices[2].available(p)).toBe(false);   // option non proposée
+    card.choices[2].effect(p);                         // et sans effet si forcée
     delete p.encHex;
+    expect(p.mechs).toHaveLength(0);
+  });
+
+  it('les autres factions gagnent bien leur mecha, sur le hex de leur héros', () => {
+    const p = createPlayer('frente', 1, false);
+    p.pop = 6; p.hero = 41;
+    expect(card.choices[2].available(p)).toBe(true);
+    card.choices[2].effect(p);
     expect(p.mechs).toHaveLength(1);
-    expect(p.mechs[0].hexId).toBe(20);
+    expect(p.mechs[0].hexId).toBe(41);
   });
 
   it('les six autres factions restent sur le hex de leur héros', () => {
     const p = createPlayer('frente', 1, false);
     p.hero = 41;
     card.choices[0].effect(p);
-    expect(p.resources['41'].metal).toBe(2);
+    expect(p.resources['41'].metal).toBe(1);
   });
 });
 

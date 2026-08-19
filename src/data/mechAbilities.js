@@ -52,3 +52,37 @@ export const getMechAbilities = (factionId, player) => {
       : { name: steals ? "Capacité à voler" : "Position", desc: steals ? "Battez un mecha adverse pour lui arracher sa capacité de position" : "Capacité de positionnement", icon: "📍" },
   ];
 };
+
+/** Faction dont un joueur tient la capacité de POSITION (slot 3) : la sienne,
+ *  ou celle arrachée au mecha capturé. Même convention que `pf` dans
+ *  movement.js — Pack Up (App.jsx) lisait encore `player.faction`, ce qui
+ *  rendait le slot volé aux Nations parfaitement inerte. */
+export const positionFactionOf = (player) => player?.stolenPosition || player?.faction;
+
+// ── Ce qu'un mecha vaincu a ENCORE à donner (Internationale Noire) ─────────
+// Constaté en partie le 19/08 : au 2e vol, la modale proposait Vitesse (déjà
+// arrachée au 1er) en la signalant « déjà prise » — mais laissait cliquer.
+// Résultat : un mecha relevé SANS capacité, payé plein tarif. Le choix doit
+// être GRISÉ quand il ne donne rien de neuf ; s'il ne reste rien du tout, le
+// mecha se relève nu, mais explicitement (arbitrage du joueur, 19/08).
+//   - slot 0 (Vitesse) : commune à tout le roster — une fois débloquée, elle
+//     n'est plus à prendre nulle part.
+//   - slot 1 (riverwalk) : jamais proposé (Résilience franchit déjà les rivières).
+//   - slots 2 et 3 : ceux de la VICTIME. Les reprendre à une faction déjà
+//     pillée ne referait pas le patchwork — c'est la même capacité.
+//   - une patrouille impériale (Model M de série) n'a pas de slot Position ;
+//     la règle vaut pour toute faction sans capacité de position au slot 3
+//     (le Dominion en a une depuis Bitume : il n'est plus une exception).
+/** @returns {{slot:number, ability:object, owned:boolean}[]} */
+export const stealableSlots = (fromFaction, player) => {
+  const abil = getMechAbilities(fromFaction);
+  return (fromFaction === "empire" ? [0, 2] : [0, 2, 3])
+    .filter(i => i !== 3 || !!POSITION_ABILITIES[fromFaction])
+    .map(i => ({
+      slot: i,
+      ability: abil[i],
+      owned: i === 0 ? (player?.unlockedAbilities || []).includes(0)
+        : i === 2 ? player?.stolenCombat === fromFaction
+          : player?.stolenPosition === fromFaction,
+    }));
+};
